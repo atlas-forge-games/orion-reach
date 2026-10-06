@@ -18,6 +18,7 @@ PLANET_SIZES = ("Tiny", "Small", "Medium", "Large", "Huge")
 GRAVITIES = ("Low", "Normal", "High")
 HABITABILITY = {"Terran": 100, "Ocean": 80, "Desert": 40,
                 "Tundra": 35, "Barren": 0, "Volcanic": 0}
+PLAYER, RIVAL = "player", "rival"
 NAMES = (
     "Vega Altair Deneb Sirius Rigel Arcturus Antares Procyon Spica Pollux "
     "Aldebaran Capella Bellatrix Alhena Mirach Alcor Mizar Polaris Thuban "
@@ -74,6 +75,7 @@ class Ship:
     destination: int | None = None
     turns_remaining: int = 0
     travel_total: int = 0
+    owner: str = PLAYER
 
     @property
     def in_transit(self):
@@ -84,7 +86,7 @@ class Ship:
         return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems):
+    def from_dict(cls, data, systems, *, version=5):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
@@ -102,7 +104,55 @@ class Ship:
             expected = travel_turns(systems[data["system_id"]], systems[destination])
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
-        return cls(**data)
+        record = dict(data)
+        if version < 5:
+            record["owner"] = PLAYER
+        if record["owner"] not in (PLAYER, RIVAL):
+            raise ValueError
+        return cls(**record)
+
+
+@dataclass
+class AIEvent:
+    turn: int
+    message: str
+
+
+@dataclass
+class Opponent:
+    name: str
+    home_system: int
+    home_planet: int
+    credits: int = 120
+    research: int = 0
+    events: list[AIEvent] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data, systems, turn):
+        if not isinstance(data, dict) or not _name(data["name"]):
+            raise ValueError
+        for key in ("credits", "research"):
+            if not _integer(data[key], 0, 1_000_000_000):
+                raise ValueError
+        if not _integer(data["home_system"], 0, len(systems)-1):
+            raise ValueError
+        worlds = systems[data["home_system"]].worlds
+        if not _integer(data["home_planet"], 0, len(worlds)-1):
+            raise ValueError
+        if worlds[data["home_planet"]].owner != RIVAL:
+            raise ValueError
+        events = data["events"]
+        if not isinstance(events, list) or len(events) > 12:
+            raise ValueError
+        parsed = []
+        for event in events:
+            if (not isinstance(event, dict) or not _integer(event["turn"], 1, turn)
+                    or not _name(event["message"], 180)):
+                raise ValueError
+            parsed.append(AIEvent(**event))
+        if any(a.turn > b.turn for a, b in zip(parsed, parsed[1:])):
+            raise ValueError
+        return cls(**{**data, "events": parsed})
 
 
 @dataclass
@@ -126,6 +176,7 @@ class Planet:
     colonized: bool = False
     buildings: list[str] = field(default_factory=list)
     construction_queue: list[ConstructionProject] = field(default_factory=list)
+    owner: str | None = None
 
     @property
     def habitability(self):
@@ -195,7 +246,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=4):
+    def from_dict(cls, data, expected_id, *, version=5):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -212,6 +263,12 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 5:
+            record["owner"] = PLAYER if data["colonized"] else None
+        if record["owner"] not in (None, PLAYER, RIVAL):
+            raise ValueError
+        if data["colonized"] != (record["owner"] is not None):
+            raise ValueError
         if version < 3:
             record["buildings"] = []
             record["construction_queue"] = []
@@ -267,7 +324,7 @@ def generate_planets(system, galaxy_seed):
         home = [
             Planet(0, "Mercury", "Barren", "Tiny", "Rich", "Low", .39),
             Planet(1, "Venus", "Volcanic", "Medium", "Average", "Normal", .72),
-            Planet(2, "Earth", "Terran", "Medium", "Average", "Normal", 1.0, 8, True),
+            Planet(2, "Earth", "Terran", "Medium", "Average", "Normal", 1.0, 8, True, owner=PLAYER),
             Planet(3, "Mars", "Desert", "Small", "Average", "Low", 1.52),
         ]
     else:
@@ -306,6 +363,65 @@ class GameState:
     research: int = 0
     ships: list[Ship] = field(default_factory=list)
     next_ship_id: int = 1
+    opponent: Opponent | None = None
+
+    def _empire(self, owner):
+        if owner == PLAYER:
+            return self
+        if owner == RIVAL and self.opponent is not None:
+            return self.opponent
+        raise RuleError("Unknown empire.")
+
+    def treasury_for(self, owner=PLAYER):
+        return self._empire(owner).credits
+
+    def research_for(self, owner=PLAYER):
+        return self._empire(owner).research
+
+    def empire_name_for(self, owner):
+        if owner is None:
+            return "Unclaimed"
+        return self.empire_name if owner == PLAYER else self._empire(owner).name
+
+    def ships_owned_by(self, owner=PLAYER):
+        return [ship for ship in self.ships if ship.owner == owner]
+
+    def _require_colony(self, planet, owner):
+        self._empire(owner)
+        if planet.owner != owner:
+            raise RuleError("You can only manage colonies belonging to your empire.")
+
+    def rival_event(self, message, *, turn=None):
+        self.opponent.events.append(AIEvent(self.turn+1 if turn is None else turn, message))
+        self.opponent.events = self.opponent.events[-12:]
+
+    def opponent_home(self):
+        """Choose a habitable home far from every existing player colony."""
+        occupied = [s for s in self.systems if any(p.owner == PLAYER for p in s.worlds)]
+        candidates = [(s, p) for s in self.systems if s not in occupied
+                      for p in s.worlds if not p.colonized and p.habitability > 0]
+        def score(row):
+            s, p = row
+            distance = min((((s.x-home.x)*1.4)**2+(s.y-home.y)**2 for home in occupied), default=0)
+            return distance, p.habitability, p.building_capacity, -s.id, -p.id
+        return max(candidates, key=score, default=None)
+
+    def opponent_start_error(self):
+        if self.opponent is not None:
+            return "A rival empire is already active."
+        if self.opponent_home() is None:
+            return "No unclaimed habitable world outside your systems is available."
+        return None
+
+    def add_opponent(self):
+        error = self.opponent_start_error()
+        if error:
+            raise RuleError(error)
+        system, planet = self.opponent_home()
+        self.opponent = Opponent("Helios Directorate", system.id, planet.id)
+        planet.colonized, planet.owner, planet.population = True, RIVAL, 8
+        self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
+        return planet
 
     def planet_at(self, system_id, planet_id):
         if not _integer(system_id, 0, len(self.systems)-1):
@@ -315,56 +431,63 @@ class GameState:
             raise RuleError("Unknown planet.")
         return worlds[planet_id]
 
-    def build_error(self, system_id, planet_id, building_id):
+    def build_error(self, system_id, planet_id, building_id, *, owner=PLAYER):
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(building_id, str) or building_id not in BUILDINGS:
             return "Unknown building."
         if not planet.colonized:
             return "Establish a colony before constructing buildings."
+        if planet.owner != owner:
+            return "This colony belongs to another empire."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
         if planet.free_slots <= 0:
             return f"All {planet.building_capacity} building slots are occupied or reserved."
-        if self.credits < BUILDINGS[building_id].credit_cost:
+        if self.treasury_for(owner) < BUILDINGS[building_id].credit_cost:
             return "Not enough credits to start this project."
         return None
 
-    def queue_building(self, system_id, planet_id, building_id):
-        error = self.build_error(system_id, planet_id, building_id)
+    def queue_building(self, system_id, planet_id, building_id, *, owner=PLAYER):
+        error = self.build_error(system_id, planet_id, building_id, owner=owner)
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
-        self.credits -= BUILDINGS[building_id].credit_cost
+        self._empire(owner).credits -= BUILDINGS[building_id].credit_cost
         planet.construction_queue.append(ConstructionProject(building_id))
 
-    def ship_build_error(self, system_id, planet_id, kind="colony_ship"):
+    def ship_build_error(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(kind, str) or kind not in SHIP_TYPES:
             return "Unknown ship type."
         if not planet.colonized:
             return "Ships can only be built at an established colony."
+        if planet.owner != owner:
+            return "This colony belongs to another empire."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
-        if self.credits < SHIP_TYPES[kind].credit_cost:
+        if self.treasury_for(owner) < SHIP_TYPES[kind].credit_cost:
             return "Not enough credits to build this ship."
         return None
 
-    def queue_ship(self, system_id, planet_id, kind="colony_ship"):
-        error = self.ship_build_error(system_id, planet_id, kind)
+    def queue_ship(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
+        error = self.ship_build_error(system_id, planet_id, kind, owner=owner)
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
-        self.credits -= SHIP_TYPES[kind].credit_cost
+        self._empire(owner).credits -= SHIP_TYPES[kind].credit_cost
         planet.construction_queue.append(ConstructionProject(kind))
 
-    def ship_at(self, ship_id):
+    def ship_at(self, ship_id, *, owner=PLAYER):
         ship = next((s for s in self.ships if type(ship_id) is int and s.id == ship_id), None)
         if ship is None:
             raise RuleError("That ship is no longer available.")
+        self._empire(owner)
+        if ship.owner != owner:
+            raise RuleError("You can only command ships belonging to your empire.")
         return ship
 
-    def send_ship(self, ship_id, destination):
-        ship = self.ship_at(ship_id)
+    def send_ship(self, ship_id, destination, *, owner=PLAYER):
+        ship = self.ship_at(ship_id, owner=owner)
         if ship.in_transit:
             raise RuleError("This ship is already travelling. Wait until it arrives.")
         if not _integer(destination, 0, len(self.systems)-1):
@@ -376,59 +499,72 @@ class GameState:
         ship.turns_remaining = ship.travel_total = duration
         return duration
 
-    def colony_ships_at(self, system_id):
-        return [s for s in self.ships if s.kind == "colony_ship" and not s.in_transit and s.system_id == system_id]
+    def colony_ships_at(self, system_id, *, owner=PLAYER):
+        return [s for s in self.ships if s.owner == owner and s.kind == "colony_ship"
+                and not s.in_transit and s.system_id == system_id]
 
-    def colonize_error(self, system_id, planet_id):
+    def colonize_error(self, system_id, planet_id, *, owner=PLAYER):
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
         if planet.habitability == 0:
             return "Barren and volcanic worlds need future life-support technology."
-        if not self.colony_ships_at(system_id):
+        if not self.colony_ships_at(system_id, owner=owner):
             return "Bring a colony ship to this system first."
         return None
 
-    def colonize(self, ship_id, system_id, planet_id):
-        ship = self.ship_at(ship_id)
+    def colonize(self, ship_id, system_id, planet_id, *, owner=PLAYER):
+        ship = self.ship_at(ship_id, owner=owner)
         if ship.kind != "colony_ship" or ship.in_transit or ship.system_id != system_id:
             raise RuleError("A colony ship must be in orbit in this system.")
-        error = self.colonize_error(system_id, planet_id)
+        error = self.colonize_error(system_id, planet_id, owner=owner)
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         planet.colonized = True
+        planet.owner = owner
         planet.population = STARTING_COLONISTS
         self.ships.remove(ship)
         return planet
 
-    def cancel_construction(self, system_id, planet_id, queue_index):
+    def cancel_construction(self, system_id, planet_id, queue_index, *, owner=PLAYER):
         planet = self.planet_at(system_id, planet_id)
+        self._require_colony(planet, owner)
         if not _integer(queue_index, 0, len(planet.construction_queue)-1):
             raise RuleError("That construction project is no longer in the queue.")
         project = planet.construction_queue.pop(queue_index)
-        self.credits += project.refund
+        self._empire(owner).credits += project.refund
         return project.refund
 
-    def demolish_building(self, system_id, planet_id, building_index):
+    def demolish_building(self, system_id, planet_id, building_index, *, owner=PLAYER):
         planet = self.planet_at(system_id, planet_id)
+        self._require_colony(planet, owner)
         if not _integer(building_index, 0, len(planet.buildings)-1):
             raise RuleError("That building is no longer on this planet.")
         return planet.buildings.pop(building_index)
 
     @property
     def empire_rates(self):
+        return self.empire_rates_for(PLAYER)
+
+    def empire_rates_for(self, owner):
         income, research = 0, 0
         for system in self.systems:
             for planet in system.worlds:
+                if planet.owner != owner:
+                    continue
                 _, credits, points = planet.yields_per_turn
                 income += credits
                 research += points
         return income, research
 
     def advance_turn(self):
-        """Collect starting yields, advance flights, then construct using local industry."""
+        """AI orders, starting yields, travel and local production, then bank income."""
+        if self.opponent is not None:
+            from .ai import run_ai
+            run_ai(self)
         income, research = self.empire_rates
+        rival_income, rival_research = self.empire_rates_for(RIVAL)
         arrivals = []
         for ship in self.ships:
             if ship.in_transit:
@@ -437,26 +573,37 @@ class GameState:
                     ship.system_id = ship.destination
                     ship.destination = None
                     ship.travel_total = 0
-                    arrivals.append(f"{ship.name} at {self.systems[ship.system_id].name}")
+                    message = f"{ship.name} at {self.systems[ship.system_id].name}"
+                    if ship.owner == PLAYER:
+                        arrivals.append(message)
+                    else:
+                        self.rival_event(f"Arrived: {message}.")
         completed = []
         for system in self.systems:
             for planet in system.worlds:
                 for item_id in planet.advance_construction():
                     if item_id in SHIP_TYPES:
-                        self.ships.append(Ship(self.next_ship_id, item_id, system.id))
+                        self.ships.append(Ship(self.next_ship_id, item_id, system.id, owner=planet.owner))
                         self.next_ship_id += 1
-                    completed.append(f"{PROJECTS[item_id].name} on {planet.name}")
+                    message = f"{PROJECTS[item_id].name} on {planet.name}"
+                    if planet.owner == PLAYER:
+                        completed.append(message)
+                    else:
+                        self.rival_event(f"Completed: {message}.")
         self.turn += 1
         self.year += 1
         self.credits += income
         self.research += research
+        if self.opponent is not None:
+            self.opponent.credits += rival_income
+            self.opponent.research += rival_research
         return TurnReport(income, research, completed, arrivals)
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=4):
+    def from_dict(cls, data, *, version=5):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -517,19 +664,26 @@ class GameState:
             if version >= 4:
                 if not isinstance(data["ships"], list) or len(data["ships"]) > 10000:
                     raise ValueError
-                ships = [Ship.from_dict(record, systems) for record in data["ships"]]
+                ships = [Ship.from_dict(record, systems, version=version) for record in data["ships"]]
                 if len({ship.id for ship in ships}) != len(ships):
                     raise ValueError
                 next_ship = data["next_ship_id"]
                 if not _integer(next_ship, max((ship.id for ship in ships), default=0)+1, 1_000_001):
                     raise ValueError
+            opponent = None
+            if version >= 5 and data["opponent"] is not None:
+                opponent = Opponent.from_dict(data["opponent"], systems, data["turn"])
+            if opponent is None and (any(p.owner == RIVAL for s in systems for p in s.worlds)
+                                     or any(s.owner == RIVAL for s in ships)):
+                raise ValueError
             return cls(campaign, data["empire_name"], size, data["seed"],
-                       data["turn"], data["year"], data["credits"], systems, selected, planet, research, ships, next_ship)
+                       data["turn"], data["year"], data["credits"], systems, selected, planet,
+                       research, ships, next_ship, opponent)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 
 
-def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None):
+def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if seed is None:
@@ -554,4 +708,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None):
                                   rng.randint(0, 7), rng.choice(BIOMES), rng.choice(RICHNESSES)))
     for system in systems:
         system.worlds = generate_planets(system, seed)
-    return GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems)
+    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems)
+    if with_ai and game.opponent_start_error() is None:
+        game.add_opponent()
+    return game

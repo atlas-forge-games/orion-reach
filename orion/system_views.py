@@ -4,7 +4,8 @@ import pygame as pg
 
 from .planet_art import draw_planet, draw_star
 from .colony_view import draw_planet_tabs
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
+from .model import PLAYER, RIVAL
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
                "Red dwarf": (221, 124, 108), "White star": (217, 228, 239), "Orange dwarf": (235, 170, 106)}
@@ -82,7 +83,8 @@ def draw_system(app):
              GOLD if active else INK)
         text(surface, world.biome.upper(), (hit.x+2, y+diameter/2+45), 9, MUTED, "mono")
         if world.colonized:
-            pg.draw.circle(surface, CYAN, (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
+            pg.draw.circle(surface, CYAN if world.owner == PLAYER else RIVAL_COLOR,
+                           (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
 
     if not system.worlds:
         text(surface, "No planets detected.", (479, 408), 29, INK, "title")
@@ -102,7 +104,7 @@ def draw_system(app):
         text(surface, label, (x+21, 663), 10, MUTED, "mono", 1)
         text(surface, value, (x+20, 688), 29, CYAN if i==2 else INK)
         text(surface, caption, (x+21, 735), 11, MUTED)
-    hint = "Click a planet to open its overview." if system.worlds else "Use Previous / Next to survey another system."
+    hint = "Click a planet to survey it. Cyan: your colony · Orange: rival colony" if system.worlds else "Use Previous / Next to survey another system."
     text(surface, hint, (65, 792), 14, MUTED)
     app.button("system_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
@@ -148,9 +150,12 @@ def draw_planet_overview(app):
     panel(surface, (677, 554, 699, 227))
     text(surface, "COLONY STATUS", (702, 577), 10, GOLD, "mono", 2)
     status = ("Established homeworld" if system.id == 0 and planet.id == 2 else "Established colony") if planet.colonized else "No colony established"
+    if planet.owner == RIVAL:
+        status = "Rival colony · survey only"
     text(surface, status, (702, 609), 23, INK)
     if planet.colonized:
-        text(surface, shorten(game.empire_name, 425, 14), (703, 650), 14, CYAN)
+        text(surface, shorten(game.empire_name_for(planet.owner), 425, 14), (703, 650), 14,
+             CYAN if planet.owner == PLAYER else RIVAL_COLOR)
         text(surface, f"{planet.population} B inhabitants", (1348, 650), 14, INK, right=True)
     else:
         reason = game.colonize_error(system.id, planet.id)
@@ -160,6 +165,8 @@ def draw_planet_overview(app):
     paragraph(surface, BIOME_NOTES[planet.biome], (703, 688), 642, 13, MUTED, 22)
 
     hint = "Open the Colony or Shipyard tab to build." if planet.colonized else "A colony ship is consumed when this world is settled."
+    if planet.owner == RIVAL:
+        hint = "Inspect the rival's buildings and production in the Colony and Shipyard tabs."
     text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. {hint}",
          (65, 795), 13, MUTED)
     app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)

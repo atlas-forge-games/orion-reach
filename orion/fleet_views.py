@@ -5,7 +5,8 @@ import pygame as pg
 from .colony_view import draw_planet_tabs, turn_label
 from .fleet_art import ship_icon
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
+from .model import PLAYER
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 FLEETS_PER_PAGE = 4
 QUEUE_PER_PAGE = 5
@@ -19,9 +20,9 @@ def draw_shipyard(app):
     app.button("shipyard_back", "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()} / {planet.name.upper()}", 530, 11, "mono"),
          (347, 143), 11, MUTED, "mono")
-    text(surface, f"YEAR {game.year} · {game.credits:,} CR", (1376, 141), 12, GOLD, "mono", right=True)
+    text(surface, f"YEAR {game.year} · {game.treasury_for(planet.owner or PLAYER):,} CR", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(planet.name, 720, 43, "title"), (64, 185), 43, INK, "title")
-    text(surface, f"Shipyard · {planet.industry_per_turn} industry / turn · {system.name} orbit",
+    text(surface, f"Shipyard · {planet.industry_per_turn} industry / turn · {game.empire_name_for(planet.owner)}",
          (66, 249), 14, MUTED)
     draw_planet_tabs(app, "shipyard")
 
@@ -46,7 +47,7 @@ def draw_shipyard(app):
 
     panel(surface, (64, 680, 585, 113))
     ready = len(game.colony_ships_at(system.id))
-    text(surface, f"{ready} colony {'ships' if ready != 1 else 'ship'} in {system.name} orbit", (88, 695), 17, INK)
+    text(surface, f"Your colony ships in this system: {ready}", (88, 695), 17, INK)
     text(surface, "Assign destinations and track arrivals in Fleets.", (89, 723), 12, MUTED)
     app.button("shipyard_fleets", "Open fleets →", (88, 750, 235, 33), app.open_fleets)
 
@@ -67,13 +68,15 @@ def draw_shipyard(app):
         text(surface, turn_label(estimates[index]), (1178, y+9), 12, CYAN, right=True)
         text(surface, f"{project.progress}/{definition.work_cost} work · Refund {project.refund} CR", (749, y+32), 11, MUTED)
         app.button(f"queue_cancel_{index}", "Cancel", (1210, y+9, 128, 38),
-                   lambda i=index: app.cancel_construction(i))
+                   lambda i=index: app.cancel_construction(i), enabled=planet.owner == PLAYER)
         pg.draw.rect(surface, LINE, (749, y+51, 429, 2))
         pg.draw.rect(surface, GOLD, (749, y+51, int(429*project.progress/definition.work_cost), 2))
     if not planet.construction_queue:
         text(surface, "No projects queued.", (699, 419), 23, INK, "title")
-        paragraph(surface, "Build a colony ship here, or choose buildings in the Colony tab.",
-                  (700, 462), 608, 15, MUTED, 25)
+        message = ("The rival chooses its own projects when you end the turn."
+                   if planet.owner not in (None, PLAYER) else
+                   "Build a colony ship here, or choose buildings in the Colony tab.")
+        paragraph(surface, message, (700, 462), 608, 15, MUTED, 25)
     text(surface, f"PAGE {app.shipyard_page+1} / {last+1}", (699, 754), 10, FAINT, "mono")
     app.button("queue_previous", "← Prev", (1080, 739, 126, 39), lambda: app.change_shipyard_page(-1), enabled=app.shipyard_page>0)
     app.button("queue_next", "Next →", (1220, 739, 133, 39), lambda: app.change_shipyard_page(1), enabled=app.shipyard_page<last)
@@ -85,15 +88,17 @@ def draw_shipyard(app):
 
 def draw_fleets(app):
     surface, game = app.canvas, app.game
+    ships = game.ships_owned_by()
     app.chrome("FLEET OPERATIONS")
     app.button("fleets_back", "←  Back · F", (64, 124, 190, 46), app.close_fleets, "ghost")
     app.button("fleets_galaxy", "Galaxy map", (269, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Colony fleet", (64, 190), 43, INK, "title")
     text(surface, "Build at a colony. Travel between stars. Found a new world.", (66, 251), 14, MUTED)
-    ready = sum(not s.in_transit for s in game.ships)
-    queued = sum(p.item_id in SHIP_TYPES for system in game.systems for planet in system.worlds for p in planet.construction_queue)
-    stats = [("READY IN ORBIT", ready), ("IN TRANSIT", len(game.ships)-ready), ("UNDER CONSTRUCTION", queued)]
+    ready = sum(not s.in_transit for s in ships)
+    queued = sum(p.item_id in SHIP_TYPES for system in game.systems for planet in system.worlds
+                 if planet.owner == PLAYER for p in planet.construction_queue)
+    stats = [("READY IN ORBIT", ready), ("IN TRANSIT", len(ships)-ready), ("UNDER CONSTRUCTION", queued)]
     for i, (label, value) in enumerate(stats):
         x = 64+i*446
         panel(surface, (x, 289, 420, 84))
@@ -101,10 +106,10 @@ def draw_fleets(app):
         text(surface, str(value), (x+18, 327), 28, CYAN)
     text(surface, "YOUR SHIPS", (64, 396), 11, GOLD, "mono", 2)
     text(surface, "Arrival is automatic. Settlement is your choice.", (1376, 397), 12, MUTED, right=True)
-    last = max(0, (len(game.ships)-1)//FLEETS_PER_PAGE)
+    last = max(0, (len(ships)-1)//FLEETS_PER_PAGE)
     app.fleet_page = min(max(0, app.fleet_page), last)
     start = app.fleet_page*FLEETS_PER_PAGE
-    for i, ship in enumerate(game.ships[start:start+FLEETS_PER_PAGE]):
+    for i, ship in enumerate(ships[start:start+FLEETS_PER_PAGE]):
         y = 429+i*87
         panel(surface, (64, y, 1312, 76))
         ship_icon(surface, (100, y+38), .67)
@@ -122,13 +127,13 @@ def draw_fleets(app):
         app.button(f"ship_view_{ship.id}", "View system", (966, y+18, 172, 42), lambda s=target: app.open_system(s))
         app.button(f"ship_send_{ship.id}", "In transit" if ship.in_transit else "Plot course", (1152, y+18, 200, 42),
                    lambda sid=ship.id: app.plot_course(sid), enabled=not ship.in_transit)
-    if not game.ships:
+    if not ships:
         panel(surface, (64, 429, 1312, 248))
         ship_icon(surface, (144, 526), 1.6)
         text(surface, "Your next colony starts with a ship.", (248, 467), 28, INK, "title")
         paragraph(surface, "Open a colony's Shipyard tab and build a colony ship. Once construction finishes, it appears here in orbit.",
                   (250, 515), 995, 16, MUTED, 27)
-        home = next(((s, p) for s in game.systems for p in s.worlds if p.colonized), None)
+        home = next(((s, p) for s in game.systems for p in s.worlds if p.owner == PLAYER), None)
         if home:
             s, p = home
             app.button("fleet_build_first", "Open colony shipyard", (250, 596, 327, 48),
@@ -151,18 +156,22 @@ def draw_map_fleets(app, map_rect):
     idle = {}
     for ship in game.ships:
         origin = app.star_pos(game.systems[ship.system_id])
+        color = CYAN if ship.owner == PLAYER else RIVAL_COLOR
         if ship.in_transit:
             end = app.star_pos(game.systems[ship.destination])
-            pg.draw.line(surface, (40, 81, 93), origin, end, 1)
+            pg.draw.line(surface, tuple(c//3 for c in color), origin, end, 1)
             progress = 1-ship.turns_remaining/ship.travel_total
             position = (origin[0]+(end[0]-origin[0])*progress, origin[1]+(end[1]-origin[1])*progress)
-            ship_icon(surface, position, .24)
+            ship_icon(surface, position, .24, color)
         else:
-            idle[ship.system_id] = idle.get(ship.system_id, 0)+1
-    for system_id, count in idle.items():
+            key = ship.owner, ship.system_id
+            idle[key] = idle.get(key, 0)+1
+    for (owner, system_id), count in idle.items():
         x, y = app.star_pos(game.systems[system_id])
-        ship_icon(surface, (x+22, y+24), .22)
-        text(surface, str(count), (x+32, y+18), 10, CYAN)
+        y += 24 if owner == PLAYER else 41
+        color = CYAN if owner == PLAYER else RIVAL_COLOR
+        ship_icon(surface, (x+22, y), .22, color)
+        text(surface, str(count), (x+32, y-6), 10, color)
     if app.route_ship_id is not None:
         ship = game.ship_at(app.route_ship_id)
         origin = app.star_pos(game.systems[ship.system_id])

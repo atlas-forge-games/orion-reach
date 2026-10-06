@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.5
+# Orion Reach — Python prototype 0.6
 
-A playable colony-building and interstellar expansion prototype for a
+A playable colony-building and interstellar expansion prototype with an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -82,6 +82,11 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Build colony ships in the **Shipyard**, plot routes through **Fleets**, advance
   travel with End Turn, and settle new worlds from their planet overviews.
 - The galaxy map shows flight paths, ship positions and newly claimed systems.
+- The **Helios Directorate** develops its economy, builds colony ships, travels
+  between systems and settles unclaimed worlds on each End Turn. Open
+  **Empire → Rival report** to inspect its economy, colonies and recent activity.
+- Cyan marks your colonies and ships; orange marks the rival's. Rival worlds
+  can be surveyed, with construction controls disabled.
 - Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
   and Continue preserve the active overview. Previous/Next controls browse
   systems and planets, including systems with no planets.
@@ -90,14 +95,14 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
-  ship orders, settlement, End Turn, return to menu and normal exit.
+  ship orders, settlement, adding a rival, End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
 **Scope:** construct buildings and colony ships, travel between systems, and
-found additional colonies. Population growth, food, a technology tree, combat,
-warships, diplomacy, AI opponents and victory conditions are future work. Research
+found additional colonies alongside an expanding AI empire. Population growth,
+food, a technology tree, combat, warships, diplomacy and victory conditions are future work. Research
 points accumulate but cannot yet be spent. Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized. Settings contains interface sounds,
@@ -148,6 +153,45 @@ Every colony has a base of 6 industry per turn and one credit per billion
 inhabitants. There is no upkeep or population growth yet. All colony income and
 research contribute to the empire totals. Costs, work and capacities can be
 tuned in `orion/buildings.py`.
+
+## Basic AI opponent
+
+New games include the **Helios Directorate**, starting on a habitable world
+far from your colonies. Both empires start with one colony, 8 billion inhabitants,
+120 credits and no buildings or ships. The rival's starting world retains its
+generated size, biome and minerals, so its building capacity can differ from Earth's.
+
+**Continuing a v0.5 or earlier campaign:** load your save, open **Empire → Rival
+report**, then click **Add rival**. This uses an unclaimed habitable world in a
+system without your colonies. It preserves your existing assets and progress.
+Older saves do not gain an opponent automatically. If no suitable starting world
+remains, Add rival is disabled. Adding a rival autosaves the campaign.
+
+- The AI builds factories and trade centres first, then develops research and
+  mining. Its strongest colony produces colony ships; other colonies develop
+  their economies. The shipyard's development target rises as the empire grows.
+- Ships settle suitable unclaimed planets in their current system, otherwise
+  travel to nearby systems with available worlds. The rival avoids sending more
+  ships to a system than it has available planets. If a target is claimed while
+  a ship is travelling, it chooses another world or route after arrival.
+- Credits and research are separate for each empire. All construction, refunds,
+  building slots, ship costs, travel and settlement use the same rules.
+  The AI receives no extra income or production. It can have up to three colony
+  ships active or queued, depending on its colony count and remaining worlds.
+- **End Turn** issues the AI's orders, records starting yields, advances both
+  empires' travel and construction, then deposits income in their respective
+  treasuries. Newly completed ships receive their first AI order on the next
+  End Turn; arrived ships can settle or reroute on the next End Turn.
+- **Rival report** shows finances, output, ships, colonies and the latest six
+  activity entries. Click **Survey** to inspect a colony's buildings and queue.
+  The report and map reveal the rival's activity; fog of war is not implemented.
+- Your Empire Overview and Fleets list only your assets. A system can contain
+  colonies from both empires, shown with cyan and orange rings. Neither side
+  can take over an established colony. This is competition for territory and
+  development; combat, diplomacy and victory conditions come later.
+
+AI decisions are deterministic for a given game state. Saving and loading
+preserves its finances, orders, ships, ownership and recent activity.
 
 ## Build, travel and colonize
 
@@ -243,6 +287,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Cancel an unissued course | Cancel button or Escape on the route-selection map |
 | Settle a world | Colonize on its Overview tab, with a colony ship in the system |
 | Browse fleet or shipyard queue pages | Page Up / Down, mouse wheel, or Previous / Next |
+| Inspect or add the AI opponent | Empire → Rival report |
 
 ## Save locations
 
@@ -261,13 +306,14 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.5 loads all earlier prototype saves without rewriting the
-source file during loading. v0.3/v0.4 building queues, progress, planets and
-research are preserved; their queues are upgraded to support both buildings and
-ships, and they start with no ships. v0.1's missing planets are generated
-deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 4**, including ship IDs, destinations, remaining
-travel time and mixed production queues. They cannot be opened by v0.4 or
+**Compatibility:** v0.6 loads all earlier prototype saves without rewriting the
+source file during loading. Existing colonies and ships become player-owned;
+no rival is added until you choose Add rival. v0.5 ships, flights and production
+are preserved. v0.3/v0.4 building queues, progress, planets and research are
+preserved, and those campaigns start with no ships. v0.1's missing planets are
+generated deterministically; v0.1/v0.2 start with empty production and zero research.
+New saves use **format version 5**, including empire ownership and the rival's
+finances, homeworld and recent activity. They cannot be opened by v0.5 or
 earlier. Loading starts at the galaxy map with system/planet selection retained.
 Keep an older manual snapshot if you plan to switch back; normal gameplay
 updates the autosave. Unissued route previews are not saved as orders.
@@ -285,6 +331,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
+| `orion/ai.py` | Deterministic rival construction, travel and settlement policy |
+| `orion/rival_view.py` | Rival economy, activity and colony survey report |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard, fleets and galaxy-map routes |
 | `orion/fleet_art.py` | Procedural transport icons |
@@ -297,6 +345,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
+| `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. The next practical increments are population
@@ -318,10 +367,11 @@ python main.py --headless --screen colony --screenshot colony.png
 python main.py --headless --screen empire --screenshot empire.png
 python main.py --headless --screen shipyard --screenshot shipyard.png
 python main.py --headless --screen fleets --screenshot fleets.png
+python main.py --headless --screen rival --screenshot rival.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, `shipyard`, `fleets`, and `about`.
+`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.
@@ -365,7 +415,7 @@ screenshots are included. `.gitattributes` keeps line endings consistent.
 For the next feature, start a branch from the working baseline:
 
 ```sh
-git switch -c feature/colonization
+git switch -c feature/basic-ai
 ```
 
 After editing and checking the game, commit the change and push that branch.

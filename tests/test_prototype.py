@@ -13,6 +13,10 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"]="1"
 
 import pygame as pg
 from orion.model import GALAXY_SIZES, GameState, SaveError, generate_planets, new_game
+from functools import partial
+
+# Keep the original single-empire regression fixtures isolated from AI turns.
+new_game = partial(new_game, with_ai=False)
 from orion.storage import SAVE_VERSION, Storage
 
 

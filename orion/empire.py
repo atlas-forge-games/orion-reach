@@ -1,6 +1,7 @@
 """Read-only colony reports derived from the current campaign; no save schema."""
 
 from dataclasses import dataclass
+from .model import PLAYER
 
 FILTERS = ("all", "building", "idle", "full")
 SORT_KEYS = ("name", "population", "industry", "income", "research", "slots")
@@ -20,12 +21,12 @@ class EmpireSummary:
     idle: int = 0
 
 
-def colony_rows(game, filter_by="all", sort_by="name", descending=False):
+def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owner=PLAYER):
     """Return actual system/planet pairs; sorting must never change selection IDs."""
     if filter_by not in FILTERS or sort_by not in SORT_KEYS:
         raise ValueError("Unknown colony filter or sort order.")
     rows = [(system, planet) for system in game.systems
-            for planet in system.worlds if planet.colonized]
+            for planet in system.worlds if planet.colonized and planet.owner == owner]
     if filter_by == "building":
         rows = [(s, p) for s, p in rows if p.construction_queue]
     elif filter_by == "idle":
@@ -45,8 +46,8 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False):
     return sorted(rows, key=keys[sort_by], reverse=descending)
 
 
-def summarize_empire(game):
-    colonies = [p for _, p in colony_rows(game)]
+def summarize_empire(game, *, owner=PLAYER):
+    colonies = [p for _, p in colony_rows(game, owner=owner)]
     outputs = [planet.yields_per_turn for planet in colonies]
     return EmpireSummary(
         colonies=len(colonies),

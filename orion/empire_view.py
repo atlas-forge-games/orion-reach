@@ -20,11 +20,12 @@ def draw_empire(app):
 
     app.chrome("EMPIRE OVERVIEW")
     back_name = {"galaxy": "Galaxy map", "system": "System overview", "shipyard": "Shipyard", "fleets": "Fleets",
-                 "planet": "Planet overview", "colony": "Colony"}[app.empire_return]
+                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report"}[app.empire_return]
     app.button("empire_back", f"←  {back_name} · I", (64, 124, 282, 46),
                app.close_empire, "ghost")
     if app.empire_return != "galaxy":
         app.button("empire_galaxy", "Galaxy map", (361, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
+    app.button("empire_rival", "Rival report", (556, 124, 213, 46), lambda: app.go("rival"))
     text(surface, f"YEAR {game.year}   ·   TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(game.empire_name, 930, 43, "title"), (64, 190), 43, INK, "title")
     text(surface, "Your colonies, economy and construction at a glance.", (66, 251), 14, MUTED)

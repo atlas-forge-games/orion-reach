@@ -14,6 +14,10 @@ import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
 from orion.model import ConstructionProject, GameState, RuleError, SaveError, Ship, new_game
+from functools import partial
+
+# Keep the original single-empire regression fixtures isolated from AI turns.
+new_game = partial(new_game, with_ai=False)
 from orion.production import MAX_QUEUE, travel_turns
 from orion.storage import SAVE_VERSION, Storage
 

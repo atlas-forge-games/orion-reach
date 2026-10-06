@@ -4,6 +4,7 @@ import pygame as pg
 
 from .buildings import BUILDINGS
 from .production import MAX_QUEUE
+from .model import PLAYER
 from .planet_art import draw_planet
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, shorten, text
 
@@ -63,15 +64,15 @@ def draw_colony(app):
     text(surface, f"YEAR {game.year}   ·   TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
 
     text(surface, shorten(planet.name, 620, 43, "title"), (64, 185), 43, INK, "title")
-    status = f"{planet.population} B inhabitants" if planet.colonized else "Uncolonized"
+    status = f"{planet.population} B · {game.empire_name_for(planet.owner)}" if planet.colonized else "Uncolonized"
     text(surface, f"{planet.biome}  ·  {planet.size} world  ·  {status}", (66, 249), 14, MUTED)
     draw_planet(surface, planet, (756, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
     draw_planet_tabs(app, "colony")
 
     industry, income, science = planet.yields_per_turn
     stats = [("INDUSTRY / TURN", f"{industry} IND"), ("INCOME / TURN", f"+{income} CR"),
-             ("RESEARCH / TURN", f"+{science} RP"), ("EMPIRE TREASURY", f"{game.credits:,} CR"),
-             ("RESEARCH STORED", f"{game.research:,} RP")]
+             ("RESEARCH / TURN", f"+{science} RP"), ("EMPIRE TREASURY", f"{game.treasury_for(planet.owner or PLAYER):,} CR"),
+             ("RESEARCH STORED", f"{game.research_for(planet.owner or PLAYER):,} RP")]
     for i, (label, value) in enumerate(stats):
         x = 64+i*267
         panel(surface, (x, 287, 244, 76))
@@ -137,6 +138,8 @@ def draw_colony(app):
         hint = "1 slot"
         if not planet.colonized:
             label, hint = "Locked", "Uncolonized"
+        elif planet.owner != PLAYER:
+            label, hint = "Rival", "Survey only"
         elif planet.free_slots <= 0:
             label, hint = "Full", "No free slots"
         elif len(planet.construction_queue) >= MAX_QUEUE:
@@ -155,7 +158,7 @@ def draw_colony(app):
         text(surface, definition.name, (82, 724), 18, INK)
         text(surface, definition.effect_text(planet.richness), (82, 754), 13, CYAN)
         app.button("demolish_building", "Demolish", (549, 729, 156, 45),
-                   lambda i=slot: app.demolish_request(i))
+                   lambda i=slot: app.demolish_request(i), enabled=planet.owner == PLAYER)
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:
         index, project = building_projects[slot-len(planet.buildings)]
         definition = BUILDINGS[project.item_id]
@@ -163,7 +166,7 @@ def draw_colony(app):
         text(surface, f"{project.progress}/{definition.work_cost} work · Ready in {turn_label(estimates[index])}",
              (82, 754), 12, GOLD)
         app.button("cancel_construction", "Cancel", (549, 718, 156, 43),
-                   lambda i=index: app.cancel_construction(i))
+                   lambda i=index: app.cancel_construction(i), enabled=planet.owner == PLAYER)
         text(surface, f"Refund: {project.refund} CR", (553, 772), 10, MUTED)
     else:
         title = f"{planet.size} worlds support {planet.building_capacity} buildings."
@@ -171,6 +174,9 @@ def draw_colony(app):
         if not planet.colonized:
             title = "This planet needs a colony first."
             message = "Bring a colony ship here, then settle this world from its Overview tab."
+        elif planet.owner != PLAYER:
+            title = "Rival colony · survey only"
+            message = "The Helios Directorate chooses construction on this world."
         text(surface, title, (82, 725), 17, INK)
         text(surface, message, (82, 756), 12, MUTED)
 

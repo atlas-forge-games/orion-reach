@@ -10,22 +10,23 @@ import pygame as pg
 
 from .art import Backdrop, SIZE
 from . import __version__
-from .model import GALAXY_SIZES, RuleError, SaveError, new_game
+from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system, draw_planet_overview
 from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
+from .rival_view import draw_rival
 from .production import SHIP_TYPES, travel_turns
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_map_fleets, draw_shipyard
-from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED,
+from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image)
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets")
+GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival")
 
 
 class App:
@@ -115,6 +116,8 @@ class App:
             self.change_fleet_page(0)
         if screen=="empire":
             self.focus_empire_row()
+        if screen=="rival":
+            self.focus="rival_back" if self.game.opponent else "add_rival"
         if screen=="system":
             worlds=self.game.systems[self.game.selected_system].worlds
             if worlds:
@@ -169,9 +172,10 @@ class App:
         self.go("shipyard")
 
     def change_fleet_page(self,delta):
-        last=max(0,(len(self.game.ships)-1)//FLEETS_PER_PAGE)
+        ships=self.game.ships_owned_by()
+        last=max(0,(len(ships)-1)//FLEETS_PER_PAGE)
         self.fleet_page=min(max(0,self.fleet_page+delta),last)
-        visible=self.game.ships[self.fleet_page*FLEETS_PER_PAGE:(self.fleet_page+1)*FLEETS_PER_PAGE]
+        visible=ships[self.fleet_page*FLEETS_PER_PAGE:(self.fleet_page+1)*FLEETS_PER_PAGE]
         if visible:
             ship=visible[0]
             self.focus=f"ship_view_{ship.id}" if ship.in_transit else f"ship_send_{ship.id}"
@@ -251,6 +255,7 @@ class App:
         self.empire_sort="name"
         self.empire_descending=False
         self.empire_page=0
+        self.rival_page=0
 
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
@@ -264,6 +269,8 @@ class App:
     def open_empire(self):
         if self.screen=="empire":
             self.close_empire()
+        elif self.screen=="rival":
+            self.go("empire")
         elif self.screen in GAME_SCREENS:
             self.empire_return=self.screen
             self.go("empire")
@@ -296,6 +303,22 @@ class App:
     def change_empire_page(self,delta):
         self.empire_page+=delta
         self.focus_empire_row()
+
+    def change_rival_page(self,delta):
+        last=max(0,(len(colony_rows(self.game,owner=RIVAL))-1)//5)
+        self.rival_page=min(max(0,self.rival_page+delta),last)
+
+    def add_rival(self):
+        try:
+            planet=self.game.add_opponent()
+            if self.save_game(autosave=True):
+                self.toast(f"Helios Directorate established on {planet.name} · Autosaved")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def survey_rival_colony(self,system_id,planet_id):
+        self.open_system(system_id)
+        self.open_planet(planet_id)
 
     def cycle_system(self,delta):
         self.game.selected_system=(self.game.selected_system+delta)%len(self.game.systems)
@@ -568,6 +591,8 @@ class App:
                 self.close_fleets()
             elif self.screen=="empire":
                 self.close_empire()
+            elif self.screen=="rival":
+                self.go("empire")
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
@@ -813,8 +838,11 @@ class App:
                 pg.draw.circle(self.canvas,GOLD,(int(x),int(y)),19,1)
                 for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
                     pg.draw.circle(self.canvas,GOLD,(int(x+dx),int(y+dy)),1)
-            if any(p.colonized for p in star.worlds):
+            owners={p.owner for p in star.worlds if p.colonized}
+            if PLAYER in owners:
                 pg.draw.circle(self.canvas,CYAN,(int(x),int(y)),11,1)
+            if RIVAL in owners:
+                pg.draw.circle(self.canvas,RIVAL_COLOR,(int(x),int(y)),15 if PLAYER in owners else 11,1)
             text(self.canvas,star.name.upper(),(x+11,y-10),11,INK if selected else MUTED,"mono")
             self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
                         lambda s=star.id:self.select_star(s),"hotspot")
@@ -832,10 +860,11 @@ class App:
         if star.planets:
             pg.draw.circle(self.canvas,CYAN,(1131,388),6)
         text(self.canvas,"HOME SYSTEM" if star.id==0 else "SURVEY DATA",(1075,462),10,CYAN,"mono",1)
-        owned=any(p.colonized for p in star.worlds)
+        owners={p.owner for p in star.worlds if p.colonized}
+        allegiance="Shared system" if len(owners)>1 else "Your empire" if PLAYER in owners else "Helios" if RIVAL in owners else "Unclaimed"
         lines=[("Planets",str(star.planets)),("Primary world",star.biome if star.planets else "None"),
                ("Minerals",star.richness if star.planets else "—"),
-               ("Allegiance","Your empire" if owned else "Unclaimed")]
+               ("Allegiance",allegiance)]
         for i,(label,value) in enumerate(lines):
             y=500+i*44
             text(self.canvas,label,(1075,y),13,MUTED)
@@ -844,7 +873,7 @@ class App:
         if self.route_ship_id is None:
             self.button("open_system","Open system →",(1075,692,277,43),
                         lambda:self.open_system(self.game.selected_system))
-            hint="Click a star to open its system. Cyan markers show your ships and colonies."
+            hint="Click a star to survey it. Cyan: your empire · Orange: Helios Directorate"
         else:
             ship=state.ship_at(self.route_ship_id)
             duration=travel_turns(state.systems[ship.system_id],star)
@@ -889,6 +918,9 @@ class App:
     def draw_empire(self):
         draw_empire(self)
 
+    def draw_rival(self):
+        draw_rival(self)
+
     def draw_shipyard(self):
         draw_shipyard(self)
 
@@ -900,7 +932,7 @@ class App:
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Build colonies and ships, travel between stars, settle new worlds, and manage your empire's industry, income and research. Save and resume your campaigns.",
+        paragraph(self.canvas,"Build colonies and ships, settle new worlds, and develop your economy alongside an expanding AI rival. Inspect its progress in Empire → Rival report. Save and resume your campaigns.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
         paragraph(self.canvas,"Population growth, food, a research tree, warships, diplomacy and tactical combat. Your growing empire is the foundation for those systems.",

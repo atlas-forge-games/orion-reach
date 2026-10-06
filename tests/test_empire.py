@@ -13,6 +13,10 @@ import pygame as pg
 
 from orion.empire import EmpireSummary, colony_rows, summarize_empire
 from orion.model import ConstructionProject, new_game
+from functools import partial
+
+# Keep the original single-empire regression fixtures isolated from AI turns.
+new_game = partial(new_game, with_ai=False)
 
 
 def varied_empire():
@@ -22,12 +26,15 @@ def varied_empire():
     earth.buildings = ["factory", "trade_center"]
     earth.construction_queue = [ConstructionProject("research_lab", 12)]
     mercury.colonized, mercury.population = True, 1
+    mercury.owner = "player"
     mercury.buildings = ["research_lab"]*4
     mars.colonized, mars.population, mars.richness = True, 3, "Rich"
+    mars.owner = "player"
     mars.buildings = ["mine"]
     remote = next(p for s in game.systems[1:] for p in s.worlds)
     remote.name, remote.size, remote.richness = "Altair Haven", "Large", "Average"
     remote.colonized, remote.population = True, 5
+    remote.owner = "player"
     remote.buildings = ["factory", "factory", "mine"]
     return game
 
@@ -127,6 +134,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         colonies = [(s, p) for s in self.app.game.systems for p in s.worlds][:12]
         for index, (_, planet) in enumerate(colonies):
             planet.colonized = True
+            planet.owner = "player"
             planet.population = index+1
             planet.name = f"Colony {index:02}"
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
@@ -206,6 +214,7 @@ class EmpireInterfaceTests(unittest.TestCase):
     def test_empty_empire_and_filtered_page_clamping(self):
         earth = self.app.game.systems[0].worlds[2]
         earth.colonized = False
+        earth.owner = None
         earth.population = 0
         self.click("open_empire")
         self.assertEqual(summarize_empire(self.app.game), EmpireSummary())
@@ -215,6 +224,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.empire_page, 0)
         self.assertFalse(next(b for b in self.app.buttons if b.key == "empire_next").enabled)
         earth.colonized, earth.population = True, 8
+        earth.owner = "player"
         self.app.empire_page = 50
         self.app.render()
         self.assertEqual(self.app.empire_page, 0)
