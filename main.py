@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--data-dir", type=Path, help="override the user save/settings directory")
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("menu", "setup", "load", "settings", "galaxy", "system", "planet", "colony", "empire", "about"), default="menu")
+    parser.add_argument("--screen", choices=("menu", "setup", "load", "settings", "galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -26,10 +26,10 @@ def main():
     app = App(args.data_dir, capture=bool(args.screenshot))
     try:
         if args.screenshot:
-            if args.screen in ("galaxy", "system", "planet", "colony", "empire"):
+            if args.screen in ("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets"):
                 from orion.model import new_game
                 app.game = new_game(seed=2408)
-                if args.screen in ("planet", "colony"):
+                if args.screen in ("planet", "colony", "shipyard"):
                     app.game.selected_planet = 2
             app.go(args.screen)
             app.time = 3.0

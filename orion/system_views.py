@@ -10,9 +10,9 @@ STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
                "Red dwarf": (221, 124, 108), "White star": (217, 228, 239), "Orange dwarf": (235, 170, 106)}
 BIOME_NOTES = {
     "Terran": "Temperate land, open water and a breathable atmosphere make this world a natural home for your civilization.",
-    "Ocean": "Deep oceans cover most of the surface. Any future settlements will need to make room for a world shaped by water.",
+    "Ocean": "Deep oceans cover most of the surface. Settlements must make room for a world shaped by water.",
     "Desert": "Dry continents and exposed mineral deposits dominate the surface. Water would be the central challenge for settlement.",
-    "Tundra": "Long winters and frozen ground leave only a narrow habitable region. Future colonies would need protection from the cold.",
+    "Tundra": "Long winters and frozen ground leave only a narrow habitable region. Colonies need protection from the cold.",
     "Barren": "A cratered, lifeless surface offers little natural support for a colony. Habitats would need a controlled environment.",
     "Volcanic": "Intense geological activity reshapes the surface. Heat and hostile conditions would make settlement demanding.",
 }
@@ -50,7 +50,9 @@ def draw_system(app):
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
-    text(surface, "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY", (1376, 228), 11, CYAN, "mono", 2, right=True)
+    ships = len(game.colony_ships_at(system.id))
+    label = f"{ships} COLONY SHIP{'S' if ships != 1 else ''} IN ORBIT" if ships else "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY"
+    text(surface, label, (1376, 228), 11, CYAN, "mono", 2, right=True)
 
     panel(surface, (64, 308, 1312, 311), (6, 16, 24))
     text(surface, "ORBITAL OVERVIEW", (88, 329), 10, GOLD, "mono", 2)
@@ -118,7 +120,7 @@ def draw_planet_overview(app):
     text(surface, shorten(f"GALAXY  /  {system.name.upper()}  /  {planet.name.upper()}", 760, 11, "mono"),
          (363, 143), 11, MUTED, "mono")
     app.button("planet_galaxy", "Galaxy map", (1214, 124, 162, 46), lambda: app.go("galaxy"))
-    text(surface, shorten(planet.name, 865, 48, "title"), (64, 193), 48, INK, "title")
+    text(surface, shorten(planet.name, 720, 48, "title"), (64, 193), 48, INK, "title")
     text(surface, f"{planet.biome} world   /   {system.name} system   /   Orbit {planet.id+1:02}",
          (66, 258), 15, MUTED)
     draw_planet_tabs(app, "planet")
@@ -145,16 +147,20 @@ def draw_planet_overview(app):
 
     panel(surface, (677, 554, 699, 227))
     text(surface, "COLONY STATUS", (702, 577), 10, GOLD, "mono", 2)
-    status = "Established homeworld" if planet.colonized else "No colony established"
+    status = ("Established homeworld" if system.id == 0 and planet.id == 2 else "Established colony") if planet.colonized else "No colony established"
     text(surface, status, (702, 609), 23, INK)
     if planet.colonized:
         text(surface, shorten(game.empire_name, 425, 14), (703, 650), 14, CYAN)
         text(surface, f"{planet.population} B inhabitants", (1348, 650), 14, INK, right=True)
     else:
-        text(surface, "Unclaimed   ·   No population", (703, 650), 14, MUTED)
+        reason = game.colonize_error(system.id, planet.id)
+        app.button("colonize_planet", "Colonize", (1104, 600, 244, 45), app.colonize_request, enabled=reason is None)
+        caption = reason or f"{game.colony_ships_at(system.id)[0].name} ready · 1 B starting colonists"
+        text(surface, shorten(caption, 642, 13), (703, 650), 13, MUTED if reason else CYAN)
     paragraph(surface, BIOME_NOTES[planet.biome], (703, 688), 642, 13, MUTED, 22)
 
-    text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. Open the Colony tab to manage construction.",
+    hint = "Open the Colony or Shipyard tab to build." if planet.colonized else "A colony ship is consumed when this world is settled."
+    text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. {hint}",
          (65, 795), 13, MUTED)
     app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("planet_save", "Save game · F5", (206, 832, 222, 46), app.save_game)

@@ -3,13 +3,15 @@
 import pygame as pg
 
 from .buildings import BUILDINGS
+from .production import MAX_QUEUE
 from .planet_art import draw_planet
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, shorten, text
 
 
 def draw_planet_tabs(app, active):
-    for key, label, x, screen in (("tab_overview", "Overview", 1008, "planet"),
-                                   ("tab_colony", "Colony", 1198, "colony")):
+    for key, label, x, screen in (("tab_overview", "Overview", 818, "planet"),
+                                   ("tab_colony", "Colony", 1008, "colony"),
+                                   ("tab_shipyard", "Shipyard", 1198, "shipyard")):
         app.button(key, label, (x, 201, 178, 49), lambda s=screen: app.go(s))
         if screen == active:
             pg.draw.line(app.canvas, GOLD, (x, 250), (x+178, 250), 3)
@@ -60,10 +62,10 @@ def draw_colony(app):
          (347, 143), 11, MUTED, "mono", 1)
     text(surface, f"YEAR {game.year}   ·   TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
 
-    text(surface, shorten(planet.name, 765, 43, "title"), (64, 185), 43, INK, "title")
+    text(surface, shorten(planet.name, 620, 43, "title"), (64, 185), 43, INK, "title")
     status = f"{planet.population} B inhabitants" if planet.colonized else "Uncolonized"
     text(surface, f"{planet.biome}  ·  {planet.size} world  ·  {status}", (66, 249), 14, MUTED)
-    draw_planet(surface, planet, (920, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
+    draw_planet(surface, planet, (756, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
     draw_planet_tabs(app, "colony")
 
     industry, income, science = planet.yields_per_turn
@@ -77,7 +79,8 @@ def draw_colony(app):
         text(surface, value, (x+17, 324), 22, GOLD if i==3 else CYAN if i in (0, 2, 4) else INK)
 
     text(surface, "BUILDING SLOTS", (64, 385), 11, GOLD, "mono", 2)
-    text(surface, f"{len(planet.buildings)} built + {len(planet.construction_queue)} reserved / {planet.building_capacity}",
+    building_projects = planet.building_projects
+    text(surface, f"{len(planet.buildings)} built + {len(building_projects)} reserved / {planet.building_capacity}",
          (727, 385), 11, MUTED, "mono", right=True)
     text(surface, "CONSTRUCTION CATALOGUE", (751, 385), 11, GOLD, "mono", 2)
     estimates = planet.queue_estimates()
@@ -102,10 +105,9 @@ def draw_colony(app):
             text(surface, definition.name, (x+12, y+42), 13, INK)
             text(surface, compact_yields(definition, planet.richness), (x+12, y+63), 10, MUTED)
         elif index < planet.used_slots:
-            queue_index = index-len(planet.buildings)
-            project = planet.construction_queue[queue_index]
-            definition = BUILDINGS[project.building_id]
-            building_icon(surface, project.building_id, (x+27, y+24), GOLD, .58)
+            queue_index, project = building_projects[index-len(planet.buildings)]
+            definition = BUILDINGS[project.item_id]
+            building_icon(surface, project.item_id, (x+27, y+24), GOLD, .58)
             label = "BUILDING" if queue_index==0 else f"QUEUED {queue_index+1}"
             text(surface, label, (x+52, y+11), 8, GOLD, "mono")
             text(surface, turn_label(estimates[queue_index]), (x+52, y+27), 10, MUTED)
@@ -137,6 +139,8 @@ def draw_colony(app):
             label, hint = "Locked", "Uncolonized"
         elif planet.free_slots <= 0:
             label, hint = "Full", "No free slots"
+        elif len(planet.construction_queue) >= MAX_QUEUE:
+            label, hint = "Full", "Queue limit"
         elif game.credits < definition.credit_cost:
             label, hint = "Funds", f"Need {definition.credit_cost} CR"
         app.button(f"build_{definition.id}", label, (x+506, y+12, 103, 42),
@@ -153,9 +157,8 @@ def draw_colony(app):
         app.button("demolish_building", "Demolish", (549, 729, 156, 45),
                    lambda i=slot: app.demolish_request(i))
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:
-        index = slot-len(planet.buildings)
-        project = planet.construction_queue[index]
-        definition = BUILDINGS[project.building_id]
+        index, project = building_projects[slot-len(planet.buildings)]
+        definition = BUILDINGS[project.item_id]
         text(surface, definition.name, (82, 724), 18, INK)
         text(surface, f"{project.progress}/{definition.work_cost} work · Ready in {turn_label(estimates[index])}",
              (82, 754), 12, GOLD)
@@ -164,10 +167,10 @@ def draw_colony(app):
         text(surface, f"Refund: {project.refund} CR", (553, 772), 10, MUTED)
     else:
         title = f"{planet.size} worlds support {planet.building_capacity} buildings."
-        message = "Queued projects reserve slots. Click a building or project to inspect it."
+        message = "Buildings reserve slots. The Shipyard tab shows the full production queue."
         if not planet.colonized:
             title = "This planet needs a colony first."
-            message = "Start construction on Earth. Colonizing other worlds is a later step."
+            message = "Bring a colony ship here, then settle this world from its Overview tab."
         text(surface, title, (82, 725), 17, INK)
         text(surface, message, (82, 756), 12, MUTED)
 

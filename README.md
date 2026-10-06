@@ -1,7 +1,7 @@
-# Orion Reach — Python prototype 0.4
+# Orion Reach — Python prototype 0.5
 
-A playable application shell and colony-building prototype for a MOO2-inspired
-space strategy game.
+A playable colony-building and interstellar expansion prototype for a
+MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
@@ -70,7 +70,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   size, gravity, minerals, habitability, orbital distance and colony status.
 - Sol contains Mercury, Venus, Earth and Mars. Other systems have reproducible
   planet data and distinct illustrations for six environment types.
-- The planet screen has **Overview** and **Colony** tabs. Earth is your starting
+- The planet screen has **Overview**, **Colony** and **Shipyard** tabs. Earth is your starting
   colony: construct factories, mines, trade centres and research labs, with a
   building-slot limit based on planet size.
 - Construction queues show progress and completion estimates. Completed
@@ -79,6 +79,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Empire Overview** combines economy totals and a sortable colony directory.
   Open it with **Empire · I** or the **I** key from any gameplay screen. Click
   a colony row to open its construction screen.
+- Build colony ships in the **Shipyard**, plot routes through **Fleets**, advance
+  travel with End Turn, and settle new worlds from their planet overviews.
+- The galaxy map shows flight paths, ship positions and newly claimed systems.
 - Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
   and Continue preserve the active overview. Previous/Next controls browse
   systems and planets, including systems with no planets.
@@ -87,14 +90,14 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
-  End Turn, return to menu and normal exit.
+  ship orders, settlement, End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
-**Scope:** construction and its economy are playable on Earth. Population
-growth, founding additional colonies, a technology tree, combat, diplomacy,
-fleet movement, AI opponents and victory conditions are future work. Research
+**Scope:** construct buildings and colony ships, travel between systems, and
+found additional colonies. Population growth, food, a technology tree, combat,
+warships, diplomacy, AI opponents and victory conditions are future work. Research
 points accumulate but cannot yet be spent. Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized. Settings contains interface sounds,
@@ -138,13 +141,51 @@ habitability does not change it in this version.
   `floor(cost × remaining work / total work)`. The displayed refund is exact.
 - Click an operational building to **Demolish** it. Confirmation is required;
   its output stops immediately and its construction cost is not refunded.
-- Uncolonized planets show their capacity, with construction disabled. Use
-  Earth until founding new colonies is implemented.
+- Uncolonized planets show their capacity, with construction disabled until
+  settled. Bring a colony ship to the system and use the planet's Overview tab.
 
 Every colony has a base of 6 industry per turn and one credit per billion
 inhabitants. There is no upkeep or population growth yet. All colony income and
 research contribute to the empire totals. Costs, work and capacities can be
 tuned in `orion/buildings.py`.
+
+## Build, travel and colonize
+
+1. Open **Sol → Earth → Shipyard** and click **Build colony ship**. It costs
+   **80 credits and 42 work**, completing after seven End Turns at Earth's
+   initial 6 industry per turn, if there are no projects ahead of it.
+2. Open **Fleets** with the top button or **F**. The finished ship starts in orbit
+   around its construction system. Click its **Plot course** button.
+3. On the galaxy map, click a star. The sidebar's **Send ship** button shows the
+   travel time; the map previews the route and reports suitable unsettled worlds.
+   Click Send to issue the order, or **Cancel / Escape** to leave without sending.
+4. Use **End Turn / E** to advance the journey. Fleets shows remaining turns.
+   You can save and reload during flight. Arrival is automatic; the ship waits
+   in the destination system until you choose its next action.
+5. Click the ship's **View system**, open a suitable planet, click **Colonize**,
+   and confirm. The ship is consumed and the planet becomes a colony with
+   **1 billion inhabitants**, 6 base industry and 1 credit income per turn.
+   It appears immediately in Empire Overview and can build buildings and ships.
+
+To settle **Mars** first, build a ship at Earth and open Mars directly; no travel
+order is needed between planets in the same system.
+
+| Rule | Prototype behavior |
+| --- | --- |
+| Suitable planets | Uncolonized Terran, Ocean, Desert and Tundra worlds |
+| Hostile worlds | Barren and Volcanic require a later life-support technology |
+| Ship construction | Shares the sequential queue and industry with buildings; no building slot |
+| Queue capacity | Up to 20 total projects per planet |
+| Cancellation | Shipyard lists every queued project; refunds follow the same unspent-work rule as buildings |
+| Travel time | `ceil(hypot(1.4 * dx, dy) / 0.18)`, at least one turn between distinct systems |
+| Travel restrictions | Orders require a ship in orbit; no mid-flight rerouting, fuel cost or range limit yet |
+| Settlement | Requires an arrived colony ship in the target system; consumes exactly one ship |
+| Population | Starting colonists are included in ship cost; homeworld population is not deducted in this version |
+
+Unused construction overflow follows the existing building rules. A ship
+finishes in orbit and receives no automatic travel order. The colony economy
+starts on the next End Turn after settlement. Ship costs, initial colonists,
+queue capacity and travel speed are defined in `orion/production.py`.
 
 ## Empire Overview
 
@@ -169,9 +210,9 @@ Save, End Turn, pause, settings and Continue work from the overview. The list
 and totals refresh after construction and turn changes. Industry remains local
 to each planet; the empire total is a report, not a shared construction pool.
 
-Earth is still the only starting colony. The directory supports additional
-colonies when colonization is implemented; the tests use synthetic settlements
-to verify multi-colony sorting, totals, pagination and navigation. View filters,
+Earth is the starting colony; each newly settled world appears in the directory.
+The current project may be a building or a ship. Ship construction counts as
+activity but does not reserve a building slot. View filters,
 sort order and page are kept during play and reset when starting/loading a game.
 
 ## Controls
@@ -196,6 +237,12 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Open / close Empire Overview | I, or the Empire button while playing |
 | Open a colony from Empire Overview | Click its row, or focus it and press Enter |
 | Browse colony pages | Page Up / Down, Left / Right, mouse wheel, or Previous / Next |
+| Open / close Fleets | F, or the Fleets button while playing |
+| Build ships / inspect the shared queue | Shipyard tab on a planet |
+| Set a ship destination | Plot course in Fleets → click a star → Send ship |
+| Cancel an unissued course | Cancel button or Escape on the route-selection map |
+| Settle a world | Colonize on its Overview tab, with a colony ship in the system |
+| Browse fleet or shipyard queue pages | Page Up / Down, mouse wheel, or Previous / Next |
 
 ## Save locations
 
@@ -214,15 +261,16 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.4 uses the same save format as v0.3. Existing buildings,
-queues and research are preserved; no migration is needed between those versions.
-It also loads v0.1/v0.2 saves without rewriting the original file during loading.
-v0.1's missing planet details are generated deterministically; v0.2's existing
-planet data is preserved. Those older campaigns start with empty building
-lists/queues and zero research. New saves use format version 3 and cannot be
-opened by v0.1/v0.2. Loading starts at the galaxy map with system/planet selection
-retained. Keep a manual snapshot if you plan to return to v0.1/v0.2; normal
-gameplay updates the autosave.
+**Compatibility:** v0.5 loads all earlier prototype saves without rewriting the
+source file during loading. v0.3/v0.4 building queues, progress, planets and
+research are preserved; their queues are upgraded to support both buildings and
+ships, and they start with no ships. v0.1's missing planets are generated
+deterministically; v0.1/v0.2 start with empty production and zero research.
+New saves use **format version 4**, including ship IDs, destinations, remaining
+travel time and mixed production queues. They cannot be opened by v0.4 or
+earlier. Loading starts at the galaxy map with system/planet selection retained.
+Keep an older manual snapshot if you plan to switch back; normal gameplay
+updates the autosave. Unissued route previews are not saved as orders.
 
 ## Extend the prototype
 
@@ -237,6 +285,9 @@ gameplay updates the autosave.
 | `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
+| `orion/production.py` | Shared project catalogue, ship costs and travel balance |
+| `orion/fleet_views.py` | Shipyard, fleets and galaxy-map routes |
+| `orion/fleet_art.py` | Procedural transport icons |
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
@@ -245,11 +296,12 @@ gameplay updates the autosave.
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
+| `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
-to the UI controller as needed. The next practical increments are colony
-founding, population growth and a technology tree that spends stored research.
-Fleet and tactical combat systems can follow. Bump the save version and add
+to the UI controller as needed. The next practical increments are population
+growth, food and a technology tree that spends stored research.
+Warships and tactical combat can follow. Bump the save version and add
 migrations when the data schema changes.
 
 ## Development checks
@@ -264,10 +316,12 @@ python main.py --headless --screen system --screenshot system.png
 python main.py --headless --screen planet --screenshot planet.png
 python main.py --headless --screen colony --screenshot colony.png
 python main.py --headless --screen empire --screenshot empire.png
+python main.py --headless --screen shipyard --screenshot shipyard.png
+python main.py --headless --screen fleets --screenshot fleets.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, and `about`.
+`planet`, `colony`, `empire`, `shipyard`, `fleets`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.
@@ -311,7 +365,7 @@ screenshots are included. `.gitattributes` keeps line endings consistent.
 For the next feature, start a branch from the working baseline:
 
 ```sh
-git switch -c feature/empire-overview
+git switch -c feature/colonization
 ```
 
 After editing and checking the game, commit the change and push that branch.

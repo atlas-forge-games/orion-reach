@@ -2,7 +2,7 @@
 
 import pygame as pg
 
-from .buildings import BUILDINGS
+from .production import PROJECTS
 from .colony_view import turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, colony_rows, summarize_empire
 from .planet_art import draw_planet
@@ -19,7 +19,7 @@ def draw_empire(app):
     visible = rows[start:start+COLONIES_PER_PAGE]
 
     app.chrome("EMPIRE OVERVIEW")
-    back_name = {"galaxy": "Galaxy map", "system": "System overview",
+    back_name = {"galaxy": "Galaxy map", "system": "System overview", "shipyard": "Shipyard", "fleets": "Fleets",
                  "planet": "Planet overview", "colony": "Colony"}[app.empire_return]
     app.button("empire_back", f"←  {back_name} · I", (64, 124, 282, 46),
                app.close_empire, "ghost")
@@ -92,7 +92,7 @@ def draw_empire(app):
              (918, y+31), 10, GOLD if not planet.free_slots else MUTED, right=True)
         if planet.construction_queue:
             project = planet.construction_queue[0]
-            definition = BUILDINGS[project.building_id]
+            definition = PROJECTS[project.item_id]
             eta = planet.queue_estimates()[0]
             text(surface, definition.name, (950, y+7), 15, INK)
             text(surface, turn_label(eta), (1318, y+8), 12, GOLD, right=True)

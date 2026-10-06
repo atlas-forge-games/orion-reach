@@ -16,7 +16,7 @@ from orion.model import ConstructionProject, new_game
 
 
 def varied_empire():
-    """Synthetic settlements for exercising reports before colonization exists."""
+    """Synthetic settlements with varied economies for report checks."""
     game = new_game(seed=2408)
     mercury, _, earth, mars = game.systems[0].worlds
     earth.buildings = ["factory", "trade_center"]

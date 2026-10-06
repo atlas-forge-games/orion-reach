@@ -14,16 +14,18 @@ from .model import GALAXY_SIZES, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system, draw_planet_overview
-from .colony_view import draw_colony
+from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
+from .production import SHIP_TYPES, travel_turns
+from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_map_fleets, draw_shipyard
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image)
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire")
+GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets")
 
 
 class App:
@@ -66,6 +68,7 @@ class App:
         self.campaign_view="galaxy"
         self.colony_slot=None
         self.reset_empire_view()
+        self.reset_fleet_view()
         self.load_rows=[]
         self.load_page=0
         self.sound=None
@@ -89,8 +92,10 @@ class App:
     def go(self,screen):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
-        if screen in ("planet","colony") and self.game.selected_planet is None:
+        if screen in ("planet","colony","shipyard") and self.game.selected_planet is None:
             screen="system"
+        if screen not in ("galaxy","pause","settings"):
+            self.route_ship_id=None
         self.screen=screen
         self.buttons=[]
         self.focus=None
@@ -104,6 +109,10 @@ class App:
             self.focus=f"star_{self.game.selected_system}"
         if screen=="colony":
             self.focus="build_factory"
+        if screen=="shipyard":
+            self.focus="build_colony_ship"
+        if screen=="fleets":
+            self.change_fleet_page(0)
         if screen=="empire":
             self.focus_empire_row()
         if screen=="system":
@@ -130,7 +139,111 @@ class App:
             return
         self.game.selected_planet=planet_id
         self.colony_slot=None
+        self.shipyard_page=0
         self.go("planet")
+
+    def reset_fleet_view(self):
+        self.fleet_return="galaxy"
+        self.fleet_return_selection=(0,None)
+        self.fleet_page=0
+        self.shipyard_page=0
+        self.route_ship_id=None
+
+    def open_fleets(self):
+        if self.screen=="fleets":
+            self.close_fleets()
+        elif self.screen in GAME_SCREENS:
+            self.fleet_return=self.screen
+            self.fleet_return_selection=(self.game.selected_system,self.game.selected_planet)
+            self.go("fleets")
+
+    def close_fleets(self):
+        self.game.selected_system,self.game.selected_planet=self.fleet_return_selection
+        self.go(self.fleet_return)
+
+    def open_shipyard(self,system_id,planet_id):
+        self.game.planet_at(system_id,planet_id)
+        self.game.selected_system=system_id
+        self.game.selected_planet=planet_id
+        self.shipyard_page=0
+        self.go("shipyard")
+
+    def change_fleet_page(self,delta):
+        last=max(0,(len(self.game.ships)-1)//FLEETS_PER_PAGE)
+        self.fleet_page=min(max(0,self.fleet_page+delta),last)
+        visible=self.game.ships[self.fleet_page*FLEETS_PER_PAGE:(self.fleet_page+1)*FLEETS_PER_PAGE]
+        if visible:
+            ship=visible[0]
+            self.focus=f"ship_view_{ship.id}" if ship.in_transit else f"ship_send_{ship.id}"
+        else:
+            self.focus="fleet_build_first"
+
+    def change_shipyard_page(self,delta):
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        last=max(0,(len(planet.construction_queue)-1)//QUEUE_PER_PAGE)
+        self.shipyard_page=min(max(0,self.shipyard_page+delta),last)
+
+    def plot_course(self,ship_id):
+        try:
+            ship=self.game.ship_at(ship_id)
+            if ship.in_transit:
+                raise RuleError("Wait for this ship to arrive before assigning a new course.")
+            self.route_ship_id=ship_id
+            self.game.selected_system=ship.system_id
+            self.game.selected_planet=None
+            self.go("galaxy")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def select_star(self,system_id):
+        if self.route_ship_id is None:
+            self.open_system(system_id)
+        else:
+            self.game.selected_system=system_id
+            self.game.selected_planet=None
+            self.focus="send_course"
+
+    def send_course(self):
+        try:
+            ship=self.game.ship_at(self.route_ship_id)
+            destination=self.game.selected_system
+            duration=self.game.send_ship(ship.id,destination)
+            self.go("fleets")
+            if self.save_game(autosave=True):
+                self.toast(f"{ship.name} en route to {self.game.systems[destination].name} · {turn_label(duration)}")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def queue_colony_ship(self):
+        try:
+            self.game.queue_ship(self.game.selected_system,self.game.selected_planet)
+            planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+            self.shipyard_page=(len(planet.construction_queue)-1)//QUEUE_PER_PAGE
+            if self.save_game(autosave=True):
+                self.toast(f"Colony ship queued · {SHIP_TYPES['colony_ship'].credit_cost} CR paid")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def colonize_request(self):
+        system_id,planet_id=self.game.selected_system,self.game.selected_planet
+        error=self.game.colonize_error(system_id,planet_id)
+        if error:
+            self.toast(error,True)
+            return
+        ship=self.game.colony_ships_at(system_id)[0]
+        planet=self.game.planet_at(system_id,planet_id)
+        def settle():
+            try:
+                self.game.colonize(ship.id,system_id,planet_id)
+                self.colony_slot=None
+                self.go("colony")
+                if self.save_game(autosave=True):
+                    self.toast(f"Colony established on {planet.name} · 1 B inhabitants · Welcome to your empire")
+            except RuleError as exc:
+                self.toast(exc,True)
+        self.confirm(f"Settle {shorten(planet.name,370,29,'title')}?",
+                     f"Use {ship.name} to found a colony with 1 B inhabitants. The ship is consumed; the new colony can construct buildings and ships.",
+                     "Establish colony",settle)
 
     def reset_empire_view(self):
         self.empire_return="galaxy"
@@ -202,7 +315,8 @@ class App:
             current=-1 if delta>0 else 0
         self.game.selected_planet=(current+delta)%len(worlds)
         self.colony_slot=None
-        if self.screen in ("planet","colony"):
+        self.shipyard_page=0
+        if self.screen in ("planet","colony","shipyard"):
             self.go(self.screen)
         else:
             self.focus=f"world_{self.game.selected_planet}"
@@ -261,6 +375,7 @@ class App:
             return
         self.colony_slot=None
         self.reset_empire_view()
+        self.reset_fleet_view()
         self.go("galaxy")
         self.save_game(autosave=True)
 
@@ -285,6 +400,7 @@ class App:
         self.game=state
         self.colony_slot=None
         self.reset_empire_view()
+        self.reset_fleet_view()
         self.go("galaxy")
         self.toast(f"Welcome back, {state.empire_name}.")
 
@@ -296,8 +412,10 @@ class App:
             message=f"Turn {self.game.turn} · +{report.income} CR · +{report.research} RP"
             if report.completed:
                 message+=" · Completed: "+", ".join(report.completed)
+            if report.arrivals:
+                message+=" · Arrived: "+", ".join(report.arrivals)
             self.toast(message+" · Autosaved")
-            if report.completed:
+            if report.completed or report.arrivals:
                 self.notice_until=self.time+7
 
     def select_colony_slot(self,index):
@@ -415,6 +533,9 @@ class App:
             self.change_load_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="empire" and not self.dialog and event.y:
             self.change_empire_page(-1 if event.y>0 else 1)
+        if event.type==pg.MOUSEWHEEL and self.screen in ("fleets","shipyard") and not self.dialog and event.y:
+            change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
+            change(-1 if event.y>0 else 1)
         if event.type==pg.TEXTINPUT and self.field and not self.dialog:
             current=getattr(self,self.field)
             if self.select_all:
@@ -436,13 +557,15 @@ class App:
                 self.field=None
                 pg.key.stop_text_input()
             elif self.screen=="galaxy":
-                self.pause()
+                self.go("fleets") if self.route_ship_id is not None else self.pause()
             elif self.screen=="system":
                 self.go("galaxy")
             elif self.screen=="planet":
                 self.go("system")
-            elif self.screen=="colony":
+            elif self.screen in ("colony","shipyard"):
                 self.go("planet")
+            elif self.screen=="fleets":
+                self.close_fleets()
             elif self.screen=="empire":
                 self.close_empire()
             elif self.screen=="pause":
@@ -491,14 +614,21 @@ class App:
                 self.advance_turn()
             elif event.key==pg.K_i:
                 self.open_empire()
+            elif event.key==pg.K_f:
+                self.open_fleets()
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
+                change(1 if event.key==pg.K_PAGEDOWN else -1)
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):
                 delta=1 if event.key==pg.K_RIGHT else -1
                 if self.screen=="galaxy":
                     self.cycle_system(delta)
                 elif self.screen=="empire":
                     self.change_empire_page(delta)
+                elif self.screen=="fleets":
+                    self.change_fleet_page(delta)
                 else:
                     self.cycle_planet(delta)
 
@@ -520,6 +650,8 @@ class App:
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
         if self.screen in GAME_SCREENS and self.screen!="empire":
             self.button("open_empire","Empire · I",(998,39,179,46),self.open_empire)
+        if self.screen in GAME_SCREENS and self.screen!="fleets":
+            self.button("open_fleets","Fleets · F",(807,39,177,46),self.open_fleets)
         text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
         if back:
@@ -668,6 +800,7 @@ class App:
         for y in range(MAP.y+40,MAP.bottom,70):
             pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,y),(MAP.right-1,y))
         text(self.canvas,"SECTOR 01 / LOCAL CLUSTER",(MAP.x+22,MAP.y+18),10,FAINT,"mono",1)
+        draw_map_fleets(self,MAP)
         for star in state.systems:
             x,y=self.star_pos(star)
             selected=star.id==state.selected_system
@@ -680,11 +813,11 @@ class App:
                 pg.draw.circle(self.canvas,GOLD,(int(x),int(y)),19,1)
                 for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
                     pg.draw.circle(self.canvas,GOLD,(int(x+dx),int(y+dy)),1)
-            if star.id==0:
+            if any(p.colonized for p in star.worlds):
                 pg.draw.circle(self.canvas,CYAN,(int(x),int(y)),11,1)
             text(self.canvas,star.name.upper(),(x+11,y-10),11,INK if selected else MUTED,"mono")
             self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
-                        lambda s=star.id:self.open_system(s),"hotspot")
+                        lambda s=star.id:self.select_star(s),"hotspot")
         star=state.systems[state.selected_system]
         panel(self.canvas,(1051,180,325,573))
         text(self.canvas,"SYSTEM INTELLIGENCE",(1075,203),10,GOLD,"mono",1)
@@ -699,19 +832,32 @@ class App:
         if star.planets:
             pg.draw.circle(self.canvas,CYAN,(1131,388),6)
         text(self.canvas,"HOME SYSTEM" if star.id==0 else "SURVEY DATA",(1075,462),10,CYAN,"mono",1)
+        owned=any(p.colonized for p in star.worlds)
         lines=[("Planets",str(star.planets)),("Primary world",star.biome if star.planets else "None"),
                ("Minerals",star.richness if star.planets else "—"),
-               ("Allegiance","Your empire" if star.id==0 else "Unclaimed")]
+               ("Allegiance","Your empire" if owned else "Unclaimed")]
         for i,(label,value) in enumerate(lines):
             y=500+i*44
             text(self.canvas,label,(1075,y),13,MUTED)
             text(self.canvas,value,(1352,y),13,INK,right=True)
             pg.draw.line(self.canvas,LINE,(1075,y+30),(1352,y+30))
-        self.button("open_system","Open system →",(1075,692,277,43),
-                    lambda:self.open_system(self.game.selected_system))
-        text(self.canvas,"Click a star to open its solar-system overview.",(64,775),14,MUTED)
+        if self.route_ship_id is None:
+            self.button("open_system","Open system →",(1075,692,277,43),
+                        lambda:self.open_system(self.game.selected_system))
+            hint="Click a star to open its system. Cyan markers show your ships and colonies."
+        else:
+            ship=state.ship_at(self.route_ship_id)
+            duration=travel_turns(state.systems[ship.system_id],star)
+            self.button("send_course",f"Send ship · {turn_label(duration)}" if duration else "Current system",(1075,692,277,43),
+                        self.send_course,enabled=duration>0)
+            targets=sum(not p.colonized and p.habitability>0 for p in star.worlds)
+            hint=f"{ship.name}: choose a star, then Send. {targets} unsettled, habitable {'worlds' if targets != 1 else 'world'} at {star.name}."
+        text(self.canvas,shorten(hint,962,14),(64,775),14,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
-        self.button("pause","Menu  ·  Esc",(64,820,186,54),self.pause)
+        if self.route_ship_id is None:
+            self.button("pause","Menu  ·  Esc",(64,820,186,54),self.pause)
+        else:
+            self.button("cancel_course","Cancel · Esc",(64,820,186,54),lambda:self.go("fleets"))
         self.button("save","Save game  ·  F5",(264,820,229,54),self.save_game)
         text(self.canvas,"EMPIRE ECONOMY",(585,821),10,GOLD,"mono",2)
         income,research=state.empire_rates
@@ -743,15 +889,21 @@ class App:
     def draw_empire(self):
         draw_empire(self)
 
+    def draw_shipyard(self):
+        draw_shipyard(self)
+
+    def draw_fleets(self):
+        draw_fleets(self)
+
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Explore solar systems and planets, build up your colony, manage a construction queue and grow industry, income and research. Save and resume your campaigns.",
+        paragraph(self.canvas,"Build colonies and ships, travel between stars, settle new worlds, and manage your empire's industry, income and research. Save and resume your campaigns.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Colonization, population growth, fleets, a research tree, diplomacy and tactical combat. The current colony is a foundation for those systems.",
+        paragraph(self.canvas,"Population growth, food, a research tree, warships, diplomacy and tactical combat. Your growing empire is the foundation for those systems.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)
