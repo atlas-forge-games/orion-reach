@@ -1,6 +1,7 @@
-# Orion Reach — Python prototype 0.2
+# Orion Reach — Python prototype 0.3
 
-A first playable application shell for a MOO2-inspired space strategy game.
+A playable application shell and colony-building prototype for a MOO2-inspired
+space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
@@ -69,25 +70,78 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   size, gravity, minerals, habitability, orbital distance and colony status.
 - Sol contains Mercury, Venus, Earth and Mars. Other systems have reproducible
   planet data and distinct illustrations for six environment types.
-- Back buttons and Escape follow **Planet → System → Galaxy**. Pause, settings
+- The planet screen has **Overview** and **Colony** tabs. Earth is your starting
+  colony: construct factories, mines, trade centres and research labs, with a
+  building-slot limit based on planet size.
+- Construction queues show progress and completion estimates. Completed
+  buildings contribute industry, credits and research; cancel projects for a
+  refund of unspent work or demolish completed buildings to free a slot.
+- Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
   and Continue preserve the active overview. Previous/Next controls browse
   systems and planets, including systems with no planets.
 - These are separate full-window screens inside the game, not additional
   operating-system windows.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
-- Autosave on campaign creation, End Turn, return to menu and normal exit.
+- Autosave on campaign creation, construction orders/cancellations/demolition,
+  End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
-**Scope:** this is the menu/application foundation. Combat, colonies, research,
-diplomacy, fleet movement, AI opponents and victory conditions are not yet
-implemented. End Turn currently adds one year and eight credits as an explicit
-placeholder. Planet attributes, population and habitability are illustrative
-game data, not scientific predictions or a colony simulation. Sol intentionally
-includes only four inner worlds; its artwork is stylized. Settings contains
-interface sounds, not music.
+**Scope:** construction and its economy are playable on Earth. Population
+growth, founding additional colonies, a technology tree, combat, diplomacy,
+fleet movement, AI opponents and victory conditions are future work. Research
+points accumulate but cannot yet be spent. Planet attributes, population and
+habitability are illustrative game data. Sol intentionally includes only four
+inner worlds; its artwork is stylized. Settings contains interface sounds,
+not music.
+
+## Build your first colony
+
+Start or load a game, then click **Sol → Earth → Colony**. Click **Build** beside
+a building in the catalogue, then advance turns with **End Turn** or **E**.
+Earth starts with 120 empire credits, 6 industry per turn, and 8 credits per
+turn from its population. A first factory costs 45 credits and completes after
+four End Turns; it raises industry from 6 to 10 for subsequent turns.
+
+| Planet size | Building slots |
+| --- | ---: |
+| Tiny | 4 |
+| Small | 6 |
+| Medium (Earth) | 8 |
+| Large | 10 |
+| Huge | 12 |
+
+Each completed or queued building uses one slot. Repeated copies of a building
+are allowed, and their outputs add together. Planet size determines capacity;
+habitability does not change it in this version.
+
+| Building | Upfront credits | Construction work | Output per turn |
+| --- | ---: | ---: | --- |
+| Factory | 45 | 24 | +4 industry |
+| Mining complex | 30 | 18 | +1 / +2 / +3 industry on Poor / Average / Rich worlds, plus +1 credit |
+| Trade centre | 40 | 24 | +4 credits |
+| Research lab | 50 | 30 | +4 research points |
+
+- Industry advances one sequential queue on each colony. Overflow work can
+  start the next queued project in the same turn; unused industry is not stored.
+- The catalogue estimates completion after any projects already in the queue,
+  including speed increases from factories/mines that will finish ahead of it.
+- A turn collects output from buildings operational at its start. A newly
+  completed building starts producing on the following turn.
+- Click a queued slot to inspect it and **Cancel**. An unstarted project returns
+  its full credit cost; a partially built project refunds
+  `floor(cost × remaining work / total work)`. The displayed refund is exact.
+- Click an operational building to **Demolish** it. Confirmation is required;
+  its output stops immediately and its construction cost is not refunded.
+- Uncolonized planets show their capacity, with construction disabled. Use
+  Earth until founding new colonies is implemented.
+
+Every colony has a base of 6 industry per turn and one credit per billion
+inhabitants. There is no upkeep or population growth yet. All colony income and
+research contribute to the empire totals. Costs, work and capacities can be
+tuned in `orion/buildings.py`.
 
 ## Controls
 
@@ -97,7 +151,7 @@ interface sounds, not music.
 | Activate focused control | Left click, Enter or Space |
 | Edit name/seed | Click field or focus it and press Enter; type; Enter finishes |
 | Replace field contents | Ctrl+A (Cmd+A on macOS), then type |
-| Back from planet to system, then to galaxy | Escape or the Back button |
+| Back through Colony → Planet → System → Galaxy | Escape or the Back button |
 | Pause / resume on the galaxy screen | Escape |
 | Pause from any overview | Menu button |
 | Fullscreen | F11 |
@@ -106,6 +160,8 @@ interface sounds, not music.
 | Open a solar system | Click a star; or Left / Right then Enter on the galaxy screen |
 | Open a planet | Click its globe/caption; or Left / Right then Enter in the system screen |
 | Browse planets while viewing details | Left / Right, or Previous / Next buttons |
+| Manage buildings | Colony tab on a planet overview |
+| Inspect, cancel or demolish | Click a building slot in the Colony tab |
 
 ## Save locations
 
@@ -124,12 +180,14 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.2 loads v0.1 saves and generates their missing planet
-details deterministically without rewriting the original file. New saves use
-format version 2 and include planet data and the selected planet. These new
-saves cannot be opened by v0.1. Loading a save starts at the galaxy map; the
-system/planet selection is retained. Keep a manual v0.1 snapshot if you plan
-to switch between prototype versions.
+**Compatibility:** v0.3 loads v0.1 and v0.2 saves without rewriting the original
+file during loading. v0.1's missing planet details are generated deterministically;
+v0.2's existing planet data is preserved. Older campaigns start with empty
+building lists/queues and zero research. New saves use format version 3 and
+include buildings, construction progress, research and planet selection; they
+cannot be opened by older prototypes. Loading starts at the galaxy map with
+the system/planet selection retained. Keep a manual snapshot from the older
+version if you plan to switch back; normal gameplay updates the autosave.
 
 ## Extend the prototype
 
@@ -140,17 +198,21 @@ to switch between prototype versions.
 | `orion/ui.py` | Buttons, focus styling, text and layout helpers |
 | `orion/art.py` | Starfield animation, orbit guides and spacecraft |
 | `orion/system_views.py` | Solar-system and planet overview layouts |
+| `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
+| `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
 | `assets/` | Bundled artwork and fonts |
 | `tools/build_art.py` | Rebuild the original planet/background (optional) |
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
+| `tests/test_colony.py` | Construction rules, economy timing and save migrations |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
-to the UI controller as needed. The next practical increment is adding colony
-management to the planet overview; fleet and tactical combat systems can follow. Bump the
-save version and add migrations when the data schema changes.
+to the UI controller as needed. The next practical increments are colony
+founding, population growth and a technology tree that spends stored research.
+Fleet and tactical combat systems can follow. Bump the save version and add
+migrations when the data schema changes.
 
 ## Development checks
 
@@ -162,10 +224,11 @@ python main.py --headless --screenshot menu.png
 python main.py --headless --screen galaxy --screenshot galaxy.png
 python main.py --headless --screen system --screenshot system.png
 python main.py --headless --screen planet --screenshot planet.png
+python main.py --headless --screen colony --screenshot colony.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, and `about`.
+`planet`, `colony`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.

@@ -10,16 +10,18 @@ import pygame as pg
 
 from .art import Backdrop, SIZE
 from . import __version__
-from .model import GALAXY_SIZES, SaveError, new_game
+from .model import GALAXY_SIZES, RuleError, SaveError, new_game
+from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system, draw_planet_overview
+from .colony_view import draw_colony
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image)
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet")
+GAME_SCREENS=("galaxy", "system", "planet", "colony")
 
 
 class App:
@@ -60,6 +62,7 @@ class App:
         self.settings_return="menu"
         self.pause_return="galaxy"
         self.campaign_view="galaxy"
+        self.colony_slot=None
         self.load_rows=[]
         self.load_page=0
         self.sound=None
@@ -83,7 +86,7 @@ class App:
     def go(self,screen):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
-        if screen=="planet" and self.game.selected_planet is None:
+        if screen in ("planet","colony") and self.game.selected_planet is None:
             screen="system"
         self.screen=screen
         self.buttons=[]
@@ -94,6 +97,8 @@ class App:
         pg.key.stop_text_input()
         if screen in GAME_SCREENS:
             self.campaign_view=screen
+        if screen=="colony":
+            self.focus="build_factory"
         if screen=="system":
             worlds=self.game.systems[self.game.selected_system].worlds
             if worlds:
@@ -117,6 +122,7 @@ class App:
         if not 0 <= planet_id < len(worlds):
             return
         self.game.selected_planet=planet_id
+        self.colony_slot=None
         self.go("planet")
 
     def cycle_system(self,delta):
@@ -136,8 +142,9 @@ class App:
         if current is None:
             current=-1 if delta>0 else 0
         self.game.selected_planet=(current+delta)%len(worlds)
-        if self.screen=="planet":
-            self.go("planet")
+        self.colony_slot=None
+        if self.screen in ("planet","colony"):
+            self.go(self.screen)
         else:
             self.focus=f"world_{self.game.selected_planet}"
             self.keyboard_mode=True
@@ -193,6 +200,7 @@ class App:
         except (ValueError,SaveError) as exc:
             self.toast(str(exc),True)
             return
+        self.colony_slot=None
         self.go("galaxy")
         self.save_game(autosave=True)
 
@@ -215,13 +223,58 @@ class App:
             self.toast(exc,True)
             return
         self.game=state
+        self.colony_slot=None
         self.go("galaxy")
         self.toast(f"Welcome back, {state.empire_name}.")
 
     def advance_turn(self):
-        self.game.advance_turn()
+        report=self.game.advance_turn()
         if self.save_game(autosave=True):
-            self.toast(f"Turn {self.game.turn} · +8 credits · Autosaved")
+            message=f"Turn {self.game.turn} · +{report.income} CR · +{report.research} RP"
+            if report.completed:
+                message+=" · Completed: "+", ".join(report.completed)
+            self.toast(message+" · Autosaved")
+            if report.completed:
+                self.notice_until=self.time+7
+
+    def select_colony_slot(self,index):
+        self.colony_slot=index
+
+    def queue_building(self,building_id):
+        try:
+            self.game.queue_building(self.game.selected_system,self.game.selected_planet,building_id)
+            planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+            self.colony_slot=planet.used_slots-1
+            if self.save_game(autosave=True):
+                self.toast(f"{BUILDINGS[building_id].name} queued · {BUILDINGS[building_id].credit_cost} CR paid")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def cancel_construction(self,index):
+        try:
+            refund=self.game.cancel_construction(self.game.selected_system,self.game.selected_planet,index)
+            self.colony_slot=None
+            if self.save_game(autosave=True):
+                self.toast(f"Project cancelled · {refund} CR refunded")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def demolish_request(self,index):
+        system_id,planet_id=self.game.selected_system,self.game.selected_planet
+        planet=self.game.planet_at(system_id,planet_id)
+        if not 0 <= index < len(planet.buildings):
+            return
+        name=BUILDINGS[planet.buildings[index]].name
+        def remove():
+            try:
+                self.game.demolish_building(system_id,planet_id,index)
+                self.colony_slot=None
+                if self.save_game(autosave=True):
+                    self.toast(f"{name} demolished · One slot is now available")
+            except RuleError as exc:
+                self.toast(exc,True)
+        self.confirm(f"Demolish {name.lower()}?", "Its output will stop immediately and its slot will become available. Construction costs are not refunded.",
+                     "Demolish",remove)
 
     def to_menu(self):
         if self.save_game(autosave=True):
@@ -323,6 +376,8 @@ class App:
                 self.go("galaxy")
             elif self.screen=="planet":
                 self.go("system")
+            elif self.screen=="colony":
+                self.go("planet")
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
@@ -530,7 +585,7 @@ class App:
         self.chrome("GALAXY OVERVIEW")
         text(self.canvas,shorten(state.empire_name,490,29),(64,127),29,INK,"title")
         text(self.canvas,f"YEAR {state.year}   /   TURN {state.turn}",(725,139),13,CYAN,"mono")
-        text(self.canvas,f"{state.credits:,} CR",(1376,132),23,GOLD,"mono",right=True)
+        text(self.canvas,f"{state.credits:,} CR  ·  {state.research:,} RP",(1376,132),19,GOLD,"mono",right=True)
         panel(self.canvas,MAP,(7,17,25))
         # A sparse coordinate grid makes the map legible without implying travel lanes.
         for x in range(MAP.x+44,MAP.right,76):
@@ -583,8 +638,9 @@ class App:
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
         self.button("pause","Menu  ·  Esc",(64,820,186,54),self.pause)
         self.button("save","Save game  ·  F5",(264,820,229,54),self.save_game)
-        text(self.canvas,"GALAXY PREVIEW",(585,821),10,GOLD,"mono",2)
-        text(self.canvas,"Economy placeholder: +8 credits / turn",(585,844),12,MUTED)
+        text(self.canvas,"EMPIRE ECONOMY",(585,821),10,GOLD,"mono",2)
+        income,research=state.empire_rates
+        text(self.canvas,f"+{income} credits · +{research} research / turn",(585,844),12,MUTED)
         self.button("end_turn","End turn  ·  E",(1081,813,295,61),self.advance_turn,"primary")
 
     def draw_pause(self):
@@ -606,15 +662,18 @@ class App:
     def draw_planet(self):
         draw_planet_overview(self)
 
+    def draw_colony(self):
+        draw_colony(self)
+
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Create an empire, explore a galaxy, open solar systems and inspect individual planets. Advance turns, save campaigns and return to them later.",
+        paragraph(self.canvas,"Explore solar systems and planets, build up your colony, manage a construction queue and grow industry, income and research. Save and resume your campaigns.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Colony management, fleets, research, diplomacy and tactical combat. The current galaxy screen is a foundation for those systems.",
+        paragraph(self.canvas,"Colonization, population growth, fleets, a research tree, diplomacy and tactical combat. The current colony is a foundation for those systems.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)

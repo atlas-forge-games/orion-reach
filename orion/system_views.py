@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .planet_art import draw_planet, draw_star
+from .colony_view import draw_planet_tabs
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
@@ -45,7 +46,7 @@ def draw_system(app):
     app.chrome("SYSTEM OVERVIEW")
     app.button("system_back", "←  Galaxy map", (64, 124, 205, 48), lambda: app.go("galaxy"), "ghost")
     text(surface, f"GALAXY  /  {system.name.upper()}", (300, 143), 11, MUTED, "mono", 1)
-    text(surface, f"YEAR {game.year}   ·   {game.credits:,} CR", (1376, 140), 13, GOLD, "mono", right=True)
+    text(surface, f"YEAR {game.year}   ·   {game.credits:,} CR   ·   {game.research:,} RP", (1376, 140), 13, GOLD, "mono", right=True)
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
@@ -120,7 +121,7 @@ def draw_planet_overview(app):
     text(surface, shorten(planet.name, 865, 48, "title"), (64, 193), 48, INK, "title")
     text(surface, f"{planet.biome} world   /   {system.name} system   /   Orbit {planet.id+1:02}",
          (66, 258), 15, MUTED)
-    text(surface, "YOUR HOMEWORLD" if planet.colonized else "UNCLAIMED WORLD", (1376, 219), 11, CYAN, "mono", 2, right=True)
+    draw_planet_tabs(app, "planet")
 
     # Left: a dedicated planetary portrait, with a softly lit orbital grid.
     panel(surface, (64, 308, 589, 473), (6, 16, 24))
@@ -153,7 +154,8 @@ def draw_planet_overview(app):
         text(surface, "Unclaimed   ·   No population", (703, 650), 14, MUTED)
     paragraph(surface, BIOME_NOTES[planet.biome], (703, 688), 642, 13, MUTED, 22)
 
-    text(surface, "Colony construction and production will follow in a later update.", (65, 795), 13, MUTED)
+    text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. Open the Colony tab to manage construction.",
+         (65, 795), 13, MUTED)
     app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("planet_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
     text(surface, f"PLANET {planet.id+1} OF {len(system.worlds)}", (593, 848), 10, FAINT, "mono", 1)

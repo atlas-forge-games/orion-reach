@@ -93,6 +93,7 @@ class PersistenceTests(unittest.TestCase):
         payload=json.loads(path.read_text())
         payload["version"]=1
         payload["game"].pop("selected_planet")
+        payload["game"].pop("research")
         for system in payload["game"]["systems"]:
             system.pop("worlds")
         path.write_text(json.dumps(payload))
@@ -103,7 +104,7 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(migrated.systems[0].worlds[2].name,"Earth")
         self.assertTrue(migrated.systems[0].worlds[2].colonized)
         new_path=self.store.save(migrated)
-        self.assertEqual(json.loads(new_path.read_text())["version"],2)
+        self.assertEqual(json.loads(new_path.read_text())["version"],SAVE_VERSION)
 
     def test_planet_state_and_selection_are_persisted_not_regenerated(self):
         game=new_game(seed=29)
@@ -116,7 +117,7 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(restored.systems[0].worlds[2].population,9)
         self.assertEqual(restored.selected_planet,2)
 
-    def test_v2_invalid_planet_data_is_rejected(self):
+    def test_invalid_planet_data_is_rejected(self):
         game=new_game(seed=3)
         for failure in ("missing_worlds","count","name","orbit","id","selection"):
             with self.subTest(failure=failure):
@@ -348,6 +349,95 @@ class InterfaceTests(unittest.TestCase):
             self.click_position(center)
             self.assertEqual(self.app.game.selected_planet,world.id)
             self.assertEqual(self.app.screen,"planet")
+
+    def test_colony_construction_cancel_and_demolition_at_scaled_size(self):
+        self.app.window=pg.display.set_mode((980,900),pg.RESIZABLE)
+        self.app.present()
+        self.app.game=new_game(seed=2408)
+        self.app.go("galaxy")
+        self.click("star_0")
+        self.click("world_2")
+        self.click("tab_colony")
+        self.assertEqual(self.app.screen,"colony")
+        earth=self.app.game.systems[0].worlds[2]
+        self.click("build_factory")
+        self.assertEqual(self.app.game.credits,75)
+        self.assertEqual(earth.used_slots,1)
+        saved,_=self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
+        self.assertEqual(saved,self.app.game)
+        self.click("colony_end_turn")
+        self.assertEqual(earth.construction_queue[0].progress,6)
+        self.click("cancel_construction")
+        self.assertEqual(self.app.game.credits,116)
+        self.assertEqual(earth.used_slots,0)
+        self.click("build_factory")
+        for _ in range(4):
+            self.key(pg.K_e)
+        self.assertEqual(earth.buildings,["factory"])
+        self.assertEqual(earth.industry_per_turn,10)
+        self.click("colony_slot_0")
+        self.click("demolish_building")
+        self.assertIsNotNone(self.app.dialog)
+        self.click("dialog_cancel")
+        self.assertEqual(earth.buildings,["factory"])
+        credits=self.app.game.credits
+        self.click("demolish_building")
+        self.click("dialog_ok")
+        self.assertEqual(earth.industry_per_turn,6)
+        self.assertEqual(earth.used_slots,0)
+        self.assertEqual(self.app.game.credits,credits)
+
+    def test_colony_controls_disable_for_uncolonized_full_and_unaffordable(self):
+        self.app.game=new_game(seed=2408)
+        self.app.open_system(0)
+        self.app.open_planet(3)
+        self.click("tab_colony")
+        before=self.app.game.to_dict()
+        self.assertTrue(all(not b.enabled for b in self.app.buttons if b.key.startswith("build_")))
+        self.click("build_factory")
+        self.assertEqual(self.app.game.to_dict(),before)
+        self.key(pg.K_LEFT)
+        self.assertEqual(self.app.game.selected_planet,2)
+        self.assertEqual(self.app.screen,"colony")
+        earth=self.app.game.systems[0].worlds[2]
+        earth.size="Tiny"
+        self.app.game.credits=1000
+        for _ in range(4):
+            self.click("build_mine")
+        self.assertEqual(len([b for b in self.app.buttons if b.key.startswith("colony_slot_")]),4)
+        self.assertTrue(all(not b.enabled for b in self.app.buttons if b.key.startswith("build_")))
+        before=self.app.game.to_dict()
+        self.click("build_factory")
+        self.assertEqual(self.app.game.to_dict(),before)
+        self.click("cancel_construction")
+        self.app.game.credits=29
+        self.app.render()
+        self.assertTrue(all(not b.enabled for b in self.app.buttons if b.key.startswith("build_")))
+
+    def test_colony_pause_save_load_and_back_navigation(self):
+        self.app.game=new_game(seed=38)
+        self.app.open_system(0)
+        self.app.open_planet(2)
+        self.click("tab_colony")
+        self.click("build_mine")
+        self.key(pg.K_e)
+        expected=self.app.game.to_dict()
+        self.click("colony_pause")
+        self.click("settings")
+        self.click("settings_done")
+        self.click("resume")
+        self.assertEqual(self.app.screen,"colony")
+        self.click("colony_save")
+        path=next(p for p in self.app.storage.saves_dir.glob("*.json") if p.name!="autosave.json")
+        self.app.load_game(path)
+        self.click("star_0")
+        self.click("world_2")
+        self.click("tab_colony")
+        self.assertEqual(self.app.game.to_dict(),expected)
+        self.key(pg.K_ESCAPE)
+        self.assertEqual(self.app.screen,"planet")
+        self.key(pg.K_ESCAPE)
+        self.assertEqual(self.app.screen,"system")
 
 
 if __name__=="__main__":

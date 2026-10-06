@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 import math
 import random
 from uuid import uuid4
+
+from .buildings import BUILDINGS, BUILDING_SLOTS
 
 GALAXY_SIZES = {"Compact": 24, "Standard": 48, "Expansive": 72}
 STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dwarf")
@@ -31,6 +33,10 @@ class SaveError(ValueError):
     """A readable save/configuration error that the UI may display."""
 
 
+class RuleError(ValueError):
+    """An invalid player action, safe for the interface to explain."""
+
+
 def _integer(value, minimum, maximum):
     return type(value) is int and minimum <= value <= maximum
 
@@ -38,6 +44,28 @@ def _integer(value, minimum, maximum):
 def _name(value, maximum=28):
     return (isinstance(value, str) and 0 < len(value) <= maximum and bool(value.strip())
             and all(c.isprintable() for c in value))
+
+
+@dataclass
+class ConstructionProject:
+    building_id: str
+    progress: int = 0
+
+    @property
+    def remaining_work(self):
+        return BUILDINGS[self.building_id].work_cost-self.progress
+
+    @property
+    def refund(self):
+        definition = BUILDINGS[self.building_id]
+        return definition.credit_cost*self.remaining_work//definition.work_cost
+
+
+@dataclass
+class TurnReport:
+    income: int
+    research: int
+    completed: list[str]
 
 
 @dataclass
@@ -49,15 +77,74 @@ class Planet:
     richness: str
     gravity: str
     orbit_au: float
-    population: int = 0  # Billions; a static preview until colony simulation exists.
+    population: int = 0  # Billions; population growth is not yet simulated.
     colonized: bool = False
+    buildings: list[str] = field(default_factory=list)
+    construction_queue: list[ConstructionProject] = field(default_factory=list)
 
     @property
     def habitability(self):
         return HABITABILITY[self.biome]
 
+    @property
+    def building_capacity(self):
+        return BUILDING_SLOTS[self.size]
+
+    @property
+    def used_slots(self):
+        return len(self.buildings)+len(self.construction_queue)
+
+    @property
+    def free_slots(self):
+        return self.building_capacity-self.used_slots
+
+    @property
+    def yields_per_turn(self):
+        if not self.colonized:
+            return (0, 0, 0)
+        industry, income, research = 6, self.population, 0
+        for building_id in self.buildings:
+            extra = BUILDINGS[building_id].yields(self.richness)
+            industry += extra[0]
+            income += extra[1]
+            research += extra[2]
+        return industry, income, research
+
+    @property
+    def industry_per_turn(self):
+        return self.yields_per_turn[0]
+
+    def advance_construction(self):
+        """Use this turn's starting industry, carrying overflow into queued projects."""
+        work = self.industry_per_turn
+        completed = []
+        while work > 0 and self.construction_queue:
+            project = self.construction_queue[0]
+            applied = min(work, project.remaining_work)
+            project.progress += applied
+            work -= applied
+            if project.remaining_work == 0:
+                self.buildings.append(project.building_id)
+                completed.append(project.building_id)
+                self.construction_queue.pop(0)
+        return completed
+
+    def queue_estimates(self, additional=None):
+        """Exact turns until completion, assuming no future player changes."""
+        if not self.colonized:
+            return []
+        forecast = replace(self, buildings=self.buildings.copy(),
+                           construction_queue=[replace(p) for p in self.construction_queue])
+        if additional is not None:
+            forecast.construction_queue.append(ConstructionProject(additional))
+        turns, estimates = 0, []
+        while forecast.construction_queue:
+            turns += 1
+            estimates.extend([turns]*len(forecast.advance_construction()))
+        return estimates
+
     @classmethod
-    def from_dict(cls, data, expected_id):
+    def from_dict(cls, data, expected_id, *, version=3):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -73,7 +160,30 @@ class Planet:
             raise ValueError
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
-        return cls(**data)
+        record = dict(data)
+        if version < 3:
+            record["buildings"] = []
+            record["construction_queue"] = []
+        buildings = record["buildings"]
+        queued = record["construction_queue"]
+        if not isinstance(buildings, list) or not isinstance(queued, list):
+            raise ValueError
+        if len(buildings)+len(queued) > BUILDING_SLOTS[data["size"]]:
+            raise ValueError
+        if any(not isinstance(b, str) or b not in BUILDINGS for b in buildings):
+            raise ValueError
+        projects = []
+        for i, item in enumerate(queued):
+            if not isinstance(item, dict) or not isinstance(item["building_id"], str) or item["building_id"] not in BUILDINGS:
+                raise ValueError
+            cost = BUILDINGS[item["building_id"]].work_cost
+            if not _integer(item["progress"], 0, cost-1) or (i>0 and item["progress"] != 0):
+                raise ValueError
+            projects.append(ConstructionProject(**item))
+        if not data["colonized"] and (buildings or projects):
+            raise ValueError
+        record["construction_queue"] = projects
+        return cls(**record)
 
 
 @dataclass
@@ -133,18 +243,79 @@ class GameState:
     systems: list[StarSystem]
     selected_system: int = 0
     selected_planet: int | None = None
+    research: int = 0
+
+    def planet_at(self, system_id, planet_id):
+        if not _integer(system_id, 0, len(self.systems)-1):
+            raise RuleError("Unknown solar system.")
+        worlds = self.systems[system_id].worlds
+        if not _integer(planet_id, 0, len(worlds)-1):
+            raise RuleError("Unknown planet.")
+        return worlds[planet_id]
+
+    def build_error(self, system_id, planet_id, building_id):
+        planet = self.planet_at(system_id, planet_id)
+        if not isinstance(building_id, str) or building_id not in BUILDINGS:
+            return "Unknown building."
+        if not planet.colonized:
+            return "Establish a colony before constructing buildings."
+        if planet.free_slots <= 0:
+            return f"All {planet.building_capacity} building slots are occupied or reserved."
+        if self.credits < BUILDINGS[building_id].credit_cost:
+            return "Not enough credits to start this project."
+        return None
+
+    def queue_building(self, system_id, planet_id, building_id):
+        error = self.build_error(system_id, planet_id, building_id)
+        if error:
+            raise RuleError(error)
+        planet = self.planet_at(system_id, planet_id)
+        self.credits -= BUILDINGS[building_id].credit_cost
+        planet.construction_queue.append(ConstructionProject(building_id))
+
+    def cancel_construction(self, system_id, planet_id, queue_index):
+        planet = self.planet_at(system_id, planet_id)
+        if not _integer(queue_index, 0, len(planet.construction_queue)-1):
+            raise RuleError("That construction project is no longer in the queue.")
+        project = planet.construction_queue.pop(queue_index)
+        self.credits += project.refund
+        return project.refund
+
+    def demolish_building(self, system_id, planet_id, building_index):
+        planet = self.planet_at(system_id, planet_id)
+        if not _integer(building_index, 0, len(planet.buildings)-1):
+            raise RuleError("That building is no longer on this planet.")
+        return planet.buildings.pop(building_index)
+
+    @property
+    def empire_rates(self):
+        income, research = 0, 0
+        for system in self.systems:
+            for planet in system.worlds:
+                _, credits, points = planet.yields_per_turn
+                income += credits
+                research += points
+        return income, research
 
     def advance_turn(self):
-        """Prototype rule only: one year and eight credits per turn."""
+        """Collect starting yields, then construct; new buildings work next turn."""
+        income, research = self.empire_rates
+        completed = []
+        for system in self.systems:
+            for planet in system.worlds:
+                for building_id in planet.advance_construction():
+                    completed.append(f"{BUILDINGS[building_id].name} on {planet.name}")
         self.turn += 1
         self.year += 1
-        self.credits += 8
+        self.credits += income
+        self.research += research
+        return TurnReport(income, research, completed)
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, legacy=False):
+    def from_dict(cls, data, *, version=3):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -166,6 +337,9 @@ class GameState:
                 raise ValueError
             if not _integer(data["credits"], 0, 1_000_000_000):
                 raise ValueError
+            research = data["research"] if version >= 3 else 0
+            if not _integer(research, 0, 1_000_000_000):
+                raise ValueError
             records = data["systems"]
             if not isinstance(records, list) or len(records) != GALAXY_SIZES[size]:
                 raise ValueError
@@ -183,23 +357,23 @@ class GameState:
                 record = dict(s)
                 world_data = record.pop("worlds", None)
                 system = StarSystem(**record)
-                if legacy:
+                if version == 1:
                     system.worlds = generate_planets(system, data["seed"])
                 else:
                     if not isinstance(world_data, list) or len(world_data) != system.planets:
                         raise ValueError
-                    system.worlds = [Planet.from_dict(p, j) for j, p in enumerate(world_data)]
+                    system.worlds = [Planet.from_dict(p, j, version=version) for j, p in enumerate(world_data)]
                     if any(a.orbit_au >= b.orbit_au for a, b in zip(system.worlds, system.worlds[1:])):
                         raise ValueError
                 systems.append(system)
             selected = data.get("selected_system", 0)
             if not _integer(selected, 0, len(systems) - 1):
                 raise ValueError
-            planet = None if legacy else data.get("selected_planet")
+            planet = None if version == 1 else data.get("selected_planet")
             if planet is not None and not _integer(planet, 0, systems[selected].planets - 1):
                 raise ValueError
             return cls(campaign, data["empire_name"], size, data["seed"],
-                       data["turn"], data["year"], data["credits"], systems, selected, planet)
+                       data["turn"], data["year"], data["credits"], systems, selected, planet, research)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 
