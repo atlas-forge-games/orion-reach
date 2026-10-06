@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.3
+# Orion Reach — Python prototype 0.4
 
 A playable application shell and colony-building prototype for a MOO2-inspired
 space strategy game.
@@ -76,6 +76,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Construction queues show progress and completion estimates. Completed
   buildings contribute industry, credits and research; cancel projects for a
   refund of unspent work or demolish completed buildings to free a slot.
+- **Empire Overview** combines economy totals and a sortable colony directory.
+  Open it with **Empire · I** or the **I** key from any gameplay screen. Click
+  a colony row to open its construction screen.
 - Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
   and Continue preserve the active overview. Previous/Next controls browse
   systems and planets, including systems with no planets.
@@ -143,6 +146,34 @@ inhabitants. There is no upkeep or population growth yet. All colony income and
 research contribute to the empire totals. Costs, work and capacities can be
 tuned in `orion/buildings.py`.
 
+## Empire Overview
+
+Click **Empire · I** at the top of the galaxy, system, planet or colony screen,
+or press **I**. The overview shows:
+
+- Total colonies and population, treasury and credit income, industry,
+  stored research and research income, and occupied/available building slots.
+- One row per colony, with population, per-turn output, slots, the current
+  construction project, work progress, completion estimate and waiting projects.
+- **All**, **Building**, **Idle** and **Full** filters. Full includes slots
+  reserved by queued projects. The summary totals always cover the entire empire.
+- Sortable colony name, population, industry, income, research and occupied
+  slot columns. Numerical columns initially sort highest first; clicking the
+  same heading again reverses the order.
+- Five colonies per page; use Previous/Next, Page Up/Down, Left/Right or the
+  mouse wheel to browse larger empires.
+
+Click a row to open that colony, then use **Empire · I** to return. **Escape**,
+**I**, or the overview's Back button returns to the screen you opened it from.
+Save, End Turn, pause, settings and Continue work from the overview. The list
+and totals refresh after construction and turn changes. Industry remains local
+to each planet; the empire total is a report, not a shared construction pool.
+
+Earth is still the only starting colony. The directory supports additional
+colonies when colonization is implemented; the tests use synthetic settlements
+to verify multi-colony sorting, totals, pagination and navigation. View filters,
+sort order and page are kept during play and reset when starting/loading a game.
+
 ## Controls
 
 | Action | Control |
@@ -162,6 +193,9 @@ tuned in `orion/buildings.py`.
 | Browse planets while viewing details | Left / Right, or Previous / Next buttons |
 | Manage buildings | Colony tab on a planet overview |
 | Inspect, cancel or demolish | Click a building slot in the Colony tab |
+| Open / close Empire Overview | I, or the Empire button while playing |
+| Open a colony from Empire Overview | Click its row, or focus it and press Enter |
+| Browse colony pages | Page Up / Down, Left / Right, mouse wheel, or Previous / Next |
 
 ## Save locations
 
@@ -180,14 +214,15 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.3 loads v0.1 and v0.2 saves without rewriting the original
-file during loading. v0.1's missing planet details are generated deterministically;
-v0.2's existing planet data is preserved. Older campaigns start with empty
-building lists/queues and zero research. New saves use format version 3 and
-include buildings, construction progress, research and planet selection; they
-cannot be opened by older prototypes. Loading starts at the galaxy map with
-the system/planet selection retained. Keep a manual snapshot from the older
-version if you plan to switch back; normal gameplay updates the autosave.
+**Compatibility:** v0.4 uses the same save format as v0.3. Existing buildings,
+queues and research are preserved; no migration is needed between those versions.
+It also loads v0.1/v0.2 saves without rewriting the original file during loading.
+v0.1's missing planet details are generated deterministically; v0.2's existing
+planet data is preserved. Those older campaigns start with empty building
+lists/queues and zero research. New saves use format version 3 and cannot be
+opened by v0.1/v0.2. Loading starts at the galaxy map with system/planet selection
+retained. Keep a manual snapshot if you plan to return to v0.1/v0.2; normal
+gameplay updates the autosave.
 
 ## Extend the prototype
 
@@ -200,6 +235,8 @@ version if you plan to switch back; normal gameplay updates the autosave.
 | `orion/system_views.py` | Solar-system and planet overview layouts |
 | `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
 | `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
+| `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
+| `orion/empire_view.py` | Empire Overview layout and colony directory |
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
@@ -207,6 +244,7 @@ version if you plan to switch back; normal gameplay updates the autosave.
 | `tools/build_art.py` | Rebuild the original planet/background (optional) |
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
+| `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. The next practical increments are colony
@@ -225,10 +263,11 @@ python main.py --headless --screen galaxy --screenshot galaxy.png
 python main.py --headless --screen system --screenshot system.png
 python main.py --headless --screen planet --screenshot planet.png
 python main.py --headless --screen colony --screenshot colony.png
+python main.py --headless --screen empire --screenshot empire.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, and `about`.
+`planet`, `colony`, `empire`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.
@@ -272,7 +311,7 @@ screenshots are included. `.gitattributes` keeps line endings consistent.
 For the next feature, start a branch from the working baseline:
 
 ```sh
-git switch -c feature/colony-screen
+git switch -c feature/empire-overview
 ```
 
 After editing and checking the game, commit the change and push that branch.

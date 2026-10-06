@@ -15,13 +15,15 @@ from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system, draw_planet_overview
 from .colony_view import draw_colony
+from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
+from .empire_view import draw_empire
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image)
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony")
+GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire")
 
 
 class App:
@@ -63,6 +65,7 @@ class App:
         self.pause_return="galaxy"
         self.campaign_view="galaxy"
         self.colony_slot=None
+        self.reset_empire_view()
         self.load_rows=[]
         self.load_page=0
         self.sound=None
@@ -97,8 +100,12 @@ class App:
         pg.key.stop_text_input()
         if screen in GAME_SCREENS:
             self.campaign_view=screen
+        if screen=="galaxy":
+            self.focus=f"star_{self.game.selected_system}"
         if screen=="colony":
             self.focus="build_factory"
+        if screen=="empire":
+            self.focus_empire_row()
         if screen=="system":
             worlds=self.game.systems[self.game.selected_system].worlds
             if worlds:
@@ -124,6 +131,58 @@ class App:
         self.game.selected_planet=planet_id
         self.colony_slot=None
         self.go("planet")
+
+    def reset_empire_view(self):
+        self.empire_return="galaxy"
+        self.empire_filter="all"
+        self.empire_sort="name"
+        self.empire_descending=False
+        self.empire_page=0
+
+    def focus_empire_row(self):
+        rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
+        self.empire_page=min(max(0,self.empire_page),max(0,(len(rows)-1)//COLONIES_PER_PAGE))
+        if rows:
+            system,planet=rows[self.empire_page*COLONIES_PER_PAGE]
+            self.focus=f"empire_colony_{system.id}_{planet.id}"
+        else:
+            self.focus="empire_filter_all"
+
+    def open_empire(self):
+        if self.screen=="empire":
+            self.close_empire()
+        elif self.screen in GAME_SCREENS:
+            self.empire_return=self.screen
+            self.go("empire")
+
+    def close_empire(self):
+        self.go(self.empire_return)
+
+    def open_empire_colony(self,system_id,planet_id):
+        self.game.planet_at(system_id,planet_id)
+        self.game.selected_system=system_id
+        self.game.selected_planet=planet_id
+        self.colony_slot=None
+        self.go("colony")
+
+    def set_empire_filter(self,filter_by):
+        if filter_by not in FILTERS:
+            return
+        self.empire_filter=filter_by
+        self.empire_page=0
+        self.focus_empire_row()
+
+    def sort_empire(self,key):
+        if key not in SORT_KEYS:
+            return
+        self.empire_descending=not self.empire_descending if key==self.empire_sort else key!="name"
+        self.empire_sort=key
+        self.empire_page=0
+        self.focus_empire_row()
+
+    def change_empire_page(self,delta):
+        self.empire_page+=delta
+        self.focus_empire_row()
 
     def cycle_system(self,delta):
         self.game.selected_system=(self.game.selected_system+delta)%len(self.game.systems)
@@ -201,6 +260,7 @@ class App:
             self.toast(str(exc),True)
             return
         self.colony_slot=None
+        self.reset_empire_view()
         self.go("galaxy")
         self.save_game(autosave=True)
 
@@ -224,11 +284,14 @@ class App:
             return
         self.game=state
         self.colony_slot=None
+        self.reset_empire_view()
         self.go("galaxy")
         self.toast(f"Welcome back, {state.empire_name}.")
 
     def advance_turn(self):
         report=self.game.advance_turn()
+        if self.screen=="empire":
+            self.focus_empire_row()
         if self.save_game(autosave=True):
             message=f"Turn {self.game.turn} · +{report.income} CR · +{report.research} RP"
             if report.completed:
@@ -350,6 +413,8 @@ class App:
                 self.activate(hovered)
         if event.type==pg.MOUSEWHEEL and self.screen=="load" and not self.dialog:
             self.change_load_page(-1 if event.y>0 else 1)
+        if event.type==pg.MOUSEWHEEL and self.screen=="empire" and not self.dialog and event.y:
+            self.change_empire_page(-1 if event.y>0 else 1)
         if event.type==pg.TEXTINPUT and self.field and not self.dialog:
             current=getattr(self,self.field)
             if self.select_all:
@@ -378,6 +443,8 @@ class App:
                 self.go("system")
             elif self.screen=="colony":
                 self.go("planet")
+            elif self.screen=="empire":
+                self.close_empire()
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
@@ -422,10 +489,16 @@ class App:
                 self.save_game()
             elif event.key==pg.K_e:
                 self.advance_turn()
+            elif event.key==pg.K_i:
+                self.open_empire()
+            elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):
                 delta=1 if event.key==pg.K_RIGHT else -1
                 if self.screen=="galaxy":
                     self.cycle_system(delta)
+                elif self.screen=="empire":
+                    self.change_empire_page(delta)
                 else:
                     self.cycle_planet(delta)
 
@@ -445,6 +518,8 @@ class App:
         emblem(self.canvas,77,64,.62)
         text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
+        if self.screen in GAME_SCREENS and self.screen!="empire":
+            self.button("open_empire","Empire · I",(998,39,179,46),self.open_empire)
         text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
         if back:
@@ -664,6 +739,9 @@ class App:
 
     def draw_colony(self):
         draw_colony(self)
+
+    def draw_empire(self):
+        draw_empire(self)
 
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
