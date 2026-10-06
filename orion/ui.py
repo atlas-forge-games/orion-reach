@@ -107,6 +107,10 @@ class Button:
     def draw(self,surface,active=False):
         r=self.rect
         color=INK if self.enabled else FAINT
+        if self.style=="hotspot":
+            if active and self.enabled:
+                pg.draw.rect(surface,GOLD,r,1,border_radius=4)
+            return
         if self.style=="primary":
             pg.draw.rect(surface,(233,205,153) if active else GOLD,r,border_radius=2)
             text(surface,self.label,(r.x+24,r.y+16),20,(17,27,32))

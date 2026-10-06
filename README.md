@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.1
+# Orion Reach — Python prototype 0.2
 
 A first playable application shell for a MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
@@ -64,8 +64,16 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Continue** appears when a campaign is already open in the current session.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
   and an optional reproducible seed.
-- A working galaxy preview: inspect star systems, select with mouse or arrow
-  keys, advance turns, pause and return to the menu.
+- Click a star on the galaxy map to open a dedicated **solar-system screen**.
+- Click a planet's globe or caption to open its **planet overview**: environment,
+  size, gravity, minerals, habitability, orbital distance and colony status.
+- Sol contains Mercury, Venus, Earth and Mars. Other systems have reproducible
+  planet data and distinct illustrations for six environment types.
+- Back buttons and Escape follow **Planet → System → Galaxy**. Pause, settings
+  and Continue preserve the active overview. Previous/Next controls browse
+  systems and planets, including systems with no planets.
+- These are separate full-window screens inside the game, not additional
+  operating-system windows.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, End Turn, return to menu and normal exit.
@@ -76,8 +84,10 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 **Scope:** this is the menu/application foundation. Combat, colonies, research,
 diplomacy, fleet movement, AI opponents and victory conditions are not yet
 implemented. End Turn currently adds one year and eight credits as an explicit
-placeholder. The displayed system/planet attributes are generated prototype
-data, not a simulation. Settings contains interface sounds, not music.
+placeholder. Planet attributes, population and habitability are illustrative
+game data, not scientific predictions or a colony simulation. Sol intentionally
+includes only four inner worlds; its artwork is stylized. Settings contains
+interface sounds, not music.
 
 ## Controls
 
@@ -87,11 +97,15 @@ data, not a simulation. Settings contains interface sounds, not music.
 | Activate focused control | Left click, Enter or Space |
 | Edit name/seed | Click field or focus it and press Enter; type; Enter finishes |
 | Replace field contents | Ctrl+A (Cmd+A on macOS), then type |
-| Back / pause / resume | Escape |
+| Back from planet to system, then to galaxy | Escape or the Back button |
+| Pause / resume on the galaxy screen | Escape |
+| Pause from any overview | Menu button |
 | Fullscreen | F11 |
-| Save a manual snapshot | F5, or Save Game on the galaxy screen |
+| Save a manual snapshot | F5, or Save Game on any overview |
 | Advance one turn | E, or End Turn |
-| Select a star | Click it, or Left / Right on the galaxy screen |
+| Open a solar system | Click a star; or Left / Right then Enter on the galaxy screen |
+| Open a planet | Click its globe/caption; or Left / Right then Enter in the system screen |
+| Browse planets while viewing details | Left / Right, or Previous / Next buttons |
 
 ## Save locations
 
@@ -110,6 +124,13 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
+**Compatibility:** v0.2 loads v0.1 saves and generates their missing planet
+details deterministically without rewriting the original file. New saves use
+format version 2 and include planet data and the selected planet. These new
+saves cannot be opened by v0.1. Loading a save starts at the galaxy map; the
+system/planet selection is retained. Keep a manual v0.1 snapshot if you plan
+to switch between prototype versions.
+
 ## Extend the prototype
 
 | File | Responsibility |
@@ -118,6 +139,8 @@ Writes use a temporary file followed by an atomic replacement.
 | `orion/app.py` | Event loop, screens and transitions |
 | `orion/ui.py` | Buttons, focus styling, text and layout helpers |
 | `orion/art.py` | Starfield animation, orbit guides and spacecraft |
+| `orion/system_views.py` | Solar-system and planet overview layouts |
+| `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
 | `assets/` | Bundled artwork and fonts |
@@ -125,8 +148,8 @@ Writes use a temporary file followed by an atomic replacement.
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
-to the UI controller as needed. The next practical increment is selecting Sol
-to open a colony screen; fleet and tactical combat systems can follow. Bump the
+to the UI controller as needed. The next practical increment is adding colony
+management to the planet overview; fleet and tactical combat systems can follow. Bump the
 save version and add migrations when the data schema changes.
 
 ## Development checks
@@ -137,9 +160,12 @@ The automated checks use Python's built-in unittest and SDL's dummy drivers:
 python -m unittest discover -s tests -v
 python main.py --headless --screenshot menu.png
 python main.py --headless --screen galaxy --screenshot galaxy.png
+python main.py --headless --screen system --screenshot system.png
+python main.py --headless --screen planet --screenshot planet.png
 ```
 
-`--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, and `about`.
+`--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
+`planet`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.

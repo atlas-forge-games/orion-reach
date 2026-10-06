@@ -35,4 +35,6 @@ dist/
 *.egg-info/
 /menu.png
 /galaxy.png
+/system.png
+/planet.png
 *.zip

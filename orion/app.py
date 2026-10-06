@@ -9,14 +9,17 @@ from pathlib import Path
 import pygame as pg
 
 from .art import Backdrop, SIZE
+from . import __version__
 from .model import GALAXY_SIZES, SaveError, new_game
 from .storage import Storage
+from .system_views import draw_system, draw_planet_overview
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image)
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
+GAME_SCREENS=("galaxy", "system", "planet")
 
 
 class App:
@@ -55,6 +58,8 @@ class App:
         self.field=None
         self.select_all=False
         self.settings_return="menu"
+        self.pause_return="galaxy"
+        self.campaign_view="galaxy"
         self.load_rows=[]
         self.load_page=0
         self.sound=None
@@ -76,6 +81,10 @@ class App:
         self.notice_error=error
 
     def go(self,screen):
+        if screen in GAME_SCREENS and self.game is None:
+            screen="menu"
+        if screen=="planet" and self.game.selected_planet is None:
+            screen="system"
         self.screen=screen
         self.buttons=[]
         self.focus=None
@@ -83,9 +92,63 @@ class App:
         self.field=None
         self.select_all=False
         pg.key.stop_text_input()
+        if screen in GAME_SCREENS:
+            self.campaign_view=screen
+        if screen=="system":
+            worlds=self.game.systems[self.game.selected_system].worlds
+            if worlds:
+                first=next((p.id for p in worlds if p.colonized),0)
+                chosen=self.game.selected_planet if self.game.selected_planet is not None else first
+                self.focus=f"world_{chosen}"
         if screen=="load":
             self.load_rows=self.storage.list_saves()
             self.load_page=0
+
+    def open_system(self,system_id):
+        if self.game is None or not 0 <= system_id < len(self.game.systems):
+            return
+        if self.game.selected_system != system_id:
+            self.game.selected_planet=None
+        self.game.selected_system=system_id
+        self.go("system")
+
+    def open_planet(self,planet_id):
+        worlds=self.game.systems[self.game.selected_system].worlds
+        if not 0 <= planet_id < len(worlds):
+            return
+        self.game.selected_planet=planet_id
+        self.go("planet")
+
+    def cycle_system(self,delta):
+        self.game.selected_system=(self.game.selected_system+delta)%len(self.game.systems)
+        self.game.selected_planet=None
+        if self.screen=="system":
+            self.go("system")
+        else:
+            self.focus=f"star_{self.game.selected_system}"
+            self.keyboard_mode=True
+
+    def cycle_planet(self,delta):
+        worlds=self.game.systems[self.game.selected_system].worlds
+        if not worlds:
+            return
+        current=self.game.selected_planet
+        if current is None:
+            current=-1 if delta>0 else 0
+        self.game.selected_planet=(current+delta)%len(worlds)
+        if self.screen=="planet":
+            self.go("planet")
+        else:
+            self.focus=f"world_{self.game.selected_planet}"
+            self.keyboard_mode=True
+
+    def pause(self):
+        if self.screen in GAME_SCREENS:
+            self.pause_return=self.screen
+        self.go("pause")
+
+    def resume(self):
+        self.go(self.pause_return)
 
     def click_sound(self):
         if self.sound is not None and self.settings["sound"]:
@@ -229,8 +292,6 @@ class App:
                 if hovered is None:
                     self.field=None
                     pg.key.stop_text_input()
-                    if self.screen=="galaxy" and not self.dialog:
-                        self.select_star(self.mouse)
             elif hovered and hovered.key==self.pressed:
                 self.pressed=None
                 self.activate(hovered)
@@ -257,9 +318,13 @@ class App:
                 self.field=None
                 pg.key.stop_text_input()
             elif self.screen=="galaxy":
-                self.go("pause")
-            elif self.screen=="pause":
+                self.pause()
+            elif self.screen=="system":
                 self.go("galaxy")
+            elif self.screen=="planet":
+                self.go("system")
+            elif self.screen=="pause":
+                self.resume()
             elif self.screen=="settings":
                 self.go(self.settings_return)
             elif self.screen=="menu":
@@ -297,29 +362,35 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected:
                 self.activate(selected)
-        elif self.screen=="galaxy" and not self.dialog:
+        elif self.screen in GAME_SCREENS and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
             elif event.key==pg.K_e:
                 self.advance_turn()
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):
-                self.game.selected_system=(self.game.selected_system+(1 if event.key==pg.K_RIGHT else -1))%len(self.game.systems)
+                delta=1 if event.key==pg.K_RIGHT else -1
+                if self.screen=="galaxy":
+                    self.cycle_system(delta)
+                else:
+                    self.cycle_planet(delta)
+
+    def is_active(self,button):
+        if self.dialog and not button.key.startswith("dialog_"):
+            return False
+        return ((self.keyboard_mode and self.focus==button.key) or
+                (not self.keyboard_mode and button.rect.collidepoint(self.mouse)))
 
     def button(self,key,label,rect,action,style="normal",subtitle="",enabled=True):
         b=Button(key,label,pg.Rect(rect),action,subtitle,style,enabled)
         self.buttons.append(b)
-        active=not self.dialog and ((self.keyboard_mode and self.focus==key) or
-                                   (not self.keyboard_mode and b.rect.collidepoint(self.mouse)))
-        if self.dialog and key.startswith("dialog_"):
-            active=(self.keyboard_mode and self.focus==key) or (not self.keyboard_mode and b.rect.collidepoint(self.mouse))
-        b.draw(self.canvas,active)
+        b.draw(self.canvas,self.is_active(b))
         return b
 
     def chrome(self,section="COMMAND",back=None):
         emblem(self.canvas,77,64,.62)
         text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
-        text(self.canvas,"PROTOTYPE  /  0.1",(1376,58),11,MUTED,"mono",right=True)
+        text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
         if back:
             self.button("back","←  Back",(62,126,118,46),back,"ghost")
@@ -332,7 +403,7 @@ class App:
         pg.draw.line(self.canvas,GOLD,(88,389),(131,389),2)
         text(self.canvas,"One world. A thousand possibilities.",(149,377),16,MUTED)
         if self.game:
-            self.button("resume","Continue",(88,444,417,66),lambda:self.go("galaxy"),"primary")
+            self.button("resume","Continue",(88,444,417,66),lambda:self.go(self.campaign_view),"primary")
             self.button("new","New Game",(88,523,417,64),lambda:self.go("setup"),"menu")
             self.button("load","Load Game",(88,592,417,64),lambda:self.go("load"),"menu")
             self.button("settings","Settings",(88,661,417,60),lambda:self.show_settings(),"menu")
@@ -451,14 +522,6 @@ class App:
     def star_pos(self,system):
         return (MAP.x+40+system.x*(MAP.w-80),MAP.y+32+system.y*(MAP.h-64))
 
-    def select_star(self,pos):
-        if not MAP.collidepoint(pos):
-            return
-        near=min(self.game.systems,key=lambda s:math.dist(self.star_pos(s),pos))
-        if math.dist(self.star_pos(near),pos)<23:
-            self.game.selected_system=near.id
-            self.click_sound()
-
     def draw_galaxy(self):
         state=self.game
         if state is None:
@@ -490,6 +553,8 @@ class App:
             if star.id==0:
                 pg.draw.circle(self.canvas,CYAN,(int(x),int(y)),11,1)
             text(self.canvas,star.name.upper(),(x+11,y-10),11,INK if selected else MUTED,"mono")
+            self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
+                        lambda s=star.id:self.open_system(s),"hotspot")
         star=state.systems[state.selected_system]
         panel(self.canvas,(1051,180,325,573))
         text(self.canvas,"SYSTEM INTELLIGENCE",(1075,203),10,GOLD,"mono",1)
@@ -512,33 +577,41 @@ class App:
             text(self.canvas,label,(1075,y),13,MUTED)
             text(self.canvas,value,(1352,y),13,INK,right=True)
             pg.draw.line(self.canvas,LINE,(1075,y+30),(1352,y+30))
-        text(self.canvas,"Select a star to inspect its system.",(64,775),14,MUTED)
+        self.button("open_system","Open system →",(1075,692,277,43),
+                    lambda:self.open_system(self.game.selected_system))
+        text(self.canvas,"Click a star to open its solar-system overview.",(64,775),14,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
-        self.button("pause","Menu  ·  Esc",(64,820,186,54),lambda:self.go("pause"))
+        self.button("pause","Menu  ·  Esc",(64,820,186,54),self.pause)
         self.button("save","Save game  ·  F5",(264,820,229,54),self.save_game)
         text(self.canvas,"GALAXY PREVIEW",(585,821),10,GOLD,"mono",2)
         text(self.canvas,"Economy placeholder: +8 credits / turn",(585,844),12,MUTED)
         self.button("end_turn","End turn  ·  E",(1081,813,295,61),self.advance_turn,"primary")
 
     def draw_pause(self):
-        self.draw_galaxy()
+        getattr(self,"draw_"+self.pause_return)()
         self.backdrop.dim(self.canvas)
         self.buttons=[]
         panel(self.canvas,(459,218,522,487))
         text(self.canvas,"EXPEDITION PAUSED",(505,257),11,GOLD,"mono",2)
         text(self.canvas,"The stars can wait.",(502,290),34,INK,"title")
-        self.button("resume","Resume campaign",(505,365,430,58),lambda:self.go("galaxy"),"primary")
+        self.button("resume","Resume campaign",(505,365,430,58),self.resume,"primary")
         self.button("save","Save a snapshot",(505,438,430,54),self.save_game)
         self.button("settings","Settings",(505,504,430,54),lambda:self.show_settings("pause"))
         self.button("main_menu","Save & return to main menu",(505,570,430,54),self.to_menu)
         self.button("quit","Quit game",(505,637,430,45),self.quit_request,"ghost")
+
+    def draw_system(self):
+        draw_system(self)
+
+    def draw_planet(self):
+        draw_planet_overview(self)
 
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Create an empire, generate a galaxy, inspect star systems, advance turns, save campaigns and load them again.",
+        paragraph(self.canvas,"Create an empire, explore a galaxy, open solar systems and inspect individual planets. Advance turns, save campaigns and return to them later.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
         paragraph(self.canvas,"Colony management, fleets, research, diplomacy and tactical combat. The current galaxy screen is a foundation for those systems.",
@@ -558,9 +631,9 @@ class App:
 
     def render(self):
         self.buttons=[]
-        full=self.screen not in ("galaxy","pause")
+        full=self.screen not in (*GAME_SCREENS,"pause")
         self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)
-        if self.screen not in ("menu","galaxy","pause"):
+        if self.screen not in ("menu",*GAME_SCREENS,"pause"):
             self.backdrop.dim(self.canvas)
         getattr(self,"draw_"+self.screen)()
         if self.dialog:

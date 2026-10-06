@@ -11,7 +11,7 @@ import tempfile
 
 from .model import GameState, SaveError
 
-SAVE_VERSION = 1
+SAVE_VERSION = 2
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True}
 
 
@@ -89,9 +89,11 @@ class Storage:
             data = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict) or data.get("format") != "orion-reach":
                 raise SaveError("This is not an Orion Reach save.")
-            if type(data.get("version")) is not int or data["version"] != SAVE_VERSION:
+            if type(data.get("version")) is not int or data["version"] not in (1, SAVE_VERSION):
                 raise SaveError("This save uses an unsupported version.")
-            state = GameState.from_dict(data.get("game"))
+            # v0.1 saves had only a planet count. Migrate in memory without
+            # touching the original file; the next save uses the new schema.
+            state = GameState.from_dict(data.get("game"), legacy=data["version"] == 1)
             stamp = data.get("saved_at", "")
             if not isinstance(stamp, str) or len(stamp) > 64:
                 raise SaveError("This save has an invalid timestamp.")
