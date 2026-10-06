@@ -1,0 +1,38 @@
+# Python bytecode and tooling caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments (keep environments outside version control)
+.venv/
+venv/
+env/
+.conda/
+
+# Local configuration and game data
+.env
+.env.*
+!.env.example
+my_data/
+saves/
+settings.json
+*.log
+
+# Editor / OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Generated packages and ad-hoc captures; bundled assets/screenshots are tracked
+build/
+dist/
+*.egg-info/
+/menu.png
+/galaxy.png
+*.zip

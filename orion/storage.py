@@ -1,0 +1,118 @@
+"""Versioned, atomic JSON saves. No pickle, executable content, or cloud service."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+import json
+import os
+import sys
+import tempfile
+
+from .model import GameState, SaveError
+
+SAVE_VERSION = 1
+DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True}
+
+
+def default_data_dir():
+    override = os.environ.get("ORION_REACH_DATA_DIR")
+    if override:
+        return Path(override).expanduser()
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "OrionReach"
+    if sys.platform == "darwin":
+        return Path.home() / "Library/Application Support/OrionReach"
+    return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "orion-reach"
+
+
+def atomic_json(path, payload):
+    """Replace only after a complete write; a failed write preserves the old file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=".writing-", suffix=".tmp", delete=False) as f:
+            tmp = Path(f.name)
+            json.dump(payload, f, ensure_ascii=False, indent=2, allow_nan=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None and tmp.exists():
+            tmp.unlink()
+
+
+class Storage:
+    def __init__(self, root=None):
+        self.root = Path(root) if root is not None else default_data_dir()
+        self.saves_dir = self.root / "saves"
+
+    def load_settings(self):
+        result = DEFAULT_SETTINGS.copy()
+        try:
+            path = self.root / "settings.json"
+            if path.stat().st_size > 16_384:
+                return result
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                result.update({k: v for k, v in data.items() if k in result and type(v) is bool})
+        except (OSError, ValueError, RecursionError):
+            pass
+        return result
+
+    def save_settings(self, settings):
+        try:
+            atomic_json(self.root / "settings.json", settings)
+        except (OSError, ValueError) as exc:
+            raise SaveError("Settings could not be saved. Check folder permissions.") from exc
+
+    def save(self, state, autosave=False):
+        payload = {"format": "orion-reach", "version": SAVE_VERSION,
+                   "saved_at": datetime.now(timezone.utc).isoformat(),
+                   "autosave": bool(autosave), "game": state.to_dict()}
+        # One autosave; manual saves are separate snapshots and never overwrite each other.
+        name = "autosave.json" if autosave else f"save-{datetime.now(timezone.utc):%Y%m%d-%H%M%S-%f}-{state.campaign_id[:8]}.json"
+        try:
+            path = self.saves_dir / name
+            atomic_json(path, payload)
+            return path
+        except (OSError, ValueError) as exc:
+            raise SaveError("The game could not be saved. Check folder permissions or free space.") from exc
+
+    def load(self, path):
+        try:
+            path = Path(path)
+            if path.stat().st_size > 2_000_000:
+                raise SaveError("This save is too large for this prototype.")
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or data.get("format") != "orion-reach":
+                raise SaveError("This is not an Orion Reach save.")
+            if type(data.get("version")) is not int or data["version"] != SAVE_VERSION:
+                raise SaveError("This save uses an unsupported version.")
+            state = GameState.from_dict(data.get("game"))
+            stamp = data.get("saved_at", "")
+            if not isinstance(stamp, str) or len(stamp) > 64:
+                raise SaveError("This save has an invalid timestamp.")
+            datetime.fromisoformat(stamp)
+            return state, data
+        except SaveError:
+            raise
+        except (OSError, ValueError, TypeError, RecursionError) as exc:
+            raise SaveError("This save is damaged or cannot be read.") from exc
+
+    def list_saves(self):
+        rows = []
+        try:
+            paths = list(self.saves_dir.glob("*.json"))
+            paths.sort(key=lambda p: p.stat().st_mtime_ns, reverse=True)
+        except OSError:
+            return [{"path": None, "error": "Save folder cannot be read."}]
+        for path in paths:
+            try:
+                state, meta = self.load(path)
+                rows.append({"path": path, "state": state, "meta": meta})
+            except SaveError as exc:
+                rows.append({"path": path, "error": str(exc)})
+        return rows
