@@ -18,6 +18,10 @@ from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
 from .rival_view import draw_rival
+from .diplomacy_view import draw_diplomacy
+from .setup_view import draw_setup
+from .races import RACES, default_rival_race
+from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .production import SHIP_TYPES, travel_turns
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_map_fleets, draw_shipyard
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -26,7 +30,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival")
+GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy")
 
 
 class App:
@@ -62,6 +66,8 @@ class App:
         self.empire="Terran Union"
         self.seed=""
         self.size="Standard"
+        self.race_id="terran"
+        self.rival_race_id="kharuun"
         self.field=None
         self.select_all=False
         self.settings_return="menu"
@@ -118,6 +124,8 @@ class App:
             self.focus_empire_row()
         if screen=="rival":
             self.focus="rival_back" if self.game.opponent else "add_rival"
+        if screen=="diplomacy":
+            self.focus="diplomacy_back"
         if screen=="system":
             worlds=self.game.systems[self.game.selected_system].worlds
             if worlds:
@@ -256,6 +264,9 @@ class App:
         self.empire_descending=False
         self.empire_page=0
         self.rival_page=0
+        self.rival_return="empire"
+        self.diplomacy_return="galaxy"
+        self.diplomacy_return_selection=(0,None)
 
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
@@ -307,6 +318,40 @@ class App:
     def change_rival_page(self,delta):
         last=max(0,(len(colony_rows(self.game,owner=RIVAL))-1)//5)
         self.rival_page=min(max(0,self.rival_page+delta),last)
+
+    def open_rival(self):
+        self.rival_return="diplomacy" if self.screen=="diplomacy" else "empire"
+        self.go("rival")
+
+    def open_diplomacy(self):
+        if self.screen=="diplomacy":
+            self.close_diplomacy()
+        elif self.screen in GAME_SCREENS:
+            self.diplomacy_return=self.screen
+            self.diplomacy_return_selection=(self.game.selected_system,self.game.selected_planet)
+            self.go("diplomacy")
+
+    def close_diplomacy(self):
+        self.game.selected_system,self.game.selected_planet=self.diplomacy_return_selection
+        self.go(self.diplomacy_return)
+
+    def diplomatic_action(self,action):
+        def perform():
+            try:
+                response=self.game.diplomacy_action(action)
+                if self.save_game(autosave=True):
+                    self.toast(response)
+                    self.notice_until=self.time+7
+            except RuleError as exc:
+                self.toast(exc,True)
+        if action in ("end_trade","end_research"):
+            title="trade pact" if action=="end_trade" else "research agreement"
+            self.confirm(f"End the {title}?",
+                         f"Its benefits stop immediately for both empires. Relations fall by {BREAK_PENALTY} and new treaty offers wait {OFFER_COOLDOWN} turns. "
+                         "If relations fall below zero, the rival ends other agreements on the next End Turn.",
+                         "End agreement",perform)
+        else:
+            perform()
 
     def add_rival(self):
         try:
@@ -392,7 +437,8 @@ class App:
 
     def start_game(self):
         try:
-            self.game=new_game(self.empire,self.size,int(self.seed) if self.seed else None)
+            self.game=new_game(self.empire,self.size,int(self.seed) if self.seed else None,
+                               race_id=self.race_id,rival_race_id=self.rival_race_id)
         except (ValueError,SaveError) as exc:
             self.toast(str(exc),True)
             return
@@ -592,7 +638,9 @@ class App:
             elif self.screen=="empire":
                 self.close_empire()
             elif self.screen=="rival":
-                self.go("empire")
+                self.go(self.rival_return)
+            elif self.screen=="diplomacy":
+                self.close_diplomacy()
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
@@ -641,6 +689,8 @@ class App:
                 self.open_empire()
             elif event.key==pg.K_f:
                 self.open_fleets()
+            elif event.key==pg.K_d:
+                self.open_diplomacy()
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
@@ -654,7 +704,9 @@ class App:
                     self.change_empire_page(delta)
                 elif self.screen=="fleets":
                     self.change_fleet_page(delta)
-                else:
+                elif self.screen=="rival":
+                    self.change_rival_page(delta)
+                elif self.screen in ("system","planet","colony","shipyard"):
                     self.cycle_planet(delta)
 
     def is_active(self,button):
@@ -677,6 +729,8 @@ class App:
             self.button("open_empire","Empire · I",(998,39,179,46),self.open_empire)
         if self.screen in GAME_SCREENS and self.screen!="fleets":
             self.button("open_fleets","Fleets · F",(807,39,177,46),self.open_fleets)
+        if self.screen in GAME_SCREENS and self.screen!="diplomacy":
+            self.button("open_diplomacy","Diplomacy · D",(590,39,203,46),self.open_diplomacy)
         text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
         if back:
@@ -730,27 +784,22 @@ class App:
         self.field=None
         pg.key.stop_text_input()
 
+    def choose_race(self,race_id):
+        if self.empire==RACES[self.race_id].default_empire:
+            self.empire=RACES[race_id].default_empire
+        self.race_id=race_id
+        if self.rival_race_id==race_id:
+            self.rival_race_id=default_rival_race(race_id)
+        self.field=None
+        pg.key.stop_text_input()
+
+    def choose_rival_race(self,race_id):
+        self.rival_race_id=race_id
+        self.field=None
+        pg.key.stop_text_input()
+
     def draw_setup(self):
-        self.chrome("NEW EXPEDITION",lambda:self.go("menu"))
-        self.heading("01  /  FOUND YOUR EMPIRE","Every empire starts somewhere.","Name your civilization and chart a new galaxy.")
-        self.input_box("empire","EMPIRE NAME",self.empire,(256,343,590,62),"Your civilization")
-        text(self.canvas,"GALAXY SIZE",(256,445),12,MUTED,"mono",1)
-        for i,(size,count) in enumerate(GALAXY_SIZES.items()):
-            r=pg.Rect(256+i*199,479,190,99)
-            self.button("size_"+size,"",r,lambda s=size:self.choose_size(s))
-            if self.size==size:
-                pg.draw.rect(self.canvas,GOLD,r,1)
-                pg.draw.circle(self.canvas,GOLD,(r.right-19,r.y+21),3)
-            text(self.canvas,size,(r.x+17,r.y+19),18,GOLD if self.size==size else INK)
-            text(self.canvas,f"{count} star systems",(r.x+17,r.y+56),12,MUTED)
-        self.input_box("seed","GALAXY SEED · OPTIONAL",self.seed,(256,650,340,60),"Random")
-        paragraph(self.canvas,"The same seed and size create the same stars.",(620,662),235,13,MUTED,21)
-        self.button("launch","Begin expedition",(256,760,590,62),self.start_game,"primary")
-        panel(self.canvas,(939,340,252,368))
-        emblem(self.canvas,1065,405,1.25)
-        text(self.canvas,"YOUR FIRST CHAPTER",(961,477),10,GOLD,"mono",1)
-        paragraph(self.canvas,"A homeworld at Sol. An uncharted future.",(961,510),208,20,INK,31)
-        paragraph(self.canvas,"This prototype lets you explore the map and save your campaign.",(961,602),208,13,MUTED,22)
+        draw_setup(self)
 
     def change_load_page(self,delta):
         pages=max(1,(len(self.load_rows)+3)//4)
@@ -921,6 +970,9 @@ class App:
     def draw_rival(self):
         draw_rival(self)
 
+    def draw_diplomacy(self):
+        draw_diplomacy(self)
+
     def draw_shipyard(self):
         draw_shipyard(self)
 
@@ -932,10 +984,10 @@ class App:
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Build colonies and ships, settle new worlds, and develop your economy alongside an expanding AI rival. Inspect its progress in Empire → Rival report. Save and resume your campaigns.",
+        paragraph(self.canvas,"Choose a race, develop your empire, and compete with an expanding AI rival. Send envoys and negotiate trade or research agreements through Diplomacy. Save and resume your campaigns.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Population growth, food, a research tree, warships, diplomacy and tactical combat. Your growing empire is the foundation for those systems.",
+        paragraph(self.canvas,"Population growth, food, a research tree, more empires, warships and tactical combat. Your growing empire is the foundation for those systems.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)

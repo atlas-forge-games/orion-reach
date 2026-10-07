@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.6
+# Orion Reach — Python prototype 0.7
 
-A playable colony-building and interstellar expansion prototype with an AI rival for a
+A playable colony-building and interstellar expansion prototype with races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -64,7 +64,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
 - **Continue** appears when a campaign is already open in the current session.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
-  and an optional reproducible seed.
+  an optional reproducible seed, and player/rival race choices.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
 - Click a planet's globe or caption to open its **planet overview**: environment,
   size, gravity, minerals, habitability, orbital distance and colony status.
@@ -87,6 +87,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   **Empire → Rival report** to inspect its economy, colonies and recent activity.
 - Cyan marks your colonies and ships; orange marks the rival's. Rival worlds
   can be surveyed, with construction controls disabled.
+- **Diplomacy · D** opens race profiles, relations, envoys, gifts, trade pacts,
+  research agreements and the rival's recent responses. Treaty income is
+  included in Empire Overview and Rival report.
 - Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
   and Continue preserve the active overview. Previous/Next controls browse
   systems and planets, including systems with no planets.
@@ -95,14 +98,15 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
-  ship orders, settlement, adding a rival, End Turn, return to menu and normal exit.
+  ship orders, settlement, adding a rival, diplomatic actions, End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
 **Scope:** construct buildings and colony ships, travel between systems, and
-found additional colonies alongside an expanding AI empire. Population growth,
-food, a technology tree, combat, warships, diplomacy and victory conditions are future work. Research
+found additional colonies alongside an expanding AI empire, and negotiate
+trade and research agreements. Population growth, food, a technology tree,
+combat, warships, additional AI empires and victory conditions are future work. Research
 points accumulate but cannot yet be spent. Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized. Settings contains interface sounds,
@@ -167,8 +171,8 @@ system without your colonies. It preserves your existing assets and progress.
 Older saves do not gain an opponent automatically. If no suitable starting world
 remains, Add rival is disabled. Adding a rival autosaves the campaign.
 
-- The AI builds factories and trade centres first, then develops research and
-  mining. Its strongest colony produces colony ships; other colonies develop
+- The AI builds factories first; its race determines the order of trade centres,
+  research labs and mines. Its strongest colony produces colony ships; other colonies develop
   their economies. The shipyard's development target rises as the empire grows.
 - Ships settle suitable unclaimed planets in their current system, otherwise
   travel to nearby systems with available worlds. The rival avoids sending more
@@ -188,10 +192,66 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
 - Your Empire Overview and Fleets list only your assets. A system can contain
   colonies from both empires, shown with cyan and orange rings. Neither side
   can take over an established colony. This is competition for territory and
-  development; combat, diplomacy and victory conditions come later.
+  development, with trade and research agreements available through Diplomacy.
+  Combat and victory conditions come later.
 
 AI decisions are deterministic for a given game state. Saving and loading
 preserves its finances, orders, ships, ownership and recent activity.
+
+## Races and diplomacy
+
+Choose your own race and the rival's race in **New Game**. There is still one
+rival empire, the Helios Directorate. These are original prototype identities:
+
+| Race | Identity | Diplomatic trait | AI preferences |
+| --- | --- | --- | --- |
+| Terrans | Adaptable human diplomats | Envoys improve relations by 12 instead of 8 | Balanced development; trade at +20, research at +30 relations |
+| Kharuun | Crystalline builders and engineers | An active trade pact yields 6 CR/turn instead of 5 | Mining before labs; trade at +15, research at +45 relations |
+| Aelari | Amphibious scholars and archivists | An active research agreement yields 4 RP/turn instead of 3 | Labs before trade centres; trade at +30, research at +15 relations |
+
+Traits apply to whichever empire belongs to that race. Race selection does not
+change building costs, base colony production, habitability or travel speed.
+For this version, every player race starts on Earth; the rival starts on a
+distant generated world. A race and an empire are separate: two empires may
+belong to the same race. Changing races does not overwrite a custom empire name.
+
+Open **Diplomacy** from the top bar or press **D**. The screen shows the rival's
+identity, a relations score from -100 to +100, agreement benefits and acceptance
+thresholds. An offer is accepted immediately when relations meet that rival
+race's threshold; otherwise it is declined with a reason. This is deterministic,
+with no hidden dice roll. The rival responds to your offers; unsolicited AI
+diplomatic proposals are not implemented yet.
+
+| Action | Effect | Cooldown |
+| --- | --- | --- |
+| Send envoy | Spend 10 CR; +8 relations, or +12 for Terrans | 3 turns |
+| Gift 50 CR | Transfer 50 CR from your treasury to the rival; +15 relations | 5 turns |
+| Propose trade pact | If accepted, +5 CR/turn to each empire; Kharuun receive +6 | All treaty offers share 3 turns |
+| Propose research agreement | If accepted, +3 RP/turn to each empire; Aelari receive +4 | All treaty offers share 3 turns |
+| End an agreement | Stop that agreement's benefits for both empires; -15 relations | Treaty offers wait at least 3 turns |
+
+A cooldown of three turns means an action used on turn 1 becomes available
+again on turn 4. Declined proposals also trigger the treaty-offer cooldown.
+Envoys and gifts are disabled when relations reach +100. Their displayed gains
+are capped at that maximum.
+
+Treaties have no signing fee, ongoing cost or fixed expiry. Each active treaty
+adds +1 relations per End Turn. Income starts on the next End Turn, belongs to
+each empire separately, and never increases a planet's local industry.
+Empire Overview and Rival report include it in their totals and identify the
+agreement contribution. Research points remain stored for a future technology tree.
+
+Ending an agreement requires confirmation. If relations fall below zero, the
+rival ends any remaining agreements at the beginning of the next End Turn,
+before income is collected. Envoys and gifts can restore relations. Diplomacy
+does not restrict travel or settlement; declarations of war, combat, alliances
+and border treaties are not implemented.
+
+Existing campaigns gain neutral diplomatic contact when loaded if a rival
+already exists. Older player empires are assigned Terrans and existing Helios
+empires Kharuun, with no changes to their assets or treasury. Campaigns without
+a rival stay peaceful: **Diplomacy → Rival report → Add rival** opens contact.
+Race choices are fixed for the campaign; start a new game to choose others.
 
 ## Build, travel and colonize
 
@@ -288,6 +348,8 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Settle a world | Colonize on its Overview tab, with a colony ship in the system |
 | Browse fleet or shipyard queue pages | Page Up / Down, mouse wheel, or Previous / Next |
 | Inspect or add the AI opponent | Empire → Rival report |
+| Open / close Diplomacy | D, or the Diplomacy button while playing |
+| Choose player and rival races | New Game |
 
 ## Save locations
 
@@ -306,14 +368,15 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.6 loads all earlier prototype saves without rewriting the
-source file during loading. Existing colonies and ships become player-owned;
+**Compatibility:** v0.7 loads all earlier prototype saves without rewriting the
+source file during loading. v0.6 ownership and the rival economy are retained,
+and neutral diplomacy is added. Earlier colonies and ships become player-owned;
 no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 5**, including empire ownership and the rival's
-finances, homeworld and recent activity. They cannot be opened by v0.5 or
+New saves use **format version 6**, including races, relations, agreements,
+cooldown turns and diplomatic history. They cannot be opened by v0.6 or
 earlier. Loading starts at the galaxy map with system/planet selection retained.
 Keep an older manual snapshot if you plan to switch back; normal gameplay
 updates the autosave. Unissued route previews are not saved as orders.
@@ -333,6 +396,11 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
 | `orion/ai.py` | Deterministic rival construction, travel and settlement policy |
 | `orion/rival_view.py` | Rival economy, activity and colony survey report |
+| `orion/races.py` | Race identities, diplomatic traits and AI development preferences |
+| `orion/race_art.py` | Procedural diplomatic seals |
+| `orion/setup_view.py` | Campaign and race selection screen |
+| `orion/diplomacy.py` | Relations, offers, treaty income, cooldowns and diplomatic history |
+| `orion/diplomacy_view.py` | Diplomatic contact and negotiation screen |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard, fleets and galaxy-map routes |
 | `orion/fleet_art.py` | Procedural transport icons |
@@ -346,6 +414,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
+| `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. The next practical increments are population
@@ -368,10 +437,11 @@ python main.py --headless --screen empire --screenshot empire.png
 python main.py --headless --screen shipyard --screenshot shipyard.png
 python main.py --headless --screen fleets --screenshot fleets.png
 python main.py --headless --screen rival --screenshot rival.png
+python main.py --headless --screen diplomacy --screenshot diplomacy.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, and `about`.
+`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.
@@ -415,7 +485,7 @@ screenshots are included. `.gitattributes` keeps line endings consistent.
 For the next feature, start a branch from the working baseline:
 
 ```sh
-git switch -c feature/basic-ai
+git switch -c feature/diplomacy-races
 ```
 
 After editing and checking the game, commit the change and push that branch.

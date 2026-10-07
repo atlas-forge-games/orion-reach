@@ -2,6 +2,7 @@
 
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, travel_turns
+from .races import RACES
 
 
 def available_worlds(system):
@@ -12,8 +13,8 @@ def world_quality(planet):
     return planet.habitability, planet.building_capacity, RICHNESSES.index(planet.richness), -planet.id
 
 
-def development_choice(planet):
-    for item in ("factory", "trade_center", "research_lab", "mine"):
+def development_choice(planet, race_id="kharuun"):
+    for item in RACES[race_id].development:
         if item not in planet.buildings:
             return item
     # Keep adding a mix of industry, income and research on larger worlds.
@@ -64,7 +65,7 @@ def run_ai(game):
                 fleet_size += 1
                 game.rival_event(f"Started a colony ship on {planet.name}.")
         elif planet.free_slots > 0:
-            item = development_choice(planet)
+            item = development_choice(planet, game.opponent.race_id)
             if game.build_error(system.id, planet.id, item, owner=RIVAL) is None:
                 game.queue_building(system.id, planet.id, item, owner=RIVAL)
                 game.rival_event(f"Started {PROJECTS[item].name} on {planet.name}.")

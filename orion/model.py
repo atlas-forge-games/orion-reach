@@ -9,6 +9,9 @@ from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES, STARTING_COLONISTS, travel_turns
+from .races import RACES, default_rival_race
+from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
+                        agreement_yields, make_contact, take_action)
 
 GALAXY_SIZES = {"Compact": 24, "Standard": 48, "Expansive": 72}
 STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dwarf")
@@ -126,9 +129,10 @@ class Opponent:
     credits: int = 120
     research: int = 0
     events: list[AIEvent] = field(default_factory=list)
+    race_id: str = "kharuun"
 
     @classmethod
-    def from_dict(cls, data, systems, turn):
+    def from_dict(cls, data, systems, turn, *, version=6):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -152,7 +156,10 @@ class Opponent:
             parsed.append(AIEvent(**event))
         if any(a.turn > b.turn for a, b in zip(parsed, parsed[1:])):
             raise ValueError
-        return cls(**{**data, "events": parsed})
+        race_id = data["race_id"] if version >= 6 else "kharuun"
+        if not isinstance(race_id, str) or race_id not in RACES:
+            raise ValueError
+        return cls(**{**data, "events": parsed, "race_id": race_id})
 
 
 @dataclass
@@ -364,6 +371,17 @@ class GameState:
     ships: list[Ship] = field(default_factory=list)
     next_ship_id: int = 1
     opponent: Opponent | None = None
+    race_id: str = "terran"
+    diplomacy: DiplomacyState | None = None
+
+    def diplomacy_error(self, action):
+        return action_error(self, action)
+
+    def diplomacy_action(self, action):
+        return take_action(self, action)
+
+    def diplomatic_yields(self, owner=PLAYER):
+        return agreement_yields(self, owner)
 
     def _empire(self, owner):
         if owner == PLAYER:
@@ -413,12 +431,16 @@ class GameState:
             return "No unclaimed habitable world outside your systems is available."
         return None
 
-    def add_opponent(self):
+    def add_opponent(self, race_id=None):
+        race_id = default_rival_race(self.race_id) if race_id is None else race_id
+        if not isinstance(race_id, str) or race_id not in RACES:
+            raise RuleError("Unknown rival race.")
         error = self.opponent_start_error()
         if error:
             raise RuleError(error)
         system, planet = self.opponent_home()
-        self.opponent = Opponent("Helios Directorate", system.id, planet.id)
+        self.opponent = Opponent("Helios Directorate", system.id, planet.id, race_id=race_id)
+        self.diplomacy = make_contact(self.turn, self.opponent.name, race_id)
         planet.colonized, planet.owner, planet.population = True, RIVAL, 8
         self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
         return planet
@@ -548,7 +570,7 @@ class GameState:
         return self.empire_rates_for(PLAYER)
 
     def empire_rates_for(self, owner):
-        income, research = 0, 0
+        income, research = self.diplomatic_yields(owner)
         for system in self.systems:
             for planet in system.worlds:
                 if planet.owner != owner:
@@ -560,6 +582,7 @@ class GameState:
 
     def advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
+        advance_diplomacy(self)
         if self.opponent is not None:
             from .ai import run_ai
             run_ai(self)
@@ -603,7 +626,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=5):
+    def from_dict(cls, data, *, version=6):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -672,20 +695,34 @@ class GameState:
                     raise ValueError
             opponent = None
             if version >= 5 and data["opponent"] is not None:
-                opponent = Opponent.from_dict(data["opponent"], systems, data["turn"])
+                opponent = Opponent.from_dict(data["opponent"], systems, data["turn"], version=version)
             if opponent is None and (any(p.owner == RIVAL for s in systems for p in s.worlds)
                                      or any(s.owner == RIVAL for s in ships)):
                 raise ValueError
+            race_id = data["race_id"] if version >= 6 else "terran"
+            if not isinstance(race_id, str) or race_id not in RACES:
+                raise ValueError
+            if version >= 6:
+                diplomacy = DiplomacyState.from_dict(data["diplomacy"], data["turn"]) if data["diplomacy"] is not None else None
+                if (opponent is None) != (diplomacy is None):
+                    raise ValueError
+            else:
+                diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
             return cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
-                       research, ships, next_ship, opponent)
+                       research, ships, next_ship, opponent, race_id, diplomacy)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 
 
-def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True):
+def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
+             race_id="terran", rival_race_id=None):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
+    if not isinstance(race_id, str) or race_id not in RACES:
+        raise SaveError("Choose a valid player race.")
+    if rival_race_id is not None and (not isinstance(rival_race_id, str) or rival_race_id not in RACES):
+        raise SaveError("Choose a valid rival race.")
     if seed is None:
         seed = random.SystemRandom().randrange(1_000_000_000)
     if not _integer(seed, 0, 999_999_999):
@@ -708,7 +745,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
                                   rng.randint(0, 7), rng.choice(BIOMES), rng.choice(RICHNESSES)))
     for system in systems:
         system.worlds = generate_planets(system, seed)
-    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems)
+    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems, race_id=race_id)
     if with_ai and game.opponent_start_error() is None:
-        game.add_opponent()
+        game.add_opponent(rival_race_id)
     return game

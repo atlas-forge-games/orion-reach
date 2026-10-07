@@ -6,6 +6,7 @@ from .production import PROJECTS
 from .colony_view import turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, colony_rows, summarize_empire
 from .planet_art import draw_planet
+from .races import RACES
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, arrow, panel, shorten, text
 
 
@@ -20,15 +21,15 @@ def draw_empire(app):
 
     app.chrome("EMPIRE OVERVIEW")
     back_name = {"galaxy": "Galaxy map", "system": "System overview", "shipyard": "Shipyard", "fleets": "Fleets",
-                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report"}[app.empire_return]
+                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report", "diplomacy": "Diplomacy"}[app.empire_return]
     app.button("empire_back", f"←  {back_name} · I", (64, 124, 282, 46),
                app.close_empire, "ghost")
     if app.empire_return != "galaxy":
         app.button("empire_galaxy", "Galaxy map", (361, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
-    app.button("empire_rival", "Rival report", (556, 124, 213, 46), lambda: app.go("rival"))
+    app.button("empire_rival", "Rival report", (556, 124, 213, 46), app.open_rival)
     text(surface, f"YEAR {game.year}   ·   TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(game.empire_name, 930, 43, "title"), (64, 190), 43, INK, "title")
-    text(surface, "Your colonies, economy and construction at a glance.", (66, 251), 14, MUTED)
+    text(surface, f"{RACES[game.race_id].name} · Your colonies, economy and construction at a glance.", (66, 251), 14, MUTED)
     text(surface, f"{summary.projects} PROJECT{'S' if summary.projects != 1 else ''} IN QUEUE",
          (1376, 215), 11, GOLD, "mono", 1, right=True)
     text(surface, f"{summary.idle} idle {'colonies' if summary.idle != 1 else 'colony'}", (1376, 248), 13, MUTED, right=True)
@@ -131,6 +132,8 @@ def draw_empire(app):
                enabled=app.empire_page<last_page)
     app.button("empire_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("empire_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "All output rates are per turn. Industry stays on its planet.", (400, 835), 12, MUTED)
+    caption = (f"Agreements included: +{summary.agreement_income} CR, +{summary.agreement_research} RP / turn."
+               if summary.agreement_income or summary.agreement_research else "All output rates are per turn. Industry stays on its planet.")
+    text(surface, caption, (400, 835), 12, MUTED)
     text(surface, "Page Up / Down or mouse wheel: browse colonies", (400, 857), 11, FAINT)
     app.button("empire_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)

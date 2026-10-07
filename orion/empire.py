@@ -19,6 +19,8 @@ class EmpireSummary:
     capacity: int = 0
     projects: int = 0
     idle: int = 0
+    agreement_income: int = 0
+    agreement_research: int = 0
 
 
 def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owner=PLAYER):
@@ -49,14 +51,17 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
 def summarize_empire(game, *, owner=PLAYER):
     colonies = [p for _, p in colony_rows(game, owner=owner)]
     outputs = [planet.yields_per_turn for planet in colonies]
+    trade, research = game.diplomatic_yields(owner)
     return EmpireSummary(
         colonies=len(colonies),
         population=sum(p.population for p in colonies),
         industry=sum(output[0] for output in outputs),
-        income=sum(output[1] for output in outputs),
-        research=sum(output[2] for output in outputs),
+        income=sum(output[1] for output in outputs)+trade,
+        research=sum(output[2] for output in outputs)+research,
         used_slots=sum(p.used_slots for p in colonies),
         capacity=sum(p.building_capacity for p in colonies),
         projects=sum(len(p.construction_queue) for p in colonies),
         idle=sum(not p.construction_queue for p in colonies),
+        agreement_income=trade,
+        agreement_research=research,
     )

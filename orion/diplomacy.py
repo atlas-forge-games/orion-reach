@@ -1,0 +1,164 @@
+"""Bilateral diplomacy, transparent AI decisions and mutually beneficial treaties."""
+
+from dataclasses import dataclass, field
+
+from .races import RACES
+
+ENVOY_COST, ENVOY_RELATIONS, ENVOY_COOLDOWN = 10, 8, 3
+GIFT_COST, GIFT_RELATIONS, GIFT_COOLDOWN = 50, 15, 5
+OFFER_COOLDOWN = 3
+TRADE_INCOME, RESEARCH_INCOME = 5, 3
+BREAK_PENALTY = 15
+ACTIONS = ("envoy", "gift", "trade", "research", "end_trade", "end_research")
+
+
+@dataclass
+class DiplomaticEvent:
+    turn: int
+    message: str
+
+
+@dataclass
+class DiplomacyState:
+    relations: int = 0
+    trade_active: bool = False
+    research_active: bool = False
+    envoy_ready_turn: int = 1
+    gift_ready_turn: int = 1
+    offer_ready_turn: int = 1
+    events: list[DiplomaticEvent] = field(default_factory=list)
+
+    @property
+    def attitude(self):
+        if self.relations >= 60:
+            return "Warm"
+        if self.relations >= 25:
+            return "Friendly"
+        if self.relations >= 0:
+            return "Neutral"
+        return "Wary" if self.relations >= -30 else "Hostile"
+
+    def record(self, turn, message):
+        self.events.append(DiplomaticEvent(turn, message))
+        self.events = self.events[-12:]
+
+    def improve(self, amount):
+        self.relations = min(100, max(-100, self.relations+amount))
+
+    @classmethod
+    def from_dict(cls, data, turn):
+        def integer(value, lower, upper):
+            return type(value) is int and lower <= value <= upper
+        if not isinstance(data, dict) or not integer(data["relations"], -100, 100):
+            raise ValueError
+        for key in ("trade_active", "research_active"):
+            if type(data[key]) is not bool:
+                raise ValueError
+        for key, cooldown in (("envoy_ready_turn", ENVOY_COOLDOWN), ("gift_ready_turn", GIFT_COOLDOWN),
+                              ("offer_ready_turn", OFFER_COOLDOWN)):
+            if not integer(data[key], 1, turn+cooldown):
+                raise ValueError
+        if not isinstance(data["events"], list) or len(data["events"]) > 12:
+            raise ValueError
+        events = []
+        for event in data["events"]:
+            if not isinstance(event, dict) or not integer(event["turn"], 1, turn):
+                raise ValueError
+            message = event["message"]
+            if (not isinstance(message, str) or not 0 < len(message) <= 180
+                    or not message.strip() or not message.isprintable()):
+                raise ValueError
+            events.append(DiplomaticEvent(**event))
+        if any(a.turn > b.turn for a, b in zip(events, events[1:])):
+            raise ValueError
+        return cls(**{**data, "events": events})
+
+
+def make_contact(turn, name, race_id):
+    state = DiplomacyState()
+    state.record(turn, f"Contact established with {name} ({RACES[race_id].name}).")
+    return state
+
+
+def agreement_yields(game, owner):
+    state = game.diplomacy
+    if state is None or owner not in ("player", "rival"):
+        return 0, 0
+    race = RACES[game.race_id if owner == "player" else game.opponent.race_id]
+    return (TRADE_INCOME+race.trade_bonus if state.trade_active else 0,
+            RESEARCH_INCOME+race.research_bonus if state.research_active else 0)
+
+
+def action_error(game, action):
+    if action not in ACTIONS:
+        return "Unknown diplomatic action."
+    state = game.diplomacy
+    if game.opponent is None or state is None:
+        return "Add a rival empire to establish diplomatic contact."
+    if action in ("trade", "research") and getattr(state, f"{action}_active"):
+        return "This agreement is already active."
+    if action in ("end_trade", "end_research"):
+        if not getattr(state, f"{action[4:]}_active"):
+            return "This agreement is not active."
+        return None
+    cooldown = (state.envoy_ready_turn if action == "envoy" else
+                state.gift_ready_turn if action == "gift" else state.offer_ready_turn)
+    if game.turn < cooldown:
+        return f"Available on turn {cooldown}."
+    cost = ENVOY_COST if action == "envoy" else GIFT_COST if action == "gift" else 0
+    if game.credits < cost:
+        return f"Requires {cost} credits."
+    if state.relations == 100 and action in ("envoy", "gift"):
+        return "Relations are already at their maximum."
+    return None
+
+
+def take_action(game, action):
+    from .model import RuleError
+    error = action_error(game, action)
+    if error:
+        raise RuleError(error)
+    state, rival = game.diplomacy, game.opponent
+    if action == "envoy":
+        game.credits -= ENVOY_COST
+        gain = ENVOY_RELATIONS+RACES[game.race_id].envoy_bonus
+        before = state.relations
+        state.improve(gain)
+        state.envoy_ready_turn = game.turn+ENVOY_COOLDOWN
+        message = f"Envoy welcomed. Relations +{state.relations-before}; {ENVOY_COST} CR spent."
+    elif action == "gift":
+        game.credits -= GIFT_COST
+        rival.credits += GIFT_COST
+        before = state.relations
+        state.improve(GIFT_RELATIONS)
+        state.gift_ready_turn = game.turn+GIFT_COOLDOWN
+        message = f"Gift of {GIFT_COST} CR delivered. Relations +{state.relations-before}."
+    elif action in ("trade", "research"):
+        threshold = getattr(RACES[rival.race_id], f"{action}_threshold")
+        state.offer_ready_turn = game.turn+OFFER_COOLDOWN
+        title = "Trade pact" if action == "trade" else "Research agreement"
+        if state.relations >= threshold:
+            setattr(state, f"{action}_active", True)
+            message = f"{title} accepted. Benefits begin on the next End Turn."
+        else:
+            message = f"{title} declined. {rival.name} requires relations of {threshold:+}; currently {state.relations:+}."
+    else:
+        setattr(state, f"{action[4:]}_active", False)
+        before = state.relations
+        state.improve(-BREAK_PENALTY)
+        state.offer_ready_turn = max(state.offer_ready_turn, game.turn+OFFER_COOLDOWN)
+        title = "Trade pact" if action == "end_trade" else "Research agreement"
+        message = f"{title} ended. Relations -{before-state.relations}; its benefits stop immediately."
+    state.record(game.turn, message)
+    return message
+
+
+def advance_diplomacy(game):
+    """Resolve distrust before collecting yields, then build trust through treaties."""
+    state = game.diplomacy
+    if state is None:
+        return
+    if state.relations < 0 and (state.trade_active or state.research_active):
+        state.trade_active = state.research_active = False
+        state.record(game.turn+1, f"{game.opponent.name} ended remaining agreements because relations fell below 0.")
+    state.improve(int(state.trade_active)+int(state.research_active))

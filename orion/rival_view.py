@@ -3,18 +3,22 @@
 from .empire import colony_rows, summarize_empire
 from .model import RIVAL
 from .production import PROJECTS
+from .races import RACES
 from .ui import FAINT, GOLD, INK, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 
 def draw_rival(app):
     surface, game = app.canvas, app.game
     app.chrome("RIVAL INTELLIGENCE")
-    app.button("rival_back", "←  Empire overview", (64, 124, 269, 46), lambda: app.go("empire"), "ghost")
+    back_name = "Diplomacy" if app.rival_return == "diplomacy" else "Empire overview"
+    app.button("rival_back", f"←  {back_name}", (64, 124, 269, 46), lambda: app.go(app.rival_return), "ghost")
     app.button("rival_galaxy", "Galaxy map", (349, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
+    app.button("rival_diplomacy", "Diplomacy · D", (537, 124, 226, 46), app.open_diplomacy)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     rival = game.opponent
     text(surface, rival.name if rival else "A rival on the horizon", (64, 190), 43, INK, "title")
-    text(surface, "AI EMPIRE  /  EXPANSION & DEVELOPMENT", (66, 255), 11, RIVAL_COLOR, "mono", 1)
+    race_name = RACES[rival.race_id].name.upper() if rival else "AI EMPIRE"
+    text(surface, f"{race_name}  /  EXPANSION & DEVELOPMENT", (66, 255), 11, RIVAL_COLOR, "mono", 1)
     if rival is None:
         panel(surface, (64, 309, 1312, 439))
         text(surface, "This campaign has no rival yet.", (94, 343), 29, INK, "title")
@@ -22,7 +26,7 @@ def draw_rival(app):
                   "It starts with one homeworld, 8 B inhabitants and 120 credits, and makes its first decisions when you end the turn.",
                   (96, 407), 1112, 19, MUTED, 32)
         paragraph(surface, "The rival builds its own economy and races you to settle worlds. "
-                  "Its colonies and ships appear in orange. Combat and diplomacy are not part of this version.",
+                  "Its colonies and ships appear in orange. Diplomacy opens when contact is established.",
                   (96, 539), 1112, 16, MUTED, 28)
         reason = game.opponent_start_error()
         app.button("add_rival", "Add rival", (95, 663, 283, 52), app.add_rival, "primary", enabled=reason is None)
@@ -74,5 +78,5 @@ def draw_rival(app):
              (65, 798), 13, MUTED)
     app.button("rival_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Expansion and development · Combat and diplomacy come later", (400, 848), 12, MUTED)
+    text(surface, "Income includes agreements · Open Diplomacy to negotiate", (400, 848), 12, MUTED)
     app.button("rival_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary")
