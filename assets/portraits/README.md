@@ -1,8 +1,9 @@
 # Orion Reach — race portraits v1
 
 Three original race portrait assets generated with the built-in image-generation tool.
-Extract this pack into the repository root to place the files under assets/portraits/.
-This is an art asset pack; it does not modify the game screens.
+The game uses these portraits on the New Game race cards and the Diplomacy
+screen, including your own empire's profile. Extract updates into the repository
+root to place the files under assets/portraits/.
 
 | Race | Portrait file |
 | --- | --- |
@@ -11,7 +12,10 @@ This is an art asset pack; it does not modify the game screens.
 | Aelari | aelari-v1.png |
 
 Each file is the unmodified generated PNG, with an opaque dark background.
-Keep the portraits square when displaying them. The existing race IDs are terran, kharuun and aelari.
+The renderer preserves their aspect ratio and caches loaded and scaled images.
+Missing or unreadable images fall back to the matching procedural race emblem.
+To replace a portrait, keep its filename and restart the game. The existing race
+IDs are terran, kharuun and aelari.
 
 ## Generation prompts
 
@@ -47,4 +51,3 @@ Scene/backdrop: understated deep charcoal-navy spacecraft embassy interior, soft
 Lighting/mood: soft cool key light from upper left, restrained warm rim light, dignified and thoughtful diplomatic encounter, readable face, no dramatic action.
 Constraints: original character design, no text, no letters, no logo, no watermark, no frame or card layout, no weapons, no extra figures. This is a portrait asset, not a screenshot or poster.
 Subject: an Aelari scholar-diplomat, an original amphibious alien species of ocean-born archivists. Smooth pearlescent blue-teal skin, an elongated but broad nonhuman head, large dark glassy eyes with subtle violet iris rings, a small expressive mouth, delicate external gill fans close to the sides of the neck and head, and a low translucent cranial crest. Fine lavender bioluminescent markings trace the temples and cheek ridges. No human hair, no human nose, no elf ears; elegant amphibian anatomy rather than a human painted blue. Thoughtful and serene expression. Sophisticated dark indigo diplomatic mantle, hood down, subtle violet and silver detailing. The luminous features should remain subtle enough for a quiet dignified diplomatic portrait.
-

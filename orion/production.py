@@ -21,8 +21,8 @@ SHIP_SPEED = .18  # Weighted galaxy-map distance per turn.
 STARTING_COLONISTS = 1  # Billions, included in the ship cost in this prototype.
 
 
-def travel_turns(origin, destination):
+def travel_turns(origin, destination, speed_bonus=0):
     if origin.id == destination.id:
         return 0
     distance = math.hypot((destination.x-origin.x)*1.4, destination.y-origin.y)
-    return max(1, math.ceil(distance/SHIP_SPEED))
+    return max(1, math.ceil(distance/(SHIP_SPEED*(1+speed_bonus/100))))

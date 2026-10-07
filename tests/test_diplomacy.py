@@ -166,7 +166,7 @@ class DiplomacyRulesTests(unittest.TestCase):
             for _ in range(70):
                 game.advance_turn()
             self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4)
-            self.assertGreater(game.opponent.research, 0)
+            self.assertTrue(game.opponent.technology.completed)
             self.assertEqual(game.credits, 680)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 

@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "format": "RGBA PNG",
+  "integration_status": "planet surface, colony controls and shipyard in prototype 0.8",
+  "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
+  "assets": [
+    {
+      "id": "headquarters",
+      "name": "Headquarters palace",
+      "file": "headquarters-v1.png",
+      "model_building_id": null,
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        29,
+        20,
+        1232,
+        1205
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "d40b248a574d78b06f5bbe3417a5502aefe1b53eb1a3df6ee0fc359b5936c9c9"
+    },
+    {
+      "id": "factory",
+      "name": "Factory",
+      "file": "factory-v1.png",
+      "model_building_id": "factory",
+      "width": 1536,
+      "height": 1024,
+      "substantial_alpha_bounds": [
+        63,
+        21,
+        1472,
+        979
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "08a79113b1572920121e2d27e1909843b5270270e772625964e15a4fbabc7b12"
+    },
+    {
+      "id": "shipyard",
+      "name": "Shipyard",
+      "file": "shipyard-v1.png",
+      "model_building_id": null,
+      "width": 1536,
+      "height": 1024,
+      "substantial_alpha_bounds": [
+        14,
+        15,
+        1526,
+        1005
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "26f77143e84c9acd24e3193993a856e63474412c15b6f8d1052071532d771d4b"
+    },
+    {
+      "id": "research_lab",
+      "name": "Research lab",
+      "file": "research_lab-v1.png",
+      "model_building_id": "research_lab",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        37,
+        104,
+        1224,
+        1114
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "f21b06b102738a87533c7d801876a0e694f00ce54502afb1ca1056759add89b3"
+    },
+    {
+      "id": "trade_center",
+      "name": "Trade centre",
+      "file": "trade_center-v1.png",
+      "model_building_id": "trade_center",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        10,
+        157,
+        1245,
+        1087
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "120926df5fdedb21e968c9bc2f53e4f7f0dd69264f8fceefbd412a085ac6ae80"
+    },
+    {
+      "id": "mine",
+      "name": "Mining complex",
+      "file": "mine-v1.png",
+      "model_building_id": "mine",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        18,
+        15,
+        1238,
+        1153
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "1c1da27f41befda4f9b56b9c069013a3ff90af9a3515be646baf4391d19f76db"
+    }
+  ]
+}

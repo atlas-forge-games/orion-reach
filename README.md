@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.7
+# Orion Reach — Python prototype 0.9
 
-A playable colony-building and interstellar expansion prototype with races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -64,10 +64,13 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
 - **Continue** appears when a campaign is already open in the current session.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
-  an optional reproducible seed, and player/rival race choices.
+  an optional reproducible seed, and player/rival race choices with illustrated portraits.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
 - Click a planet's globe or caption to open its **planet overview**: environment,
   size, gravity, minerals, habitability, orbital distance and colony status.
+- The planet overview includes a **colony surface scene** with illustrated buildings
+  and landscapes for all six environments. Click a building to inspect it,
+  the shipyard to build ships, or the headquarters palace to open the empire report.
 - Sol contains Mercury, Venus, Earth and Mars. Other systems have reproducible
   planet data and distinct illustrations for six environment types.
 - The planet screen has **Overview**, **Colony** and **Shipyard** tabs. Earth is your starting
@@ -87,9 +90,12 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   **Empire → Rival report** to inspect its economy, colonies and recent activity.
 - Cyan marks your colonies and ships; orange marks the rival's. Rival worlds
   can be surveyed, with construction controls disabled.
-- **Diplomacy · D** opens race profiles, relations, envoys, gifts, trade pacts,
+- **Diplomacy · D** opens race portraits and profiles, relations, envoys, gifts, trade pacts,
   research agreements and the rival's recent responses. Treaty income is
   included in Empire Overview and Rival report.
+- **Research · R** opens eight branches, each with two tiers and two mutually
+  exclusive choices per tier. Discover technologies that improve production,
+  science, commerce, construction prices, travel and colonization. The rival researches too.
 - Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
   and Continue preserve the active overview. Previous/Next controls browse
   systems and planets, including systems with no planets.
@@ -98,16 +104,16 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
-  ship orders, settlement, adding a rival, diplomatic actions, End Turn, return to menu and normal exit.
+  ship orders, settlement, adding a rival, diplomatic actions, research choices, End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
 **Scope:** construct buildings and colony ships, travel between systems, and
 found additional colonies alongside an expanding AI empire, and negotiate
-trade and research agreements. Population growth, food, a technology tree,
-combat, warships, additional AI empires and victory conditions are future work. Research
-points accumulate but cannot yet be spent. Planet attributes, population and
+trade and research agreements, and make permanent technology choices. Population growth, food,
+combat, warships, additional AI empires and victory conditions are future work.
+Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized. Settings contains interface sounds,
 not music.
@@ -139,6 +145,9 @@ habitability does not change it in this version.
 | Trade centre | 40 | 24 | +4 credits |
 | Research lab | 50 | 30 | +4 research points |
 
+These are base values. Discovered technologies change the prices and outputs
+shown in the catalogue. Capacity and work costs remain unchanged.
+
 - Industry advances one sequential queue on each colony. Overflow work can
   start the next queued project in the same turn; unused industry is not stored.
 - The catalogue estimates completion after any projects already in the queue,
@@ -147,7 +156,8 @@ habitability does not change it in this version.
   completed building starts producing on the following turn.
 - Click a queued slot to inspect it and **Cancel**. An unstarted project returns
   its full credit cost; a partially built project refunds
-  `floor(cost × remaining work / total work)`. The displayed refund is exact.
+  `floor(credits actually paid × remaining work / total work)`. The displayed refund
+  is exact, even if a discount is discovered after the order was placed.
 - Click an operational building to **Demolish** it. Confirmation is required;
   its output stops immediately and its construction cost is not refunded.
 - Uncolonized planets show their capacity, with construction disabled until
@@ -157,6 +167,57 @@ Every colony has a base of 6 industry per turn and one credit per billion
 inhabitants. There is no upkeep or population growth yet. All colony income and
 research contribute to the empire totals. Costs, work and capacities can be
 tuned in `orion/buildings.py`.
+
+## Research and discovery
+
+Open **Research · R** from any gameplay screen, or press **R**. Build a research
+lab in a colony to start producing points. Research agreements and discovered
+technologies can also provide research income.
+
+- Choose a branch, then one of the two technologies in its first tier.
+  **Tier I costs 40 RP; Tier II costs 100 RP.** All eight branches are available
+  from the start. Completing a tier unlocks the next tier in that branch.
+- Confirming commits to that technology permanently. Its alternative is
+  excluded, and the active project cannot be cancelled or switched. One
+  empire-wide project runs at a time. Browse other branches while it progresses.
+- Banked points are applied immediately when you choose; a large bank can
+  complete the project immediately. Otherwise, End Turn applies new research
+  income. A project can wait at zero progress until you build a lab.
+- Excess points are retained. With no active project, all research is banked.
+  Choose your next project after a discovery; there is no automatic player queue.
+- Research completion happens after the turn's production, travel and income.
+  A newly discovered bonus applies to future actions and the following turn's output.
+  The screen shows progress, estimated turns, income, banked points and excluded choices.
+- Each empire has independent discoveries and points. The AI uses the same
+  costs and restrictions, chooses according to its race, and reports discoveries
+  and its current project in Rival report. Technology trading is not implemented.
+
+| Branch | Tier I: choose one | Tier II: choose one |
+| --- | --- | --- |
+| Construction | Automated Factories / Civil Engineering | Prefabricated Structures / Orbital Assembly |
+| Power & Propulsion | Ion Drives / Compact Reactors | Fusion Drives / Fusion Grids |
+| Physics | Research Instruments / Field Laboratories | Planetary Observatories / Quantum Optics |
+| Force Fields | Radiation Shields / Habitat Shields | Thermal Barriers / Industrial Force Fields |
+| Materials & Chemistry | Deep Core Drills / Lightweight Alloys | Superconductors / Composite Structures |
+| Biology | Colony Biospheres / Symbiotic Farming | Colony Biogenesis / Ecology Networks |
+| Computers | Research Networks / Trade Algorithms | Distributed Computing / Planetary Automation |
+| Society | Colonial Administration / Scientific Institutes | Commerce Guilds / Cultural Exchange |
+
+All 32 options have effects on existing game systems, described on their cards.
+You can discover up to 16 per campaign. Building bonuses affect existing and
+future copies; flat colony bonuses affect every owned colony. Bonuses add
+together. Percentage discounts add and the final credit price rounds up.
+Research never changes the price already paid for a project.
+
+Speed bonuses also add; both drive technologies give +75% speed. A voyage
+keeps its departure speed until arrival, including across save/load. New orders
+use your latest speed. Population bonuses apply when settling a new colony,
+including with an older ship; existing colonies do not gain population. Biology
+does not add food or automatic population growth in this first version.
+Radiation Shields allows barren colonies; Thermal Barriers allows volcanic
+colonies. These habitats do not change the world's natural habitability.
+
+![Research screen](screenshots/research.png)
 
 ## Basic AI opponent
 
@@ -198,6 +259,36 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
 AI decisions are deterministic for a given game state. Saving and loading
 preserves its finances, orders, ships, ownership and recent activity.
 
+## Planet surface and building graphics
+
+Open a planet's **Overview** tab to see its surface. Terran, Ocean, Desert,
+Tundra, Barren and Volcanic worlds have distinct seeded landscapes. The small
+globe beside the tabs retains the planetary view.
+
+- Completed factories, mines, research labs and trade centres appear on the
+  surface. Repeated types share a graphic with a count, such as **Factory ×3**.
+- Queued types that have no completed building yet appear as faded previews.
+  Counts and previews update after construction, cancellation, demolition and loading.
+- Clicking a building opens the Colony tab and selects its first completed copy;
+  if none is finished, it selects the first queued project of that type.
+  Use the individual Colony slots to inspect other copies or queued projects.
+- The **headquarters palace** marks Earth for the player and the rival's original
+  homeworld for the AI. Click it for Empire Overview or Rival report.
+- A **shipyard** appears at every colony, reflecting its existing ability to build
+  colony ships. Click it to open the Shipyard tab.
+- The palace and shipyard are landmarks for existing capabilities. They use no
+  building slots, charge no construction cost and provide no additional yields.
+- Rival graphics open survey controls; construction, cancellation and demolition
+  remain restricted to their owner. Unsettled worlds show an empty landscape.
+
+The Colony catalogue, occupied slots and Shipyard also use the new building art.
+Sprites preserve transparency and aspect ratio, and are cached for rendering.
+Missing or unreadable PNGs fall back to a simple building symbol. Assets live in
+`assets/buildings/`; restart after replacing an image. All races currently share
+this first architectural style. Colony graphics work with existing saves.
+
+![Developed colony surface](screenshots/colony_surface.png)
+
 ## Races and diplomacy
 
 Choose your own race and the rival's race in **New Game**. There is still one
@@ -215,12 +306,23 @@ For this version, every player race starts on Earth; the rival starts on a
 distant generated world. A race and an empire are separate: two empires may
 belong to the same race. Changing races does not overwrite a custom empire name.
 
+Each race has an illustrated portrait on its New Game card. Diplomacy shows
+the rival's portrait and a smaller portrait of your own race. The PNG files live
+in `assets/portraits/`; replace one using the same filename and restart the game
+to change its appearance. Portraits preserve their aspect ratio and are cached
+for rendering. If an image is missing or unreadable, its race emblem appears
+instead. Portraits work with existing saves; no save-format change is needed.
+
+![Race selection with portraits](screenshots/setup.png)
+
 Open **Diplomacy** from the top bar or press **D**. The screen shows the rival's
 identity, a relations score from -100 to +100, agreement benefits and acceptance
 thresholds. An offer is accepted immediately when relations meet that rival
 race's threshold; otherwise it is declined with a reason. This is deterministic,
 with no hidden dice roll. The rival responds to your offers; unsolicited AI
 diplomatic proposals are not implemented yet.
+
+![Diplomacy with race portraits](screenshots/diplomacy.png)
 
 | Action | Effect | Cooldown |
 | --- | --- | --- |
@@ -239,7 +341,9 @@ Treaties have no signing fee, ongoing cost or fixed expiry. Each active treaty
 adds +1 relations per End Turn. Income starts on the next End Turn, belongs to
 each empire separately, and never increases a planet's local industry.
 Empire Overview and Rival report include it in their totals and identify the
-agreement contribution. Research points remain stored for a future technology tree.
+agreement contribution. Research points fund the active technology or enter the bank.
+The Cultural Exchange technology adds +3 to each active agreement's output for
+the empire that discovered it; the other empire's benefits are unchanged.
 
 Ending an agreement requires confirmation. If relations fall below zero, the
 rival ends any remaining agreements at the beginning of the next End Turn,
@@ -277,14 +381,14 @@ order is needed between planets in the same system.
 | Rule | Prototype behavior |
 | --- | --- |
 | Suitable planets | Uncolonized Terran, Ocean, Desert and Tundra worlds |
-| Hostile worlds | Barren and Volcanic require a later life-support technology |
+| Hostile worlds | Barren requires Radiation Shields; Volcanic requires Thermal Barriers |
 | Ship construction | Shares the sequential queue and industry with buildings; no building slot |
 | Queue capacity | Up to 20 total projects per planet |
 | Cancellation | Shipyard lists every queued project; refunds follow the same unspent-work rule as buildings |
-| Travel time | `ceil(hypot(1.4 * dx, dy) / 0.18)`, at least one turn between distinct systems |
+| Travel time | `ceil(hypot(1.4 * dx, dy) / (0.18 * (1 + speed bonus / 100)))`, minimum one turn between distinct systems |
 | Travel restrictions | Orders require a ship in orbit; no mid-flight rerouting, fuel cost or range limit yet |
 | Settlement | Requires an arrived colony ship in the target system; consumes exactly one ship |
-| Population | Starting colonists are included in ship cost; homeworld population is not deducted in this version |
+| Population | 1 B starting colonists plus Biology bonuses; included in ship cost, with no homeworld deduction |
 
 Unused construction overflow follows the existing building rules. A ship
 finishes in orbit and receives no automatic travel order. The colony economy
@@ -349,6 +453,8 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Browse fleet or shipyard queue pages | Page Up / Down, mouse wheel, or Previous / Next |
 | Inspect or add the AI opponent | Empire → Rival report |
 | Open / close Diplomacy | D, or the Diplomacy button while playing |
+| Open / close Research | R, or the Research button while playing |
+| Browse research branches | Click a branch or use Left / Right on the Research screen |
 | Choose player and rival races | New Game |
 
 ## Save locations
@@ -368,15 +474,18 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.7 loads all earlier prototype saves without rewriting the
-source file during loading. v0.6 ownership and the rival economy are retained,
+**Compatibility:** v0.9 loads all earlier prototype saves without rewriting the
+source file during loading. Existing research banks, construction payments,
+ships and travel times are preserved. Each empire starts with an empty research
+tree when upgrading from v0.8 or earlier; saved points can be spent immediately.
+v0.6 ownership and the rival economy are retained,
 and neutral diplomacy is added. Earlier colonies and ships become player-owned;
 no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 6**, including races, relations, agreements,
-cooldown turns and diplomatic history. They cannot be opened by v0.6 or
+New saves use **format version 7**, including discoveries, active research,
+construction payments, departure speeds, races and diplomacy. They cannot be opened by v0.8 or
 earlier. Loading starts at the galaxy map with system/planet selection retained.
 Keep an older manual snapshot if you plan to switch back; normal gameplay
 updates the autosave. Unissued route previews are not saved as orders.
@@ -397,10 +506,14 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/ai.py` | Deterministic rival construction, travel and settlement policy |
 | `orion/rival_view.py` | Rival economy, activity and colony survey report |
 | `orion/races.py` | Race identities, diplomatic traits and AI development preferences |
-| `orion/race_art.py` | Procedural diplomatic seals |
+| `orion/race_art.py` | Cached race portraits and procedural fallback seals |
+| `orion/building_art.py` | Cached transparent building sprites and fallback art |
+| `orion/colony_scene.py` | Seeded landscapes, headquarters markers and clickable colony graphics |
 | `orion/setup_view.py` | Campaign and race selection screen |
 | `orion/diplomacy.py` | Relations, offers, treaty income, cooldowns and diplomatic history |
 | `orion/diplomacy_view.py` | Diplomatic contact and negotiation screen |
+| `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
+| `orion/research_view.py` | Branches, tiers, project progress and research controls |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard, fleets and galaxy-map routes |
 | `orion/fleet_art.py` | Procedural transport icons |
@@ -408,6 +521,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
 | `assets/` | Bundled artwork and fonts |
+| `assets/portraits/` | Terran, Kharuun and Aelari portraits, with generation prompts |
+| `assets/buildings/` | Six colony building sprites, manifest and generation prompts |
 | `tools/build_art.py` | Rebuild the original planet/background (optional) |
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
@@ -415,10 +530,12 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
 | `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
+| `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
+| `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. The next practical increments are population
-growth, food and a technology tree that spends stored research.
+growth, food and more advanced technology tiers.
 Warships and tactical combat can follow. Bump the save version and add
 migrations when the data schema changes.
 
@@ -429,6 +546,7 @@ The automated checks use Python's built-in unittest and SDL's dummy drivers:
 ```sh
 python -m unittest discover -s tests -v
 python main.py --headless --screenshot menu.png
+python main.py --headless --screen setup --screenshot setup.png
 python main.py --headless --screen galaxy --screenshot galaxy.png
 python main.py --headless --screen system --screenshot system.png
 python main.py --headless --screen planet --screenshot planet.png
@@ -438,10 +556,11 @@ python main.py --headless --screen shipyard --screenshot shipyard.png
 python main.py --headless --screen fleets --screenshot fleets.png
 python main.py --headless --screen rival --screenshot rival.png
 python main.py --headless --screen diplomacy --screenshot diplomacy.png
+python main.py --headless --screen research --screenshot research.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, and `about`.
+`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, `research`, and `about`.
 Screenshot mode does not create a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.

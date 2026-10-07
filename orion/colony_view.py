@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .buildings import BUILDINGS
+from .building_art import draw_building_art
 from .production import MAX_QUEUE
 from .model import PLAYER
 from .planet_art import draw_planet
@@ -18,34 +19,8 @@ def draw_planet_tabs(app, active):
             pg.draw.line(app.canvas, GOLD, (x, 250), (x+178, 250), 3)
 
 
-def building_icon(surface, building_id, center, color=CYAN, scale=1.0):
-    x, y = center
-    def points(items):
-        return [(x+a*scale, y+b*scale) for a, b in items]
-    if building_id == "factory":
-        shape = [(-16, 12), (-16, -3), (-5, -9), (-5, -3), (6, -9),
-                 (6, 0), (12, 0), (12, -15), (17, -15), (17, 12)]
-        pg.draw.polygon(surface, color, points(shape), 2)
-        for offset in (-9, 0, 9):
-            pg.draw.line(surface, color, points([(offset, 4)])[0], points([(offset, 8)])[0], 2)
-    elif building_id == "mine":
-        pg.draw.lines(surface, color, False, points([(-18, 12), (-4, -11), (12, 12)]), 2)
-        pg.draw.lines(surface, color, False, points([(-7, 12), (7, -5), (19, 12)]), 2)
-        pg.draw.line(surface, color, points([(-18, 12)])[0], points([(19, 12)])[0], 2)
-    elif building_id == "trade_center":
-        for offset, height in ((-15, 9), (-3, 17), (9, 28)):
-            pg.draw.rect(surface, color, (x+offset*scale, y+(13-height)*scale, 7*scale, height*scale), 1)
-        pg.draw.lines(surface, color, False, points([(-16, -9), (-3, -17), (6, -12), (16, -20)]), 2)
-    else:
-        pg.draw.lines(surface, color, False,
-                      points([(-5, -16), (-5, -4), (-15, 12), (15, 12), (5, -4), (5, -16)]), 2)
-        pg.draw.line(surface, color, points([(-8, -16)])[0], points([(8, -16)])[0], 2)
-        pg.draw.line(surface, color, points([(-9, 5)])[0], points([(9, 5)])[0], 1)
-        pg.draw.circle(surface, color, (int(x-3*scale), int(y+8*scale)), max(1, int(2*scale)))
-
-
-def compact_yields(definition, richness):
-    values = definition.yields(richness)
+def compact_yields(game, definition, planet):
+    values = game.building_yields(definition, planet)
     return " · ".join(f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v)
 
 
@@ -69,7 +44,7 @@ def draw_colony(app):
     draw_planet(surface, planet, (756, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
     draw_planet_tabs(app, "colony")
 
-    industry, income, science = planet.yields_per_turn
+    industry, income, science = game.planet_yields(planet)
     stats = [("INDUSTRY / TURN", f"{industry} IND"), ("INCOME / TURN", f"+{income} CR"),
              ("RESEARCH / TURN", f"+{science} RP"), ("EMPIRE TREASURY", f"{game.treasury_for(planet.owner or PLAYER):,} CR"),
              ("RESEARCH STORED", f"{game.research_for(planet.owner or PLAYER):,} RP")]
@@ -84,7 +59,7 @@ def draw_colony(app):
     text(surface, f"{len(planet.buildings)} built + {len(building_projects)} reserved / {planet.building_capacity}",
          (727, 385), 11, MUTED, "mono", right=True)
     text(surface, "CONSTRUCTION CATALOGUE", (751, 385), 11, GOLD, "mono", 2)
-    estimates = planet.queue_estimates()
+    estimates = game.queue_estimates(planet)
     for index in range(12):
         x, y = 64+(index%4)*168, 414+(index//4)*94
         rect = pg.Rect(x, y, 158, 84)
@@ -101,14 +76,14 @@ def draw_colony(app):
         if index < len(planet.buildings):
             building_id = planet.buildings[index]
             definition = BUILDINGS[building_id]
-            building_icon(surface, building_id, (x+27, y+24), CYAN, .58)
+            draw_building_art(surface, building_id, (x+6, y+5, 44, 34))
             text(surface, "OPERATIONAL", (x+52, y+20), 8, CYAN, "mono")
             text(surface, definition.name, (x+12, y+42), 13, INK)
-            text(surface, compact_yields(definition, planet.richness), (x+12, y+63), 10, MUTED)
+            text(surface, compact_yields(game, definition, planet), (x+12, y+63), 10, MUTED)
         elif index < planet.used_slots:
             queue_index, project = building_projects[index-len(planet.buildings)]
             definition = BUILDINGS[project.item_id]
-            building_icon(surface, project.item_id, (x+27, y+24), GOLD, .58)
+            draw_building_art(surface, project.item_id, (x+6, y+5, 44, 34), alpha=130)
             label = "BUILDING" if queue_index==0 else f"QUEUED {queue_index+1}"
             text(surface, label, (x+52, y+11), 8, GOLD, "mono")
             text(surface, turn_label(estimates[queue_index]), (x+52, y+27), 10, MUTED)
@@ -126,12 +101,13 @@ def draw_colony(app):
     for i, definition in enumerate(BUILDINGS.values()):
         x, y = 751, 414+i*97
         panel(surface, (x, y, 625, 87))
-        building_icon(surface, definition.id, (x+33, y+33), CYAN, .75)
+        draw_building_art(surface, definition.id, (x+7, y+8, 56, 66))
         text(surface, definition.name, (x+70, y+10), 18, INK)
-        text(surface, definition.effect_text(planet.richness), (x+70, y+36), 12, CYAN)
-        estimate = planet.queue_estimates(additional=definition.id)
+        text(surface, compact_yields(game, definition, planet)+" / turn", (x+70, y+36), 12, CYAN)
+        estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
-        text(surface, f"{definition.credit_cost} CR   ·   {definition.work_cost} work   ·   {eta}",
+        price = game.project_price(definition.id, planet.owner or PLAYER)
+        text(surface, f"{price} CR   ·   {definition.work_cost} work   ·   {eta}",
              (x+70, y+61), 11, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
@@ -144,8 +120,8 @@ def draw_colony(app):
             label, hint = "Full", "No free slots"
         elif len(planet.construction_queue) >= MAX_QUEUE:
             label, hint = "Full", "Queue limit"
-        elif game.credits < definition.credit_cost:
-            label, hint = "Funds", f"Need {definition.credit_cost} CR"
+        elif game.credits < price:
+            label, hint = "Funds", f"Need {price} CR"
         app.button(f"build_{definition.id}", label, (x+506, y+12, 103, 42),
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
         text(surface, hint, (x+510, y+62), 9, FAINT, "mono")
@@ -156,7 +132,7 @@ def draw_colony(app):
     if slot is not None and 0 <= slot < len(planet.buildings):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, definition.name, (82, 724), 18, INK)
-        text(surface, definition.effect_text(planet.richness), (82, 754), 13, CYAN)
+        text(surface, compact_yields(game, definition, planet)+" / turn", (82, 754), 13, CYAN)
         app.button("demolish_building", "Demolish", (549, 729, 156, 45),
                    lambda i=slot: app.demolish_request(i), enabled=planet.owner == PLAYER)
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:
@@ -183,5 +159,5 @@ def draw_colony(app):
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
     text(surface, "Pay when queued. Output starts the turn after completion.", (399, 828), 12, MUTED)
-    text(surface, "Research is stored for a future technology tree.", (399, 850), 11, FAINT)
+    text(surface, "Research · R: choose technologies to improve your empire.", (399, 850), 11, FAINT)
     app.button("colony_end_turn", "End turn · E", (1081, 816, 295, 63), app.advance_turn, "primary")

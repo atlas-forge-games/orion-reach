@@ -10,6 +10,7 @@ from uuid import uuid4
 from .buildings import BUILDINGS, BUILDING_SLOTS
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES, STARTING_COLONISTS, travel_turns
 from .races import RACES, default_rival_race
+from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
                         agreement_yields, make_contact, take_action)
 
@@ -55,6 +56,11 @@ def _name(value, maximum=28):
 class ConstructionProject:
     item_id: str
     progress: int = 0
+    paid_credits: int | None = None
+
+    def __post_init__(self):
+        if self.paid_credits is None:
+            self.paid_credits = PROJECTS[self.item_id].credit_cost
 
     @property
     def remaining_work(self):
@@ -63,7 +69,7 @@ class ConstructionProject:
     @property
     def refund(self):
         definition = PROJECTS[self.item_id]
-        return definition.credit_cost*self.remaining_work//definition.work_cost
+        return self.paid_credits*self.remaining_work//definition.work_cost
 
     @property
     def reserves_slot(self):
@@ -79,6 +85,7 @@ class Ship:
     turns_remaining: int = 0
     travel_total: int = 0
     owner: str = PLAYER
+    speed_bonus: int = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
 
     @property
     def in_transit(self):
@@ -89,7 +96,7 @@ class Ship:
         return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=5):
+    def from_dict(cls, data, systems, *, version=7):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
@@ -98,16 +105,20 @@ class Ship:
             raise ValueError
         destination = data["destination"]
         remaining, total = data["turns_remaining"], data["travel_total"]
+        speed_bonus = data["speed_bonus"] if version >= 7 else 0
+        if type(speed_bonus) is not int or speed_bonus not in (0, 25, 50, 75):
+            raise ValueError
         if destination is None:
-            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0):
+            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus:
                 raise ValueError
         else:
             if not _integer(destination, 0, len(systems)-1) or destination == data["system_id"]:
                 raise ValueError
-            expected = travel_turns(systems[data["system_id"]], systems[destination])
+            expected = travel_turns(systems[data["system_id"]], systems[destination], speed_bonus)
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
         record = dict(data)
+        record["speed_bonus"] = speed_bonus
         if version < 5:
             record["owner"] = PLAYER
         if record["owner"] not in (PLAYER, RIVAL):
@@ -130,9 +141,10 @@ class Opponent:
     research: int = 0
     events: list[AIEvent] = field(default_factory=list)
     race_id: str = "kharuun"
+    technology: ResearchState = field(default_factory=ResearchState)
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=6):
+    def from_dict(cls, data, systems, turn, *, version=7):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -159,7 +171,8 @@ class Opponent:
         race_id = data["race_id"] if version >= 6 else "kharuun"
         if not isinstance(race_id, str) or race_id not in RACES:
             raise ValueError
-        return cls(**{**data, "events": parsed, "race_id": race_id})
+        technology = ResearchState.from_dict(data["technology"]) if version >= 7 else ResearchState()
+        return cls(**{**data, "events": parsed, "race_id": race_id, "technology": technology})
 
 
 @dataclass
@@ -168,6 +181,7 @@ class TurnReport:
     research: int
     completed: list[str]
     arrivals: list[str] = field(default_factory=list)
+    discoveries: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -222,9 +236,9 @@ class Planet:
     def industry_per_turn(self):
         return self.yields_per_turn[0]
 
-    def advance_construction(self):
+    def advance_construction(self, bonuses=None):
         """Use this turn's starting industry, carrying overflow into queued projects."""
-        work = self.industry_per_turn
+        work = colony_yields(self, bonuses or {})[0]
         completed = []
         while work > 0 and self.construction_queue:
             project = self.construction_queue[0]
@@ -238,7 +252,7 @@ class Planet:
                 self.construction_queue.pop(0)
         return completed
 
-    def queue_estimates(self, additional=None):
+    def queue_estimates(self, additional=None, *, bonuses=None):
         """Exact turns until completion, assuming no future player changes."""
         if not self.colonized:
             return []
@@ -249,11 +263,11 @@ class Planet:
         turns, estimates = 0, []
         while forecast.construction_queue:
             turns += 1
-            estimates.extend([turns]*len(forecast.advance_construction()))
+            estimates.extend([turns]*len(forecast.advance_construction(bonuses)))
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=5):
+    def from_dict(cls, data, expected_id, *, version=7):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -299,6 +313,11 @@ class Planet:
             if not isinstance(item["item_id"], str) or item["item_id"] not in PROJECTS:
                 raise ValueError
             cost = PROJECTS[item["item_id"]].work_cost
+            price = PROJECTS[item["item_id"]].credit_cost
+            if version < 7:
+                item["paid_credits"] = price
+            if not _integer(item["paid_credits"], 1, price):
+                raise ValueError
             if not _integer(item["progress"], 0, cost-1) or (i>0 and item["progress"] != 0):
                 raise ValueError
             projects.append(ConstructionProject(**item))
@@ -373,6 +392,53 @@ class GameState:
     opponent: Opponent | None = None
     race_id: str = "terran"
     diplomacy: DiplomacyState | None = None
+    technology: ResearchState = field(default_factory=ResearchState)
+
+    def research_state(self, owner=PLAYER):
+        return self._empire(owner).technology
+
+    def bonuses_for(self, owner=PLAYER):
+        return self.research_state(owner).bonuses if owner is not None else {}
+
+    def research_error(self, identifier, *, owner=PLAYER):
+        return self.research_state(owner).choice_error(identifier)
+
+    def choose_research(self, identifier, *, owner=PLAYER):
+        error = self.research_error(identifier, owner=owner)
+        if error:
+            raise RuleError(error)
+        self.research_state(owner).active = identifier
+        return self.advance_research(owner)
+
+    def advance_research(self, owner=PLAYER):
+        empire = self._empire(owner)
+        empire.research, discovered = empire.technology.spend(empire.research)
+        if discovered and owner == RIVAL:
+            self.rival_event(f"Discovered {discovered.name}.", turn=self.turn)
+        return discovered
+
+    def planet_yields(self, planet):
+        return colony_yields(planet, self.bonuses_for(planet.owner))
+
+    def building_yields(self, definition, planet):
+        return building_yields(definition, planet.richness, self.bonuses_for(planet.owner or PLAYER))
+
+    def queue_estimates(self, planet, additional=None):
+        return planet.queue_estimates(additional, bonuses=self.bonuses_for(planet.owner))
+
+    def project_price(self, item_id, owner=PLAYER):
+        key = "building_discount" if item_id in BUILDINGS else "ship_discount"
+        discount = self.bonuses_for(owner).get(key, 0)
+        return max(1, math.ceil(PROJECTS[item_id].credit_cost*(100-discount)/100))
+
+    def travel_turns(self, origin, destination, owner=PLAYER):
+        return travel_turns(origin, destination, self.bonuses_for(owner).get("ship_speed", 0))
+
+    def can_settle(self, planet, owner=PLAYER):
+        return planet.habitability > 0 or bool(self.bonuses_for(owner).get(planet.biome.lower(), 0))
+
+    def starting_colonists(self, owner=PLAYER):
+        return STARTING_COLONISTS+self.bonuses_for(owner).get("colonists", 0)
 
     def diplomacy_error(self, action):
         return action_error(self, action)
@@ -465,7 +531,7 @@ class GameState:
             return "The construction queue is full."
         if planet.free_slots <= 0:
             return f"All {planet.building_capacity} building slots are occupied or reserved."
-        if self.treasury_for(owner) < BUILDINGS[building_id].credit_cost:
+        if self.treasury_for(owner) < self.project_price(building_id, owner):
             return "Not enough credits to start this project."
         return None
 
@@ -474,8 +540,9 @@ class GameState:
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
-        self._empire(owner).credits -= BUILDINGS[building_id].credit_cost
-        planet.construction_queue.append(ConstructionProject(building_id))
+        price = self.project_price(building_id, owner)
+        self._empire(owner).credits -= price
+        planet.construction_queue.append(ConstructionProject(building_id, paid_credits=price))
 
     def ship_build_error(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
         planet = self.planet_at(system_id, planet_id)
@@ -487,7 +554,7 @@ class GameState:
             return "This colony belongs to another empire."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
-        if self.treasury_for(owner) < SHIP_TYPES[kind].credit_cost:
+        if self.treasury_for(owner) < self.project_price(kind, owner):
             return "Not enough credits to build this ship."
         return None
 
@@ -496,8 +563,9 @@ class GameState:
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
-        self._empire(owner).credits -= SHIP_TYPES[kind].credit_cost
-        planet.construction_queue.append(ConstructionProject(kind))
+        price = self.project_price(kind, owner)
+        self._empire(owner).credits -= price
+        planet.construction_queue.append(ConstructionProject(kind, paid_credits=price))
 
     def ship_at(self, ship_id, *, owner=PLAYER):
         ship = next((s for s in self.ships if type(ship_id) is int and s.id == ship_id), None)
@@ -516,7 +584,8 @@ class GameState:
             raise RuleError("Unknown destination system.")
         if destination == ship.system_id:
             raise RuleError("The ship is already in this system.")
-        duration = travel_turns(self.systems[ship.system_id], self.systems[destination])
+        duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], owner)
+        ship.speed_bonus = self.bonuses_for(owner).get("ship_speed", 0)
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
         return duration
@@ -529,8 +598,9 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
-        if planet.habitability == 0:
-            return "Barren and volcanic worlds need future life-support technology."
+        if not self.can_settle(planet, owner):
+            technology = "Radiation Shields" if planet.biome == "Barren" else "Thermal Barriers"
+            return f"Research {technology} to settle this world."
         if not self.colony_ships_at(system_id, owner=owner):
             return "Bring a colony ship to this system first."
         return None
@@ -545,7 +615,7 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         planet.colonized = True
         planet.owner = owner
-        planet.population = STARTING_COLONISTS
+        planet.population = self.starting_colonists(owner)
         self.ships.remove(ship)
         return planet
 
@@ -575,7 +645,7 @@ class GameState:
             for planet in system.worlds:
                 if planet.owner != owner:
                     continue
-                _, credits, points = planet.yields_per_turn
+                _, credits, points = self.planet_yields(planet)
                 income += credits
                 research += points
         return income, research
@@ -595,7 +665,7 @@ class GameState:
                 if ship.turns_remaining == 0:
                     ship.system_id = ship.destination
                     ship.destination = None
-                    ship.travel_total = 0
+                    ship.travel_total = ship.speed_bonus = 0
                     message = f"{ship.name} at {self.systems[ship.system_id].name}"
                     if ship.owner == PLAYER:
                         arrivals.append(message)
@@ -604,7 +674,7 @@ class GameState:
         completed = []
         for system in self.systems:
             for planet in system.worlds:
-                for item_id in planet.advance_construction():
+                for item_id in planet.advance_construction(self.bonuses_for(planet.owner)):
                     if item_id in SHIP_TYPES:
                         self.ships.append(Ship(self.next_ship_id, item_id, system.id, owner=planet.owner))
                         self.next_ship_id += 1
@@ -617,16 +687,19 @@ class GameState:
         self.year += 1
         self.credits += income
         self.research += research
+        discovered = self.advance_research()
         if self.opponent is not None:
             self.opponent.credits += rival_income
             self.opponent.research += rival_research
-        return TurnReport(income, research, completed, arrivals)
+            self.advance_research(RIVAL)
+        return TurnReport(income, research, completed, arrivals,
+                          [discovered.name] if discovered else [])
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=6):
+    def from_dict(cls, data, *, version=7):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -708,9 +781,10 @@ class GameState:
                     raise ValueError
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
+            technology = ResearchState.from_dict(data["technology"]) if version >= 7 else ResearchState()
             return cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
-                       research, ships, next_ship, opponent, race_id, diplomacy)
+                       research, ships, next_ship, opponent, race_id, diplomacy, technology)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 

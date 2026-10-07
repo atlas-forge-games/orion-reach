@@ -5,9 +5,18 @@ import pygame as pg
 from .diplomacy import (BREAK_PENALTY, ENVOY_COOLDOWN, ENVOY_COST, ENVOY_RELATIONS,
                         GIFT_COOLDOWN, GIFT_COST, GIFT_RELATIONS, OFFER_COOLDOWN,
                         RESEARCH_INCOME, TRADE_INCOME)
-from .race_art import draw_race_emblem
+from .race_art import draw_race_portrait
 from .races import RACES
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
+
+
+def draw_contact_profile(surface, race, empire_name):
+    panel(surface, (64, 289, 338, 388))
+    draw_race_portrait(surface, race.id, (129, 305, 208, 208))
+    text(surface, shorten(empire_name, 291, 23, "title"), (87, 532), 23, INK, "title")
+    text(surface, f"{race.name} · {race.focus}", (89, 570), 12, race.color)
+    paragraph(surface, race.description, (89, 597), 290, 13, MUTED, 18)
+    text(surface, race.trait, (89, 653), 11, race.color)
 
 
 def draw_diplomacy(app):
@@ -22,18 +31,15 @@ def draw_diplomacy(app):
     text(surface, "Build trust. Exchange knowledge. Find common ground.", (66, 252), 14, MUTED)
 
     # Your own identity remains visible while dealing with another empire.
-    panel(surface, (64, 651, 338, 127))
-    draw_race_emblem(surface, game.race_id, (112, 705), 30)
-    text(surface, "YOUR EMPIRE", (156, 668), 9, MUTED, "mono", 1)
-    text(surface, shorten(game.empire_name, 229, 15), (155, 690), 15, INK)
-    text(surface, own_race.name, (156, 714), 13, own_race.color)
-    text(surface, own_race.trait, (83, 751), 11, MUTED)
+    panel(surface, (64, 688, 338, 90))
+    draw_race_portrait(surface, game.race_id, (77, 701, 64, 64))
+    text(surface, "YOUR EMPIRE", (155, 698), 9, MUTED, "mono", 1)
+    text(surface, shorten(game.empire_name, 229, 15), (154, 715), 15, INK)
+    text(surface, own_race.name, (155, 738), 11, own_race.color)
+    text(surface, own_race.trait, (155, 755), 10, MUTED)
 
     if game.opponent is None:
-        panel(surface, (64, 289, 338, 340))
-        draw_race_emblem(surface, game.race_id, (233, 385), 67)
-        text(surface, own_race.name, (88, 487), 27, INK, "title")
-        paragraph(surface, own_race.description, (89, 533), 290, 14, MUTED, 23)
+        draw_contact_profile(surface, own_race, game.empire_name)
         panel(surface, (427, 289, 949, 489))
         text(surface, "No foreign contact yet.", (456, 331), 30, INK, "title")
         paragraph(surface, "This campaign has no rival empire. Add one from Rival report to open a diplomatic channel. "
@@ -43,12 +49,7 @@ def draw_diplomacy(app):
     else:
         rival, state = game.opponent, game.diplomacy
         race = RACES[rival.race_id]
-        panel(surface, (64, 289, 338, 340))
-        draw_race_emblem(surface, race.id, (233, 373), 61)
-        text(surface, shorten(rival.name, 291, 23, "title"), (87, 455), 23, INK, "title")
-        text(surface, f"{race.name} · {race.focus}", (89, 493), 12, race.color)
-        paragraph(surface, race.description, (89, 525), 290, 13, MUTED, 21)
-        text(surface, race.trait, (89, 603), 11, race.color)
+        draw_contact_profile(surface, race, rival.name)
 
         panel(surface, (427, 289, 949, 89))
         color = CYAN if state.relations >= 25 else RED if state.relations < 0 else GOLD
@@ -69,7 +70,10 @@ def draw_diplomacy(app):
             threshold = getattr(race, f"{action}_threshold")
             text(surface, title, (x+22, 413), 21, INK)
             text(surface, "ACTIVE" if active else "AVAILABLE", (x+441, 422), 9, CYAN if active else FAINT, "mono", right=True)
-            text(surface, f"You: +{base+getattr(own_race, bonus)} {unit}/turn · Rival: +{base+getattr(race, bonus)} {unit}/turn",
+            effect = "pact_income" if action == "trade" else "pact_research"
+            own_yield = base+getattr(own_race, bonus)+game.bonuses_for().get(effect, 0)
+            rival_yield = base+getattr(race, bonus)+game.bonuses_for("rival").get(effect, 0)
+            text(surface, f"You: +{own_yield} {unit}/turn · Rival: +{rival_yield} {unit}/turn",
                  (x+23, 448), 13, race.color)
             caption = "+1 relations each End Turn while active" if active else f"Accepted at {threshold:+} relations · Current: {state.relations:+}"
             text(surface, caption, (x+23, 474), 12, MUTED)

@@ -4,13 +4,14 @@ from .empire import colony_rows, summarize_empire
 from .model import RIVAL
 from .production import PROJECTS
 from .races import RACES
+from .research import TECHNOLOGIES
 from .ui import FAINT, GOLD, INK, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 
 def draw_rival(app):
     surface, game = app.canvas, app.game
     app.chrome("RIVAL INTELLIGENCE")
-    back_name = "Diplomacy" if app.rival_return == "diplomacy" else "Empire overview"
+    back_name = {"diplomacy": "Diplomacy", "planet": "Planet overview"}.get(app.rival_return, "Empire overview")
     app.button("rival_back", f"←  {back_name}", (64, 124, 269, 46), lambda: app.go(app.rival_return), "ghost")
     app.button("rival_galaxy", "Galaxy map", (349, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("rival_diplomacy", "Diplomacy · D", (537, 124, 226, 46), app.open_diplomacy)
@@ -78,5 +79,12 @@ def draw_rival(app):
              (65, 798), 13, MUTED)
     app.button("rival_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Income includes agreements · Open Diplomacy to negotiate", (400, 848), 12, MUTED)
+    if rival:
+        state = rival.technology
+        project = TECHNOLOGIES[state.active] if state.active else None
+        caption = f"Research: {project.name} · {state.progress}/{project.cost} RP" if project else "Research points are being banked."
+        text(surface, shorten(caption, 650, 12), (400, 835), 12, MUTED)
+        text(surface, f"{len(state.completed)} technologies discovered · Same research rules as your empire", (400, 857), 11, FAINT)
+    else:
+        text(surface, "Income includes agreements · Open Diplomacy to negotiate", (400, 848), 12, MUTED)
     app.button("rival_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary")

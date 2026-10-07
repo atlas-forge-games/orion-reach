@@ -39,5 +39,5 @@ BUILDINGS = {
     "mine": BuildingSpec("mine", "Mining complex", "Industry scales with mineral richness.", 30, 18,
                          industry=2, income=1, mineral_scaled=True),
     "trade_center": BuildingSpec("trade_center", "Trade centre", "Provides a steady flow of credits.", 40, 24, income=4),
-    "research_lab": BuildingSpec("research_lab", "Research lab", "Stores research for a future technology tree.", 50, 30, research=4),
+    "research_lab": BuildingSpec("research_lab", "Research lab", "Produces points for your empire's active research project.", 50, 30, research=4),
 }

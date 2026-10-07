@@ -1,9 +1,44 @@
-"""Scalable diplomatic seals, drawn with the game's existing pygame artwork."""
+"""Cached race portraits with scalable diplomatic seals as a fallback."""
 
+from functools import lru_cache
 import math
 import pygame as pg
 
 from .races import RACES
+from .ui import ASSETS
+
+
+@lru_cache(maxsize=len(RACES))
+def _load_portrait(race_id):
+    # Resolve beside the source, so launching from another directory also works.
+    try:
+        return pg.image.load(str(ASSETS / "portraits" / f"{race_id}-v1.png"))
+    except (OSError, pg.error):
+        return None
+
+
+@lru_cache(maxsize=24)
+def _scaled_portrait(race_id, size):
+    portrait = _load_portrait(race_id)
+    if portrait is None:
+        return None
+    fitted = portrait.get_rect().fit(pg.Rect((0, 0), size))
+    frame = pg.Surface(size)
+    frame.fill((5, 12, 20))
+    frame.blit(pg.transform.smoothscale(portrait, fitted.size), fitted)
+    return frame
+
+
+def draw_race_portrait(surface, race_id, rect):
+    """Fit a portrait without stretching; missing or damaged PNGs use a seal."""
+    rect = pg.Rect(rect)
+    portrait = _scaled_portrait(race_id, rect.size)
+    if portrait is None:
+        pg.draw.rect(surface, (5, 12, 20), rect)
+        draw_race_emblem(surface, race_id, rect.center, round(min(rect.size)*.36))
+    else:
+        surface.blit(portrait, rect)
+    pg.draw.rect(surface, RACES[race_id].color, rect, 1)
 
 
 def draw_race_emblem(surface, race_id, center, radius=50):

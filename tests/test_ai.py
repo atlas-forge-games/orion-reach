@@ -100,7 +100,7 @@ class AIRulesTests(unittest.TestCase):
                 self.assertGreaterEqual(len(rows), 4)
                 self.assertGreater(len({s.id for s, _ in rows}), 1)
                 self.assertTrue(any("factory" in p.buildings and "trade_center" in p.buildings for _, p in rows))
-                self.assertGreater(game.opponent.research, 0)
+                self.assertTrue(game.opponent.technology.completed)
                 self.assertEqual(game.credits, 920)  # Only Earth's 8 CR for 100 turns.
                 self.assertEqual(summarize_empire(game).colonies, 1)
                 self.assertTrue(all(p.used_slots <= p.building_capacity for s in game.systems for p in s.worlds))
@@ -184,7 +184,7 @@ class AIRulesTests(unittest.TestCase):
         self.assertEqual(len(game.ships), 1)
         self.assertFalse(game.ships[0].in_transit)
         self.assertEqual(summarize_empire(game, owner=RIVAL).colonies, 1)
-        self.assertGreater(game.opponent.research, 0)
+        self.assertTrue(game.opponent.technology.completed or game.opponent.technology.progress)
         self.assertEqual(game.next_ship_id, 2)
 
     def test_no_starting_world_rejects_addition_without_mutation(self):

@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .colony_view import draw_planet_tabs, turn_label
+from .building_art import draw_building_art
 from .fleet_art import ship_icon
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
 from .model import PLAYER
@@ -22,22 +23,22 @@ def draw_shipyard(app):
          (347, 143), 11, MUTED, "mono")
     text(surface, f"YEAR {game.year} · {game.treasury_for(planet.owner or PLAYER):,} CR", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(planet.name, 720, 43, "title"), (64, 185), 43, INK, "title")
-    text(surface, f"Shipyard · {planet.industry_per_turn} industry / turn · {game.empire_name_for(planet.owner)}",
+    text(surface, f"Shipyard · {game.planet_yields(planet)[0]} industry / turn · {game.empire_name_for(planet.owner)}",
          (66, 249), 14, MUTED)
     draw_planet_tabs(app, "shipyard")
 
     spec = SHIP_TYPES["colony_ship"]
-    estimates = planet.queue_estimates()
-    forecast = planet.queue_estimates("colony_ship")
+    estimates = game.queue_estimates(planet)
+    forecast = game.queue_estimates(planet, "colony_ship")
     panel(surface, (64, 306, 585, 327))
     text(surface, "COLONIZATION PROGRAMME", (88, 327), 11, GOLD, "mono", 1)
-    ship_icon(surface, (128, 414), 1.25)
-    text(surface, "Colony ship", (193, 378), 29, INK, "title")
-    text(surface, "Transport · 1 B starting colonists", (195, 426), 14, CYAN)
-    paragraph(surface, "Settle Terran, Ocean, Desert or Tundra worlds. The ship becomes the new settlement.",
+    draw_building_art(surface, "shipyard", (88, 359, 166, 110))
+    text(surface, "Colony ship", (277, 378), 29, INK, "title")
+    text(surface, f"Transport · {game.starting_colonists(planet.owner or PLAYER)} B colonists", (279, 426), 14, CYAN)
+    paragraph(surface, "Settle habitable worlds. Force Fields research unlocks barren and volcanic colonies. The ship becomes the settlement.",
               (89, 475), 523, 15, MUTED, 24)
     eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
-    text(surface, f"{spec.credit_cost} CR · {spec.work_cost} work · {eta}", (89, 537), 14, INK)
+    text(surface, f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}", (89, 537), 14, INK)
     reason = game.ship_build_error(system.id, planet.id)
     app.button("build_colony_ship", "Build colony ship", (88, 574, 306, 43), app.queue_colony_ship,
                enabled=reason is None)
@@ -114,7 +115,7 @@ def draw_fleets(app):
         panel(surface, (64, y, 1312, 76))
         ship_icon(surface, (100, y+38), .67)
         text(surface, ship.name, (142, y+12), 18, INK)
-        text(surface, "1 B colonists · consumed on settlement", (143, y+43), 11, MUTED)
+        text(surface, f"{game.starting_colonists()} B colonists · consumed on settlement", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.in_transit else f"{origin.name} orbit"
         text(surface, shorten(location, 467, 18), (473, y+12), 18, CYAN)

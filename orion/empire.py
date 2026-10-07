@@ -40,9 +40,9 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
     keys = {
         "name": lambda row: row[1].name.casefold(),
         "population": lambda row: row[1].population,
-        "industry": lambda row: row[1].yields_per_turn[0],
-        "income": lambda row: row[1].yields_per_turn[1],
-        "research": lambda row: row[1].yields_per_turn[2],
+        "industry": lambda row: game.planet_yields(row[1])[0],
+        "income": lambda row: game.planet_yields(row[1])[1],
+        "research": lambda row: game.planet_yields(row[1])[2],
         "slots": lambda row: row[1].used_slots,
     }
     return sorted(rows, key=keys[sort_by], reverse=descending)
@@ -50,7 +50,7 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
 
 def summarize_empire(game, *, owner=PLAYER):
     colonies = [p for _, p in colony_rows(game, owner=owner)]
-    outputs = [planet.yields_per_turn for planet in colonies]
+    outputs = [game.planet_yields(planet) for planet in colonies]
     trade, research = game.diplomatic_yields(owner)
     return EmpireSummary(
         colonies=len(colonies),

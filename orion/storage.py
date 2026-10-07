@@ -11,7 +11,7 @@ import tempfile
 
 from .model import GameState, SaveError
 
-SAVE_VERSION = 6
+SAVE_VERSION = 7
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True}
 
 
@@ -89,7 +89,7 @@ class Storage:
             data = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict) or data.get("format") != "orion-reach":
                 raise SaveError("This is not an Orion Reach save.")
-            if type(data.get("version")) is not int or data["version"] not in (1, 2, 3, 4, 5, SAVE_VERSION):
+            if type(data.get("version")) is not int or data["version"] not in (1, 2, 3, 4, 5, 6, SAVE_VERSION):
                 raise SaveError("This save uses an unsupported version.")
             # Migrate older formats in memory; never rewrite a loaded source file.
             state = GameState.from_dict(data.get("game"), version=data["version"])

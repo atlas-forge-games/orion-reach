@@ -85,8 +85,9 @@ def agreement_yields(game, owner):
     if state is None or owner not in ("player", "rival"):
         return 0, 0
     race = RACES[game.race_id if owner == "player" else game.opponent.race_id]
-    return (TRADE_INCOME+race.trade_bonus if state.trade_active else 0,
-            RESEARCH_INCOME+race.research_bonus if state.research_active else 0)
+    bonuses = game.bonuses_for(owner)
+    return (TRADE_INCOME+race.trade_bonus+bonuses.get("pact_income", 0) if state.trade_active else 0,
+            RESEARCH_INCOME+race.research_bonus+bonuses.get("pact_research", 0) if state.research_active else 0)
 
 
 def action_error(game, action):

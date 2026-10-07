@@ -4,6 +4,7 @@ import pygame as pg
 
 from .planet_art import draw_planet, draw_star
 from .colony_view import draw_planet_tabs
+from .colony_scene import draw_colony_scene, is_headquarters
 from .model import PLAYER, RIVAL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
@@ -122,49 +123,44 @@ def draw_planet_overview(app):
     text(surface, shorten(f"GALAXY  /  {system.name.upper()}  /  {planet.name.upper()}", 760, 11, "mono"),
          (363, 143), 11, MUTED, "mono")
     app.button("planet_galaxy", "Galaxy map", (1214, 124, 162, 46), lambda: app.go("galaxy"))
-    text(surface, shorten(planet.name, 720, 48, "title"), (64, 193), 48, INK, "title")
+    text(surface, shorten(planet.name, 620, 48, "title"), (64, 193), 48, INK, "title")
     text(surface, f"{planet.biome} world   /   {system.name} system   /   Orbit {planet.id+1:02}",
          (66, 258), 15, MUTED)
     draw_planet_tabs(app, "planet")
+    draw_planet(surface, planet, (756, 222), 60, visual_seed(game, system, planet))
 
-    # Left: a dedicated planetary portrait, with a softly lit orbital grid.
-    panel(surface, (64, 308, 589, 473), (6, 16, 24))
-    for i in (0, 1, 2):
-        pg.draw.ellipse(surface, (17, 35, 46), (110+i*22, 374+i*12, 495-i*44, 314-i*24), 1)
-    draw_planet(surface, planet, (359, 533), 343, visual_seed(game, system, planet))
-    text(surface, f"{system.name.upper()}  /  {planet.id+1:02}", (88, 331), 10, GOLD, "mono", 2)
-    text(surface, "PLANETARY SURVEY", (88, 730), 10, MUTED, "mono", 2)
-    text(surface, f"{planet.orbit_au:.2f} AU", (628, 730), 13, GOLD, "mono", right=True)
+    draw_colony_scene(app, (64, 308, 928, 473), game, system, planet)
 
-    # Right: explicit game attributes, then settlement information and a short description.
-    panel(surface, (677, 308, 699, 227))
-    text(surface, "WORLD CHARACTERISTICS", (702, 331), 10, GOLD, "mono", 2)
+    panel(surface, (1016, 308, 360, 227))
+    text(surface, "WORLD CHARACTERISTICS", (1036, 326), 10, GOLD, "mono", 1)
     entries = [("ENVIRONMENT", planet.biome), ("SIZE", planet.size), ("GRAVITY", planet.gravity),
                ("MINERALS", planet.richness), ("HABITABILITY", f"{planet.habitability}%"), ("ORBIT", f"{planet.orbit_au:.2f} AU")]
     for i, (label, value) in enumerate(entries):
-        x = 703+(i%3)*224
-        y = 372+(i//3)*81
+        x = 1037+(i%2)*170
+        y = 363+(i//2)*54
         text(surface, label, (x, y), 9, MUTED, "mono", 1)
-        text(surface, value, (x, y+24), 22, CYAN if label=="HABITABILITY" else INK)
+        text(surface, value, (x, y+20), 19, CYAN if label=="HABITABILITY" else INK)
 
-    panel(surface, (677, 554, 699, 227))
-    text(surface, "COLONY STATUS", (702, 577), 10, GOLD, "mono", 2)
-    status = ("Established homeworld" if system.id == 0 and planet.id == 2 else "Established colony") if planet.colonized else "No colony established"
-    if planet.owner == RIVAL:
-        status = "Rival colony · survey only"
-    text(surface, status, (702, 609), 23, INK)
+    panel(surface, (1016, 554, 360, 227))
+    text(surface, "COLONY STATUS", (1036, 575), 10, GOLD, "mono", 2)
+    status = "No colony established"
     if planet.colonized:
-        text(surface, shorten(game.empire_name_for(planet.owner), 425, 14), (703, 650), 14,
+        status = "Headquarters" if is_headquarters(game, system.id, planet) else "Established colony"
+        if planet.owner == RIVAL:
+            status = "Rival headquarters" if is_headquarters(game, system.id, planet) else "Rival colony · survey only"
+    text(surface, status, (1036, 602), 21, INK)
+    if planet.colonized:
+        text(surface, shorten(game.empire_name_for(planet.owner), 318, 13), (1037, 639), 13,
              CYAN if planet.owner == PLAYER else RIVAL_COLOR)
-        text(surface, f"{planet.population} B inhabitants", (1348, 650), 14, INK, right=True)
+        text(surface, f"{planet.population} B inhabitants · {game.planet_yields(planet)[0]} IND / turn", (1037, 665), 12, INK)
+        paragraph(surface, BIOME_NOTES[planet.biome], (1037, 696), 318, 12, MUTED, 18)
     else:
         reason = game.colonize_error(system.id, planet.id)
-        app.button("colonize_planet", "Colonize", (1104, 600, 244, 45), app.colonize_request, enabled=reason is None)
-        caption = reason or f"{game.colony_ships_at(system.id)[0].name} ready · 1 B starting colonists"
-        text(surface, shorten(caption, 642, 13), (703, 650), 13, MUTED if reason else CYAN)
-    paragraph(surface, BIOME_NOTES[planet.biome], (703, 688), 642, 13, MUTED, 22)
+        app.button("colonize_planet", "Colonize", (1037, 637, 318, 40), app.colonize_request, enabled=reason is None)
+        caption = reason or f"{game.colony_ships_at(system.id)[0].name} ready · {game.starting_colonists()} B starting colonists"
+        paragraph(surface, caption, (1037, 690), 318, 13, MUTED if reason else CYAN, 21)
 
-    hint = "Open the Colony or Shipyard tab to build." if planet.colonized else "A colony ship is consumed when this world is settled."
+    hint = "Click buildings to manage them. E: end turn." if planet.colonized else "A colony ship is consumed when this world is settled."
     if planet.owner == RIVAL:
         hint = "Inspect the rival's buildings and production in the Colony and Shipyard tabs."
     text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. {hint}",

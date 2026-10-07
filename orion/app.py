@@ -19,10 +19,11 @@ from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
 from .rival_view import draw_rival
 from .diplomacy_view import draw_diplomacy
+from .research_view import draw_research
+from .research import BRANCHES, TECHNOLOGIES, choices
 from .setup_view import draw_setup
 from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
-from .production import SHIP_TYPES, travel_turns
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_map_fleets, draw_shipyard
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image)
@@ -30,7 +31,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy")
+GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research")
 
 
 class App:
@@ -126,6 +127,8 @@ class App:
             self.focus="rival_back" if self.game.opponent else "add_rival"
         if screen=="diplomacy":
             self.focus="diplomacy_back"
+        if screen=="research":
+            self.focus=f"research_branch_{self.research_branch}"
         if screen=="system":
             worlds=self.game.systems[self.game.selected_system].worlds
             if worlds:
@@ -232,7 +235,7 @@ class App:
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
             self.shipyard_page=(len(planet.construction_queue)-1)//QUEUE_PER_PAGE
             if self.save_game(autosave=True):
-                self.toast(f"Colony ship queued · {SHIP_TYPES['colony_ship'].credit_cost} CR paid")
+                self.toast(f"Colony ship queued · {planet.construction_queue[-1].paid_credits} CR paid")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -250,11 +253,11 @@ class App:
                 self.colony_slot=None
                 self.go("colony")
                 if self.save_game(autosave=True):
-                    self.toast(f"Colony established on {planet.name} · 1 B inhabitants · Welcome to your empire")
+                    self.toast(f"Colony established on {planet.name} · {planet.population} B inhabitants · Welcome to your empire")
             except RuleError as exc:
                 self.toast(exc,True)
         self.confirm(f"Settle {shorten(planet.name,370,29,'title')}?",
-                     f"Use {ship.name} to found a colony with 1 B inhabitants. The ship is consumed; the new colony can construct buildings and ships.",
+                     f"Use {ship.name} to found a colony with {self.game.starting_colonists()} B inhabitants. The ship is consumed; the new colony can construct buildings and ships.",
                      "Establish colony",settle)
 
     def reset_empire_view(self):
@@ -267,6 +270,46 @@ class App:
         self.rival_return="empire"
         self.diplomacy_return="galaxy"
         self.diplomacy_return_selection=(0,None)
+        self.research_return="galaxy"
+        self.research_return_selection=(0,None)
+        self.research_branch="construction"
+
+    def open_research(self):
+        if self.screen=="research":
+            self.close_research()
+        elif self.screen in GAME_SCREENS:
+            self.research_return=self.screen
+            self.research_return_selection=(self.game.selected_system,self.game.selected_planet)
+            if self.game.technology.active:
+                self.research_branch=TECHNOLOGIES[self.game.technology.active].branch
+            self.go("research")
+
+    def close_research(self):
+        self.game.selected_system,self.game.selected_planet=self.research_return_selection
+        self.go(self.research_return)
+
+    def select_research_branch(self,identifier):
+        self.research_branch=identifier
+        self.focus=f"research_branch_{identifier}"
+
+    def research_request(self,identifier):
+        error=self.game.research_error(identifier)
+        if error:
+            self.toast(error,True)
+            return
+        technology=TECHNOLOGIES[identifier]
+        alternative=next(t for t in choices(technology.branch,technology.tier) if t.id!=identifier)
+        def choose():
+            try:
+                discovered=self.game.choose_research(identifier)
+                if self.save_game(autosave=True):
+                    self.toast(f"Discovered {discovered.name}." if discovered else f"Research started: {technology.name}.")
+            except RuleError as exc:
+                self.toast(exc,True)
+        self.confirm("Commit to this technology?",
+                     f"Research {technology.name} for {technology.cost} RP. {alternative.name} becomes unavailable. "
+                     "This choice is permanent; banked points are applied immediately.",
+                     "Start research",choose)
 
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
@@ -320,7 +363,7 @@ class App:
         self.rival_page=min(max(0,self.rival_page+delta),last)
 
     def open_rival(self):
-        self.rival_return="diplomacy" if self.screen=="diplomacy" else "empire"
+        self.rival_return=self.screen if self.screen in ("diplomacy","planet") else "empire"
         self.go("rival")
 
     def open_diplomacy(self):
@@ -479,16 +522,23 @@ class App:
             self.focus_empire_row()
         if self.save_game(autosave=True):
             message=f"Turn {self.game.turn} · +{report.income} CR · +{report.research} RP"
+            if report.discoveries:
+                message+=" · Discovered: "+", ".join(report.discoveries)
             if report.completed:
                 message+=" · Completed: "+", ".join(report.completed)
             if report.arrivals:
                 message+=" · Arrived: "+", ".join(report.arrivals)
             self.toast(message+" · Autosaved")
-            if report.completed or report.arrivals:
+            if report.completed or report.arrivals or report.discoveries:
                 self.notice_until=self.time+7
 
     def select_colony_slot(self,index):
         self.colony_slot=index
+
+    def inspect_surface_building(self,index):
+        self.colony_slot=index
+        self.go("colony")
+        self.focus=f"colony_slot_{index}"
 
     def queue_building(self,building_id):
         try:
@@ -496,7 +546,7 @@ class App:
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
             self.colony_slot=planet.used_slots-1
             if self.save_game(autosave=True):
-                self.toast(f"{BUILDINGS[building_id].name} queued · {BUILDINGS[building_id].credit_cost} CR paid")
+                self.toast(f"{BUILDINGS[building_id].name} queued · {planet.construction_queue[-1].paid_credits} CR paid")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -641,6 +691,8 @@ class App:
                 self.go(self.rival_return)
             elif self.screen=="diplomacy":
                 self.close_diplomacy()
+            elif self.screen=="research":
+                self.close_research()
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
@@ -691,6 +743,8 @@ class App:
                 self.open_fleets()
             elif event.key==pg.K_d:
                 self.open_diplomacy()
+            elif event.key==pg.K_r:
+                self.open_research()
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
@@ -706,6 +760,9 @@ class App:
                     self.change_fleet_page(delta)
                 elif self.screen=="rival":
                     self.change_rival_page(delta)
+                elif self.screen=="research":
+                    branches=tuple(BRANCHES)
+                    self.select_research_branch(branches[(branches.index(self.research_branch)+delta)%len(branches)])
                 elif self.screen in ("system","planet","colony","shipyard"):
                     self.cycle_planet(delta)
 
@@ -731,6 +788,8 @@ class App:
             self.button("open_fleets","Fleets · F",(807,39,177,46),self.open_fleets)
         if self.screen in GAME_SCREENS and self.screen!="diplomacy":
             self.button("open_diplomacy","Diplomacy · D",(590,39,203,46),self.open_diplomacy)
+        if self.screen in GAME_SCREENS and self.screen!="research":
+            self.button("open_research","Research · R",(395,39,181,46),self.open_research)
         text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
         if back:
@@ -925,10 +984,10 @@ class App:
             hint="Click a star to survey it. Cyan: your empire · Orange: Helios Directorate"
         else:
             ship=state.ship_at(self.route_ship_id)
-            duration=travel_turns(state.systems[ship.system_id],star)
+            duration=state.travel_turns(state.systems[ship.system_id],star)
             self.button("send_course",f"Send ship · {turn_label(duration)}" if duration else "Current system",(1075,692,277,43),
                         self.send_course,enabled=duration>0)
-            targets=sum(not p.colonized and p.habitability>0 for p in star.worlds)
+            targets=sum(not p.colonized and state.can_settle(p) for p in star.worlds)
             hint=f"{ship.name}: choose a star, then Send. {targets} unsettled, habitable {'worlds' if targets != 1 else 'world'} at {star.name}."
         text(self.canvas,shorten(hint,962,14),(64,775),14,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
@@ -973,6 +1032,9 @@ class App:
     def draw_diplomacy(self):
         draw_diplomacy(self)
 
+    def draw_research(self):
+        draw_research(self)
+
     def draw_shipyard(self):
         draw_shipyard(self)
 
@@ -987,7 +1049,7 @@ class App:
         paragraph(self.canvas,"Choose a race, develop your empire, and compete with an expanding AI rival. Send envoys and negotiate trade or research agreements through Diplomacy. Save and resume your campaigns.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Population growth, food, a research tree, more empires, warships and tactical combat. Your growing empire is the foundation for those systems.",
+        paragraph(self.canvas,"Population growth, food, more empires, warships and tactical combat. Research already offers eight branches with permanent technology choices.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)

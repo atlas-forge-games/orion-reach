@@ -21,7 +21,7 @@ def draw_empire(app):
 
     app.chrome("EMPIRE OVERVIEW")
     back_name = {"galaxy": "Galaxy map", "system": "System overview", "shipyard": "Shipyard", "fleets": "Fleets",
-                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report", "diplomacy": "Diplomacy"}[app.empire_return]
+                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report", "diplomacy": "Diplomacy", "research": "Research"}[app.empire_return]
     app.button("empire_back", f"←  {back_name} · I", (64, 124, 282, 46),
                app.close_empire, "ghost")
     if app.empire_return != "galaxy":
@@ -84,7 +84,7 @@ def draw_empire(app):
         draw_planet(surface, planet, (95, y+27), 34, f"{game.seed}:{system.id}:{planet.id}")
         text(surface, shorten(planet.name, 244, 16), (125, y+7), 16, GOLD if active else INK)
         text(surface, shorten(f"{system.name} · {planet.size}", 244, 11), (125, y+31), 11, MUTED)
-        industry, income, research = planet.yields_per_turn
+        industry, income, research = game.planet_yields(planet)
         for value, right, color in ((f"{planet.population} B", 485, INK),
                                     (str(industry), 593, CYAN), (f"+{income}", 698, INK),
                                     (f"+{research}", 813, CYAN)):
@@ -95,7 +95,7 @@ def draw_empire(app):
         if planet.construction_queue:
             project = planet.construction_queue[0]
             definition = PROJECTS[project.item_id]
-            eta = planet.queue_estimates()[0]
+            eta = game.queue_estimates(planet)[0]
             text(surface, definition.name, (950, y+7), 15, INK)
             text(surface, turn_label(eta), (1318, y+8), 12, GOLD, right=True)
             waiting = len(planet.construction_queue)-1
