@@ -52,9 +52,15 @@ def draw_system(app):
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
-    ships = len(game.colony_ships_at(system.id))
-    label = f"{ships} COLONY SHIP{'S' if ships != 1 else ''} IN ORBIT" if ships else "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY"
-    text(surface, label, (1376, 228), 11, CYAN, "mono", 2, right=True)
+    ships, rivals = len(game.fleet_at(system.id)), len(game.fleet_at(system.id, RIVAL))
+    label = f"ORBIT: {ships} YOUR SHIPS · {rivals} RIVAL SHIPS" if ships or rivals else "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY"
+    text(surface, label, (1376, 211), 11, CYAN, "mono", 1, right=True)
+    if ships and rivals:
+        reason = game.engagement_error(system.id)
+        app.button("system_engage", "Engage opposing fleet", (1100, 247, 276, 43),
+                   lambda: app.engage_request(system.id), enabled=reason is None)
+        if reason:
+            text(surface, "Frigate required to engage", (1080, 262), 11, MUTED, right=True)
 
     panel(surface, (64, 308, 1312, 311), (6, 16, 24))
     text(surface, "ORBITAL OVERVIEW", (88, 329), 10, GOLD, "mono", 2)

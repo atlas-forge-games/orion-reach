@@ -42,7 +42,7 @@ def draw_rival(app):
             ("TREASURY", f"{rival.credits:,} CR", f"+{summary.income} CR / turn"),
             ("TOTAL INDUSTRY", f"{summary.industry} IND", "Per turn · used locally"),
             ("RESEARCH STORED", f"{rival.research:,} RP", f"+{summary.research} RP / turn"),
-            ("COLONY SHIPS", str(len(ships)), f"{sum(s.in_transit for s in ships)} travelling"),
+            ("FLEET SIZE", str(len(ships)), f"{sum(s.kind == 'frigate' for s in ships)} frigates · {sum(s.in_transit for s in ships)} travelling"),
         ]
         for i, (label, value, caption) in enumerate(stats):
             x = 64+i*267

@@ -8,7 +8,8 @@ import random
 from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
-from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES, STARTING_COLONISTS, travel_turns
+from .production import MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_TYPES, STARTING_COLONISTS, travel_turns
+from . import combat as combat_rules
 from .races import RACES, default_rival_race
 from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
@@ -86,6 +87,19 @@ class Ship:
     travel_total: int = 0
     owner: str = PLAYER
     speed_bonus: int = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
+    hull: int | None = None
+
+    def __post_init__(self):
+        if self.hull is None:
+            self.hull = self.max_hull
+
+    @property
+    def max_hull(self):
+        return SHIP_TYPES[self.kind].hull
+
+    @property
+    def damage(self):
+        return SHIP_TYPES[self.kind].damage
 
     @property
     def in_transit(self):
@@ -96,10 +110,13 @@ class Ship:
         return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=7):
+    def from_dict(cls, data, systems, *, version=8):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
+            raise ValueError
+        hull = data["hull"] if version >= 8 else SHIP_TYPES[data["kind"]].hull
+        if not _integer(hull, 1, SHIP_TYPES[data["kind"]].hull):
             raise ValueError
         if not _integer(data["system_id"], 0, len(systems)-1):
             raise ValueError
@@ -118,6 +135,7 @@ class Ship:
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
         record = dict(data)
+        record["hull"] = hull
         record["speed_bonus"] = speed_bonus
         if version < 5:
             record["owner"] = PLAYER
@@ -393,6 +411,43 @@ class GameState:
     race_id: str = "terran"
     diplomacy: DiplomacyState | None = None
     technology: ResearchState = field(default_factory=ResearchState)
+    combat: combat_rules.CombatState | None = None
+
+    def _require_strategy(self):
+        if self.combat is not None:
+            raise RuleError("Resolve the current battle before issuing strategic orders.")
+
+    def fleet_at(self, system_id, owner=PLAYER):
+        return [s for s in self.ships if s.owner == owner and not s.in_transit and s.system_id == system_id]
+
+    def engagement_error(self, system_id, owner=PLAYER):
+        return combat_rules.engagement_error(self, system_id, owner)
+
+    def start_combat(self, system_id, owner=PLAYER):
+        return combat_rules.begin_combat(self, system_id, owner)
+
+    def combat_fire(self, ship_id, target_id, owner=PLAYER):
+        return combat_rules.fire(self, ship_id, target_id, owner)
+
+    def combat_hold(self, ship_id, owner=PLAYER):
+        return combat_rules.hold(self, ship_id, owner)
+
+    def combat_retreat(self, owner=PLAYER):
+        return combat_rules.retreat(self, owner)
+
+    def combat_ai_action(self):
+        return combat_rules.ai_action(self)
+
+    def finish_combat(self):
+        if self.combat is None or self.combat.status == "active":
+            raise RuleError("Finish the battle before returning to the system.")
+        system_id = self.combat.system_id
+        self.combat = None
+        return system_id
+
+    def can_repair(self, ship):
+        return (not ship.in_transit and any(p.owner == ship.owner for p in self.systems[ship.system_id].worlds)
+                and not self.fleet_at(ship.system_id, combat_rules.other(ship.owner)))
 
     def research_state(self, owner=PLAYER):
         return self._empire(owner).technology
@@ -401,6 +456,8 @@ class GameState:
         return self.research_state(owner).bonuses if owner is not None else {}
 
     def research_error(self, identifier, *, owner=PLAYER):
+        if self.combat is not None:
+            return "Resolve the current battle before choosing research."
         return self.research_state(owner).choice_error(identifier)
 
     def choose_research(self, identifier, *, owner=PLAYER):
@@ -411,6 +468,7 @@ class GameState:
         return self.advance_research(owner)
 
     def advance_research(self, owner=PLAYER):
+        self._require_strategy()
         empire = self._empire(owner)
         empire.research, discovered = empire.technology.spend(empire.research)
         if discovered and owner == RIVAL:
@@ -498,6 +556,7 @@ class GameState:
         return None
 
     def add_opponent(self, race_id=None):
+        self._require_strategy()
         race_id = default_rival_race(self.race_id) if race_id is None else race_id
         if not isinstance(race_id, str) or race_id not in RACES:
             raise RuleError("Unknown rival race.")
@@ -520,6 +579,8 @@ class GameState:
         return worlds[planet_id]
 
     def build_error(self, system_id, planet_id, building_id, *, owner=PLAYER):
+        if self.combat is not None:
+            return "Resolve the current battle before placing orders."
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(building_id, str) or building_id not in BUILDINGS:
             return "Unknown building."
@@ -545,6 +606,8 @@ class GameState:
         planet.construction_queue.append(ConstructionProject(building_id, paid_credits=price))
 
     def ship_build_error(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
+        if self.combat is not None:
+            return "Resolve the current battle before placing orders."
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(kind, str) or kind not in SHIP_TYPES:
             return "Unknown ship type."
@@ -577,6 +640,7 @@ class GameState:
         return ship
 
     def send_ship(self, ship_id, destination, *, owner=PLAYER):
+        self._require_strategy()
         ship = self.ship_at(ship_id, owner=owner)
         if ship.in_transit:
             raise RuleError("This ship is already travelling. Wait until it arrives.")
@@ -584,8 +648,12 @@ class GameState:
             raise RuleError("Unknown destination system.")
         if destination == ship.system_id:
             raise RuleError("The ship is already in this system.")
-        duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], owner)
-        ship.speed_bonus = self.bonuses_for(owner).get("ship_speed", 0)
+        return self._dispatch_ship(ship, destination)
+
+    def _dispatch_ship(self, ship, destination):
+        """Route a validated order, including a retreat at battle resolution."""
+        duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], ship.owner)
+        ship.speed_bonus = self.bonuses_for(ship.owner).get("ship_speed", 0)
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
         return duration
@@ -595,6 +663,8 @@ class GameState:
                 and not s.in_transit and s.system_id == system_id]
 
     def colonize_error(self, system_id, planet_id, *, owner=PLAYER):
+        if self.combat is not None:
+            return "Resolve the current battle before settling a planet."
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
@@ -620,6 +690,7 @@ class GameState:
         return planet
 
     def cancel_construction(self, system_id, planet_id, queue_index, *, owner=PLAYER):
+        self._require_strategy()
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if not _integer(queue_index, 0, len(planet.construction_queue)-1):
@@ -629,6 +700,7 @@ class GameState:
         return project.refund
 
     def demolish_building(self, system_id, planet_id, building_index, *, owner=PLAYER):
+        self._require_strategy()
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if not _integer(building_index, 0, len(planet.buildings)-1):
@@ -652,6 +724,12 @@ class GameState:
 
     def advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
+        self._require_strategy()
+        encounter = combat_rules.hostile_encounter(self)
+        if encounter is not None:
+            self.start_combat(encounter, RIVAL)
+            return TurnReport(0, 0, [])
+        repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
         advance_diplomacy(self)
         if self.opponent is not None:
             from .ai import run_ai
@@ -692,6 +770,12 @@ class GameState:
             self.opponent.credits += rival_income
             self.opponent.research += rival_research
             self.advance_research(RIVAL)
+        for ship in self.ships:
+            if ship.id in repairable and self.can_repair(ship):
+                ship.hull = min(ship.max_hull, ship.hull+REPAIR_PER_TURN)
+        encounter = combat_rules.hostile_encounter(self)
+        if encounter is not None:
+            self.start_combat(encounter, RIVAL)
         return TurnReport(income, research, completed, arrivals,
                           [discovered.name] if discovered else [])
 
@@ -699,7 +783,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=7):
+    def from_dict(cls, data, *, version=8):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -782,9 +866,12 @@ class GameState:
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
             technology = ResearchState.from_dict(data["technology"]) if version >= 7 else ResearchState()
-            return cls(campaign, data["empire_name"], size, data["seed"],
+            game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
+            if version >= 8 and data["combat"] is not None:
+                game.combat = combat_rules.CombatState.from_dict(data["combat"], game)
+            return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 

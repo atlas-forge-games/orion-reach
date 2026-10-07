@@ -94,7 +94,7 @@ def draw_diplomacy(app):
             app.button(f"diplomacy_{action}", title, (x, 574, 278, 43),
                        lambda a=action: app.diplomatic_action(a), enabled=reason is None)
             text(surface, reason or caption, (x+1, 625), 11, GOLD if reason else MUTED)
-        paragraph(surface, f"Treaty offers share a {OFFER_COOLDOWN}-turn cooldown. Benefits start on End Turn. Agreements end if relations fall below 0.",
+        paragraph(surface, f"Offers: {OFFER_COOLDOWN}-turn cooldown. Agreements end below 0 relations; rival fleets may attack below -30. Combat sets relations to -100.",
                   (1020, 574), 348, 12, MUTED, 20)
 
         panel(surface, (427, 651, 949, 127))

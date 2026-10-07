@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.9
+# Orion Reach — Python prototype 0.10
 
-A playable colony-building and interstellar expansion prototype with research, races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -84,6 +84,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   a colony row to open its construction screen.
 - Build colony ships in the **Shipyard**, plot routes through **Fleets**, advance
   travel with End Turn, and settle new worlds from their planet overviews.
+- Build **frigates**, then **Engage** opposing fleets in the same system. A separate
+  tactical screen offers alternating ship actions, fixed damage, retreat, a combat
+  log and persistent losses. Damaged ships can repair at friendly colonies.
 - The galaxy map shows flight paths, ship positions and newly claimed systems.
 - The **Helios Directorate** develops its economy, builds colony ships, travels
   between systems and settles unclaimed worlds on each End Turn. Open
@@ -104,15 +107,17 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
-  ship orders, settlement, adding a rival, diplomatic actions, research choices, End Turn, return to menu and normal exit.
+  ship orders, settlement, adding a rival, diplomatic actions, research choices,
+  every combat action, End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
-**Scope:** construct buildings and colony ships, travel between systems, and
+**Scope:** construct buildings, colony ships and frigates, travel between systems, and
 found additional colonies alongside an expanding AI empire, and negotiate
-trade and research agreements, and make permanent technology choices. Population growth, food,
-combat, warships, additional AI empires and victory conditions are future work.
+trade and research agreements, make permanent technology choices and fight fleet battles.
+Population growth, food, shields, advanced weapons, planetary conquest, additional
+AI empires and victory conditions are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized. Settings contains interface sounds,
@@ -233,9 +238,9 @@ Older saves do not gain an opponent automatically. If no suitable starting world
 remains, Add rival is disabled. Adding a rival autosaves the campaign.
 
 - The AI builds factories first; its race determines the order of trade centres,
-  research labs and mines. Its strongest colony produces colony ships; other colonies develop
+  research labs and mines. Its strongest colony produces colony ships and frigates; other colonies develop
   their economies. The shipyard's development target rises as the empire grows.
-- Ships settle suitable unclaimed planets in their current system, otherwise
+- Colony ships settle suitable unclaimed planets in their current system, otherwise
   travel to nearby systems with available worlds. The rival avoids sending more
   ships to a system than it has available planets. If a target is claimed while
   a ship is travelling, it chooses another world or route after arrival.
@@ -348,8 +353,9 @@ the empire that discovered it; the other empire's benefits are unchanged.
 Ending an agreement requires confirmation. If relations fall below zero, the
 rival ends any remaining agreements at the beginning of the next End Turn,
 before income is collected. Envoys and gifts can restore relations. Diplomacy
-does not restrict travel or settlement; declarations of war, combat, alliances
-and border treaties are not implemented.
+does not restrict travel or settlement. Starting combat ends both agreements
+and sets relations to -100. Rival frigates can initiate encounters while relations
+are below -30. Alliances, separate war declarations and border treaties are not implemented.
 
 Existing campaigns gain neutral diplomatic contact when loaded if a rival
 already exists. Older player empires are assigned Terrans and existing Helios
@@ -363,14 +369,14 @@ Race choices are fixed for the campaign; start a new game to choose others.
    **80 credits and 42 work**, completing after seven End Turns at Earth's
    initial 6 industry per turn, if there are no projects ahead of it.
 2. Open **Fleets** with the top button or **F**. The finished ship starts in orbit
-   around its construction system. Click its **Plot course** button.
+   around its construction system. Click its **Course** button.
 3. On the galaxy map, click a star. The sidebar's **Send ship** button shows the
    travel time; the map previews the route and reports suitable unsettled worlds.
    Click Send to issue the order, or **Cancel / Escape** to leave without sending.
 4. Use **End Turn / E** to advance the journey. Fleets shows remaining turns.
    You can save and reload during flight. Arrival is automatic; the ship waits
    in the destination system until you choose its next action.
-5. Click the ship's **View system**, open a suitable planet, click **Colonize**,
+5. Click the ship's **System** button, open a suitable planet, click **Colonize**,
    and confirm. The ship is consumed and the planet becomes a colony with
    **1 billion inhabitants**, 6 base industry and 1 credit income per turn.
    It appears immediately in Empire Overview and can build buildings and ships.
@@ -394,6 +400,66 @@ Unused construction overflow follows the existing building rules. A ship
 finishes in orbit and receives no automatic travel order. The colony economy
 starts on the next End Turn after settlement. Ship costs, initial colonists,
 queue capacity and travel speed are defined in `orion/production.py`.
+
+## Fleet combat
+
+1. Build a **frigate** at a colony's Shipyard. Base cost is **60 credits and 36 work**:
+   six End Turns at Earth's initial industry, with no earlier projects in the queue.
+   Existing ship-price discounts and propulsion technologies also apply to frigates.
+2. Use **Fleets → Course** to send ships to a system containing rival ships.
+   A fleet is all ships of one empire in that system; ships in transit do not participate.
+3. Click **Engage** in Fleets or **Engage opposing fleet** on the system overview.
+   You need at least one frigate and opposing ships in orbit. The confirmation
+   explains the whole-fleet commitment and diplomatic consequences.
+4. On the combat screen, select one of your available ships and an enemy target,
+   then click **Fire**. The AI takes its next action automatically. Each surviving
+   ship acts once per round; **Hold** spends an activation without attacking.
+   Colony ships cannot fire, but can hold or retreat with the fleet.
+5. Resolve the battle or retreat, then choose **Return to system**. Strategic time,
+   income, research, construction and other travel do not advance during combat.
+   Escape pauses the battle, and Save / Load resumes the exact round and activation.
+
+| Ship | Base credits | Work | Hull | Damage per shot |
+| --- | ---: | ---: | ---: | ---: |
+| Colony ship | 80 | 42 | 12 | 0 (unarmed) |
+| Frigate | 60 | 36 | 20 | 5 |
+
+Shots always hit their selected enemy. There are no range, movement, armour or
+shield rules yet. Sides alternate one ship activation at a time. If one side has
+used all of its ships, the other finishes its remaining activations. A new round
+then makes every surviving ship available again. The initiating empire acts first.
+The AI prefers finishing damaged targets and attacking armed ships; an unarmed
+AI fleet retreats when a safe destination exists.
+
+**Losses and retreat:** ships at zero hull are destroyed. Results are committed
+once when combat ends; survivors retain damage, and destroyed ship IDs are never
+reused. Retreat withdraws all surviving ships to the nearest other friendly
+system without an opposing fleet. If there is no such friendly destination, the
+nearest other system without opposing ships is used. The confirmation names the
+destination and travel time. Retreat uses normal strategic travel, and damage is
+retained. Winning a space battle does not capture colonies or their buildings.
+
+**Repairs:** ships recover **4 hull per End Turn**, up to full health, after a
+complete turn in orbit at a system containing one of their colonies and no
+opposing ships. Travelling ships and ships that only just arrived do not repair
+that turn. Repair has no credit cost in this prototype.
+
+**AI and diplomacy:** the rival begins building a small defensive fleet after
+developing its shipyard. It maintains up to three frigates as its empire grows,
+in addition to its colony ships. Frigates guard colonies in peacetime and pursue
+opposing fleets when relations are **below -30**. Neutral fleets can share orbit
+without fighting. An engagement immediately ends both agreements, sets relations
+to **-100**, and starts a three-turn treaty-offer cooldown. Diplomacy remains
+available after battle, so improving relations can stop further AI attacks.
+
+A hostile encounter already in orbit interrupts End Turn before income or
+production is applied. A hostile fleet arriving during End Turn starts combat
+after that strategic turn completes. Only one battle runs at a time, and no
+strategic orders can be issued until its result is acknowledged. Every combat
+action is autosaved; tactical health, activations, logs, results and retreats
+survive saving and loading.
+
+![Fleet combat](screenshots/combat.png)
 
 ## Empire Overview
 
@@ -447,7 +513,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Browse colony pages | Page Up / Down, Left / Right, mouse wheel, or Previous / Next |
 | Open / close Fleets | F, or the Fleets button while playing |
 | Build ships / inspect the shared queue | Shipyard tab on a planet |
-| Set a ship destination | Plot course in Fleets → click a star → Send ship |
+| Set a ship destination | Course in Fleets → click a star → Send ship |
 | Cancel an unissued course | Cancel button or Escape on the route-selection map |
 | Settle a world | Colonize on its Overview tab, with a colony ship in the system |
 | Browse fleet or shipyard queue pages | Page Up / Down, mouse wheel, or Previous / Next |
@@ -455,6 +521,11 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Open / close Diplomacy | D, or the Diplomacy button while playing |
 | Open / close Research | R, or the Research button while playing |
 | Browse research branches | Click a branch or use Left / Right on the Research screen |
+| Start a fleet battle | Engage in Fleets or on the system overview |
+| Attack in combat | Select your ship → select an enemy → Fire |
+| Skip a ship's action | Select your ship → Hold |
+| Withdraw from combat | Retreat, then confirm the destination |
+| Pause / resume combat | Escape or Menu; Resume returns to the same battle |
 | Choose player and rival races | New Game |
 
 ## Save locations
@@ -474,9 +545,10 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.9 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.10 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Each empire starts with an empty research
+ships and travel times are preserved. Pre-combat saves gain full ship hulls and no
+active battle. Research from v0.9 is preserved. Each empire starts with an empty research
 tree when upgrading from v0.8 or earlier; saved points can be spent immediately.
 v0.6 ownership and the rival economy are retained,
 and neutral diplomacy is added. Earlier colonies and ships become player-owned;
@@ -484,9 +556,11 @@ no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 7**, including discoveries, active research,
-construction payments, departure speeds, races and diplomacy. They cannot be opened by v0.8 or
-earlier. Loading starts at the galaxy map with system/planet selection retained.
+New saves use **format version 8**, including ship hulls, active or resolved battles,
+discoveries, research projects, construction payments, departure speeds, races
+and diplomacy. They cannot be opened by v0.9 or earlier. Loading resumes the
+combat screen if a battle is unfinished or awaiting acknowledgement; otherwise
+it starts at the galaxy map with system/planet selection retained.
 Keep an older manual snapshot if you plan to switch back; normal gameplay
 updates the autosave. Unissued route previews are not saved as orders.
 
@@ -514,9 +588,11 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/diplomacy_view.py` | Diplomatic contact and negotiation screen |
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
 | `orion/research_view.py` | Branches, tiers, project progress and research controls |
+| `orion/combat.py` | Battle snapshots, alternating actions, AI targeting, retreat and validation |
+| `orion/combat_view.py` | Tactical formations, health bars, targeting, logs and results |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard, fleets and galaxy-map routes |
-| `orion/fleet_art.py` | Procedural transport icons |
+| `orion/fleet_art.py` | Procedural transport and frigate drawings |
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
@@ -532,11 +608,12 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
+| `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. The next practical increments are population
 growth, food and more advanced technology tiers.
-Warships and tactical combat can follow. Bump the save version and add
+Shields, advanced weapons and planetary conquest can follow. Bump the save version and add
 migrations when the data schema changes.
 
 ## Development checks
@@ -557,11 +634,13 @@ python main.py --headless --screen fleets --screenshot fleets.png
 python main.py --headless --screen rival --screenshot rival.png
 python main.py --headless --screen diplomacy --screenshot diplomacy.png
 python main.py --headless --screen research --screenshot research.png
+python main.py --headless --screen combat --screenshot combat.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, `research`, and `about`.
-Screenshot mode does not create a campaign save or change your settings.
+`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, `research`, `combat`, and `about`.
+The combat capture uses a local example encounter. Screenshot mode does not create
+a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.
 

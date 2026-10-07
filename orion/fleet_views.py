@@ -6,7 +6,7 @@ from .colony_view import draw_planet_tabs, turn_label
 from .building_art import draw_building_art
 from .fleet_art import ship_icon
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
-from .model import PLAYER
+from .model import PLAYER, RIVAL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 FLEETS_PER_PAGE = 4
@@ -27,30 +27,32 @@ def draw_shipyard(app):
          (66, 249), 14, MUTED)
     draw_planet_tabs(app, "shipyard")
 
-    spec = SHIP_TYPES["colony_ship"]
     estimates = game.queue_estimates(planet)
-    forecast = game.queue_estimates(planet, "colony_ship")
-    panel(surface, (64, 306, 585, 327))
-    text(surface, "COLONIZATION PROGRAMME", (88, 327), 11, GOLD, "mono", 1)
-    draw_building_art(surface, "shipyard", (88, 359, 166, 110))
-    text(surface, "Colony ship", (277, 378), 29, INK, "title")
-    text(surface, f"Transport · {game.starting_colonists(planet.owner or PLAYER)} B colonists", (279, 426), 14, CYAN)
-    paragraph(surface, "Settle habitable worlds. Force Fields research unlocks barren and volcanic colonies. The ship becomes the settlement.",
-              (89, 475), 523, 15, MUTED, 24)
-    eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
-    text(surface, f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}", (89, 537), 14, INK)
-    reason = game.ship_build_error(system.id, planet.id)
-    app.button("build_colony_ship", "Build colony ship", (88, 574, 306, 43), app.queue_colony_ship,
-               enabled=reason is None)
-    text(surface, "No building slot needed", (414, 590), 11, MUTED)
-    if reason:
-        text(surface, shorten(reason, 570, 12), (65, 648), 12, GOLD)
+    for index, spec in enumerate(SHIP_TYPES.values()):
+        y = 306+index*206
+        panel(surface, (64, y, 585, 194))
+        ship_icon(surface, (128, y+74), 1.2, kind=spec.id)
+        text(surface, spec.name, (201, y+16), 26, INK, "title")
+        description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
+                       if spec.id == "colony_ship" else f"{spec.hull} hull · {spec.damage} damage per shot")
+        text(surface, description, (202, y+56), 13, CYAN)
+        text(surface, "Consumed when settling a world." if spec.id == "colony_ship" else
+             "Engage opposing fleets in the same system.", (202, y+82), 12, MUTED)
+        forecast = game.queue_estimates(planet, spec.id)
+        eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
+        text(surface, f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}",
+             (88, y+119), 13, INK)
+        reason = game.ship_build_error(system.id, planet.id, spec.id)
+        app.button(f"build_{spec.id}", f"Build {spec.name.lower()}", (88, y+148, 258, 34),
+                   lambda kind=spec.id: app.queue_ship(kind), enabled=reason is None)
+        text(surface, shorten(reason or "No building slot needed", 260, 11), (365, y+159), 11, GOLD if reason else MUTED)
 
-    panel(surface, (64, 680, 585, 113))
-    ready = len(game.colony_ships_at(system.id))
-    text(surface, f"Your colony ships in this system: {ready}", (88, 695), 17, INK)
-    text(surface, "Assign destinations and track arrivals in Fleets.", (89, 723), 12, MUTED)
-    app.button("shipyard_fleets", "Open fleets →", (88, 750, 235, 33), app.open_fleets)
+    panel(surface, (64, 720, 585, 73))
+    draw_building_art(surface, "shipyard", (79, 725, 89, 60))
+    ready = len(game.fleet_at(system.id))
+    text(surface, f"Your ships in orbit: {ready}", (190, 734), 15, INK)
+    text(surface, "Travel, engage and repair", (191, 763), 11, MUTED)
+    app.button("shipyard_fleets", "Open fleets →", (447, 737, 180, 37), app.open_fleets)
 
     panel(surface, (674, 306, 702, 487))
     text(surface, "SHARED CONSTRUCTION QUEUE", (697, 328), 11, GOLD, "mono", 1)
@@ -76,14 +78,14 @@ def draw_shipyard(app):
         text(surface, "No projects queued.", (699, 419), 23, INK, "title")
         message = ("The rival chooses its own projects when you end the turn."
                    if planet.owner not in (None, PLAYER) else
-                   "Build a colony ship here, or choose buildings in the Colony tab.")
+                   "Build ships here, or choose buildings in the Colony tab.")
         paragraph(surface, message, (700, 462), 608, 15, MUTED, 25)
     text(surface, f"PAGE {app.shipyard_page+1} / {last+1}", (699, 754), 10, FAINT, "mono")
     app.button("queue_previous", "← Prev", (1080, 739, 126, 39), lambda: app.change_shipyard_page(-1), enabled=app.shipyard_page>0)
     app.button("queue_next", "Next →", (1220, 739, 133, 39), lambda: app.change_shipyard_page(1), enabled=app.shipyard_page<last)
     app.button("shipyard_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("shipyard_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Build → Plot course in Fleets → End Turn → Colonize a planet", (400, 840), 12, MUTED)
+    text(surface, "Build ships · Plot courses in Fleets · Settle worlds or engage enemies", (400, 840), 12, MUTED)
     app.button("shipyard_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
 
@@ -94,8 +96,8 @@ def draw_fleets(app):
     app.button("fleets_back", "←  Back · F", (64, 124, 190, 46), app.close_fleets, "ghost")
     app.button("fleets_galaxy", "Galaxy map", (269, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
-    text(surface, "Colony fleet", (64, 190), 43, INK, "title")
-    text(surface, "Build at a colony. Travel between stars. Found a new world.", (66, 251), 14, MUTED)
+    text(surface, "Fleet operations", (64, 190), 43, INK, "title")
+    text(surface, "Explore, settle and defend. Ships in the same system fight together.", (66, 251), 14, MUTED)
     ready = sum(not s.in_transit for s in ships)
     queued = sum(p.item_id in SHIP_TYPES for system in game.systems for planet in system.worlds
                  if planet.owner == PLAYER for p in planet.construction_queue)
@@ -113,39 +115,46 @@ def draw_fleets(app):
     for i, ship in enumerate(ships[start:start+FLEETS_PER_PAGE]):
         y = 429+i*87
         panel(surface, (64, y, 1312, 76))
-        ship_icon(surface, (100, y+38), .67)
+        ship_icon(surface, (100, y+38), .67, kind=ship.kind)
         text(surface, ship.name, (142, y+12), 18, INK)
-        text(surface, f"{game.starting_colonists()} B colonists · consumed on settlement", (143, y+43), 11, MUTED)
+        role = f"{game.starting_colonists()} B colonists · Unarmed" if not ship.damage else f"{ship.damage} damage / shot"
+        text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.in_transit else f"{origin.name} orbit"
         text(surface, shorten(location, 467, 18), (473, y+12), 18, CYAN)
-        caption = f"Arrives in {turn_label(ship.turns_remaining)}" if ship.in_transit else "Ready to travel or settle a planet here"
+        encounter = not ship.in_transit and bool(game.fleet_at(ship.system_id, RIVAL))
+        caption = (f"Arrives in {turn_label(ship.turns_remaining)}" if ship.in_transit else
+                   "Opposing fleet here · Engage to begin combat" if encounter else
+                   "Repairing +4 hull / turn" if ship.hull < ship.max_hull and game.can_repair(ship) else "Ready for orders")
         text(surface, caption, (474, y+43), 12, MUTED)
         if ship.in_transit:
             pg.draw.rect(surface, LINE, (474, y+65, 454, 2))
             pg.draw.rect(surface, GOLD, (474, y+65, int(454*(1-ship.turns_remaining/ship.travel_total)), 2))
         target = ship.destination if ship.in_transit else ship.system_id
-        app.button(f"ship_view_{ship.id}", "View system", (966, y+18, 172, 42), lambda s=target: app.open_system(s))
-        app.button(f"ship_send_{ship.id}", "In transit" if ship.in_transit else "Plot course", (1152, y+18, 200, 42),
+        app.button(f"ship_view_{ship.id}", "System", (966, y+18, 109, 42), lambda s=target: app.open_system(s))
+        app.button(f"ship_send_{ship.id}", "In transit" if ship.in_transit else "Course", (1087, y+18, 137, 42),
                    lambda sid=ship.id: app.plot_course(sid), enabled=not ship.in_transit)
+        app.button(f"ship_engage_{ship.id}", "Engage", (1236, y+18, 116, 42),
+                   lambda sid=ship.system_id: app.engage_request(sid),
+                   enabled=not ship.in_transit and game.engagement_error(ship.system_id) is None)
     if not ships:
         panel(surface, (64, 429, 1312, 248))
         ship_icon(surface, (144, 526), 1.6)
-        text(surface, "Your next colony starts with a ship.", (248, 467), 28, INK, "title")
-        paragraph(surface, "Open a colony's Shipyard tab and build a colony ship. Once construction finishes, it appears here in orbit.",
+        text(surface, "Your fleet starts at a shipyard.", (248, 467), 28, INK, "title")
+        paragraph(surface, "Build a colony ship to settle worlds or a frigate to fight. Finished ships appear here in orbit.",
                   (250, 515), 995, 16, MUTED, 27)
         home = next(((s, p) for s in game.systems for p in s.worlds if p.owner == PLAYER), None)
         if home:
             s, p = home
             app.button("fleet_build_first", "Open colony shipyard", (250, 596, 327, 48),
                        lambda sid=s.id, pid=p.id: app.open_shipyard(sid, pid))
-    text(surface, "Open a planet in the ship's system to settle it.", (64, 798), 13, MUTED)
+    text(surface, "Frigates fight. Colony ships settle worlds. Engage commits every ship in that system.", (64, 798), 12, MUTED)
     text(surface, f"PAGE {app.fleet_page+1} / {last+1}", (1069, 798), 10, FAINT, "mono", right=True)
     app.button("fleets_previous", "← Prev", (1100, 785, 129, 37), lambda: app.change_fleet_page(-1), enabled=app.fleet_page>0)
     app.button("fleets_next", "Next →", (1243, 785, 133, 37), lambda: app.change_fleet_page(1), enabled=app.fleet_page<last)
     app.button("fleets_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("fleets_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "F: fleets · I: empire · E: advance travel and construction", (400, 845), 12, MUTED)
+    text(surface, "+4 hull / turn at friendly colonies with no opposing ships in orbit.", (400, 845), 12, MUTED)
     app.button("fleets_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
 
 
@@ -163,7 +172,7 @@ def draw_map_fleets(app, map_rect):
             pg.draw.line(surface, tuple(c//3 for c in color), origin, end, 1)
             progress = 1-ship.turns_remaining/ship.travel_total
             position = (origin[0]+(end[0]-origin[0])*progress, origin[1]+(end[1]-origin[1])*progress)
-            ship_icon(surface, position, .24, color)
+            ship_icon(surface, position, .24, color, kind=ship.kind)
         else:
             key = ship.owner, ship.system_id
             idle[key] = idle.get(key, 0)+1

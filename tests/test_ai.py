@@ -171,7 +171,7 @@ class AIRulesTests(unittest.TestCase):
         destinations = {s.destination if s.in_transit else s.system_id for s in game.ships}
         self.assertEqual(destinations, {s.id for s in targets})
 
-    def test_exhausted_galaxy_keeps_idle_ships_and_develops_without_new_ship_orders(self):
+    def test_exhausted_galaxy_keeps_colony_ship_idle_and_builds_a_defensive_frigate(self):
         game = new_game(seed=2408)
         for s in game.systems:
             for p in s.worlds:
@@ -181,11 +181,13 @@ class AIRulesTests(unittest.TestCase):
         game.next_ship_id = 2
         for _ in range(35):
             game.advance_turn()
-        self.assertEqual(len(game.ships), 1)
-        self.assertFalse(game.ships[0].in_transit)
+        transports = [s for s in game.ships if s.kind == "colony_ship"]
+        self.assertEqual(len(transports), 1)
+        self.assertFalse(transports[0].in_transit)
+        self.assertEqual(sum(s.kind == "frigate" for s in game.ships), 1)
         self.assertEqual(summarize_empire(game, owner=RIVAL).colonies, 1)
         self.assertTrue(game.opponent.technology.completed or game.opponent.technology.progress)
-        self.assertEqual(game.next_ship_id, 2)
+        self.assertEqual(game.next_ship_id, 3)
 
     def test_no_starting_world_rejects_addition_without_mutation(self):
         game = new_game(seed=2408, with_ai=False)
