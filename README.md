@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.13.0
+# Orion Reach — Python prototype 0.14.0
 
 A playable colony-building and interstellar expansion prototype with conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -77,6 +77,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 
 - Skippable Atlas Forge Games studio splash and main-menu logo credit.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
+- **Distant Stars** background music, with a separate music toggle and volume control.
 - **Continue** appears when a campaign is already open in the current session.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
   an optional reproducible seed, **Fog of war ON/OFF**, and player/rival race choices with illustrated portraits.
@@ -133,7 +134,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
   ship orders, settlement, adding a rival, diplomatic actions, research choices,
   every combat action, invasions, gate orders, End Turn, return to menu and normal exit.
-- Fullscreen, animated background and interface-sound settings persist.
+- Fullscreen, animated background, interface sounds, music on/off and music volume persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
@@ -144,8 +145,32 @@ invade colonies and win through conquest or science.
 Population growth, food, shields, advanced weapons and additional AI empires are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
-inner worlds; its artwork is stylized. Settings contains interface sounds,
-not music.
+inner worlds; its artwork is stylized.
+
+## Background music
+
+**Distant Stars** plays from startup through the menu and all game screens. It
+streams directly from the supplied MP3 and repeats when the track ends, without
+restarting when you open another screen or load a campaign. The original intro
+and ending are retained; this is not a remastered seamless loop.
+
+- Open **Settings** from the main menu, or **Escape → Settings** while playing.
+- **Background music ON/OFF** pauses and resumes the track at its current position.
+- **Music volume − / +** adjusts between 0% and 100% in 10% steps; the default is
+  **30%**. Setting 0% pauses music until the volume is raised again.
+- **Interface sounds** remains an independent setting. Adjusting the music volume
+  while music is OFF remembers the new level without unmuting it.
+- Preferences apply immediately and survive restarting. If your older settings
+  had interface sounds OFF, music initially starts OFF as well; enable it separately.
+- Missing music or an unavailable audio device never prevents gameplay. Screenshot
+  capture mode does not initialize or play audio.
+
+The soundtrack is bundled at `assets/audio/distant-stars.mp3`. It is approximately
+4:03, stereo, and unchanged from the uploaded file. Credits and provenance are in
+`assets/audio/README.md` and **About**. No extra Python dependencies or conversion
+tools are required to play it.
+
+![Music settings](screenshots/settings.png)
 
 ## Build your first colony
 
@@ -729,6 +754,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Skip a ship's action | Select your ship → Hold |
 | Withdraw from combat | Retreat, then confirm the destination |
 | Pause / resume combat | Escape or Menu; Resume returns to the same battle |
+| Mute music / adjust its volume | Settings → Background music / Music volume |
 | Choose player and rival races | New Game |
 
 ## Save locations
@@ -748,7 +774,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.13 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.14 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
 ships and travel times are preserved. Pre-v0.13 saves retain **fog OFF** and start
 with an empty discovery log; build scouts to recover discoveries in those games.
@@ -765,7 +791,8 @@ no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 10**, including the fog setting, per-empire surveys,
+Music preferences are stored separately from campaigns. The save format remains
+compatible with v0.13. New saves use **format version 10**, including the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
@@ -815,7 +842,9 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
+| `orion/audio.py` | Streaming music, pause/resume, volume and interface sounds |
 | `assets/` | Bundled artwork and fonts |
+| `assets/audio/` | Supplied MP3 soundtrack and provenance |
 | `assets/branding/` | Original Atlas Forge logo supplied by the project owner |
 | `assets/portraits/` | Terran, Kharuun and Aelari portraits, with generation prompts |
 | `assets/buildings/` | Six colony building sprites, manifest and generation prompts |
@@ -826,6 +855,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
 | `tests/test_exploration.py` | Fog boundaries, discoveries, scouts, private AI knowledge, saves and UI flows |
+| `tests/test_audio.py` | MP3 playback, mute/resume, independent controls, settings migration and device failures |
 | `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
 | `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
@@ -926,7 +956,10 @@ Official import instructions:
 
 - **Window does not open:** run from a terminal to see the error, and confirm a
   working desktop display is available. Headless machines can use screenshots.
-- **No audio device:** gameplay works; interface sounds are skipped.
+- **No audio device:** gameplay works; music and interface sounds are skipped.
+- **No music:** check **Settings → Background music** and **Music volume**. If the
+  music file is reported missing or unreadable, restore `assets/audio/distant-stars.mp3`
+  from the update ZIP. Old muted preferences keep music OFF until you enable it.
 - **Fullscreen trouble:** press F11. If needed, delete `settings.json` to restore
   defaults; this does not delete saves.
 - **Cannot save:** select a writable directory using `--data-dir`.
@@ -934,5 +967,6 @@ Official import instructions:
   install its venv support or use an existing environment.
 
 Font notices are included in `assets/fonts/LICENSE-DejaVu.txt`. pygame-ce is
-installed separately and retains its own license. No third-party game assets
+installed separately and retains its own license. The supplied soundtrack has
+separate provenance in `assets/audio/README.md`. No assets from other games
 are redistributed.

@@ -12,7 +12,8 @@ import tempfile
 from .model import GameState, SaveError
 
 SAVE_VERSION = 10
-DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True}
+DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
+                    "music": True, "music_volume": 30}
 
 
 def default_data_dir():
@@ -57,7 +58,13 @@ class Storage:
                 return result
             data = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
-                result.update({k: v for k, v in data.items() if k in result and type(v) is bool})
+                result.update({k: v for k, v in data.items()
+                               if k in ("fullscreen", "animated_background", "sound", "music") and type(v) is bool})
+                if type(data.get("music")) is not bool:
+                    result["music"] = result["sound"]  # Respect older muted preferences.
+                volume = data.get("music_volume")
+                if type(volume) is int and 0 <= volume <= 100:
+                    result["music_volume"] = volume
         except (OSError, ValueError, RecursionError):
             pass
         return result

@@ -92,6 +92,7 @@ def main():
         else:
             app.run()
     finally:
+        app.audio.close()
         pygame.quit()
 
 

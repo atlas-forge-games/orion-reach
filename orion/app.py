@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from array import array
 from datetime import datetime
-import math
 from pathlib import Path
 import pygame as pg
 
 from .art import Backdrop, SIZE
+from .audio import Audio
 from .branding import SPLASH_SECONDS, StudioBrand
 from . import __version__
 from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
@@ -93,15 +92,8 @@ class App:
         self.reset_combat_view()
         self.load_rows=[]
         self.load_page=0
-        self.sound=None
-        if not capture:
-            try:
-                pg.mixer.init(frequency=22050,size=-16,channels=1,buffer=512)
-                samples=array("h",(int(2600*math.sin(2*math.pi*660*i/22050)*(1-i/1654)**2)
-                                   for i in range(1654)))
-                self.sound=pg.mixer.Sound(buffer=samples)
-            except pg.error:
-                pass
+        self.audio=Audio(enabled=not capture)
+        self.audio.apply_music(self.settings["music"],self.settings["music_volume"])
         if self.settings["fullscreen"] and not capture:
             self.set_fullscreen(True)
         self.render()
@@ -653,8 +645,7 @@ class App:
         self.go(self.pause_return)
 
     def click_sound(self):
-        if self.sound is not None and self.settings["sound"]:
-            self.sound.play()
+        self.audio.play_click(self.settings["sound"])
 
     def set_fullscreen(self,enabled):
         try:
@@ -675,6 +666,16 @@ class App:
             self.set_fullscreen(not self.settings[key])
         else:
             self.settings[key]=not self.settings[key]
+        if key=="music":
+            self.audio.apply_music(self.settings["music"],self.settings["music_volume"])
+        self.save_preferences()
+
+    def change_music_volume(self,delta):
+        self.settings["music_volume"]=max(0,min(100,self.settings["music_volume"]+delta))
+        self.audio.apply_music(self.settings["music"],self.settings["music_volume"])
+        self.save_preferences()
+
+    def save_preferences(self):
         try:
             self.storage.save_settings(self.settings)
         except SaveError as exc:
@@ -971,6 +972,7 @@ class App:
             self.quit_now()
 
     def quit_now(self):
+        self.audio.close()
         self.running=False
 
     def logical_pos(self,pos):
@@ -1308,17 +1310,27 @@ class App:
         self.heading("03  /  MAKE IT YOURS","Set your course.","Changes take effect immediately and are saved automatically.")
         options=[("fullscreen","Fullscreen","Use the entire display. F11 also toggles this setting."),
                  ("animated_background","Animated background","Moving ships and softly twinkling stars."),
-                 ("sound","Interface sounds","A quiet tone when you activate a control.")]
+                 ("sound","Interface sounds","A quiet tone when you activate a control."),
+                 ("music","Background music",self.audio.music_description)]
         for i,(key,label,description) in enumerate(options):
-            y=340+i*128
-            panel(self.canvas,(256,y,928,106))
-            text(self.canvas,label,(280,y+17),22,INK)
-            text(self.canvas,description,(280,y+59),14,MUTED)
-            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+26,135,53),lambda k=key:self.toggle_setting(k))
+            y=322+i*94
+            panel(self.canvas,(256,y,928,82))
+            text(self.canvas,label,(280,y+12),21,INK)
+            text(self.canvas,description,(280,y+47),14,MUTED)
+            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+18,135,46),lambda k=key:self.toggle_setting(k))
             if self.settings[key]:
-                pg.draw.circle(self.canvas,CYAN,(1132,y+52),4)
-        text(self.canvas,"The window can also be resized. The interface scales to fit.",(256,755),14,MUTED)
-        self.button("settings_done","Done",(933,760,251,60),lambda:self.go(self.settings_return),"primary")
+                pg.draw.circle(self.canvas,CYAN,(1132,y+41),4)
+        volume=self.settings["music_volume"]
+        muted=not self.settings["music"] or volume==0
+        panel(self.canvas,(256,698,928,85))
+        text(self.canvas,"Music volume"+(" · Muted" if muted else ""),(280,711),21,INK)
+        text(self.canvas,"Use − / + to adjust in 10% steps.",(280,748),14,MUTED)
+        self.button("music_quieter","−",(880,714,52,46),lambda:self.change_music_volume(-10),enabled=volume>0)
+        label=f"{volume}%"
+        text(self.canvas,label,(1018-font(23).size(label)[0]//2,722),23,CYAN)
+        self.button("music_louder","+",(1104,714,52,46),lambda:self.change_music_volume(10),enabled=volume<100)
+        text(self.canvas,"Music and interface sounds have separate controls.",(256,834),14,MUTED)
+        self.button("settings_done","Done",(933,817,251,52),lambda:self.go(self.settings_return),"primary")
 
     def star_pos(self,system):
         return (MAP.x+40+system.x*(MAP.w-80),MAP.y+32+system.y*(MAP.h-64))
@@ -1461,6 +1473,7 @@ class App:
         paragraph(self.canvas,"Population growth, food, more empires, shields and advanced weapons. Research offers eight branches with permanent technology choices and an ultimate Ascension project.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
+        text(self.canvas,"Music: Distant Stars · alexander_kies · Created with Suno",(282,699),12,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)
         text(self.canvas,"Mouse / Tab / ↑ ↓ + Enter    Esc: back or pause    F11: fullscreen",(256,795),15,INK)
 
