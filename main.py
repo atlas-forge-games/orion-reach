@@ -11,8 +11,9 @@ def main():
     parser = argparse.ArgumentParser(description="Orion Reach — Python space strategy prototype")
     parser.add_argument("--data-dir", type=Path, help="override the user save/settings directory")
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
+    parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("menu", "setup", "load", "settings", "galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "objectives", "result", "about"), default="menu")
+    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -23,7 +24,7 @@ def main():
     except ImportError:
         raise SystemExit("Install the dependency first: python -m pip install -r requirements.txt")
     from orion.app import App
-    app = App(args.data_dir, capture=bool(args.screenshot))
+    app = App(args.data_dir, capture=bool(args.screenshot), skip_intro=args.skip_intro)
     try:
         if args.screenshot:
             if args.screen in ("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "objectives", "result"):
@@ -54,7 +55,7 @@ def main():
                     earth.ascension_gate, earth.gate_charge = True, 5
                     game.check_victory()
             app.go(args.screen)
-            app.time = 3.0
+            app.time = 1.0 if args.screen == "splash" else 3.0
             app.render()
             args.screenshot.parent.mkdir(parents=True, exist_ok=True)
             pygame.image.save(app.canvas, args.screenshot)

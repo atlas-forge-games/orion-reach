@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.11
+# Orion Reach — Python prototype 0.11.1
 
 A playable colony-building and interstellar expansion prototype with conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -36,6 +36,20 @@ python main.py
 Edit the Python files in your preferred editor, then close and restart the
 game to see your changes. Tracebacks appear directly in the terminal.
 
+Startup shows the supplied **Atlas Forge Games** logo for approximately 2.5 seconds,
+then opens the main menu. Click or press any key to skip. The intro appears only
+when launching the application; returning to the menu does not replay it. A small
+studio credit also remains on the main menu. The Animated Background setting
+also controls the intro's short fade.
+
+For quick development launches, bypass the intro:
+
+```sh
+python main.py --skip-intro
+```
+
+![Atlas Forge Games intro](screenshots/splash.png)
+
 **Optional Windows launcher:** open the extracted `orion_reach` folder and
 double-click **launch.bat**. This creates its own `.venv` and installs the
 dependency on its first launch. Python must already be installed. Use the
@@ -61,6 +75,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 
 ## Included
 
+- Skippable Atlas Forge Games studio splash and main-menu logo credit.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
 - **Continue** appears when a campaign is already open in the current session.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
@@ -675,6 +690,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/research_view.py` | Branches, tiers, project progress and research controls |
 | `orion/combat.py` | Battle snapshots, alternating actions, AI targeting, retreat and validation |
 | `orion/combat_view.py` | Tactical formations, health bars, targeting, logs and results |
+| `orion/branding.py` | Supplied studio logo, proportional scaling, splash and menu credit |
 | `orion/victory.py` | Invasions, Ascension Gates, victory checks and outcome validation |
 | `orion/victory_view.py` | Objectives, gate controls and final campaign results |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
@@ -684,6 +700,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
 | `assets/` | Bundled artwork and fonts |
+| `assets/branding/` | Original Atlas Forge logo supplied by the project owner |
 | `assets/portraits/` | Terran, Kharuun and Aelari portraits, with generation prompts |
 | `assets/buildings/` | Six colony building sprites, manifest and generation prompts |
 | `tools/build_art.py` | Rebuild the original planet/background (optional) |
@@ -711,6 +728,7 @@ The automated checks use Python's built-in unittest and SDL's dummy drivers:
 ```sh
 python -m unittest discover -s tests -v
 python main.py --headless --screenshot menu.png
+python main.py --headless --screen splash --screenshot splash.png
 python main.py --headless --screen setup --screenshot setup.png
 python main.py --headless --screen galaxy --screenshot galaxy.png
 python main.py --headless --screen system --screenshot system.png
@@ -727,7 +745,7 @@ python main.py --headless --screen objectives --screenshot objectives.png
 python main.py --headless --screen result --screenshot victory.png
 ```
 
-`--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
+`--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
 `planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, `research`,
 `combat`, `objectives`, `result`, and `about`.
 Combat and result captures use local example states. Screenshot mode does not create

@@ -9,6 +9,7 @@ from pathlib import Path
 import pygame as pg
 
 from .art import Backdrop, SIZE
+from .branding import SPLASH_SECONDS, StudioBrand
 from . import __version__
 from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
@@ -40,7 +41,7 @@ GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fle
 
 
 class App:
-    def __init__(self,data_dir: Path | None=None,capture=False):
+    def __init__(self,data_dir: Path | None=None,capture=False,skip_intro=False):
         pg.display.init()
         pg.font.init()
         # App can be re-created in an interpreter after pygame.quit().
@@ -55,9 +56,10 @@ class App:
         self.canvas=pg.Surface(SIZE).convert()
         self.viewport=pg.Rect(0,0,*self.windowed_size)
         self.backdrop=Backdrop()
+        self.brand=StudioBrand()
         self.clock=pg.time.Clock()
         self.running=True
-        self.screen="menu"
+        self.screen="menu" if capture or skip_intro else "splash"
         self.game=None
         self.buttons=[]
         self.focus=None
@@ -65,6 +67,7 @@ class App:
         self.mouse=(-1,-1)
         self.pressed=None
         self.time=0.0
+        self.splash_started=0.0
         self.dialog=None
         self.notice=""
         self.notice_until=0.0
@@ -158,6 +161,13 @@ class App:
         if screen=="load":
             self.load_rows=self.storage.list_saves()
             self.load_page=0
+        if screen=="splash":
+            self.splash_started=self.time
+
+    def update_splash(self):
+        if (self.screen=="splash" and not self.dialog
+                and self.time-self.splash_started>=SPLASH_SECONDS):
+            self.go("menu")
 
     def open_system(self,system_id):
         if self.game is None or not 0 <= system_id < len(self.game.systems):
@@ -829,6 +839,15 @@ class App:
         if event.type==pg.QUIT:
             self.quit_request()
             return
+        if self.screen=="splash" and not self.dialog:
+            if event.type==pg.KEYDOWN:
+                if event.key==pg.K_F11:
+                    self.toggle_setting("fullscreen")
+                self.go("menu")
+                return
+            if event.type==pg.MOUSEBUTTONDOWN and event.button==1:
+                self.go("menu")
+                return
         if event.type==pg.WINDOWFOCUSLOST:
             self.pressed=None
         if event.type==pg.MOUSEMOTION:
@@ -1007,6 +1026,9 @@ class App:
         if back:
             self.button("back","←  Back",(62,126,118,46),back,"ghost")
 
+    def draw_splash(self):
+        self.brand.draw_splash(self.canvas,self.time-self.splash_started,self.settings["animated_background"])
+
     def draw_menu(self):
         self.chrome("A TURN-BASED SPACE STRATEGY")
         text(self.canvas,"THE GALAXY IS WAITING",(88,166),11,GOLD,"mono",3)
@@ -1029,6 +1051,7 @@ class App:
         text(self.canvas,"01  /  A NEW HORIZON",(742,799),10,GOLD,"mono",2)
         text(self.canvas,"SOL SYSTEM   ·   TERRAN HOMEWORLD",(1110,801),9,MUTED,"mono",right=True)
         text(self.canvas,"MOUSE OR ↑ ↓ + ENTER",(88,857),10,FAINT,"mono",1)
+        self.brand.draw_menu_credit(self.canvas)
         self.button("about","About the prototype",(1143,845,235,40),lambda:self.go("about"),"ghost")
 
     def heading(self,kicker,title,description):
@@ -1287,10 +1310,11 @@ class App:
 
     def render(self):
         self.buttons=[]
-        full=self.screen not in (*GAME_SCREENS,"pause")
-        self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)
-        if self.screen not in ("menu",*GAME_SCREENS,"pause"):
-            self.backdrop.dim(self.canvas)
+        if self.screen!="splash":
+            full=self.screen not in (*GAME_SCREENS,"pause")
+            self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)
+            if self.screen not in ("menu",*GAME_SCREENS,"pause"):
+                self.backdrop.dim(self.canvas)
         getattr(self,"draw_"+self.screen)()
         if self.dialog:
             self.draw_dialog()
@@ -1318,6 +1342,7 @@ class App:
                 self.handle_event(event)
                 # Screen transitions must update hit regions before the next queued event.
                 self.render()
+            self.update_splash()
             self.update_combat()
             self.render()
             self.present()
