@@ -92,6 +92,7 @@ class PersistenceTests(unittest.TestCase):
     def test_v1_save_migration_preserves_campaign_and_original_file(self):
         old_game=new_game("Old campaign",seed=44)
         old_game.advance_turn()
+        old_game.planet_at(0, 2).growth_progress=0  # v1 had no population growth.
         old_game.selected_system=4
         path=self.store.save(old_game)
         payload=json.loads(path.read_text())

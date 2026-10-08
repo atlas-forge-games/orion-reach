@@ -147,13 +147,13 @@ class SceneInterfaceTests(unittest.TestCase):
         game = self.app.game
         earth = game.systems[0].worlds[2]
         earth.size = "Huge"
-        earth.buildings = list(BUILDINGS)*3
+        earth.buildings = (list(BUILDINGS)*3)[:earth.building_capacity]
         for biome in PALETTES:
             earth.biome = biome
             before = game.to_dict()
             self.app.render()
             self.assertEqual(game.to_dict(), before)
-            self.assertEqual(len(self.surface_keys()), 6)
+            self.assertEqual(len(self.surface_keys()), len(BUILDINGS)+2)
             buttons = [b for b in self.app.buttons if b.key.startswith("surface_")]
             for i, a in enumerate(buttons):
                 self.assertTrue(pg.Rect(64, 343, 928, 403).contains(a.rect))
@@ -177,7 +177,7 @@ class SceneInterfaceTests(unittest.TestCase):
                 self.app.render()
                 for asset_id in building_art.BUILDING_ART_IDS:
                     self.assertIsNone(building_art.load_building_art(asset_id))
-                self.assertEqual(len(self.surface_keys()), 6)
+                self.assertEqual(len(self.surface_keys()), len(BUILDINGS)+2)
                 self.click("surface_factory")
                 self.assertEqual(self.app.colony_slot, 0)
         finally:

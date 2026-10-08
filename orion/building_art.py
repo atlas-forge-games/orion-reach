@@ -5,10 +5,10 @@ import pygame as pg
 
 from .ui import ASSETS
 
-BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine")
+BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm")
 
 
-@lru_cache(maxsize=6)
+@lru_cache(maxsize=7)
 def load_building_art(building_id):
     if building_id not in BUILDING_ART_IDS:
         raise ValueError(f"Unknown building artwork: {building_id}")
@@ -26,6 +26,18 @@ def load_building_art(building_id):
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
     image = pg.Surface((120, 110), pg.SRCALPHA)
+    if building_id == "hydroponic_farm":
+        pg.draw.polygon(image, (64, 88, 88), [(5, 66), (62, 37), (116, 61), (60, 103)])
+        pg.draw.polygon(image, (36, 54, 64), [(5, 66), (60, 103), (60, 109), (5, 73)])
+        pg.draw.polygon(image, (24, 43, 55), [(60, 103), (116, 61), (116, 69), (60, 109)])
+        for x, y in ((15, 37), (44, 25), (72, 12)):
+            pg.draw.rect(image, (55, 117, 106), (x, y+17, 24, 43))
+            pg.draw.ellipse(image, (108, 181, 170), (x, y, 24, 36))
+            for offset in (7, 18, 29):
+                pg.draw.line(image, (44, 79, 93), (x+2, y+21+offset), (x+22, y+21+offset), 2)
+                pg.draw.line(image, (142, 181, 91), (x+5, y+24+offset), (x+19, y+24+offset), 2)
+            pg.draw.line(image, (165, 207, 191), (x+12, y+3), (x+12, y+57), 2)
+        return image
     roof = [(13, 56), (65, 36), (110, 53), (58, 74)]
     pg.draw.polygon(image, (122, 139, 147), roof)
     pg.draw.polygon(image, (62, 81, 94), [(13, 56), (58, 74), (58, 103), (13, 85)])

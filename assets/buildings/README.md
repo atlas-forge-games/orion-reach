@@ -45,7 +45,13 @@ Rendering notes:
 - `orion/colony_scene.py` draws a seeded landscape for the planet's biome and
   paints foreground buildings after the rear row.
 - The palace marks Earth and the AI's homeworld; the shipyard appears on every
-  colony. Both are separate from the four constructible building types.
+  colony. Both are separate from the five constructible building types.
+
+Prototype 0.15 adds `hydroponic_farm`, drawn as an original procedural greenhouse
+sprite in `orion/building_art.py`. It appears in the catalogue, building slots
+and planet surface alongside the six PNG assets above. No generated PNG is
+bundled for it; a future `hydroponic_farm-v1.png` can replace the procedural art
+without changing the rules or building ID. Existing PNGs are unchanged.
 
 `manifest.json` records filenames, dimensions, checksums and model-ID mappings.
 `generation-prompts.json` preserves the complete prompt set and generation mode.

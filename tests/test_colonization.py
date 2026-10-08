@@ -194,6 +194,7 @@ class ColonizationRulesTests(unittest.TestCase):
         self.game.queue_building(0, 2, "factory")
         self.game.advance_turn()
         self.game.research = 12
+        self.game.planet_at(0, 2).growth_progress = 0  # Legacy field defaults to zero.
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)
             path = store.save(self.game)

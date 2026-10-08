@@ -171,7 +171,8 @@ class DiplomacyRulesTests(unittest.TestCase):
                 game.advance_turn()
             self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4)
             self.assertTrue(game.opponent.technology.completed)
-            self.assertEqual(game.credits, 680)
+            # Earth earns 8/turn for 10 turns, 9 for 20, then 10 for 40.
+            self.assertEqual(game.credits, 120+8*10+9*20+10*40)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
 
@@ -198,6 +199,9 @@ class DiplomacySaveTests(unittest.TestCase):
         game = new_game(seed=2408)
         for _ in range(20):
             game.advance_turn()
+        for system in game.systems:
+            for planet in system.worlds:
+                planet.growth_progress = 0  # Legacy saves had no growth progress.
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)

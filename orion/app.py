@@ -789,8 +789,10 @@ class App:
                 message=" · ".join(report.alerts)+" · "+message
             if report.exploration:
                 message=" · ".join(report.exploration)+" · Exploration log: X · "+message
+            if report.population:
+                message=" · ".join(report.population)+" · "+message
             self.toast(message+" · Autosaved")
-            if report.completed or report.arrivals or report.discoveries or report.alerts or report.exploration:
+            if report.completed or report.arrivals or report.discoveries or report.alerts or report.exploration or report.population:
                 self.notice_until=self.time+7
 
     def reset_combat_view(self):
@@ -1470,7 +1472,7 @@ class App:
         paragraph(self.canvas,"Choose a race, build an empire, research technologies, and negotiate with an expanding AI rival. Fight fleet battles and invade colonies, or build the Ascension Gate to win through science.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Population growth, food, more empires, shields and advanced weapons. Research offers eight branches with permanent technology choices and an ultimate Ascension project.",
+        paragraph(self.canvas,"Worker assignment, more empires, shields and advanced weapons. Colonies now produce food and grow toward their population limits. Research offers eight branches with permanent technology choices.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"Music: Distant Stars · alexander_kies · Created with Suno",(282,699),12,MUTED)

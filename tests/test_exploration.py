@@ -100,8 +100,11 @@ class ExplorationRulesTests(unittest.TestCase):
                     self.assertEqual(game.research, bank)
                     arrive(game, [1, 2], 0)
                     before = game.credits
-                    duration, _ = arrive(game, [1, 2], target.id)
-                    self.assertEqual(game.credits, before+8*duration)
+                    duration = game.send_ships([1, 2], target.id)
+                    for _ in range(duration):
+                        before += game.empire_rates[0]  # Tax income includes natural growth.
+                        game.advance_turn()
+                    self.assertEqual(game.credits, before)
                     self.assertEqual(len(game.exploration.discoveries), 1)
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)
 

@@ -44,7 +44,8 @@ class EmpireReportTests(unittest.TestCase):
         game = varied_empire()
         self.assertEqual(summarize_empire(game), EmpireSummary(
             colonies=4, population=17, industry=41, income=23, research=16,
-            used_slots=11, capacity=28, projects=1, idle=3))
+            used_slots=11, capacity=28, projects=1, idle=3,
+            food_produced=24, food_consumed=17, food_shortages=0))
         self.assertEqual(game.empire_rates, (23, 16))
         colony_rows(game, "full", "population", True)
         self.assertEqual(summarize_empire(game).colonies, 4)
@@ -65,7 +66,7 @@ class EmpireReportTests(unittest.TestCase):
     def test_reports_do_not_modify_saves_and_refresh_after_completion(self):
         game = varied_empire()
         before = game.to_dict()
-        for sort in ("name", "population", "industry", "income", "research", "slots"):
+        for sort in ("name", "population", "food", "industry", "income", "research", "slots"):
             for filter_by in ("all", "building", "idle", "full"):
                 colony_rows(game, filter_by, sort, True)
                 summarize_empire(game)

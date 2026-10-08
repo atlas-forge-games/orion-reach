@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from .model import PLAYER
 
 FILTERS = ("all", "building", "idle", "full")
-SORT_KEYS = ("name", "population", "industry", "income", "research", "slots")
+SORT_KEYS = ("name", "population", "food", "industry", "income", "research", "slots")
 COLONIES_PER_PAGE = 5
 
 
@@ -21,6 +21,9 @@ class EmpireSummary:
     idle: int = 0
     agreement_income: int = 0
     agreement_research: int = 0
+    food_produced: int = 0
+    food_consumed: int = 0
+    food_shortages: int = 0
 
 
 def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owner=PLAYER):
@@ -40,6 +43,7 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
     keys = {
         "name": lambda row: row[1].name.casefold(),
         "population": lambda row: row[1].population,
+        "food": lambda row: game.population_report(row[1]).balance,
         "industry": lambda row: game.planet_yields(row[1])[0],
         "income": lambda row: game.planet_yields(row[1])[1],
         "research": lambda row: game.planet_yields(row[1])[2],
@@ -52,6 +56,7 @@ def summarize_empire(game, *, owner=PLAYER):
     colonies = [p for _, p in colony_rows(game, owner=owner)]
     outputs = [game.planet_yields(planet) for planet in colonies]
     trade, research = game.diplomatic_yields(owner)
+    food = [game.population_report(planet) for planet in colonies]
     return EmpireSummary(
         colonies=len(colonies),
         population=sum(p.population for p in colonies),
@@ -64,4 +69,7 @@ def summarize_empire(game, *, owner=PLAYER):
         idle=sum(not p.construction_queue for p in colonies),
         agreement_income=trade,
         agreement_research=research,
+        food_produced=sum(r.produced for r in food),
+        food_consumed=sum(r.consumed for r in food),
+        food_shortages=sum(r.balance < 0 for r in food),
     )

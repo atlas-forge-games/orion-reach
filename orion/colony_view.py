@@ -7,7 +7,7 @@ from .building_art import draw_building_art
 from .production import MAX_QUEUE
 from .model import PLAYER
 from .planet_art import draw_planet
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, shorten, text
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, panel, shorten, text
 
 
 def draw_planet_tabs(app, active):
@@ -22,7 +22,10 @@ def draw_planet_tabs(app, active):
 
 def compact_yields(game, definition, planet):
     values = game.building_yields(definition, planet)
-    return " · ".join(f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v)
+    parts = [f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v]
+    if definition.food:
+        parts.append(f"+{definition.food} FOOD")
+    return " · ".join(parts)
 
 
 def turn_label(count):
@@ -37,7 +40,7 @@ def draw_colony(app):
     app.button("colony_back", "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()}  /  {planet.name.upper()}", 580, 11, "mono"),
          (347, 143), 11, MUTED, "mono", 1)
-    text(surface, f"YEAR {game.year}   ·   TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
+    text(surface, f"YEAR {game.year} · TURN {game.turn} · {game.credits:,} CR", (1376, 141), 12, GOLD, "mono", right=True)
 
     text(surface, shorten(planet.name, 620, 43, "title"), (64, 185), 43, INK, "title")
     status = f"{planet.population} B · {game.empire_name_for(planet.owner)}" if planet.colonized else "Uncolonized"
@@ -46,14 +49,19 @@ def draw_colony(app):
     draw_planet_tabs(app, "colony")
 
     industry, income, science = game.planet_yields(planet)
-    stats = [("INDUSTRY / TURN", f"{industry} IND"), ("INCOME / TURN", f"+{income} CR"),
-             ("RESEARCH / TURN", f"+{science} RP"), ("EMPIRE TREASURY", f"{game.treasury_for(planet.owner or PLAYER):,} CR"),
-             ("RESEARCH STORED", f"{game.research_for(planet.owner or PLAYER):,} RP")]
-    for i, (label, value) in enumerate(stats):
+    food = game.population_report(planet)
+    food_color = RED if food.balance < 0 else GOLD if food.balance == 0 else CYAN
+    stats = [("INDUSTRY / TURN", f"{industry} IND", "Construction on this world", CYAN),
+             ("INCOME / TURN", f"+{income} CR", "Population and buildings", INK),
+             ("RESEARCH / TURN", f"+{science} RP", "Empire research project", CYAN),
+             ("FOOD / CONSUMED", f"{food.produced} / {food.consumed}", f"{food.balance:+} food / turn · local", food_color),
+             ("POPULATION / LIMIT", f"{planet.population} / {food.capacity} B", food.growth_caption, CYAN)]
+    for i, (label, value, caption, color) in enumerate(stats):
         x = 64+i*267
-        panel(surface, (x, 287, 244, 76))
+        panel(surface, (x, 287, 244, 84))
         text(surface, label, (x+17, 300), 9, MUTED, "mono", 1)
-        text(surface, value, (x+17, 324), 22, GOLD if i==3 else CYAN if i in (0, 2, 4) else INK)
+        text(surface, value, (x+17, 319), 22, color)
+        text(surface, caption, (x+17, 349), 10, MUTED)
 
     text(surface, "BUILDING SLOTS", (64, 385), 11, GOLD, "mono", 2)
     building_projects = planet.building_projects
@@ -98,18 +106,18 @@ def draw_colony(app):
             text(surface, "Choose a building" if planet.colonized else "Colony required", (x+12, y+65), 10, FAINT)
         app.button(f"colony_slot_{index}", "", rect, lambda i=index: app.select_colony_slot(i), "hotspot")
 
-    # Four initial buildings; repeat copies are allowed, constrained by slots and credits.
+    # Repeat copies are allowed, constrained by slots and credits.
     for i, definition in enumerate(BUILDINGS.values()):
-        x, y = 751, 414+i*97
-        panel(surface, (x, y, 625, 87))
-        draw_building_art(surface, definition.id, (x+7, y+8, 56, 66))
-        text(surface, definition.name, (x+70, y+10), 18, INK)
-        text(surface, compact_yields(game, definition, planet)+" / turn", (x+70, y+36), 12, CYAN)
+        x, y = 751, 414+i*77
+        panel(surface, (x, y, 625, 71))
+        draw_building_art(surface, definition.id, (x+7, y+5, 56, 59))
+        text(surface, definition.name, (x+70, y+5), 17, INK)
+        text(surface, compact_yields(game, definition, planet)+" / turn", (x+70, y+29), 11, CYAN)
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
         text(surface, f"{price} CR   ·   {definition.work_cost} work   ·   {eta}",
-             (x+70, y+61), 11, MUTED)
+             (x+70, y+51), 11, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
         hint = "1 slot"
@@ -123,9 +131,9 @@ def draw_colony(app):
             label, hint = "Full", "Queue limit"
         elif game.credits < price:
             label, hint = "Funds", f"Need {price} CR"
-        app.button(f"build_{definition.id}", label, (x+506, y+12, 103, 42),
+        app.button(f"build_{definition.id}", label, (x+506, y+7, 103, 35),
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
-        text(surface, hint, (x+510, y+62), 9, FAINT, "mono")
+        text(surface, hint, (x+510, y+51), 9, FAINT, "mono")
 
     # Inspect an existing building or queued project, with reversible queue cancellation.
     panel(surface, (64, 711, 662, 82))
@@ -160,5 +168,5 @@ def draw_colony(app):
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
     text(surface, "Pay when queued. Output starts the turn after completion.", (399, 828), 12, MUTED)
-    text(surface, "Research · R: choose technologies to improve your empire.", (399, 850), 11, FAINT)
+    text(surface, "Food stays local: 1 per billion inhabitants. Surplus enables growth.", (399, 850), 11, FAINT)
     app.button("colony_end_turn", "End turn · E", (1081, 816, 295, 63), app.advance_turn, "primary")

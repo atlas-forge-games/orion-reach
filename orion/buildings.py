@@ -17,6 +17,7 @@ class BuildingSpec:
     income: int = 0
     research: int = 0
     mineral_scaled: bool = False
+    food: int = 0
 
     def yields(self, richness):
         factor = MINERAL_FACTORS[richness] if self.mineral_scaled else 1
@@ -31,6 +32,8 @@ class BuildingSpec:
             parts.append(f"+{income} {'credit' if income == 1 else 'credits'}")
         if research:
             parts.append(f"+{research} research")
+        if self.food:
+            parts.append(f"+{self.food} food")
         return " · ".join(parts) + " / turn"
 
 
@@ -40,4 +43,5 @@ BUILDINGS = {
                          industry=2, income=1, mineral_scaled=True),
     "trade_center": BuildingSpec("trade_center", "Trade centre", "Provides a steady flow of credits.", 40, 24, income=4),
     "research_lab": BuildingSpec("research_lab", "Research lab", "Produces points for your empire's active research project.", 50, 30, research=4),
+    "hydroponic_farm": BuildingSpec("hydroponic_farm", "Hydroponic farm", "Feeds colonists and enables population growth on every biome.", 30, 18, food=4),
 }

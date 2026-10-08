@@ -96,9 +96,12 @@ class AIRulesTests(unittest.TestCase):
         for seed, size in ((1, "Compact"), (42, "Standard"), (2408, "Expansive")):
             with self.subTest(seed=seed, size=size):
                 game = new_game(seed=seed, galaxy_size=size)
-                for _ in range(100):
+                expected_credits = game.credits
+                # Farms also use construction time before the scientific endgame.
+                for _ in range(120):
                     if game.result is not None:
                         break
+                    expected_credits += game.empire_rates[0]
                     game.advance_turn()
                     self.assertGreaterEqual(game.opponent.credits, 0)
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)
@@ -107,7 +110,8 @@ class AIRulesTests(unittest.TestCase):
                 self.assertGreater(len({s.id for s, _ in rows}), 1)
                 self.assertTrue(any("factory" in p.buildings and "trade_center" in p.buildings for _, p in rows))
                 self.assertTrue(game.opponent.technology.completed)
-                self.assertEqual(game.credits, 120+8*(game.turn-1))
+                self.assertEqual(game.credits, expected_credits)
+                self.assertIsNotNone(game.result)
                 self.assertEqual((game.result.winner, game.result.condition), (RIVAL, "science"))
                 self.assertEqual(summarize_empire(game).colonies, 1)
                 self.assertTrue(all(p.used_slots <= p.building_capacity for s in game.systems for p in s.worlds))
@@ -160,7 +164,8 @@ class AIRulesTests(unittest.TestCase):
         self.assertFalse(ship.in_transit)
         game.advance_turn()
         self.assertTrue(ship.in_transit or ship.system_id != target.id)
-        self.assertEqual((planet.owner, planet.population), (PLAYER, 1))
+        self.assertEqual(planet.owner, PLAYER)
+        self.assertGreaterEqual(planet.population, 1)  # The player's colony may grow in transit.
 
     def test_rival_avoids_sending_two_ships_to_a_single_available_world(self):
         game = new_game(seed=2408)
@@ -214,6 +219,7 @@ class AIRulesTests(unittest.TestCase):
         game.send_ship(1, 1)
         game.queue_building(0, 2, "mine")
         game.advance_turn()
+        game.planet_at(0, 2).growth_progress = 0  # Legacy saves had no growth progress.
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)

@@ -57,7 +57,7 @@ class ExplorationState:
         return self.scanned_player if owner == "player" else self.scanned_rival
 
     @classmethod
-    def from_dict(cls, data, game):
+    def from_dict(cls, data, game, *, version=11):
         from .model import Planet, _integer
         if not isinstance(data, dict) or set(data) != {"surveys", "scanned_player", "scanned_rival", "discoveries"}:
             raise ValueError("Invalid exploration data")
@@ -76,15 +76,17 @@ class ExplorationState:
             worlds = row["worlds"]
             if not isinstance(worlds, list) or len(worlds) != game.systems[sid].planets:
                 raise ValueError
+            normalized_worlds = []
             for index, world in enumerate(worlds):
-                parsed = Planet.from_dict(world, index, version=10)
+                parsed = Planet.from_dict(world, index, version=version)
                 actual = game.systems[sid].worlds[index]
                 if any(getattr(parsed, key) != getattr(actual, key) for key in
                        ("name", "biome", "size", "richness", "gravity", "orbit_au")):
                     raise ValueError("Survey does not match this world")
                 if parsed.owner == "rival" and game.opponent is None:
                     raise ValueError
-            surveys.append(Survey(**row))
+                normalized_worlds.append(asdict(parsed))
+            surveys.append(Survey(**{**row, "worlds": normalized_worlds}))
             keys.add((owner, sid))
         scanned = []
         for owner in OWNERS:
@@ -141,7 +143,7 @@ def known_system(game, system_id, owner="player"):
     survey = game.exploration.survey(system_id, owner)
     if survey is None:
         return None
-    return replace(system, worlds=[Planet.from_dict(world, index, version=10)
+    return replace(system, worlds=[Planet.from_dict(world, index, version=11)
                                    for index, world in enumerate(survey.worlds)])
 
 

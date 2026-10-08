@@ -12,6 +12,7 @@ from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, PROJECTS, 
 from . import combat as combat_rules
 from . import victory as victory_rules
 from . import exploration as exploration_rules
+from . import population as population_rules
 from .races import RACES, default_rival_race
 from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
@@ -204,6 +205,7 @@ class TurnReport:
     discoveries: list[str] = field(default_factory=list)
     alerts: list[str] = field(default_factory=list)
     exploration: list[str] = field(default_factory=list)
+    population: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -215,13 +217,18 @@ class Planet:
     richness: str
     gravity: str
     orbit_au: float
-    population: int = 0  # Billions; population growth is not yet simulated.
+    population: int = 0  # Billions; each completed growth cycle adds one.
     colonized: bool = False
     buildings: list[str] = field(default_factory=list)
     construction_queue: list[ConstructionProject] = field(default_factory=list)
     owner: str | None = None
     ascension_gate: bool = False
     gate_charge: int = 0
+    growth_progress: int = 0
+
+    @property
+    def population_capacity(self):
+        return population_rules.POPULATION_LIMITS[self.size]
 
     @property
     def habitability(self):
@@ -293,7 +300,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=9):
+    def from_dict(cls, data, expected_id, *, version=11):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -310,6 +317,11 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 11:
+            record["growth_progress"] = 0
+        if (not _integer(record["growth_progress"], 0, population_rules.GROWTH_THRESHOLD-1)
+                or (not data["colonized"] and record["growth_progress"] != 0)):
+            raise ValueError
         if version < 5:
             record["owner"] = PLAYER if data["colonized"] else None
         if record["owner"] not in (None, PLAYER, RIVAL):
@@ -545,6 +557,9 @@ class GameState:
     def planet_yields(self, planet):
         return colony_yields(planet, self.bonuses_for(planet.owner))
 
+    def population_report(self, planet):
+        return population_rules.report(planet, self.bonuses_for(planet.owner))
+
     def building_yields(self, definition, planet):
         return building_yields(definition, planet.richness, self.bonuses_for(planet.owner or PLAYER))
 
@@ -772,6 +787,7 @@ class GameState:
         planet.colonized = True
         planet.owner = owner
         planet.population = self.starting_colonists(owner)
+        planet.growth_progress = 0
         self.ships.remove(ship)
         return planet
 
@@ -827,6 +843,8 @@ class GameState:
         advance_diplomacy(self)
         income, research = self.empire_rates
         rival_income, rival_research = self.empire_rates_for(RIVAL)
+        population_start = [(p, self.population_report(p)) for s in self.systems
+                            for p in s.worlds if p.colonized]
         arrivals = []
         for ship in self.ships:
             if ship.in_transit:
@@ -859,6 +877,14 @@ class GameState:
         self.year += 1
         self.credits += income
         self.research += research
+        population = []
+        for planet, start in population_start:
+            if population_rules.advance(planet, start):
+                message = f"{planet.name} grew to {planet.population} B"
+                if planet.owner == PLAYER:
+                    population.append(message)
+                else:
+                    self.rival_event(message+".", turn=self.turn)
         exploration = exploration_rules.refresh(self, recover=True)
         discovered = self.advance_research()
         if self.opponent is not None:
@@ -880,13 +906,13 @@ class GameState:
         if encounter is not None:
             self.start_combat(encounter, RIVAL)
         return TurnReport(income, research, completed, arrivals,
-                          [discovered.name] if discovered else [], alerts, exploration)
+                          [discovered.name] if discovered else [], alerts, exploration, population)
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=10):
+    def from_dict(cls, data, *, version=11):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -980,7 +1006,7 @@ class GameState:
                 if type(data["fog_of_war"]) is not bool:
                     raise ValueError("Invalid fog setting")
                 game.fog_of_war = data["fog_of_war"]
-                game.exploration = exploration_rules.ExplorationState.from_dict(data["exploration"], game)
+                game.exploration = exploration_rules.ExplorationState.from_dict(data["exploration"], game, version=version)
             # Older games retain the completely revealed map they started with.
             return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:

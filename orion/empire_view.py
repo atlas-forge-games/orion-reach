@@ -7,7 +7,7 @@ from .colony_view import turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, colony_rows, summarize_empire
 from .planet_art import draw_planet
 from .races import RACES
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, arrow, panel, shorten, text
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, arrow, panel, shorten, text
 
 
 def draw_empire(app):
@@ -42,13 +42,15 @@ def draw_empire(app):
         ("RESEARCH STORED", f"{game.research:,} RP", f"+{summary.research:,} RP / turn", CYAN),
         ("BUILDING SLOTS", f"{summary.used_slots} / {summary.capacity}",
          f"{summary.capacity-summary.used_slots} free · queued slots included", INK),
+        ("FOOD / CONSUMED", f"{summary.food_produced} / {summary.food_consumed}",
+         f"{summary.food_shortages} shortages · supplies local", RED if summary.food_shortages else CYAN),
     ]
     for i, (label, value, caption, color) in enumerate(stats):
-        x = 64+i*267
-        panel(surface, (x, 284, 244, 91))
+        x = 64+i*222
+        panel(surface, (x, 284, 202, 91))
         text(surface, label, (x+17, 295), 9, MUTED, "mono", 1)
-        text(surface, value, (x+17, 316), 24, color)
-        text(surface, shorten(caption, 211, 11), (x+17, 352), 11, MUTED)
+        text(surface, value, (x+17, 316), 22, color)
+        text(surface, shorten(caption, 175, 10), (x+17, 352), 10, MUTED)
 
     text(surface, "COLONY DIRECTORY", (64, 402), 11, GOLD, "mono", 2)
     text(surface, f"{len(rows)} of {summary.colonies} {'colonies' if summary.colonies != 1 else 'colony'}", (338, 402), 12, MUTED)
@@ -60,11 +62,12 @@ def draw_empire(app):
             pg.draw.line(surface, GOLD, (x, 427), (x+131, 427), 2)
 
     headings = [
-        ("name", "COLONY / SYSTEM", 78, 286),
-        ("population", "POPULATION", 387, 114),
-        ("industry", "INDUSTRY", 508, 101),
-        ("income", "INCOME", 619, 92),
-        ("research", "RESEARCH", 722, 104),
+        ("name", "COLONY / SYSTEM", 78, 250),
+        ("population", "POP / LIMIT", 342, 104),
+        ("food", "FOOD NET", 464, 88),
+        ("industry", "INDUSTRY", 569, 77),
+        ("income", "INCOME", 658, 77),
+        ("research", "RESEARCH", 745, 81),
         ("slots", "SLOTS", 839, 96),
     ]
     for key, label, x, width in headings:
@@ -83,11 +86,16 @@ def draw_empire(app):
                             lambda s=system.id, p=planet.id: app.open_empire_colony(s, p), "hotspot")
         active = app.is_active(button)
         draw_planet(surface, planet, (95, y+27), 34, f"{game.seed}:{system.id}:{planet.id}")
-        text(surface, shorten(planet.name, 244, 16), (125, y+7), 16, GOLD if active else INK)
-        text(surface, shorten(f"{system.name} · {planet.size}", 244, 11), (125, y+31), 11, MUTED)
+        text(surface, shorten(planet.name, 202, 16), (125, y+7), 16, GOLD if active else INK)
+        text(surface, shorten(f"{system.name} · {planet.size}", 202, 11), (125, y+31), 11, MUTED)
         industry, income, research = game.planet_yields(planet)
-        for value, right, color in ((f"{planet.population} B", 485, INK),
-                                    (str(industry), 593, CYAN), (f"+{income}", 698, INK),
+        food = game.population_report(planet)
+        text(surface, f"{planet.population}/{food.capacity} B", (440, y+7), 15, INK, right=True)
+        growth = f"Growth {food.progress}%" if food.growth_rate else "Limit reached" if planet.population>=food.capacity else "Growth paused"
+        text(surface, growth, (440, y+31), 9, MUTED, right=True)
+        text(surface, f"{food.balance:+}", (545, y+7), 16, RED if food.balance<0 else CYAN, right=True)
+        text(surface, f"{food.produced} / {food.consumed} used", (545, y+31), 9, MUTED, right=True)
+        for value, right, color in ((str(industry), 635, CYAN), (f"+{income}", 721, INK),
                                     (f"+{research}", 813, CYAN)):
             text(surface, value, (right, y+17), 16, color, right=True)
         text(surface, f"{planet.used_slots} / {planet.building_capacity}", (918, y+6), 15, INK, right=True)

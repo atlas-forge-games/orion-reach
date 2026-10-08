@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.14.0
+# Orion Reach — Python prototype 0.15.0
 
-A playable colony-building and interstellar expansion prototype with conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -141,8 +141,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 **Scope:** construct buildings, colony ships, frigates and troop transports, travel between systems, and
 found additional colonies alongside an expanding AI empire, and negotiate
 trade and research agreements, make permanent technology choices, fight fleet battles,
-invade colonies and win through conquest or science.
-Population growth, food, shields, advanced weapons and additional AI empires are future work.
+feed and grow colonies, invade worlds and win through conquest or science.
+Worker assignment, food shipments, shields, advanced weapons and additional AI empires are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized.
@@ -198,6 +198,7 @@ habitability does not change it in this version.
 | Mining complex | 30 | 18 | +1 / +2 / +3 industry on Poor / Average / Rich worlds, plus +1 credit |
 | Trade centre | 40 | 24 | +4 credits |
 | Research lab | 50 | 30 | +4 research points |
+| Hydroponic farm | 30 | 18 | +4 food on every biome |
 
 These are base values. Discovered technologies change the prices and outputs
 shown in the catalogue. Capacity and work costs remain unchanged.
@@ -218,9 +219,72 @@ shown in the catalogue. Capacity and work costs remain unchanged.
   settled. Bring a colony ship to the system and use the planet's Overview tab.
 
 Every colony has a base of 6 industry per turn and one credit per billion
-inhabitants. There is no upkeep or population growth yet. All colony income and
-research contribute to the empire totals. Costs, work and capacities can be
-tuned in `orion/buildings.py`.
+inhabitants. All colony income and research contribute to the empire totals.
+Building costs, work and slots can be tuned in `orion/buildings.py`.
+
+## Population growth and food
+
+Each colony automatically produces food and consumes **1 food per billion
+inhabitants per turn**. Food stays on its planet. An empire-wide surplus cannot
+feed another colony. There is no food stockpile, shipping or worker assignment
+in this first version.
+
+| Biome | Base food per colony per turn |
+| --- | ---: |
+| Terran | 10 |
+| Ocean | 8 |
+| Desert / Tundra | 4 |
+| Barren / Volcanic | 2 |
+
+Build a **Hydroponic farm** in the Colony tab for **30 credits, 18 construction
+work and one building slot**. Each completed farm adds **4 food per turn** on
+any biome, starting on the turn after completion. Farms can be repeated and
+use the normal construction, discount, cancellation and demolition rules.
+They appear as clickable greenhouses on the planet surface.
+
+Food surplus advances growth by **5 percentage points per surplus food per
+turn**, capped at **25 points per turn**. At 100%, population increases by
+**1 billion** and leftover progress carries over. The next increase may take
+longer because the new inhabitants also eat. At zero food balance or a
+shortage, growth pauses and accumulated progress is retained. Shortages do
+not kill inhabitants in this version.
+
+| Planet size | Population limit (billions) |
+| --- | ---: |
+| Tiny | 8 |
+| Small | 12 |
+| Medium (Earth) | 16 |
+| Large | 20 |
+| Huge | 24 |
+
+Size determines the population limit independently of building slots and
+biome. Growth stops at that limit and clears remaining progress. Previously
+saved populations above the new limit are preserved and cannot grow further.
+
+Earth begins with **8 B inhabitants, 10 food produced and 8 consumed**. With
+no changes, it reaches 9 B after 10 End Turns, then 10 B after another 20.
+At 10 B it needs a farm or a food technology to keep growing. New inhabitants
+increase tax income starting on the following turn and immediately improve
+invasion defence; industry and research still depend on buildings and technology.
+
+The Colony screen shows food produced/consumed, net food, population/capacity,
+growth progress and the estimated turns to the next increase. Forecasts use
+current food output. Planet Overview shows the same live colony information
+and a Manage colony button. Empire Overview lists local food balances and
+marks shortages; its totals are informational, with no food transfers.
+
+**Symbiotic Farming** now gives **+2 food and +2 credits per colony**, keeping
+its previous income bonus. A technology discovered at End Turn contributes
+food starting on the next turn. New colonies keep their existing starting
+colonists and begin with zero growth progress. Both empires follow these rules;
+the AI builds farms when food is tight and reserves space for future food needs.
+Captured colonies retain their population, farms and growth progress, while
+food technology bonuses follow their new owner. Fog surveys retain only the
+population and progress last observed.
+
+Food production, population limits and growth rules live in `orion/population.py`.
+
+![Colony food and population](screenshots/colony.png)
 
 ## Research and discovery
 
@@ -267,9 +331,10 @@ Research never changes the price already paid for a project.
 
 Speed bonuses also add; both drive technologies give +75% speed. A voyage
 keeps its departure speed until arrival, including across save/load. New orders
-use your latest speed. Population bonuses apply when settling a new colony,
-including with an older ship; existing colonies do not gain population. Biology
-does not add food or automatic population growth in this first version.
+use your latest speed. Starting-population bonuses apply when settling a new
+colony, including with an older ship; they do not instantly add inhabitants to
+existing colonies. Natural growth uses each colony's food surplus. Symbiotic
+Farming improves local food production as well as income.
 Radiation Shields allows barren colonies; Thermal Barriers allows volcanic
 colonies. These habitats do not change the world's natural habitability.
 
@@ -288,7 +353,10 @@ system without your colonies. It preserves your existing assets and progress.
 Older saves do not gain an opponent automatically. If no suitable starting world
 remains, Add rival is disabled. Adding a rival autosaves the campaign.
 
-- With fog enabled, the AI first builds a scout and explores with its own survey
+- The AI prioritizes farms when local food is insufficient for growth and
+  reserves remaining building slots when needed to feed future inhabitants.
+  Both empires use identical food production, consumption and growth rules.
+- With fog enabled, the AI builds a scout after urgent food needs and explores with its own survey
   information. It chooses colony sites from known worlds, or explores with a colony
   ship if none are known. Its race determines the order of factories, trade centres,
   research labs and mines. Its strongest colony produces colony ships and frigates;
@@ -304,7 +372,9 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
   ships active or queued, depending on its colony count and remaining worlds.
 - **End Turn** issues the AI's orders, records starting yields, advances both
   empires' travel and construction, then deposits income in their respective
-  treasuries. Newly completed ships receive their first AI order on the next
+  treasuries, then grows populations using starting food balances. Newly
+  completed farms and food research affect the next turn's growth.
+  Newly completed ships receive their first AI order on the next
   End Turn; arrived ships can settle or reroute on the next End Turn.
 - With fog enabled, **Rival report** shows surveyed colonies and currently visible
   ships. Old surveys are dated; treasury, research totals, hidden routes and private
@@ -686,12 +756,13 @@ Click **Empire · I** at the top of the galaxy, system, planet or colony screen,
 or press **I**. The overview shows:
 
 - Total colonies and population, treasury and credit income, industry,
-  stored research and research income, and occupied/available building slots.
-- One row per colony, with population, per-turn output, slots, the current
+  stored research and research income, occupied/available building slots,
+  total food produced/consumed and the number of colonies with shortages.
+- One row per colony, with population/capacity, growth, local food balance, per-turn output, slots, the current
   construction project, work progress, completion estimate and waiting projects.
 - **All**, **Building**, **Idle** and **Full** filters. Full includes slots
   reserved by queued projects. The summary totals always cover the entire empire.
-- Sortable colony name, population, industry, income, research and occupied
+- Sortable colony name, population, net food, industry, income, research and occupied
   slot columns. Numerical columns initially sort highest first; clicking the
   same heading again reverses the order.
 - Five colonies per page; use Previous/Next, Page Up/Down, Left/Right or the
@@ -707,6 +778,8 @@ Earth is the starting colony; each newly settled world appears in the directory.
 The current project may be a building or a ship. Ship construction counts as
 activity but does not reserve a building slot. View filters,
 sort order and page are kept during play and reset when starting/loading a game.
+
+![Empire food and population](screenshots/empire.png)
 
 ## Controls
 
@@ -774,9 +847,14 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.14 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.15 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Pre-v0.13 saves retain **fog OFF** and start
+ships and travel times are preserved. Earlier colonies keep their populations
+and gain zero growth progress; saved fog surveys gain the same field without
+being refreshed. Food is calculated from the existing biome, buildings and
+technology, including Symbiotic Farming's new food bonus. Growth begins with
+the next End Turn and pauses wherever there is no local food surplus.
+Pre-v0.13 saves retain **fog OFF** and start
 with an empty discovery log; build scouts to recover discoveries in those games.
 Start a new campaign to play with fog enabled. Fleet grouping is derived from
 existing ship data.
@@ -791,12 +869,13 @@ no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-Music preferences are stored separately from campaigns. The save format remains
-compatible with v0.13. New saves use **format version 10**, including the fog setting, per-empire surveys,
+Music preferences are stored separately from campaigns. New saves use
+**format version 11**, including growth progress, hydroponic farms,
+the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.12 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.14 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -814,6 +893,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/system_views.py` | Solar-system and planet overview layouts |
 | `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
 | `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
+| `orion/population.py` | Local food production, consumption, population limits and growth |
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
 | `orion/ai.py` | Deterministic rival construction, travel and settlement policy |
@@ -851,6 +931,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tools/build_art.py` | Rebuild the original planet/background (optional) |
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
+| `tests/test_population.py` | Food, growth timing, farms, AI, captures, fog, save migration and UI controls |
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
@@ -864,8 +945,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
-to the UI controller as needed. The next practical increments are population
-growth, food and more advanced technology tiers.
+to the UI controller as needed. Possible next foundations include worker
+assignment, food shipments and more advanced technology tiers.
 Shields, advanced weapons and ship customization can follow. Bump the save version and add
 migrations when the data schema changes.
 

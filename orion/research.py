@@ -64,7 +64,7 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("superconductors", "materials", 2, "Superconductors", "+1 industry per colony and +2 research per laboratory.", colony_industry=1, lab_research=2),
     tech("composite_structures", "materials", 2, "Composite Structures", "New building orders cost 15% fewer credits.", building_discount=15),
     tech("colony_biospheres", "biology", 1, "Colony Biospheres", "New colonies start with 1 billion additional inhabitants.", colonists=1),
-    tech("symbiotic_farming", "biology", 1, "Symbiotic Farming", "+2 credits per colony.", colony_income=2),
+    tech("symbiotic_farming", "biology", 1, "Symbiotic Farming", "+2 food and +2 credits per colony.", colony_food=2, colony_income=2),
     tech("colony_biogenesis", "biology", 2, "Colony Biogenesis", "New colonies start with 2 billion additional inhabitants.", colonists=2),
     tech("ecology_networks", "biology", 2, "Ecology Networks", "+1 credit per 2 billion inhabitants on each colony.", income_per_two_pop=1),
     tech("research_networks", "computers", 1, "Research Networks", "+1 research per colony and per laboratory.", colony_research=1, lab_research=1),

@@ -212,6 +212,16 @@ def run_ai(game):
     for index, (system, planet) in enumerate(colonies):
         if planet.construction_queue:
             continue
+        food = game.population_report(planet)
+        farm_food = PROJECTS["hydroponic_farm"].food
+        farms_needed = max(0, (food.capacity-food.produced+farm_food-1)//farm_food)
+        needs_food = (food.produced < min(food.capacity, planet.population+2)
+                      or 0 < planet.free_slots <= farms_needed)
+        if needs_food and planet.free_slots > 0:
+            if game.build_error(system.id, planet.id, "hydroponic_farm", owner=RIVAL) is None:
+                game.queue_building(system.id, planet.id, "hydroponic_farm", owner=RIVAL)
+                game.rival_event(f"Started a hydroponic farm on {planet.name}.")
+            continue
         # The strongest colony supplies ships. Other worlds build their economies.
         # Expansion raises the shipyard's development target, preventing stagnation.
         target_buildings = min(planet.building_capacity, 2+len(colonies)//2)

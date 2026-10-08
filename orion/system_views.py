@@ -8,6 +8,7 @@ from .colony_scene import draw_colony_scene, is_headquarters
 from .model import PLAYER, RIVAL
 from .victory import invasion_strength
 from .exploration_view import draw_unsurveyed_system
+from .population import BASE_FOOD
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
@@ -175,7 +176,7 @@ def draw_planet_overview(app):
     elif planet.colonized:
         text(surface, shorten(game.empire_name_for(planet.owner), 318, 13), (1037, 639), 13,
              CYAN if planet.owner == PLAYER else RIVAL_COLOR)
-        text(surface, f"{planet.population} B inhabitants · {game.planet_yields(planet)[0]} IND / turn", (1037, 665), 12, INK)
+        text(surface, f"{planet.population} / {planet.population_capacity} B · {game.planet_yields(planet)[0]} IND / turn", (1037, 665), 12, INK)
         if planet.owner == RIVAL:
             attack, defence = invasion_strength(game, system.id, planet.id)
             reason = game.invasion_error(system.id, planet.id)
@@ -186,7 +187,10 @@ def draw_planet_overview(app):
             text(surface, f"Ascension Gate · {planet.gate_charge}/5 charged turns", (1037, 699), 13, CYAN)
             app.button("planet_objectives", "View victory progress", (1037, 729, 318, 35), app.open_objectives)
         else:
-            paragraph(surface, BIOME_NOTES[planet.biome], (1037, 696), 318, 12, MUTED, 18)
+            food = game.population_report(planet)
+            text(surface, f"Food: {food.produced} produced / {food.consumed} used ({food.balance:+})", (1037, 695), 12, GOLD if food.balance<=0 else CYAN)
+            text(surface, food.growth_caption, (1037, 722), 12, MUTED)
+            app.button("planet_manage_food", "Manage colony", (1037, 747, 318, 27), lambda: app.go("colony"))
     else:
         reason = game.colonize_error(system.id, planet.id)
         app.button("colonize_planet", "Colonize", (1037, 637, 318, 40), app.colonize_request, enabled=reason is None)
@@ -198,7 +202,7 @@ def draw_planet_overview(app):
         hint = "Clear opposing ships, then land troop transports to capture this colony."
     if not live:
         hint = "Stored survey · Current activity is unknown."
-    text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. {hint}",
+    text(surface, f"{planet.size}: {planet.building_capacity} slots · {planet.population_capacity} B limit · {BASE_FOOD[planet.biome]} base food. {hint}",
          (65, 795), 13, MUTED)
     app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("planet_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
