@@ -80,18 +80,16 @@ class SceneInterfaceTests(unittest.TestCase):
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.assertEqual(self.surface_keys(), {"surface_headquarters", "surface_shipyard"})
-        self.click("tab_colony")
-        self.click("build_factory")
-        self.click("tab_overview")
+        self.click("planet_change")
+        self.click("production_build_factory")
         self.click("surface_factory")
         self.assertEqual(self.app.screen, "colony")
         self.assertEqual(self.app.colony_slot, 0)
         self.click("cancel_construction")
         self.click("tab_overview")
         self.assertNotIn("surface_factory", self.surface_keys())
-        self.click("tab_colony")
-        self.click("build_factory")
-        self.click("tab_overview")
+        self.click("planet_change")
+        self.click("production_build_factory")
         for _ in range(4):
             self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_e, mod=0))
             self.app.render()
@@ -156,7 +154,7 @@ class SceneInterfaceTests(unittest.TestCase):
             self.assertEqual(len(self.surface_keys()), len(BUILDINGS)+2)
             buttons = [b for b in self.app.buttons if b.key.startswith("surface_")]
             for i, a in enumerate(buttons):
-                self.assertTrue(pg.Rect(64, 343, 928, 403).contains(a.rect))
+                self.assertTrue(pg.Rect(24, 314, 1392, 526).contains(a.rect))
                 for b in buttons[i+1:]:
                     self.assertFalse(a.rect.colliderect(b.rect), (a.key, b.key))
         earth.biome = "Terran"

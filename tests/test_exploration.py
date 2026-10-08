@@ -195,7 +195,7 @@ class ExplorationRulesTests(unittest.TestCase):
         game = new_game(seed=2408)
         hidden = next(s for s in game.systems if s.id != game.opponent.home_system)
         self.assertEqual(available_worlds(game, hidden), [])
-        for _ in range(20):
+        for _ in range(30):  # The rival now establishes farms and reallocates labour first.
             game.advance_turn()
         self.assertTrue(any(s.kind == "scout" for s in game.ships_owned_by(RIVAL)))
         self.assertGreater(len(game.exploration.scanned_rival), 2)
@@ -319,7 +319,8 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.key(pg.K_e)
         self.key(pg.K_e)
         self.key(pg.K_ESCAPE)
-        self.click("planet_galaxy")
+        self.click("planet_return")
+        self.click("system_back")
         self.click("map_fleet_1")
         self.click("fleet_choose_destination")
         target = discovery_system(self.app.game)
@@ -391,7 +392,8 @@ class ExplorationInterfaceTests(unittest.TestCase):
         text = self.drawn_text()
         self.assertIn("8 B inhabitants", " ".join(text.split()))
         self.assertNotIn("77", text)
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "tab_shipyard").enabled)
+        self.assertFalse(next(b for b in self.app.buttons if b.key == "surface_shipyard").enabled)
+        self.assertFalse(any(b.key in ("planet_change", "planet_buy") for b in self.app.buttons))
         self.app.go("shipyard")
         self.assertEqual(self.app.screen, "planet")
         self.assertFalse(any(b.key == "invade_planet" for b in self.app.buttons))

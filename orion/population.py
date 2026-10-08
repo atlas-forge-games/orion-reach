@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from .buildings import BUILDINGS
 
 POPULATION_LIMITS = {"Tiny": 8, "Small": 12, "Medium": 16, "Large": 20, "Huge": 24}
-BASE_FOOD = {"Terran": 10, "Ocean": 8, "Desert": 4, "Tundra": 4, "Barren": 2, "Volcanic": 2}
+BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Volcanic": 0}
+FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Tundra": 2, "Barren": 1, "Volcanic": 1}
+WORKER_ROLES = ("farmers", "workers", "scientists")
 GROWTH_THRESHOLD = 100
 
 
@@ -62,6 +64,7 @@ def report(planet, bonuses=None):
     produced = 0
     if planet.colonized:
         produced = BASE_FOOD[planet.biome] + (bonuses or {}).get("colony_food", 0)
+        produced += planet.farmers * FARMER_OUTPUT[planet.biome]
         produced += sum(BUILDINGS[b].food for b in planet.buildings)
     return PopulationReport(planet.population, POPULATION_LIMITS[planet.size], produced,
                             planet.growth_progress, planet.colonized)

@@ -129,7 +129,8 @@ class DiplomacyRulesTests(unittest.TestCase):
             summary = summarize_empire(game, owner=owner)
             self.assertEqual((summary.income, summary.research), game.empire_rates_for(owner))
             self.assertEqual((summary.agreement_income, summary.agreement_research), game.diplomatic_yields(owner))
-            self.assertEqual(summary.industry, 6)
+            expected = sum(game.planet_yields(p)[0] for s in game.systems for p in s.worlds if p.owner == owner)
+            self.assertEqual(summary.industry, expected)
 
     def test_ending_an_agreement_stops_income_and_negative_relations_end_the_other(self):
         game = new_game(seed=2408)
@@ -202,6 +203,7 @@ class DiplomacySaveTests(unittest.TestCase):
         for system in game.systems:
             for planet in system.worlds:
                 planet.growth_progress = 0  # Legacy saves had no growth progress.
+                planet.farmers, planet.scientists = min(2, planet.population), 0
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)
@@ -309,7 +311,10 @@ class DiplomacyInterfaceTests(unittest.TestCase):
             with self.subTest(origin=origin):
                 self.app.go(origin)
                 before = self.app.game.to_dict()
-                self.click("open_diplomacy")
+                if origin == "planet":
+                    self.key(pg.K_d)
+                else:
+                    self.click("open_diplomacy")
                 self.key(pg.K_LEFT)
                 self.key(pg.K_RIGHT)
                 self.key(pg.K_d)

@@ -117,7 +117,7 @@ class ColonizationRulesTests(unittest.TestCase):
         mars = self.game.colonize(1, 0, 3)
         self.assertTrue(mars.colonized)
         self.assertEqual(mars.population, 1)
-        self.assertEqual(mars.yields_per_turn, (6, 1, 0))
+        self.assertEqual(mars.yields_per_turn, (1, 1, 0))
         self.assertEqual(self.earth.population, 8)
         self.assertEqual(self.game.ships, [Ship(2, "colony_ship", 0)])
         self.assertEqual(self.game.credits, 120)
@@ -273,7 +273,7 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.app.present()
         self.click("star_0")
         self.click("world_2")
-        self.click("tab_shipyard")
+        self.click("surface_shipyard")
         self.click("build_colony_ship")
         self.assertEqual(self.app.game.credits, 40)
         for _ in range(7):
@@ -302,10 +302,11 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.game.systems[target.id].worlds[planet.id].colonized)
         self.click("colonize_planet")
         self.click("dialog_ok")
-        self.assertEqual(self.app.screen, "colony")
+        self.assertEqual(self.app.screen, "planet")
         self.assertEqual(self.app.game.ships, [])
         self.assertEqual(self.app.game.systems[target.id].worlds[planet.id].population, 1)
-        self.click("build_mine")
+        self.click("planet_change")
+        self.click("production_build_mine")
         self.key(pg.K_i)
         rows = [b for b in self.app.buttons if b.key.startswith("empire_colony_")]
         self.assertEqual(len(rows), 2)
@@ -363,7 +364,8 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.click("colonize_planet")
         self.assertIsNone(self.app.dialog)
         self.assertEqual(self.app.game.to_dict(), before)
-        self.click("tab_shipyard")
+        self.app.open_shipyard(0, 0)
+        self.app.render()
         self.assertFalse(next(b for b in self.app.buttons if b.key == "build_colony_ship").enabled)
 
     def test_queue_and_fleet_pagination_and_visible_keyboard_selection(self):

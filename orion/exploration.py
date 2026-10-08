@@ -57,7 +57,7 @@ class ExplorationState:
         return self.scanned_player if owner == "player" else self.scanned_rival
 
     @classmethod
-    def from_dict(cls, data, game, *, version=11):
+    def from_dict(cls, data, game, *, version=12):
         from .model import Planet, _integer
         if not isinstance(data, dict) or set(data) != {"surveys", "scanned_player", "scanned_rival", "discoveries"}:
             raise ValueError("Invalid exploration data")
@@ -143,7 +143,7 @@ def known_system(game, system_id, owner="player"):
     survey = game.exploration.survey(system_id, owner)
     if survey is None:
         return None
-    return replace(system, worlds=[Planet.from_dict(world, index, version=11)
+    return replace(system, worlds=[Planet.from_dict(world, index, version=12)
                                    for index, world in enumerate(survey.worlds)])
 
 

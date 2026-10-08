@@ -17,7 +17,7 @@ from orion.ai import run_ai
 from orion.empire import colony_rows, summarize_empire
 from orion.exploration import refresh
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
-from orion.population import BASE_FOOD, POPULATION_LIMITS
+from orion.population import BASE_FOOD, FARMER_OUTPUT, POPULATION_LIMITS
 from orion.storage import SAVE_VERSION, Storage
 from orion.victory import CampaignResult
 
@@ -33,7 +33,7 @@ class PopulationRulesTests(unittest.TestCase):
                 self.earth.size, self.earth.biome = size, biome
                 before = self.game.to_dict()
                 info = self.game.population_report(self.earth)
-                self.assertEqual((info.capacity, info.produced, info.consumed), (capacity, food, 8))
+                self.assertEqual((info.capacity, info.produced, info.consumed), (capacity, food+2*FARMER_OUTPUT[biome], 8))
                 self.assertEqual(self.earth.population_capacity, capacity)
                 summarize_empire(self.game)
                 colony_rows(self.game, sort_by="food")
@@ -58,6 +58,7 @@ class PopulationRulesTests(unittest.TestCase):
 
     def test_surplus_rate_is_capped_and_birth_carries_progress(self):
         self.earth.population, self.earth.growth_progress = 1, 90
+        self.earth.farmers = 0
         self.assertEqual(self.game.population_report(self.earth).growth_rate, 25)
         self.game.advance_turn()
         self.assertEqual((self.earth.population, self.earth.growth_progress), (2, 15))
@@ -89,6 +90,7 @@ class PopulationRulesTests(unittest.TestCase):
     def test_food_is_local_even_when_empire_has_a_net_surplus(self):
         mars = self.game.planet_at(0, 3)
         mars.colonized, mars.owner, mars.population = True, PLAYER, 5
+        mars.farmers = 2
         mars.growth_progress = 45
         totals = summarize_empire(self.game)
         self.assertEqual((totals.food_produced, totals.food_consumed, totals.food_shortages), (14, 13, 1))
@@ -137,7 +139,7 @@ class PopulationRulesTests(unittest.TestCase):
         mercury = self.game.planet_at(0, 0)
         self.game.colonize(1, 0, 0)
         self.assertEqual((mercury.population, mercury.growth_progress), (4, 0))
-        self.assertEqual(self.game.population_report(mercury).balance, -2)
+        self.assertEqual(self.game.population_report(mercury).balance, 0)
         self.game.advance_turn()
         self.assertEqual((mercury.population, mercury.growth_progress), (4, 0))
 
@@ -145,15 +147,14 @@ class PopulationRulesTests(unittest.TestCase):
         game = new_game(seed=2408, fog_of_war=False)
         home = game.planet_at(game.opponent.home_system, game.opponent.home_planet)
         home.size, home.biome = "Medium", "Tundra"
-        for _ in range(6):
-            result = game.advance_turn()
-            self.assertEqual(result.population, [])
+        for _ in range(10):
+            game.advance_turn()
         self.assertEqual(home.buildings, ["hydroponic_farm"]*2)
-        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (108, 8, 0))
+        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (140, 9, 0))
         game.advance_turn()
-        self.assertEqual(home.growth_progress, 20)
-        self.assertEqual(game.planet_at(0, 2).growth_progress, 70)
-        self.assertEqual(game.credits, 176)  # Rival farms do not spend player credits.
+        self.assertEqual(home.growth_progress, 15)
+        self.assertEqual(game.planet_at(0, 2).growth_progress, 5)
+        self.assertEqual(game.credits, 209)  # Rival farms do not spend player credits.
 
     def test_ai_reserves_remaining_slots_to_support_future_population(self):
         game = new_game(seed=2408, fog_of_war=False)
@@ -252,9 +253,10 @@ class PopulationSaveTests(unittest.TestCase):
             for record in expected["systems"] + expected["exploration"]["surveys"]:
                 for planet in record["worlds"]:
                     planet["growth_progress"] = 0
+                    planet["farmers"], planet["scientists"] = min(2, planet["population"]), 0
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-            self.assertEqual(SAVE_VERSION, 11)
+            self.assertEqual(SAVE_VERSION, 12)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)
@@ -298,15 +300,15 @@ class PopulationInterfaceTests(unittest.TestCase):
                     app.handle_event(pg.event.Event(kind, button=1, pos=pos))
                     app.render()
 
-            click("planet_manage_food")
-            click("build_hydroponic_farm")
+            click("planet_change")
+            click("production_build_hydroponic_farm")
             earth = app.game.planet_at(0, 2)
             self.assertEqual(earth.construction_queue[0].item_id, "hydroponic_farm")
             for _ in range(6):
-                click("colony_end_turn")
+                app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_e, mod=0))
+                app.render()
             self.assertEqual((earth.population, earth.growth_progress), (9, 5))
             self.assertEqual(app.game.population_report(earth).produced, 14)
-            click("tab_overview")
             click("surface_hydroponic_farm")
             self.assertEqual((app.screen, app.colony_slot), ("colony", 0))
             restored, _ = app.storage.load(app.storage.save(app.game))
@@ -315,7 +317,7 @@ class PopulationInterfaceTests(unittest.TestCase):
             click("empire_sort_food")
             self.assertEqual(app.empire_sort, "food")
             click("empire_colony_0_2")
-            self.assertEqual(app.screen, "colony")
+            self.assertEqual(app.screen, "planet")
 
 
 if __name__ == "__main__":

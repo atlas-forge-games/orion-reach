@@ -3,24 +3,12 @@
 import pygame as pg
 
 from .planet_art import draw_planet, draw_star
-from .colony_view import draw_planet_tabs
-from .colony_scene import draw_colony_scene, is_headquarters
 from .model import PLAYER, RIVAL
-from .victory import invasion_strength
 from .exploration_view import draw_unsurveyed_system
-from .population import BASE_FOOD
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
                "Red dwarf": (221, 124, 108), "White star": (217, 228, 239), "Orange dwarf": (235, 170, 106)}
-BIOME_NOTES = {
-    "Terran": "Temperate land, open water and a breathable atmosphere make this world a natural home for your civilization.",
-    "Ocean": "Deep oceans cover most of the surface. Settlements must make room for a world shaped by water.",
-    "Desert": "Dry continents and exposed mineral deposits dominate the surface. Water would be the central challenge for settlement.",
-    "Tundra": "Long winters and frozen ground leave only a narrow habitable region. Colonies need protection from the cold.",
-    "Barren": "A cratered, lifeless surface offers little natural support for a colony. Habitats would need a controlled environment.",
-    "Volcanic": "Intense geological activity reshapes the surface. Heat and hostile conditions would make settlement demanding.",
-}
 DIAMETERS = {"Tiny": 29, "Small": 39, "Medium": 49, "Large": 59, "Huge": 69}
 
 
@@ -128,86 +116,3 @@ def draw_system(app):
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
     app.button("system_previous", "← Previous system", (846, 832, 249, 46), lambda: app.cycle_system(-1))
     app.button("system_next", "Next system →", (1109, 832, 267, 46), lambda: app.cycle_system(1))
-
-
-def draw_planet_overview(app):
-    surface = app.canvas
-    game = app.game
-    system = game.known_system(game.selected_system)
-    planet = system.worlds[game.selected_planet]
-    live = game.system_visible(system.id)
-    app.chrome("PLANET OVERVIEW")
-    app.button("planet_back", f"←  {shorten(system.name, 138, 15)} system", (64, 124, 270, 48), lambda: app.go("system"), "ghost")
-    text(surface, shorten(f"GALAXY  /  {system.name.upper()}  /  {planet.name.upper()}", 760, 11, "mono"),
-         (363, 143), 11, MUTED, "mono")
-    app.button("planet_galaxy", "Galaxy map", (1214, 124, 162, 46), lambda: app.go("galaxy"))
-    text(surface, shorten(planet.name, 620, 48, "title"), (64, 193), 48, INK, "title")
-    text(surface, f"{planet.biome} world   /   {system.name} system   /   Orbit {planet.id+1:02}",
-         (66, 258), 15, MUTED)
-    draw_planet_tabs(app, "planet")
-    draw_planet(surface, planet, (756, 222), 60, visual_seed(game, system, planet))
-
-    draw_colony_scene(app, (64, 308, 928, 473), game, system, planet)
-
-    panel(surface, (1016, 308, 360, 227))
-    text(surface, "WORLD CHARACTERISTICS", (1036, 326), 10, GOLD, "mono", 1)
-    entries = [("ENVIRONMENT", planet.biome), ("SIZE", planet.size), ("GRAVITY", planet.gravity),
-               ("MINERALS", planet.richness), ("HABITABILITY", f"{planet.habitability}%"), ("ORBIT", f"{planet.orbit_au:.2f} AU")]
-    for i, (label, value) in enumerate(entries):
-        x = 1037+(i%2)*170
-        y = 363+(i//2)*54
-        text(surface, label, (x, y), 9, MUTED, "mono", 1)
-        text(surface, value, (x, y+20), 19, CYAN if label=="HABITABILITY" else INK)
-
-    panel(surface, (1016, 554, 360, 227))
-    text(surface, "COLONY STATUS", (1036, 575), 10, GOLD, "mono", 2)
-    status = "No colony established"
-    if not live:
-        status = "Last known colony" if planet.colonized else "Last known: unsettled"
-    elif planet.colonized:
-        status = "Headquarters" if is_headquarters(game, system.id, planet) else "Established colony"
-        if planet.owner == RIVAL:
-            status = "Rival headquarters" if is_headquarters(game, system.id, planet) else "Rival colony"
-    text(surface, status, (1036, 602), 21, INK)
-    if not live:
-        survey = game.exploration.survey(system.id)
-        paragraph(surface, f"Observed on turn {survey.last_seen}. {game.empire_name_for(planet.owner)} · {planet.population} B inhabitants at that time. Send a ship to refresh this report.",
-                  (1037, 642), 318, 14, MUTED, 25)
-    elif planet.colonized:
-        text(surface, shorten(game.empire_name_for(planet.owner), 318, 13), (1037, 639), 13,
-             CYAN if planet.owner == PLAYER else RIVAL_COLOR)
-        text(surface, f"{planet.population} / {planet.population_capacity} B · {game.planet_yields(planet)[0]} IND / turn", (1037, 665), 12, INK)
-        if planet.owner == RIVAL:
-            attack, defence = invasion_strength(game, system.id, planet.id)
-            reason = game.invasion_error(system.id, planet.id)
-            text(surface, f"{attack} attack / {defence} defence · {'Capture' if attack > defence else 'Defeat'} predicted", (1037, 690), 12, CYAN if attack > defence else GOLD)
-            app.button("invade_planet", "Invade colony", (1037, 713, 318, 35), app.invade_request, enabled=reason is None)
-            text(surface, shorten(reason or "All transports consumed. Ties favour defenders.", 318, 10), (1037, 759), 10, MUTED)
-        elif planet.ascension_gate:
-            text(surface, f"Ascension Gate · {planet.gate_charge}/5 charged turns", (1037, 699), 13, CYAN)
-            app.button("planet_objectives", "View victory progress", (1037, 729, 318, 35), app.open_objectives)
-        else:
-            food = game.population_report(planet)
-            text(surface, f"Food: {food.produced} produced / {food.consumed} used ({food.balance:+})", (1037, 695), 12, GOLD if food.balance<=0 else CYAN)
-            text(surface, food.growth_caption, (1037, 722), 12, MUTED)
-            app.button("planet_manage_food", "Manage colony", (1037, 747, 318, 27), lambda: app.go("colony"))
-    else:
-        reason = game.colonize_error(system.id, planet.id)
-        app.button("colonize_planet", "Colonize", (1037, 637, 318, 40), app.colonize_request, enabled=reason is None)
-        caption = reason or f"{game.colony_ships_at(system.id)[0].name} ready · {game.starting_colonists()} B starting colonists"
-        paragraph(surface, caption, (1037, 690), 318, 13, MUTED if reason else CYAN, 21)
-
-    hint = "Click buildings to manage them. E: end turn." if planet.colonized else "A colony ship is consumed when this world is settled."
-    if planet.owner == RIVAL:
-        hint = "Clear opposing ships, then land troop transports to capture this colony."
-    if not live:
-        hint = "Stored survey · Current activity is unknown."
-    text(surface, f"{planet.size}: {planet.building_capacity} slots · {planet.population_capacity} B limit · {BASE_FOOD[planet.biome]} base food. {hint}",
-         (65, 795), 13, MUTED)
-    app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)
-    app.button("planet_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
-    text(surface, f"PLANET {planet.id+1} OF {len(system.worlds)}", (593, 848), 10, FAINT, "mono", 1)
-    app.button("planet_previous", "← Previous planet", (846, 832, 249, 46), lambda: app.cycle_planet(-1),
-               enabled=len(system.worlds)>1)
-    app.button("planet_next", "Next planet →", (1109, 832, 267, 46), lambda: app.cycle_planet(1),
-               enabled=len(system.worlds)>1)

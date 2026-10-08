@@ -43,9 +43,9 @@ class EmpireReportTests(unittest.TestCase):
     def test_totals_cover_all_colonies_and_reserved_slots(self):
         game = varied_empire()
         self.assertEqual(summarize_empire(game), EmpireSummary(
-            colonies=4, population=17, industry=41, income=23, research=16,
+            colonies=4, population=17, industry=32, income=23, research=16,
             used_slots=11, capacity=28, projects=1, idle=3,
-            food_produced=24, food_consumed=17, food_shortages=0))
+            food_produced=14, food_consumed=17, food_shortages=3))
         self.assertEqual(game.empire_rates, (23, 16))
         colony_rows(game, "full", "population", True)
         self.assertEqual(summarize_empire(game).colonies, 4)
@@ -116,7 +116,10 @@ class EmpireInterfaceTests(unittest.TestCase):
                 self.app.go(origin)
                 self.app.render()
                 before = self.app.game.to_dict()
-                self.click("open_empire")
+                if origin == "planet":
+                    self.key(pg.K_i)
+                else:
+                    self.click("open_empire")
                 self.assertEqual(self.app.screen, "empire")
                 self.key(pg.K_i)
                 self.assertEqual(self.app.screen, origin)
@@ -126,9 +129,9 @@ class EmpireInterfaceTests(unittest.TestCase):
                 self.assertEqual(self.app.game.to_dict(), before)
         self.key(pg.K_i)
         self.key(pg.K_RETURN)
-        self.assertEqual(self.app.screen, "colony")
+        self.assertEqual(self.app.screen, "planet")
         self.assertEqual(self.app.game.selected_planet, 2)
-        self.click("open_empire")
+        self.key(pg.K_i)
         self.assertEqual(self.app.screen, "empire")
 
     def test_sorted_pagination_opens_correct_ids_with_letterboxing(self):
@@ -157,10 +160,10 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.key(pg.K_PAGEUP)
         expected_system, expected_planet = colonies[6]
         self.click(self.row_keys()[0])
-        self.assertEqual(self.app.screen, "colony")
+        self.assertEqual(self.app.screen, "planet")
         self.assertEqual(self.app.game.selected_system, expected_system.id)
         self.assertEqual(self.app.game.selected_planet, expected_planet.id)
-        self.click("open_empire")
+        self.key(pg.K_i)
         self.assertEqual(self.app.empire_page, 1)
         self.click("empire_sort_population")
         self.assertEqual(self.app.empire_page, 0)

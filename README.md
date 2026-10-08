@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.15.0
+# Orion Reach — Python prototype 0.16.0
 
 A playable colony-building and interstellar expansion prototype with population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -93,15 +93,18 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   the shipyard to build ships, or the headquarters palace to open the empire report.
 - Sol contains Mercury, Venus, Earth and Mars. Other systems have reproducible
   planet data and distinct illustrations for six environment types.
-- The planet screen has **Overview**, **Colony** and **Shipyard** tabs. Earth is your starting
-  colony: construct factories, mines, trade centres and research labs, with a
-  building-slot limit based on planet size.
+- The planet screen centres on the colony landscape. A system directory sits at
+  top left, visual output totals and worker assignments across the top, and
+  the current construction project with **Change** and **Buy** at top right.
+  **Return** at bottom right goes to the solar-system overview.
+- Each billion inhabitants is one worker, assigned to farming, industry or
+  research. Earth starts with two farmers and six industrial workers.
 - Construction queues show progress and completion estimates. Completed
   buildings contribute industry, credits and research; cancel projects for a
   refund of unspent work or demolish completed buildings to free a slot.
 - **Empire Overview** combines economy totals and a sortable colony directory.
   Open it with **Empire · I** or the **I** key from any gameplay screen. Click
-  a colony row to open its construction screen.
+  a colony row to open its planet overview.
 - Build colony ships in the **Shipyard**, send them from the galaxy map or **Fleets**, advance
   travel with End Turn, and settle new worlds from their planet overviews.
 - Build **frigates**, then **Engage** opposing fleets in the same system. A separate
@@ -125,15 +128,16 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   exclusive choices per tier. Discover technologies that improve production,
   science, commerce, construction prices, travel and colonization. The rival researches too.
 - Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
-  and Continue preserve the active overview. Previous/Next controls browse
-  systems and planets, including systems with no planets.
+  and Continue preserve the active overview. Use the planet list to switch
+  worlds, or Left/Right; system Previous/Next controls browse other systems.
 - These are separate full-window screens inside the game, not additional
   operating-system windows.
 - Real JSON saves: one autosave and any number of separate manual snapshots.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
   ship orders, settlement, adding a rival, diplomatic actions, research choices,
-  every combat action, invasions, gate orders, End Turn, return to menu and normal exit.
+  worker moves, production purchases/priorities, every combat action, invasions,
+  gate orders, End Turn, return to menu and normal exit.
 - Fullscreen, animated background, interface sounds, music on/off and music volume persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
@@ -142,7 +146,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 found additional colonies alongside an expanding AI empire, and negotiate
 trade and research agreements, make permanent technology choices, fight fleet battles,
 feed and grow colonies, invade worlds and win through conquest or science.
-Worker assignment, food shipments, shields, advanced weapons and additional AI empires are future work.
+Food shipments, shields, advanced weapons and additional AI empires are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized.
@@ -172,10 +176,62 @@ tools are required to play it.
 
 ![Music settings](screenshots/settings.png)
 
+## Planet overview and worker assignment
+
+Open a planet from its solar-system overview. Its landscape and buildings fill
+the main view. The left panel lists every surveyed planet in the system with
+basic information; click a row to switch planets. The top strip shows this
+colony's **credit income, food produced/used, industry and research per turn**
+with distinct icons and colours. Empire treasury is separate in the title bar.
+
+Every **1 billion inhabitants is one worker**. Click a worker row to select one
+person, then click another row to move them. Click the same row or press Escape
+to cancel selection. A move is free, is autosaved, and immediately updates the
+displayed production and construction forecast.
+
+- **Farmers:** produce food at the biome-specific rate shown below.
+- **Workers:** produce 1 industry each, in addition to buildings and technology.
+  A colony always has at least 1 basic industry, even with no industrial workers.
+- **Scientists:** produce 2 research each, in addition to laboratories and technology.
+
+Buildings retain their flat output bonuses; they do not require assigned staff
+in this prototype. Tax income remains 1 credit per billion inhabitants, regardless
+of their job. New inhabitants enter the industrial workforce. New settlements
+first assign farmers to support their population, with the remainder in industry.
+Worker assignments are preserved when saving, loading or capturing a colony.
+
+The top-right card shows the current project's picture, work progress and
+completion estimate. **Change** opens the building/ship catalogue and queue:
+
+- **Start** pays the usual upfront cost and puts the chosen project first.
+  Earlier projects stay queued, keeping their paid costs and completed work.
+- Click an existing queued project to make it current without paying again.
+- Use **×** to cancel a project and refund its unspent work. Longer queues have pages.
+- **Buy** finishes the current project immediately for **2 credits per remaining
+  work**, in addition to its original upfront price. The confirmation shows the
+  exact amount. Buildings become operational, ships appear in orbit, and other
+  queued projects keep their progress. Bought gates start with zero charge.
+
+Completed buildings open their inspection/demolition screen when clicked; the
+shipyard and headquarters open their existing management screens. Building names
+appear on hover, while queued buildings retain their construction labels.
+There are no navigation tabs or extra action buttons along the bottom of the
+planet overview: **Return** leads to its solar-system overview. **E** advances
+a turn, **F5** saves, **P** opens the pause menu, and **I/R/D/F/V/X** open the
+existing empire, research, diplomacy, fleets, objectives and exploration screens.
+
+Unsettled worlds retain **Colonize**, rivals retain **Invade**, and a completed
+Ascension Gate retains its objective control. Foreign and old survey worker
+rows are read-only. Old surveys show no current output or completion estimate.
+
+![Planet overview with workforce and production](screenshots/colony_surface.png)
+
+![Change production](screenshots/production.png)
+
 ## Build your first colony
 
-Start or load a game, then click **Sol → Earth → Colony**. Click **Build** beside
-a building in the catalogue, then advance turns with **End Turn** or **E**.
+Start or load a game, then click **Sol → Earth → Change**. Click **Start** beside
+a building in the catalogue, then advance turns with **E**.
 Earth starts with 120 empire credits, 6 industry per turn, and 8 credits per
 turn from its population. A first factory costs 45 credits and completes after
 four End Turns; it raises industry from 6 to 10 for subsequent turns.
@@ -207,6 +263,8 @@ shown in the catalogue. Capacity and work costs remain unchanged.
   start the next queued project in the same turn; unused industry is not stored.
 - The catalogue estimates completion after any projects already in the queue,
   including speed increases from factories/mines that will finish ahead of it.
+  Queue forecasts also include population growth adding industrial workers;
+  they assume no future reassignment or new research bonuses.
 - A turn collects output from buildings operational at its start. A newly
   completed building starts producing on the following turn.
 - Click a queued slot to inspect it and **Cancel**. An unstarted project returns
@@ -218,25 +276,26 @@ shown in the catalogue. Capacity and work costs remain unchanged.
 - Uncolonized planets show their capacity, with construction disabled until
   settled. Bring a colony ship to the system and use the planet's Overview tab.
 
-Every colony has a base of 6 industry per turn and one credit per billion
-inhabitants. All colony income and research contribute to the empire totals.
+Basic industry comes from industrial workers (minimum 1 per colony), plus
+buildings and technology. Every colony earns one credit per billion inhabitants.
+All colony income and research contribute to the empire totals.
 Building costs, work and slots can be tuned in `orion/buildings.py`.
 
 ## Population growth and food
 
-Each colony automatically produces food and consumes **1 food per billion
+Each colony produces food from natural resources, farmers, buildings and
+technology, and consumes **1 food per billion
 inhabitants per turn**. Food stays on its planet. An empire-wide surplus cannot
-feed another colony. There is no food stockpile, shipping or worker assignment
-in this first version.
+feed another colony. There is no food stockpile or shipping in this version.
 
-| Biome | Base food per colony per turn |
-| --- | ---: |
-| Terran | 10 |
-| Ocean | 8 |
-| Desert / Tundra | 4 |
-| Barren / Volcanic | 2 |
+| Biome | Natural food per colony per turn | Food per farmer per turn |
+| --- | ---: | ---: |
+| Terran | 6 | 2 |
+| Ocean | 4 | 2 |
+| Desert / Tundra | 0 | 2 |
+| Barren / Volcanic | 0 | 1 |
 
-Build a **Hydroponic farm** in the Colony tab for **30 credits, 18 construction
+Build a **Hydroponic farm** through **Change** for **30 credits, 18 construction
 work and one building slot**. Each completed farm adds **4 food per turn** on
 any biome, starting on the turn after completion. Farms can be repeated and
 use the normal construction, discount, cancellation and demolition rules.
@@ -263,21 +322,23 @@ saved populations above the new limit are preserved and cannot grow further.
 
 Earth begins with **8 B inhabitants, 10 food produced and 8 consumed**. With
 no changes, it reaches 9 B after 10 End Turns, then 10 B after another 20.
-At 10 B it needs a farm or a food technology to keep growing. New inhabitants
-increase tax income starting on the following turn and immediately improve
-invasion defence; industry and research still depend on buildings and technology.
+At 10 B it needs more farmers, a farm or a food technology to keep growing.
+New inhabitants enter the industrial workforce and increase tax income starting
+on the following turn. They immediately improve invasion defence.
 
 The Colony screen shows food produced/consumed, net food, population/capacity,
 growth progress and the estimated turns to the next increase. Forecasts use
-current food output. Planet Overview shows the same live colony information
-and a Manage colony button. Empire Overview lists local food balances and
+current food output. Planet Overview shows visual output totals and interactive
+worker rows. Empire Overview lists local food balances and
 marks shortages; its totals are informational, with no food transfers.
 
 **Symbiotic Farming** now gives **+2 food and +2 credits per colony**, keeping
 its previous income bonus. A technology discovered at End Turn contributes
 food starting on the next turn. New colonies keep their existing starting
 colonists and begin with zero growth progress. Both empires follow these rules;
-the AI builds farms when food is tight and reserves space for future food needs.
+the AI assigns enough farmers for food and growth, builds farms to free more
+people for industry, assigns scientists when it has laboratories and sufficient
+workers, and reserves space for future food needs.
 Captured colonies retain their population, farms and growth progress, while
 food technology bonuses follow their new owner. Fog surveys retain only the
 population and progress last observed.
@@ -390,11 +451,11 @@ preserves its finances, orders, ships, ownership and recent activity.
 
 ## Planet surface and building graphics
 
-Open a planet's **Overview** tab to see its surface. Terran, Ocean, Desert,
-Tundra, Barren and Volcanic worlds have distinct seeded landscapes. The small
-globe beside the tabs retains the planetary view.
+Open a planet to see its surface. Terran, Ocean, Desert,
+Tundra, Barren and Volcanic worlds have distinct seeded landscapes. The compact
+system list keeps the other planets available without leaving the colony view.
 
-- Completed factories, mines, research labs and trade centres appear on the
+- Completed factories, mines, research labs, trade centres and farms appear on the
   surface. Repeated types share a graphic with a count, such as **Factory ×3**.
 - Queued types that have no completed building yet appear as faded previews.
   Counts and previews update after construction, cancellation, demolition and loading.
@@ -405,7 +466,7 @@ globe beside the tabs retains the planetary view.
   homeworld for the AI. If that world is captured, the marker moves to a remaining
   colony. Click it for Empire Overview or Rival report.
 - A **shipyard** appears at every colony, reflecting its existing ability to build
-  all three ship types. Click it to open the Shipyard tab.
+  all four ship types. Click it to open the Shipyard screen.
 - The palace and shipyard are landmarks for existing capabilities. They use no
   building slots, charge no construction cost and provide no additional yields.
 - Rival graphics open survey controls; construction, cancellation and demolition
@@ -494,7 +555,7 @@ New campaigns default to **Fog of war: ON**. Click that setting in **New Game**
 to turn it off before beginning. The setting is saved with the campaign and is
 fixed during play. Old campaigns keep their fully revealed maps.
 
-1. Open **Sol → Earth → Shipyard** and build a **Scout**: **25 credits, 12 work,
+1. Open **Sol → Earth → Change** and start a **Scout**: **25 credits, 12 work,
    8 hull**, no weapons and no building slot. At Earth's initial industry this
    takes **two turns**. New games still begin without ships.
 2. On the galaxy map, click your fleet badge, select the scout, click **Choose
@@ -550,7 +611,7 @@ gate milestones, but omit locations you cannot currently observe.
 
 ## Build, travel and colonize
 
-1. Open **Sol → Earth → Shipyard** and click **Build colony ship**. It costs
+1. Open **Sol → Earth → Change** and start a **Colony ship**. It costs
    **80 credits and 42 work**, completing after seven End Turns at Earth's
    initial 6 industry per turn, if there are no projects ahead of it.
 2. Return to the **galaxy map** and click the cyan fleet badge beside Sol.
@@ -791,14 +852,18 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Replace field contents | Ctrl+A (Cmd+A on macOS), then type |
 | Back through Colony → Planet → System → Galaxy | Escape or the Back button |
 | Pause / resume on the galaxy screen | Escape |
-| Pause from any overview | Menu button |
+| Pause from any overview | P, or Menu where shown |
 | Fullscreen | F11 |
-| Save a manual snapshot | F5, or Save Game on any overview |
+| Save a manual snapshot | F5, or Save Game where shown |
 | Advance one turn | E, or End Turn |
 | Open a solar system | Click a star; or Left / Right then Enter on the galaxy screen |
 | Open a planet | Click its globe/caption; or Left / Right then Enter in the system screen |
-| Browse planets while viewing details | Left / Right, or Previous / Next buttons |
-| Manage buildings | Colony tab on a planet overview |
+| Browse planets while viewing details | Click a planet in the top-left system list, or Left / Right |
+| Return to the solar system | Return, or Escape after cancelling any worker selection |
+| Assign workers | Click a worker row, then click the destination role |
+| Choose / prioritize production | Change on the planet overview |
+| Buy the current project | Buy on the planet overview, then confirm the price |
+| Manage buildings | Change to build; click a surface building to inspect |
 | Inspect, cancel or demolish | Click a building slot in the Colony tab |
 | Open / close Empire Overview | I, or the Empire button while playing |
 | Open a colony from Empire Overview | Click its row, or focus it and press Enter |
@@ -810,7 +875,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Send selected ships together | Fleet badge → select ships → Choose destination → click a star |
 | Preview a group journey | Hover a star while choosing the destination |
 | Change or cancel a group selection | Escape, Cancel, or Change selection on the destination map |
-| Build ships / inspect the shared queue | Shipyard tab on a planet |
+| Build ships / inspect the shared queue | Change, or click the surface shipyard |
 | Set a ship destination | Course in Fleets → click a star → Send ship |
 | Cancel an unissued course | Cancel button or Escape on the route-selection map |
 | Settle a world | Colonize on its Overview tab, with a colony ship in the system |
@@ -847,13 +912,15 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.15 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.16 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Earlier colonies keep their populations
-and gain zero growth progress; saved fog surveys gain the same field without
-being refreshed. Food is calculated from the existing biome, buildings and
-technology, including Symbiotic Farming's new food bonus. Growth begins with
-the next End Turn and pauses wherever there is no local food surplus.
+ships and travel times are preserved. Pre-v0.16 colonies and stored surveys gain
+up to two farmers, zero scientists and the remaining population as industrial
+workers. Their saved populations and growth progress are retained; old surveys
+are not refreshed. Industry now follows assigned workers instead of a fixed base
+of 6. Check food and assignments on smaller or harsh colonies after upgrading.
+Pre-v0.15 saves gain zero growth progress. Food uses the biome, assigned farmers,
+buildings and technology; growth pauses wherever there is no local surplus.
 Pre-v0.13 saves retain **fog OFF** and start
 with an empty discovery log; build scouts to recover discoveries in those games.
 Start a new campaign to play with fog enabled. Fleet grouping is derived from
@@ -870,12 +937,13 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 11**, including growth progress, hydroponic farms,
+**format version 12**, including worker assignments, paused construction progress,
+growth progress, hydroponic farms,
 the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.14 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.15 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -890,7 +958,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/app.py` | Event loop, screens and transitions |
 | `orion/ui.py` | Buttons, focus styling, text and layout helpers |
 | `orion/art.py` | Starfield animation, orbit guides and spacecraft |
-| `orion/system_views.py` | Solar-system and planet overview layouts |
+| `orion/system_views.py` | Solar-system overview and orbital layout |
+| `orion/planet_view.py` | Landscape-led planet view, output icons, worker rows and production chooser |
 | `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
 | `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
 | `orion/population.py` | Local food production, consumption, population limits and growth |
@@ -932,6 +1001,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
 | `tests/test_population.py` | Food, growth timing, farms, AI, captures, fog, save migration and UI controls |
+| `tests/test_planet_overview.py` | Worker allocation, purchases, paused queues, migration and redesigned UI flows |
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
@@ -945,8 +1015,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
-to the UI controller as needed. Possible next foundations include worker
-assignment, food shipments and more advanced technology tiers.
+to the UI controller as needed. Possible next foundations include food
+shipments and more advanced technology tiers.
 Shields, advanced weapons and ship customization can follow. Bump the save version and add
 migrations when the data schema changes.
 

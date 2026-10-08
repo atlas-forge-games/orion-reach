@@ -225,6 +225,12 @@ class Planet:
     ascension_gate: bool = False
     gate_charge: int = 0
     growth_progress: int = 0
+    farmers: int = 0
+    scientists: int = 0
+
+    @property
+    def workers(self):
+        return self.population-self.farmers-self.scientists
 
     @property
     def population_capacity(self):
@@ -255,7 +261,7 @@ class Planet:
     def yields_per_turn(self):
         if not self.colonized:
             return (0, 0, 0)
-        industry, income, research = 6, self.population, 0
+        industry, income, research = max(1, self.workers), self.population, 2*self.scientists
         for building_id in self.buildings:
             extra = BUILDINGS[building_id].yields(self.richness)
             industry += extra[0]
@@ -277,13 +283,16 @@ class Planet:
             project.progress += applied
             work -= applied
             if project.remaining_work == 0:
-                if project.reserves_slot:
-                    self.buildings.append(project.item_id)
-                elif project.item_id == ASCENSION_GATE.id:
-                    self.ascension_gate = True
-                completed.append(project.item_id)
-                self.construction_queue.pop(0)
+                completed.append(self.finish_current_project())
         return completed
+
+    def finish_current_project(self):
+        project = self.construction_queue.pop(0)
+        if project.reserves_slot:
+            self.buildings.append(project.item_id)
+        elif project.item_id == ASCENSION_GATE.id:
+            self.ascension_gate, self.gate_charge = True, 0
+        return project.item_id
 
     def queue_estimates(self, additional=None, *, bonuses=None):
         """Exact turns until completion, assuming no future player changes."""
@@ -296,11 +305,13 @@ class Planet:
         turns, estimates = 0, []
         while forecast.construction_queue:
             turns += 1
+            food = population_rules.report(forecast, bonuses)
             estimates.extend([turns]*len(forecast.advance_construction(bonuses)))
+            population_rules.advance(forecast, food)
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=11):
+    def from_dict(cls, data, expected_id, *, version=12):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -317,6 +328,13 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 12:
+            record["farmers"] = min(2, data["population"])
+            record["scientists"] = 0
+        if (not _integer(record["farmers"], 0, data["population"])
+                or not _integer(record["scientists"], 0, data["population"])
+                or record["farmers"]+record["scientists"] > data["population"]):
+            raise ValueError("Invalid worker allocation")
         if version < 11:
             record["growth_progress"] = 0
         if (not _integer(record["growth_progress"], 0, population_rules.GROWTH_THRESHOLD-1)
@@ -363,7 +381,7 @@ class Planet:
                 item["paid_credits"] = price
             if not _integer(item["paid_credits"], 1, price):
                 raise ValueError
-            if not _integer(item["progress"], 0, cost-1) or (i>0 and item["progress"] != 0):
+            if not _integer(item["progress"], 0, cost-1) or (version < 12 and i>0 and item["progress"] != 0):
                 raise ValueError
             projects.append(ConstructionProject(**item))
         if len(buildings)+sum(p.reserves_slot for p in projects) > BUILDING_SLOTS[data["size"]]:
@@ -395,7 +413,7 @@ def generate_planets(system, galaxy_seed):
         home = [
             Planet(0, "Mercury", "Barren", "Tiny", "Rich", "Low", .39),
             Planet(1, "Venus", "Volcanic", "Medium", "Average", "Normal", .72),
-            Planet(2, "Earth", "Terran", "Medium", "Average", "Normal", 1.0, 8, True, owner=PLAYER),
+            Planet(2, "Earth", "Terran", "Medium", "Average", "Normal", 1.0, 8, True, owner=PLAYER, farmers=2),
             Planet(3, "Mars", "Desert", "Small", "Average", "Low", 1.52),
         ]
     else:
@@ -560,6 +578,29 @@ class GameState:
     def population_report(self, planet):
         return population_rules.report(planet, self.bonuses_for(planet.owner))
 
+    def set_workforce(self, system_id, planet_id, farmers, scientists, *, owner=PLAYER):
+        self._require_strategy()
+        planet = self.planet_at(system_id, planet_id)
+        self._require_colony(planet, owner)
+        if (not _integer(farmers, 0, planet.population)
+                or not _integer(scientists, 0, planet.population)
+                or farmers+scientists > planet.population):
+            raise RuleError("Assign exactly one job to each billion inhabitants.")
+        planet.farmers, planet.scientists = farmers, scientists
+
+    def move_worker(self, system_id, planet_id, source, destination, *, owner=PLAYER):
+        self._require_strategy()
+        planet = self.planet_at(system_id, planet_id)
+        self._require_colony(planet, owner)
+        if source not in population_rules.WORKER_ROLES or destination not in population_rules.WORKER_ROLES or source == destination:
+            raise RuleError("Choose two different worker roles.")
+        counts = {role: getattr(planet, role) for role in population_rules.WORKER_ROLES}
+        if counts[source] < 1:
+            raise RuleError("There is no worker in that role to move.")
+        counts[source] -= 1
+        counts[destination] += 1
+        self.set_workforce(system_id, planet_id, counts["farmers"], counts["scientists"], owner=owner)
+
     def building_yields(self, definition, planet):
         return building_yields(definition, planet.richness, self.bonuses_for(planet.owner or PLAYER))
 
@@ -653,6 +694,7 @@ class GameState:
         self.opponent = Opponent("Helios Directorate", system.id, planet.id, race_id=race_id)
         self.diplomacy = make_contact(self.turn, self.opponent.name, race_id)
         planet.colonized, planet.owner, planet.population = True, RIVAL, 8
+        planet.farmers, planet.scientists = 2, 0
         self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
         exploration_rules.refresh(self)
         return planet
@@ -691,6 +733,67 @@ class GameState:
         price = self.project_price(building_id, owner)
         self._empire(owner).credits -= price
         planet.construction_queue.append(ConstructionProject(building_id, paid_credits=price))
+
+    def project_error(self, system_id, planet_id, item_id, *, owner=PLAYER):
+        if not isinstance(item_id, str):
+            return "Unknown construction project."
+        if item_id in BUILDINGS:
+            return self.build_error(system_id, planet_id, item_id, owner=owner)
+        if item_id in SHIP_TYPES:
+            return self.ship_build_error(system_id, planet_id, item_id, owner=owner)
+        if item_id == ASCENSION_GATE.id:
+            return self.gate_error(system_id, planet_id, owner=owner)
+        return "Unknown construction project."
+
+    def change_production(self, system_id, planet_id, item_id, *, owner=PLAYER):
+        """Start a new first project, retaining the previous queue and its paid work."""
+        error = self.project_error(system_id, planet_id, item_id, owner=owner)
+        if error:
+            raise RuleError(error)
+        if item_id in BUILDINGS:
+            self.queue_building(system_id, planet_id, item_id, owner=owner)
+        elif item_id in SHIP_TYPES:
+            self.queue_ship(system_id, planet_id, item_id, owner=owner)
+        else:
+            self.queue_gate(system_id, planet_id, owner=owner)
+        queue = self.planet_at(system_id, planet_id).construction_queue
+        queue.insert(0, queue.pop())
+
+    def prioritize_construction(self, system_id, planet_id, index, *, owner=PLAYER):
+        self._require_strategy()
+        planet = self.planet_at(system_id, planet_id)
+        self._require_colony(planet, owner)
+        if not _integer(index, 0, len(planet.construction_queue)-1):
+            raise RuleError("Choose an existing queued project.")
+        planet.construction_queue.insert(0, planet.construction_queue.pop(index))
+
+    def buy_construction_cost(self, system_id, planet_id):
+        queue = self.planet_at(system_id, planet_id).construction_queue
+        return 2*queue[0].remaining_work if queue else 0
+
+    def buy_construction_error(self, system_id, planet_id, *, owner=PLAYER):
+        if self.strategy_error():
+            return self.strategy_error()
+        planet = self.planet_at(system_id, planet_id)
+        if planet.owner != owner:
+            return "You can only buy production on your own colony."
+        if not planet.construction_queue:
+            return "Choose a construction project first."
+        if self.treasury_for(owner) < self.buy_construction_cost(system_id, planet_id):
+            return "Not enough credits to finish this project."
+        return None
+
+    def buy_construction(self, system_id, planet_id, *, owner=PLAYER):
+        error = self.buy_construction_error(system_id, planet_id, owner=owner)
+        if error:
+            raise RuleError(error)
+        planet = self.planet_at(system_id, planet_id)
+        self._empire(owner).credits -= self.buy_construction_cost(system_id, planet_id)
+        item_id = planet.finish_current_project()
+        if item_id in SHIP_TYPES:
+            self.ships.append(Ship(self.next_ship_id, item_id, system_id, owner=owner))
+            self.next_ship_id += 1
+        return item_id
 
     def ship_build_error(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
         if self.strategy_error():
@@ -788,6 +891,11 @@ class GameState:
         planet.owner = owner
         planet.population = self.starting_colonists(owner)
         planet.growth_progress = 0
+        # New settlements first supply their inhabitants, then assign industry.
+        passive = population_rules.BASE_FOOD[planet.biome]+self.bonuses_for(owner).get("colony_food", 0)
+        rate = population_rules.FARMER_OUTPUT[planet.biome]
+        planet.farmers = min(planet.population, max(0, (planet.population+1-passive+rate-1)//rate))
+        planet.scientists = 0
         self.ships.remove(ship)
         return planet
 
@@ -912,7 +1020,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=11):
+    def from_dict(cls, data, *, version=12):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

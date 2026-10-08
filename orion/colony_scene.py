@@ -66,6 +66,8 @@ def blend(a, b, value):
 @lru_cache(maxsize=24)
 def landscape(biome, seed, size, settled):
     """A seeded backdrop, cached independently from buildings and queue state."""
+    if size != (928, 473):
+        return pg.transform.smoothscale(landscape(biome, seed, (928, 473), settled), size)
     width, height = size
     image = pg.Surface(size)
     rng = random.Random(seed)
@@ -143,21 +145,26 @@ PLACEMENTS = {
 }
 
 
-def draw_colony_scene(app, rect, game, system, planet):
+def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     surface = app.canvas
     rect = pg.Rect(rect)
     old_clip = surface.get_clip()
     surface.set_clip(rect.clip(old_clip))
     seed = f"{game.seed}:{system.id}:{planet.id}"
     surface.blit(landscape(planet.biome, seed, rect.size, planet.colonized), rect)
-    pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.y, rect.w, 35))
-    text(surface, "PLANET SURFACE", (rect.x+18, rect.y+12), 10, GOLD, "mono", 2)
+    if framed:
+        pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.y, rect.w, 35))
+        text(surface, "PLANET SURFACE", (rect.x+18, rect.y+12), 10, GOLD, "mono", 2)
     summary = (f"{len(planet.buildings)} built · {len(planet.building_projects)} queued / {planet.building_capacity} slots"
                if planet.colonized else f"{planet.biome.upper()} · UNSETTLED")
-    text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
+    if framed:
+        text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
     for item in items:
         cx, bottom, width, height = PLACEMENTS[item.asset_id]
+        scale = min(rect.w/928, rect.h/473)
+        cx, bottom = round(cx*rect.w/928), round(bottom*rect.h/473)
+        width, height = round(width*scale), round(height*scale)
         target = pg.Rect(rect.x+cx-width//2, rect.y+bottom-height, width, height)
         hit = target.inflate(24, 0)
         hit.h += 38
@@ -186,15 +193,20 @@ def draw_colony_scene(app, rect, game, system, planet):
         label_width = max(name_image.get_width(), caption_image.get_width())+18
         label_box = pg.Rect(0, 0, label_width, 34)
         label_box.midtop = target.centerx, target.bottom+3
-        panel(surface, label_box, (11, 24, 31), color if active else (48, 64, 69))
-        surface.blit(name_image, name_image.get_rect(midtop=(target.centerx, label_box.y+3)))
-        surface.blit(caption_image, caption_image.get_rect(midtop=(target.centerx, label_box.y+19)))
+        if framed or active or item.queued:
+            panel(surface, label_box, (11, 24, 31), color if active else (48, 64, 69))
+            surface.blit(name_image, name_image.get_rect(midtop=(target.centerx, label_box.y+3)))
+            surface.blit(caption_image, caption_image.get_rect(midtop=(target.centerx, label_box.y+19)))
+        elif item.completed > 1:
+            text(surface, f"×{item.completed}", (target.centerx-10, target.bottom+5), 16, INK)
     if not planet.colonized:
-        panel(surface, (rect.x+238, rect.y+239, 452, 94), (15, 29, 38))
-        text(surface, "No colony established", (rect.x+261, rect.y+255), 25, INK, "title")
+        left, top = rect.centerx-226, rect.y+round(rect.h*.51)
+        panel(surface, (left, top, 452, 94), (15, 29, 38))
+        text(surface, "No colony established", (left+23, top+16), 25, INK, "title")
         hint = "Bring a colony ship to settle this world." if game.can_settle(planet) else "Research protective habitats to settle this world."
-        text(surface, hint, (rect.x+261, rect.y+303), 13, MUTED)
-    pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.bottom-35, rect.w, 35))
+        text(surface, hint, (left+23, top+64), 13, MUTED)
+    if framed:
+        pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.bottom-35, rect.w, 35))
     footer = "Palace and shipyard use no building slots. Repeated building types show a count."
     if planet.owner == RIVAL:
         footer = "Rival colony · survey only. Click a building to inspect its production."
@@ -202,6 +214,7 @@ def draw_colony_scene(app, rect, game, system, planet):
         footer = "Survey the environment, then use Colonize when a colony ship is ready."
     if not game.system_visible(system.id):
         footer = "Stored survey · Buildings and ownership reflect the last observation. Send a ship to update."
-    text(surface, footer, (rect.x+18, rect.bottom-24), 12, INK)
+    if framed:
+        text(surface, footer, (rect.x+18, rect.bottom-24), 12, INK)
     pg.draw.rect(surface, (38, 57, 68), rect, 1)
     surface.set_clip(old_clip)

@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "objectives", "result", "about"), default="menu")
+    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -27,10 +27,10 @@ def main():
     app = App(args.data_dir, capture=bool(args.screenshot), skip_intro=args.skip_intro)
     try:
         if args.screenshot:
-            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "objectives", "result"):
+            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "objectives", "result"):
                 from orion.model import new_game
                 app.game = new_game(seed=2408)
-                if args.screen in ("planet", "colony", "shipyard"):
+                if args.screen in ("planet", "production", "colony", "shipyard"):
                     app.game.selected_planet = 2
                 if args.screen in ("galaxy", "fleet", "fleet_course"):
                     from orion.model import RIVAL, Ship

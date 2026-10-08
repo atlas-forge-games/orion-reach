@@ -13,7 +13,8 @@ from . import __version__
 from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
 from .storage import Storage
-from .system_views import draw_system, draw_planet_overview
+from .system_views import draw_system
+from .planet_view import draw_planet_overview, draw_production
 from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
@@ -25,7 +26,7 @@ from .combat import retreat_destination
 from .combat_view import SHIPS_PER_PAGE, draw_combat
 from .victory import colonies, invasion_strength, troop_transports
 from .victory_view import draw_objectives, draw_result
-from .production import SHIP_TYPES
+from .production import PROJECTS, SHIP_TYPES
 from .setup_view import draw_setup
 from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
@@ -40,7 +41,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "objectives", "result", "exploration")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "objectives", "result", "exploration")
 
 
 class App:
@@ -87,6 +88,8 @@ class App:
         self.pause_return="galaxy"
         self.campaign_view="galaxy"
         self.colony_slot=None
+        self.worker_source=None
+        self.production_page=0
         self.reset_empire_view()
         self.reset_fleet_view()
         self.reset_combat_view()
@@ -112,16 +115,19 @@ class App:
             screen="combat"
         elif screen in ("combat","result"):
             screen="galaxy"
-        if screen in ("planet","colony","shipyard") and self.game.selected_planet is None:
+        if screen in ("planet","colony","shipyard","production") and self.game.selected_planet is None:
             screen="system"
-        if screen in ("planet","colony","shipyard") and not self.game.system_explored(self.game.selected_system):
+        if screen in ("planet","colony","shipyard","production") and not self.game.system_explored(self.game.selected_system):
             screen="system"
-        if screen in ("colony","shipyard") and not self.game.system_visible(self.game.selected_system):
+        if screen in ("colony","shipyard","production") and not self.game.system_visible(self.game.selected_system):
+            screen="planet"
+        if screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
             screen="planet"
         if screen not in ("galaxy","pause","settings"):
             self.route_ship_id=None
             self.map_order_ids=()
         self.screen=screen
+        self.worker_source=None
         self.buttons=[]
         self.focus=None
         self.pressed=None
@@ -393,7 +399,7 @@ class App:
             try:
                 self.game.colonize(ship.id,system_id,planet_id)
                 self.colony_slot=None
-                self.go("colony")
+                self.go("planet")
                 if self.save_game(autosave=True):
                     self.toast(f"Colony established on {planet.name} · {planet.population} B inhabitants · Welcome to your empire")
             except RuleError as exc:
@@ -538,7 +544,7 @@ class App:
         self.game.selected_system=system_id
         self.game.selected_planet=planet_id
         self.colony_slot=None
-        self.go("colony")
+        self.go("planet")
 
     def set_empire_filter(self,filter_by):
         if filter_by not in FILTERS:
@@ -896,6 +902,71 @@ class App:
     def select_colony_slot(self,index):
         self.colony_slot=index
 
+    def select_worker_role(self,role):
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        if planet.owner!=PLAYER or self.game.strategy_error():
+            return
+        if self.worker_source==role:
+            self.worker_source=None
+        elif self.worker_source is None:
+            if getattr(planet,role)>0:
+                self.worker_source=role
+        else:
+            try:
+                self.game.move_worker(self.game.selected_system,self.game.selected_planet,self.worker_source,role)
+                self.worker_source=None
+                self.save_game(autosave=True)
+            except RuleError as exc:
+                self.worker_source=None
+                self.toast(exc,True)
+
+    def open_production(self):
+        self.production_page=0
+        self.go("production")
+
+    def change_production_page(self,delta):
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        self.production_page=max(0,min(max(0,(len(planet.construction_queue)-1)//6),self.production_page+delta))
+
+    def choose_production(self,item_id):
+        try:
+            self.game.change_production(self.game.selected_system,self.game.selected_planet,item_id)
+            self.go("planet")
+            if self.save_game(autosave=True):
+                self.toast(f"Now building {PROJECTS[item_id].name} · Previous projects remain queued")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def prioritize_production(self,index):
+        try:
+            self.game.prioritize_construction(self.game.selected_system,self.game.selected_planet,index)
+            self.go("planet")
+            self.save_game(autosave=True)
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def buy_production_request(self):
+        sid,pid=self.game.selected_system,self.game.selected_planet
+        error=self.game.buy_construction_error(sid,pid)
+        if error:
+            self.toast(error,True)
+            return
+        project=self.game.planet_at(sid,pid).construction_queue[0]
+        name=PROJECTS[project.item_id].name
+        price=self.game.buy_construction_cost(sid,pid)
+        def buy():
+            try:
+                queue=self.game.planet_at(sid,pid).construction_queue
+                if not queue or queue[0] is not project:
+                    raise RuleError("The current project changed. Please review its new price.")
+                self.game.buy_construction(sid,pid)
+                if self.save_game(autosave=True):
+                    self.toast(f"{name} completed · {price} CR paid")
+            except RuleError as exc:
+                self.toast(exc,True)
+        self.confirm("Buy current production?",f"Finish {name} immediately for {price} credits (2 CR per remaining work). "
+                     "This is additional to the price already paid. Other queued projects are kept.","Buy",buy)
+
     def inspect_surface_building(self,index):
         self.colony_slot=index
         self.go("colony")
@@ -1062,8 +1133,11 @@ class App:
             elif self.screen=="system":
                 self.go("galaxy")
             elif self.screen=="planet":
-                self.go("system")
-            elif self.screen in ("colony","shipyard"):
+                if self.worker_source:
+                    self.worker_source=None
+                else:
+                    self.go("system")
+            elif self.screen in ("colony","shipyard","production"):
                 self.go("planet")
             elif self.screen=="fleets":
                 self.close_fleets()
@@ -1128,6 +1202,8 @@ class App:
                 self.save_game()
             elif event.key==pg.K_e:
                 self.advance_turn()
+            elif event.key==pg.K_p:
+                self.pause()
             elif event.key==pg.K_i:
                 self.open_empire()
             elif event.key==pg.K_f:
@@ -1149,6 +1225,8 @@ class App:
                 self.change_manifest_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="exploration" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_exploration_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen=="production" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.change_production_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):
                 delta=1 if event.key==pg.K_RIGHT else -1
                 if self.screen=="galaxy":
@@ -1428,6 +1506,9 @@ class App:
     def draw_planet(self):
         draw_planet_overview(self)
 
+    def draw_production(self):
+        draw_production(self)
+
     def draw_colony(self):
         draw_colony(self)
 
@@ -1472,7 +1553,7 @@ class App:
         paragraph(self.canvas,"Choose a race, build an empire, research technologies, and negotiate with an expanding AI rival. Fight fleet battles and invade colonies, or build the Ascension Gate to win through science.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Worker assignment, more empires, shields and advanced weapons. Colonies now produce food and grow toward their population limits. Research offers eight branches with permanent technology choices.",
+        paragraph(self.canvas,"Food shipments, more empires, shields and advanced weapons. Assign colony workers to farming, industry or science, manage construction, and grow toward each world's population limit.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"Music: Distant Stars · alexander_kies · Created with Suno",(282,699),12,MUTED)
@@ -1489,10 +1570,12 @@ class App:
         self.button("dialog_ok",self.dialog["label"],(650,505,336,57),self.accept_dialog,"primary")
 
     def render(self):
-        if self.game and self.screen in ("planet","colony","shipyard"):
+        if self.game and self.screen in ("planet","colony","shipyard","production"):
             if not self.game.system_explored(self.game.selected_system):
                 self.go("system")
-            elif self.screen in ("colony","shipyard") and not self.game.system_visible(self.game.selected_system):
+            elif self.screen in ("colony","shipyard","production") and not self.game.system_visible(self.game.selected_system):
+                self.go("planet")
+            elif self.screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
                 self.go("planet")
         self.buttons=[]
         if self.screen!="splash":

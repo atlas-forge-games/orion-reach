@@ -6,6 +6,7 @@ from .races import RACES
 from .research import BRANCHES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
+from .population import FARMER_OUTPUT
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
 
@@ -185,6 +186,14 @@ def run_ai(game):
         game.rival_event(f"Sent {ship.name} to {target.name}; {duration} turns in transit.")
 
     colonies = [(s, p) for s in game.systems for p in s.worlds if p.owner == RIVAL]
+    for system, planet in colonies:
+        food = game.population_report(planet)
+        per_farmer = FARMER_OUTPUT[planet.biome]
+        passive = food.produced-planet.farmers*per_farmer
+        farmers = min(planet.population, max(0, (min(food.capacity, planet.population+2)-passive+per_farmer-1)//per_farmer))
+        remaining = planet.population-farmers
+        scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
+        game.set_workforce(system.id, planet.id, farmers, scientists, owner=RIVAL)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
     if "ascension_theory" in game.opponent.technology.completed and not gate_site(game, RIVAL):
         for system, planet in colonies:
@@ -216,6 +225,7 @@ def run_ai(game):
         farm_food = PROJECTS["hydroponic_farm"].food
         farms_needed = max(0, (food.capacity-food.produced+farm_food-1)//farm_food)
         needs_food = (food.produced < min(food.capacity, planet.population+2)
+                      or planet.farmers > 2
                       or 0 < planet.free_slots <= farms_needed)
         if needs_food and planet.free_slots > 0:
             if game.build_error(system.id, planet.id, "hydroponic_farm", owner=RIVAL) is None:

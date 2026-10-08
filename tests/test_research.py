@@ -324,7 +324,10 @@ class ResearchScreenTests(unittest.TestCase):
             with self.subTest(origin=origin):
                 self.app.go(origin)
                 before = self.app.game.to_dict()
-                self.click("open_research")
+                if origin == "planet":
+                    self.key(pg.K_r)
+                else:
+                    self.click("open_research")
                 self.assertEqual(self.app.screen, "research")
                 for branch in BRANCHES:
                     self.click(f"research_branch_{branch}")

@@ -187,9 +187,9 @@ def building_yields(definition, richness, bonuses):
 def colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
-    industry = 6+bonuses.get("colony_industry", 0)
+    industry = max(1, planet.workers)+bonuses.get("colony_industry", 0)
     income = planet.population+bonuses.get("colony_income", 0)
-    research = bonuses.get("colony_research", 0)
+    research = 2*planet.scientists+bonuses.get("colony_research", 0)
     for identifier in planet.buildings:
         extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
         industry, income, research = industry+extra[0], income+extra[1], research+extra[2]

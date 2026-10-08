@@ -45,6 +45,7 @@ class AIRulesTests(unittest.TestCase):
         game = new_game(seed=2408)
         sid, pid = game.opponent.home_system, game.opponent.home_planet
         home = game.planet_at(sid, pid)
+        home.biome = "Terran"  # Match Earth's food and workforce for equal production.
         game.queue_building(sid, pid, "factory", owner=RIVAL)
         game.queue_building(0, 2, "factory")
         self.assertEqual((game.credits, game.opponent.credits), (75, 75))
@@ -58,9 +59,9 @@ class AIRulesTests(unittest.TestCase):
         home.buildings = ["research_lab"]
         game.opponent.credits = 0  # AI cannot place another project before income.
         game.advance_turn()
-        self.assertEqual((game.research, game.opponent.research), (0, 4))
+        self.assertEqual((game.research, game.opponent.research), (0, 6))
         self.assertEqual(summarize_empire(game).research, 0)
-        self.assertEqual(summarize_empire(game, owner=RIVAL).research, 4)
+        self.assertEqual(summarize_empire(game, owner=RIVAL).research, 6)
 
     def test_every_mutating_order_rejects_the_other_empires_assets_atomically(self):
         game = new_game(seed=2408)
@@ -136,6 +137,7 @@ class AIRulesTests(unittest.TestCase):
     def test_completed_ships_inherit_owner_and_reports_only_show_player_results(self):
         game = new_game(seed=2408)
         sid, pid = game.opponent.home_system, game.opponent.home_planet
+        game.planet_at(sid, pid).biome = "Terran"
         game.queue_ship(0, 2)
         game.queue_ship(sid, pid, owner=RIVAL)
         for _ in range(7):
@@ -304,7 +306,7 @@ class AIInterfaceTests(unittest.TestCase):
         self.click("rival_end_turn")
         rival = self.app.game.opponent
         home = self.app.game.planet_at(rival.home_system, rival.home_planet)
-        self.assertEqual(home.construction_queue[0].progress, 6)
+        self.assertEqual(home.construction_queue[0].progress, home.workers)
         self.assertEqual(self.app.game.credits, 128)
         self.click("rival_pause")
         self.click("resume")
@@ -326,7 +328,7 @@ class AIInterfaceTests(unittest.TestCase):
         self.click(f"rival_colony_{rival.home_system}_{rival.home_planet}")
         self.assertEqual(self.app.screen, "planet")
         self.assertFalse(any(b.key == "colonize_planet" for b in self.app.buttons))
-        self.click("tab_colony")
+        self.click("surface_factory")
         before = game.to_dict()
         for key in ("build_factory", "build_mine", "build_trade_center", "build_research_lab"):
             self.assertFalse(next(b for b in self.app.buttons if b.key == key).enabled)

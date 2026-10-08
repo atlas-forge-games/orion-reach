@@ -428,7 +428,7 @@ class VictoryScreenTests(unittest.TestCase):
         self.click("dialog_ok")
         self.assertEqual(game.credits, 0)
         self.click("gate_visit")
-        self.assertEqual(self.app.screen, "colony")
+        self.assertEqual(self.app.screen, "planet")
         self.key(pg.K_v)
         self.key(pg.K_i)
         self.assertEqual(self.app.screen, "empire")
