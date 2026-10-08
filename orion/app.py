@@ -33,7 +33,7 @@ from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
-from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_map_fleets, draw_order_panel
+from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_order_panel
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -324,6 +324,11 @@ class App:
                     return
                 self.game.cancel_departures(identifiers)
                 message=f"Departure cancelled · {count} {'ship remains' if count==1 else 'ships remain'} at {self.game.systems[origin].name}."
+            elif first.departure_pending and destination==first.destination:
+                # Re-clicking an existing route keeps its saved speed and fuel authorization.
+                self.game.selected_system=destination
+                self.toast(f"Departure already queued · {turn_label(first.turns_remaining)} to {self.game.systems[destination].name}.")
+                return
             else:
                 duration=self.game.send_ships(identifiers,destination)
                 message=f"Course set to {self.game.systems[destination].name} · {turn_label(duration)} · Click {self.game.systems[origin].name} to cancel before End Turn."
@@ -1549,6 +1554,7 @@ class App:
         for y in range(MAP.y+40,MAP.bottom,70):
             pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,y),(MAP.right-1,y))
         text(self.canvas,"SECTOR 01 / LOCAL CLUSTER",(MAP.x+22,MAP.y+18),10,FAINT,"mono",1)
+        draw_fuel_range(self,MAP)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
         for star in state.systems:
             x,y=self.star_pos(star)
@@ -1560,9 +1566,12 @@ class App:
             pg.draw.circle(self.canvas,color,(int(x),int(y)),4)
             pg.draw.circle(self.canvas,INK,(int(x),int(y)),1)
             if selected:
-                pg.draw.circle(self.canvas,GOLD,(int(x),int(y)),19,1)
+                ordering=bool(self.map_order_ids or self.route_ship_id is not None)
+                queued=next((s for s in state.ships if s.id in self.map_order_ids and s.departure_pending and s.destination==star.id),None)
+                selection_color=RED if ordering and not queued and not state.within_fuel_range(star.id) else GOLD
+                pg.draw.circle(self.canvas,selection_color,(int(x),int(y)),19,1)
                 for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
-                    pg.draw.circle(self.canvas,GOLD,(int(x+dx),int(y+dy)),1)
+                    pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
             owners={p.owner for p in known.worlds if p.colonized} if known else set()
             if PLAYER in owners:
                 pg.draw.circle(self.canvas,CYAN,(int(x),int(y)),11,1)
@@ -1587,12 +1596,14 @@ class App:
         else:
             ship=state.ship_at(self.route_ship_id)
             duration=state.travel_turns(state.systems[ship.system_id],star)
-            self.button("send_course",f"Send ship · {turn_label(duration)}" if duration else "Current system",(1075,692,277,43),
-                        self.send_course,enabled=duration>0)
+            blocked=not state.within_fuel_range(star.id)
+            label="Out of fuel range" if blocked else f"Send ship · {turn_label(duration)}" if duration else "Current system"
+            self.button("send_course",label,(1075,692,277,43),self.send_course,enabled=duration>0 and not blocked)
             known=state.known_system(star.id)
             targets=sum(not p.colonized and state.can_settle(p) for p in known.worlds) if known else 0
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
-            hint=f"{ship.name}: choose a star, then Send. {detail}"
+            hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony · Range {state.fuel_range()} ly. "
+                  +("Colonize closer worlds or research fuel tanks." if blocked else detail))
         text(self.canvas,shorten(hint,748,13),(64,775),13,MUTED)
         self.button("open_exploration","Exploration · X",(828,763,198,38),self.open_exploration)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)

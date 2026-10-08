@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.18.0
+# Orion Reach — Python prototype 0.19.0
 
 A playable colony-building and interstellar expansion prototype with population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -85,6 +85,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Every new empire begins with **two scouts and one colony ship** in its home system.
 - Click a **fleet badge** to open a small popup on the galaxy map. Select ships,
   then click a destination star. Click their departure star to cancel before End Turn.
+- Early ships travel at **2 light-years per turn** and can reach destinations
+  within **35 light-years of any owned colony**. Range circles and route feedback
+  help choose destinations; colony expansion and fuel-tank research extend supply.
 - Build cheap **scouts** to reveal worlds and recover one-time discoveries.
   **Exploration · X** records recovered caches, archives and derelict probes.
 - Click a planet's globe or caption to open its **planet overview**: environment,
@@ -401,6 +404,13 @@ Farming improves local food production as well as income.
 Radiation Shields allows barren colonies; Thermal Barriers allows volcanic
 colonies. These habitats do not change the world's natural habitability.
 
+**Fuel tanks:** in Materials & Chemistry, **Lightweight Alloys** adds 10 ly of
+fuel range and **Composite Structures** adds another 15 ly. Choosing both takes
+your range from **35 → 45 → 60 ly**, while retaining their existing discounts.
+They follow the normal exclusive choices: selecting the other option in a tier
+forgoes that tank upgrade. Range upgrades apply to all of that empire's ships;
+drive technologies increase speed separately. The AI uses the same rules.
+
 ![Research screen](screenshots/research.png)
 
 ## Basic AI opponent
@@ -647,8 +657,10 @@ order is needed between planets in the same system.
 | Ship construction | Shares the sequential queue and industry with buildings; no building slot |
 | Queue capacity | Up to 20 total projects per planet |
 | Cancellation | Shipyard lists every queued project; refunds follow the same unspent-work rule as buildings |
-| Travel time | `ceil(hypot(1.4 * dx, dy) / (0.18 * (1 + speed bonus / 100)))`, minimum one turn between distinct systems |
-| Travel restrictions | Orders can be changed or cancelled before End Turn; no mid-flight rerouting, fuel cost or range limit yet |
+| Travel time | `ceil(distance in ly / (2 * (1 + speed bonus / 100)))`, minimum one turn between distinct systems |
+| Distance | `100 * hypot(1.4 * dx, dy)` using galaxy coordinates |
+| Fuel range | Destination must be within 35 ly of any owned colony; fuel-tank research adds 10 and 15 ly |
+| Travel restrictions | Orders can be changed or cancelled before End Turn; no mid-flight rerouting or consumable fuel resource |
 | Settlement | Requires an arrived colony ship in the target system; consumes exactly one ship |
 | Population | 1 B starting colonists plus Biology bonuses; included in ship cost, with no homeworld deduction |
 
@@ -656,6 +668,21 @@ Unused construction overflow follows the existing building rules. A ship
 finishes in orbit and receives no automatic travel order. The colony economy
 starts on the next End Turn after settlement. Ship costs, initial colonists,
 queue capacity and travel speed are defined in `orion/production.py`.
+
+The nearest systems usually take roughly **five turns** at the initial speed;
+more distant neighbours take longer. In the example galaxy (seed 2408), Sol to
+Bellatrix takes 5 turns and Sol to Procyon takes 13. Galaxy size and the generated
+distances determine the exact time. Researching both drive technologies raises
+speed to 3.5 ly per turn.
+
+Range is measured from **colonized planets**, represented by their system's
+position. Each colony contributes a radius; any destination in their combined
+coverage is reachable. Scouts, visited stars, uncolonized planets, and rival
+colonies do not extend it. Colonizing or capturing a world extends the network
+immediately; losing it changes the range for future orders. There is no maximum
+distance per individual flight beyond this destination rule, so ships can always
+return to an owned colony, including ships outside supply from an older save.
+Issued journeys retain their orders if supply changes before they arrive.
 
 ## Fleets on the galaxy map
 
@@ -672,6 +699,11 @@ queue capacity and travel speed are defined in `orion/production.py`.
   can immediately click another destination to redirect them or **click their
   origin to cancel**. No separate destination screen or confirmation is needed.
   Unknown systems reveal no planetary details before arrival.
+- While issuing orders, **cyan circles** show the supply radius around each
+  of your colony systems. The popup shows the destination's distance from its
+  nearest colony and your current range. An unreachable route turns **red**;
+  clicking it explains the range limit and leaves existing orders unchanged.
+  The individual ship's **Send ship** button is disabled for such destinations.
 - Ordered ships stay at the origin with a route line and **Departure queued**
   status until End Turn. You can close and reopen their badge, change the selected
   subset, redirect it, or cancel just those ships. Cancelling merges them with the
@@ -684,6 +716,7 @@ queue capacity and travel speed are defined in `orion/production.py`.
 - Rival fleets and ships already in transit are **inspection only**. Once a turn
   has advanced, a journey cannot be cancelled or redirected. Combat retreats
   are committed immediately and cannot be cancelled.
+  Retreat destinations must also be within the retreating empire's fuel range.
 - Opening another overview or ending the turn clears the popup selection.
   Saving retains queued departures, which remain editable after loading.
   A selection that has no destination is never saved as an order.
@@ -962,11 +995,15 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.18 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.19 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Existing campaigns do **not** receive extra
-starting ships. Older journeys remain committed, including ones saved before
-their first travel step; only newly issued orders can be cancelled before departure.
+ships and travel times are preserved. Already issued pre-v0.19 journeys keep
+their original faster speed, destination and remaining turns, even outside the
+new supply radius. New or redirected orders use the slower speed and range rules.
+Previously researched Lightweight Alloys and Composite Structures gain their
+fuel-tank bonuses. v0.18 queued departures remain cancellable until End Turn.
+Existing campaigns do **not** receive extra starting ships. Pre-v0.18 journeys
+remain committed, including ones saved before their first travel step.
 Pre-v0.17 battles receive deterministic
 deployment positions and weapons based on their empire's research. Their hulls,
 destroyed ships, current side, round and result are retained. Ships that had
@@ -995,14 +1032,14 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 14**, including queued departure flags, tactical coordinates, beam loadouts, movement and
+**format version 15**, including base cruise-speed snapshots, queued departure flags, tactical coordinates, beam loadouts, movement and
 firing flags, worker assignments, paused construction progress,
 growth progress, hydroponic farms,
 the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.17 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.18 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1066,6 +1103,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
 | `tests/test_starting_fleets.py` | Starting ships, AI exploration, revocable departures, fog, battle timing and save compatibility |
+| `tests/test_fuel_range.py` | Travel speed, colony supply, tank research, AI, old voyages and map range feedback |
 | `tests/scenarios.py` | Explicit empty-fleet scenarios for production and legacy regression tests |
 | `tests/test_exploration.py` | Fog boundaries, discoveries, scouts, private AI knowledge, saves and UI flows |
 | `tests/test_audio.py` | MP3 playback, mute/resume, independent controls, settings migration and device failures |

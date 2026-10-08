@@ -67,7 +67,8 @@ class StartingFleetTests(unittest.TestCase):
 class PendingDepartureTests(unittest.TestCase):
     def setUp(self):
         self.game = new_game(seed=2408, with_ai=False)
-        self.target = max(self.game.systems[1:], key=lambda s: self.game.travel_turns(self.game.systems[0], s)).id
+        self.target = max((s for s in self.game.systems[1:] if self.game.within_fuel_range(s.id)),
+                          key=lambda s: self.game.travel_turns(self.game.systems[0], s)).id
 
     def test_selection_can_be_redirected_and_cancelled_without_advancing_time(self):
         game = self.game
@@ -108,7 +109,8 @@ class PendingDepartureTests(unittest.TestCase):
 
     def test_even_one_turn_routes_can_be_cancelled_before_departure(self):
         game = self.game
-        target = next(s.id for s in game.systems[1:] if game.travel_turns(game.systems[0], s) == 1)
+        from scenarios import place_near
+        target = place_near(game, 1, distance=1).id  # Artificially close systems exercise the one-turn boundary.
         self.assertEqual(game.send_ship(1, target), 1)
         game.cancel_departures([1])
         self.assertFalse(game.ship_at(1).has_course)
@@ -171,7 +173,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-            self.assertEqual(SAVE_VERSION, 14)
+            self.assertEqual(SAVE_VERSION, 15)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

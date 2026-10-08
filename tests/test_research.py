@@ -156,7 +156,7 @@ class ResearchRulesTests(unittest.TestCase):
     def test_speed_applies_to_new_voyages_and_in_flight_save_keeps_departure_speed(self):
         game = new_game(seed=2408, with_ai=False)
         origin = game.systems[0]
-        destination = max(game.systems, key=lambda s: travel_turns(origin, s))
+        destination = max((s for s in game.systems if game.within_fuel_range(s.id)), key=lambda s: travel_turns(origin, s))
         game.ships = [Ship(1, "colony_ship", 0), Ship(2, "colony_ship", 0)]
         game.next_ship_id = 3
         original = game.send_ship(1, destination.id)

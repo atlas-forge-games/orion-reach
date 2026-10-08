@@ -24,8 +24,9 @@ from orion.storage import SAVE_VERSION, Storage
 
 
 def remote_world(game):
-    return next((s, p) for s in game.systems[1:] for p in s.worlds
-                if p.habitability > 0 and travel_turns(game.systems[0], s) >= 2)
+    return min(((s, p) for s in game.systems[1:] for p in s.worlds
+                if p.habitability > 0 and game.within_fuel_range(s.id)),
+               key=lambda row: (travel_turns(game.systems[0], row[0]), row[0].id, row[1].id))
 
 
 class ColonizationRulesTests(unittest.TestCase):
@@ -84,11 +85,11 @@ class ColonizationRulesTests(unittest.TestCase):
 
     def test_distance_travel_arrival_and_no_early_or_duplicate_arrival(self):
         source, target = self.game.systems[:2]
-        source.x, source.y, target.x, target.y = .1, .1, .46, .1
+        source.x, source.y, target.x, target.y = .1, .1, .1+10/140, .1
         self.game.ships = [Ship(1, "colony_ship", 0)]
         self.game.next_ship_id = 2
-        self.assertEqual(self.game.send_ship(1, 1), 3)
-        for remaining in (2, 1):
+        self.assertEqual(self.game.send_ship(1, 1), 5)
+        for remaining in (4, 3, 2, 1):
             report = self.game.advance_turn()
             self.assertEqual(report.arrivals, [])
             self.assertEqual(self.game.ships[0].turns_remaining, remaining)
@@ -106,7 +107,7 @@ class ColonizationRulesTests(unittest.TestCase):
             with self.assertRaises(RuleError):
                 self.game.send_ship(ship_id, destination)
             self.assertEqual(self.game.to_dict(), before)
-        self.game.send_ship(1, 2)
+        self.game.send_ship(1, 1)
         self.game.ship_at(1).departure_pending = False  # Lock an actual flight, not a pending course.
         before = self.game.to_dict()
         with self.assertRaises(RuleError):
@@ -185,7 +186,7 @@ class ColonizationRulesTests(unittest.TestCase):
             store = Storage(folder)
             restored, _ = store.load(store.save(self.game))
             self.assertEqual(restored, self.game)
-            for _ in range(8):
+            for _ in range(max(8, self.game.ship_at(1).turns_remaining)):
                 self.assertEqual(restored.advance_turn(), self.game.advance_turn())
             restored.colonize(1, target.id, planet.id)
             self.game.colonize(1, target.id, planet.id)

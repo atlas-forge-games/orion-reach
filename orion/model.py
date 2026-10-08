@@ -8,7 +8,7 @@ import random
 from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
-from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_TYPES, STARTING_COLONISTS, travel_turns
+from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, distance_ly, travel_turns
 from . import combat as combat_rules
 from . import victory as victory_rules
 from . import exploration as exploration_rules
@@ -92,6 +92,7 @@ class Ship:
     speed_bonus: int = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
     hull: int | None = None
     departure_pending: bool = False
+    cruise_speed: float = SHIP_SPEED  # Snapshot so balance updates do not change saved flights.
 
     def __post_init__(self):
         if self.hull is None:
@@ -118,7 +119,7 @@ class Ship:
         return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=14):
+    def from_dict(cls, data, systems, *, version=15):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
@@ -132,17 +133,21 @@ class Ship:
         remaining, total = data["turns_remaining"], data["travel_total"]
         speed_bonus = data["speed_bonus"] if version >= 7 else 0
         pending = data["departure_pending"] if version >= 14 else False
+        cruise_speed = (data["cruise_speed"] if version >= 15 else
+                        data.get("cruise_speed", LEGACY_SHIP_SPEED if destination is not None else SHIP_SPEED))
+        if type(cruise_speed) is not float or cruise_speed not in (SHIP_SPEED, LEGACY_SHIP_SPEED):
+            raise ValueError
         if type(pending) is not bool:
             raise ValueError
         if type(speed_bonus) is not int or speed_bonus not in (0, 25, 50, 75):
             raise ValueError
         if destination is None:
-            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending:
+            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != SHIP_SPEED:
                 raise ValueError
         else:
             if not _integer(destination, 0, len(systems)-1) or destination == data["system_id"]:
                 raise ValueError
-            expected = travel_turns(systems[data["system_id"]], systems[destination], speed_bonus)
+            expected = travel_turns(systems[data["system_id"]], systems[destination], speed_bonus, cruise_speed=cruise_speed)
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
             if pending and remaining != total:
@@ -151,6 +156,7 @@ class Ship:
         record["hull"] = hull
         record["speed_bonus"] = speed_bonus
         record["departure_pending"] = pending
+        record["cruise_speed"] = cruise_speed
         if version < 5:
             record["owner"] = PLAYER
         if record["owner"] not in (PLAYER, RIVAL):
@@ -637,6 +643,27 @@ class GameState:
     def travel_turns(self, origin, destination, owner=PLAYER):
         return travel_turns(origin, destination, self.bonuses_for(owner).get("ship_speed", 0))
 
+    def fuel_range(self, owner=PLAYER):
+        return BASE_FUEL_RANGE+self.bonuses_for(owner).get("fuel_range", 0)
+
+    def colony_systems(self, owner=PLAYER):
+        return [s for s in self.systems if any(p.owner == owner for p in s.worlds)]
+
+    def supply_distance(self, destination, owner=PLAYER):
+        """Distance to the nearest real colony; exploration never extends supply."""
+        target = self.systems[destination]
+        return min((distance_ly(s, target) for s in self.colony_systems(owner)), default=math.inf)
+
+    def within_fuel_range(self, destination, owner=PLAYER):
+        return self.supply_distance(destination, owner) <= self.fuel_range(owner)+1e-9
+
+    def fuel_range_error(self, destination, owner=PLAYER):
+        if not self.within_fuel_range(destination, owner):
+            return (f"Out of fuel range: {self.systems[destination].name} is "
+                    f"{self.supply_distance(destination, owner):.1f} ly from your nearest colony "
+                    f"(range {self.fuel_range(owner)} ly). Colonize closer worlds or research fuel tanks.")
+        return None
+
     def can_settle(self, planet, owner=PLAYER):
         return planet.habitability > 0 or bool(self.bonuses_for(owner).get(planet.biome.lower(), 0))
 
@@ -876,6 +903,9 @@ class GameState:
             raise RuleError("Unknown destination system.")
         if destination == ships[0].system_id:
             raise RuleError("The selected ships are already in this system.")
+        error = self.fuel_range_error(destination, owner)
+        if error:
+            raise RuleError(error)
         for ship in ships:
             duration = self._dispatch_ship(ship, destination, pending=True)
         return duration
@@ -885,6 +915,7 @@ class GameState:
         ship.destination = None
         ship.turns_remaining = ship.travel_total = ship.speed_bonus = 0
         ship.departure_pending = False
+        ship.cruise_speed = SHIP_SPEED
 
     def cancel_departures(self, ship_ids, *, owner=PLAYER):
         """Cancel a whole selection atomically, only before its first travel step."""
@@ -909,6 +940,7 @@ class GameState:
         exploration_rules.refresh(self)
         duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], ship.owner)
         ship.speed_bonus = self.bonuses_for(ship.owner).get("ship_speed", 0)
+        ship.cruise_speed = SHIP_SPEED
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
         ship.departure_pending = pending
@@ -1016,8 +1048,7 @@ class GameState:
                 ship.turns_remaining -= 1
                 if ship.turns_remaining == 0:
                     ship.system_id = ship.destination
-                    ship.destination = None
-                    ship.travel_total = ship.speed_bonus = 0
+                    self._clear_course(ship)
                     message = f"{ship.name} at {self.systems[ship.system_id].name}"
                     if ship.owner == PLAYER:
                         arrivals.append(message)
@@ -1077,7 +1108,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=14):
+    def from_dict(cls, data, *, version=15):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

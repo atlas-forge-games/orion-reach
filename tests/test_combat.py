@@ -13,7 +13,7 @@ import pygame as pg
 
 from orion.combat import ai_action, retreat_destination
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
-from scenarios import empty_fleet_game as new_game
+from scenarios import empty_fleet_game as new_game, place_near
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -269,6 +269,7 @@ class CombatRulesTests(unittest.TestCase):
         self.assertEqual(game.combat.active_owner, RIVAL)
         moving = new_game(seed=2408)
         home = moving.opponent.home_system
+        place_near(moving, home)
         moving.ships = [Ship(1, "frigate", 0), Ship(2, "frigate", home, owner=RIVAL)]
         moving.next_ship_id = 3
         moving.diplomacy.relations = -100
@@ -331,6 +332,7 @@ class CombatSaveTests(unittest.TestCase):
         game.queue_building(0, 2, "factory")
         game.ships = [Ship(1, "colony_ship", 0)]
         game.next_ship_id = 2
+        place_near(game, game.opponent.home_system)
         game.send_ship(1, game.opponent.home_system)
         game.ship_at(1).departure_pending = False  # A v7 course was already committed.
         with tempfile.TemporaryDirectory() as folder:

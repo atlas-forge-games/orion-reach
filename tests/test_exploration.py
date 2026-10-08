@@ -16,14 +16,18 @@ import pygame as pg
 
 from orion.exploration import DISCOVERIES, discovery_at, known_rival_colonies, refresh
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
-from scenarios import empty_fleet_game as new_game
+from scenarios import empty_fleet_game as new_game, place_near
 from orion.storage import SAVE_VERSION, Storage
 
 
 def discovery_system(game, kind=None):
-    return next(s for s in game.systems if discovery_at(game, s.id) and
+    candidates = [s for s in game.systems if discovery_at(game, s.id) and
                 (kind is None or discovery_at(game, s.id) == kind) and
-                (game.opponent is None or s.id != game.opponent.home_system))
+                (game.opponent is None or s.id != game.opponent.home_system)]
+    target = min(candidates, key=lambda s: game.supply_distance(s.id))
+    if not game.within_fuel_range(target.id):
+        place_near(game, target.id)  # A local discovery fixture, not an unlimited-range order.
+    return target
 
 
 def arrive(game, ids, destination):
@@ -91,8 +95,11 @@ class ExplorationRulesTests(unittest.TestCase):
                     target = discovery_system(game, kind)
                     game.ships = [Ship(1, "scout", 0), Ship(2, "scout", 0)]
                     game.next_ship_id = 3
+                    baseline = GameState.from_dict(game.to_dict())
                     duration, report = arrive(game, [1, 2], target.id)
-                    self.assertEqual(game.credits, 120+8*duration+spec.credits)
+                    for _ in range(duration):
+                        baseline.advance_turn()
+                    self.assertEqual(game.credits, baseline.credits+spec.credits)
                     self.assertEqual(game.research, spec.research)
                     self.assertEqual(len(game.exploration.discoveries), 1)
                     self.assertTrue(any(spec.name in s for s in report.exploration))
@@ -124,6 +131,7 @@ class ExplorationRulesTests(unittest.TestCase):
     def test_stale_surveys_do_not_update_ownership_population_buildings_or_fleets(self):
         game = new_game(seed=2408)
         home = game.opponent.home_system
+        place_near(game, home)
         planet = game.planet_at(home, game.opponent.home_planet)
         game.ships = [Ship(1, "scout", home), Ship(2, "frigate", home, owner=RIVAL)]
         game.next_ship_id = 3
@@ -414,6 +422,7 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.app.game = new_game(seed=2408)
         game = self.app.game
         home = game.opponent.home_system
+        place_near(game, home)
         game.ships = [Ship(1, "scout", 0), Ship(2, "frigate", home, owner=RIVAL)]
         game.next_ship_id = 3
         self.click("map_fleet_1")

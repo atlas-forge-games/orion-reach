@@ -28,7 +28,7 @@ def scouting_orders(game):
         if ship.kind != "scout" or ship.has_course:
             continue
         candidates = [s for s in game.systems if s.id != ship.system_id and s.id not in incoming
-                      and s.id not in game.exploration.scanned_rival]
+                      and s.id not in game.exploration.scanned_rival and game.within_fuel_range(s.id, RIVAL)]
         if not candidates:
             continue
         origin = game.systems[ship.system_id]
@@ -44,6 +44,13 @@ def research_choice(game):
     state = game.research_state(RIVAL)
     if state.active or game.opponent.research == 0:
         return
+    # Extend an exhausted frontier using the same exclusive tank upgrades as the player.
+    unknown = [s for s in game.systems if not game.system_explored(s.id, RIVAL)]
+    if unknown and not any(game.within_fuel_range(s.id, RIVAL) for s in unknown):
+        for identifier in ("lightweight_alloys", "composite_structures"):
+            if game.research_error(identifier, owner=RIVAL) is None:
+                game.choose_research(identifier, owner=RIVAL)
+                return
     race = game.opponent.race_id
     priority = {
         "terran": ("computers", "construction", "society"),
@@ -88,8 +95,9 @@ def military_orders(game):
     if not colonies:
         return
     hostile = game.diplomacy.relations < HOSTILE_BELOW
-    targets = [s for s in game.systems if game.system_visible(s.id, RIVAL) and game.fleet_at(s.id)] if hostile else []
-    worlds = known_enemy_colonies(game) if hostile else []
+    targets = [s for s in game.systems if game.system_visible(s.id, RIVAL) and game.fleet_at(s.id)
+               and game.within_fuel_range(s.id, RIVAL)] if hostile else []
+    worlds = [(s, p) for s, p in known_enemy_colonies(game) if game.within_fuel_range(s.id, RIVAL)] if hostile else []
     ordered = set()
     staging, _ = max(empire_colonies(game, RIVAL), key=lambda row: (game.planet_yields(row[1])[0], row[1].population, -row[0].id, -row[1].id))
     for system in game.systems:
@@ -171,9 +179,11 @@ def run_ai(game):
         for other in game.ships_owned_by(RIVAL):
             if other.has_course and other.kind == "colony_ship":
                 incoming[other.destination] = incoming.get(other.destination, 0)+1
-        targets = [s for s in game.systems if len(available_worlds(game, s)) > incoming.get(s.id, 0)]
+        targets = [s for s in game.systems if game.within_fuel_range(s.id, RIVAL)
+                   and len(available_worlds(game, s)) > incoming.get(s.id, 0)]
         if not targets:
-            unknown = [s for s in game.systems if not game.system_explored(s.id, RIVAL) and not incoming.get(s.id)]
+            unknown = [s for s in game.systems if not game.system_explored(s.id, RIVAL) and not incoming.get(s.id)
+                       and game.within_fuel_range(s.id, RIVAL)]
             if unknown:
                 target = min(unknown, key=lambda s: (game.travel_turns(game.systems[ship.system_id], s, RIVAL), s.id))
                 game.send_ship(ship.id, target.id, owner=RIVAL)

@@ -35,15 +35,20 @@ class SpecialProject:
 ASCENSION_GATE = SpecialProject("ascension_gate", "Ascension Gate", 500, 300)
 PROJECTS = {**BUILDINGS, **SHIP_TYPES, ASCENSION_GATE.id: ASCENSION_GATE}
 MAX_QUEUE = 20
-SHIP_SPEED = .18  # Weighted galaxy-map distance per turn.
+SHIP_SPEED = .02  # 2 light-years per turn; nearby stars are roughly five turns apart.
+LEGACY_SHIP_SPEED = .18  # Preserve voyages ordered before v0.19.
+BASE_FUEL_RANGE = 35  # Light-years from any owned colony, not from a scout's position.
 STARTING_COLONISTS = 1  # Billions, included in the ship cost in this prototype.
 REPAIR_PER_TURN = 4
 TROOP_STRENGTH = 8
 GATE_CHARGE_TURNS = 5
 
 
-def travel_turns(origin, destination, speed_bonus=0):
+def distance_ly(origin, destination):
+    return 100*math.hypot((destination.x-origin.x)*1.4, destination.y-origin.y)
+
+
+def travel_turns(origin, destination, speed_bonus=0, *, cruise_speed=SHIP_SPEED):
     if origin.id == destination.id:
         return 0
-    distance = math.hypot((destination.x-origin.x)*1.4, destination.y-origin.y)
-    return max(1, math.ceil(distance/(SHIP_SPEED*(1+speed_bonus/100))))
+    return max(1, math.ceil(distance_ly(origin, destination)/(100*cruise_speed*(1+speed_bonus/100))-1e-10))

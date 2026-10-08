@@ -211,7 +211,8 @@ class CombatState:
                     or original.hull != (ship.initial_hull if state.status == "active" else ship.hull)):
                 raise ValueError("Battle does not match the campaign fleet")
             if ship.owner == retreating:
-                expected = game.travel_turns(game.systems[state.system_id], game.systems[state.retreat_destination], ship.owner)
+                # Ship validation already checked its saved speed and complete voyage length.
+                expected = original.travel_total
                 if (original.departure_pending or original.destination != state.retreat_destination or original.turns_remaining != expected
                         or original.travel_total != expected
                         or original.speed_bonus != game.bonuses_for(ship.owner).get("ship_speed", 0)):
@@ -414,6 +415,7 @@ def retreat_destination(game, owner="player"):
         return None
     origin = game.systems[game.combat.system_id]
     safe = [s for s in game.systems if s.id != origin.id and
+            game.within_fuel_range(s.id, owner) and
             not (game.system_visible(s.id, owner) and game.fleet_at(s.id, other(owner)))]
     friendly = [s for s in safe if any(p.owner == owner for p in s.worlds)]
     return min(friendly or safe, key=lambda s: (game.travel_turns(origin, s, owner),

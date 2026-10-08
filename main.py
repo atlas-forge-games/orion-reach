@@ -71,9 +71,12 @@ def main():
                 app.open_map_fleet(1)
                 app.toggle_fleet_ship(2)
                 if args.screen == "fleet_course":
-                    app.game.send_ships(app.map_order_ids, 1)
-                    app.game.selected_system = 1
-                    app.focus = "star_1"
+                    game = app.game
+                    target = min((s for s in game.systems[1:] if game.within_fuel_range(s.id)),
+                                 key=lambda s: (game.travel_turns(game.systems[0], s), s.id))
+                    game.send_ships(app.map_order_ids, target.id)
+                    game.selected_system = target.id
+                    app.focus = f"star_{target.id}"
                     app.keyboard_mode = True
             app.time = 1.0 if args.screen == "splash" else 3.0
             app.render()

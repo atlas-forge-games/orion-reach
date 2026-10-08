@@ -100,7 +100,7 @@ class AIRulesTests(unittest.TestCase):
                 game = new_game(seed=seed, galaxy_size=size)
                 expected_credits = game.credits
                 # Farms also use construction time before the scientific endgame.
-                for _ in range(120):
+                for _ in range(180):  # Slower expansion delays the scientific endgame.
                     if game.result is not None:
                         break
                     expected_credits += game.empire_rates[0]
@@ -152,7 +152,7 @@ class AIRulesTests(unittest.TestCase):
     def test_player_claim_during_flight_is_preserved_and_rival_reroutes(self):
         game = new_game(seed=2408)
         home = game.opponent.home_system
-        target, planet = next((s, p) for s in game.systems if s.id not in (0, home)
+        target, planet = next((s, p) for s in game.systems if s.id not in (0, home) and game.within_fuel_range(s.id, RIVAL)
                               for p in s.worlds if p.habitability > 0)
         for other in target.worlds:
             if other is not planet:
@@ -177,7 +177,7 @@ class AIRulesTests(unittest.TestCase):
             for p in s.worlds:
                 if not p.colonized:
                     p.biome = "Barren"
-        targets = [s for s in game.systems if s.id not in (0, home) and s.worlds][:2]
+        targets = [s for s in game.systems if s.id not in (0, home) and s.worlds and game.within_fuel_range(s.id, RIVAL)][:2]
         for s in targets:
             s.worlds[0].biome = "Terran"
         game.ships = [Ship(i, "colony_ship", home, owner=RIVAL) for i in (1, 2)]

@@ -14,7 +14,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.model import ConstructionProject, GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
-from scenarios import empty_fleet_game as new_game
+from scenarios import empty_fleet_game as new_game, place_near
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -171,6 +171,7 @@ class ConquestRulesTests(unittest.TestCase):
 
     def test_hostile_ai_builds_escorts_and_transports_travels_and_conquers(self):
         game = new_game(seed=2408)
+        place_near(game, game.opponent.home_system)
         game.diplomacy.relations = -100
         seen = set()
         travelled = False
@@ -253,6 +254,7 @@ class ScienceRulesTests(unittest.TestCase):
         earth.ascension_gate, earth.gate_charge = True, 4
         ship = Ship(1, "frigate", game.opponent.home_system, owner=RIVAL)
         game.ships, game.next_ship_id = [ship], 2
+        place_near(game, game.opponent.home_system)
         game.send_ship(1, 0, owner=RIVAL)
         ship.turns_remaining = 1
         game.advance_turn()
@@ -336,6 +338,7 @@ class VictorySaveTests(unittest.TestCase):
         game.queue_building(0, 2, "factory")
         game.ships = [Ship(1, "frigate", 0), Ship(2, "frigate", 0, owner=RIVAL), Ship(3, "colony_ship", 0)]
         game.next_ship_id = 4
+        place_near(game, game.opponent.home_system)
         game.send_ship(3, game.opponent.home_system)
         game.ship_at(3).departure_pending = False  # Reproduce an already committed v8 voyage.
         game.start_combat(0)

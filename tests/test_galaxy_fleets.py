@@ -49,7 +49,7 @@ class FleetOrderTests(unittest.TestCase):
         game = fixture(ai=True)
         game.ships += [Ship(5, "frigate", 0, owner=RIVAL), Ship(6, "frigate", 1)]
         game.next_ship_id = 7
-        game.send_ship(4, 2)
+        game.send_ship(4, 1)
         game.ship_at(4).departure_pending = False  # An already committed flight.
         for identifiers, destination in (([], 1), ([1, 99], 1), ([1, 5], 1), ([1, 4], 1),
                                          ([1, 6], 2), ([1, 1], 1), ([1, True], 1),
@@ -76,12 +76,14 @@ class FleetOrderTests(unittest.TestCase):
         self.assertEqual(before, game.to_dict())
         game = fixture(ai=True)
         game.ships = [Ship(1, "frigate", 0, owner=RIVAL), Ship(2, "colony_ship", 0, owner=RIVAL)]
+        from scenarios import place_near
+        place_near(game, game.opponent.home_system, anchor=1)
         game.send_ships([1, 2], 1, owner=RIVAL)
         self.assertTrue(all(s.destination == 1 for s in game.ships))
 
     def test_separate_voyages_do_not_merge_until_arrival(self):
         game = fixture()
-        destination = max(game.systems[1:], key=lambda s: game.travel_turns(game.systems[0], s))
+        destination = max((s for s in game.systems[1:] if game.within_fuel_range(s.id)), key=lambda s: game.travel_turns(game.systems[0], s))
         game.send_ships([1, 2], destination.id)
         game.advance_turn()
         game.send_ships([3, 4], destination.id)
@@ -93,7 +95,7 @@ class FleetOrderTests(unittest.TestCase):
         speed_tech = next(t for t in TECHNOLOGIES.values() if t.tier == 1 and dict(t.effects).get("ship_speed"))
         game.research = speed_tech.cost
         game.choose_research(speed_tech.id)
-        destination = max(game.systems[1:], key=lambda s: game.travel_turns(game.systems[0], s))
+        destination = max((s for s in game.systems[1:] if game.within_fuel_range(s.id)), key=lambda s: game.travel_turns(game.systems[0], s))
         duration = game.send_ships([1, 2, 3], destination.id)
         self.assertTrue(all(s.speed_bonus == dict(speed_tech.effects)["ship_speed"] for s in game.ships[:3]))
         game.advance_turn()
@@ -306,7 +308,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.click("fleet_select_1")
         self.click("star_1")
         self.click("map_fleet_2")
-        self.click("star_2")
+        self.click("star_11")
         self.key(pg.K_ESCAPE)
         self.assertTrue(all(s.departure_pending for s in self.app.game.ships))
         save = self.app.storage.saves_dir/"autosave.json"
@@ -316,7 +318,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.click("map_fleet_1")
         self.click("star_0")
         self.assertFalse(self.app.game.ship_at(1).has_course)
-        self.assertTrue(all(self.app.game.ship_at(i).destination == 2 for i in (2, 3, 4)))
+        self.assertTrue(all(self.app.game.ship_at(i).destination == 11 for i in (2, 3, 4)))
 
 
 if __name__ == "__main__":
