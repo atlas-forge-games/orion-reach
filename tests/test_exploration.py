@@ -15,7 +15,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.exploration import DISCOVERIES, discovery_at, known_rival_colonies, refresh
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from orion.storage import SAVE_VERSION, Storage
 
 
@@ -129,6 +130,9 @@ class ExplorationRulesTests(unittest.TestCase):
         refresh(game)
         self.assertEqual([s.id for s in game.visible_ships()], [1, 2])
         game.send_ship(1, 0)
+        self.assertTrue(game.system_visible(home))  # Departure is still editable.
+        with patch("orion.ai.run_ai", return_value=[]):
+            game.advance_turn()
         planet.population = 19
         planet.buildings.append("factory")
         self.assertFalse(game.system_visible(home))
@@ -144,6 +148,8 @@ class ExplorationRulesTests(unittest.TestCase):
             arrive(game, [1], home)
         self.assertEqual(game.known_system(home).worlds[planet.id].population, 19)
         game.send_ship(2, 0, owner=RIVAL)
+        with patch("orion.ai.run_ai", return_value=[]):
+            game.advance_turn()
         self.assertNotIn(2, [s.id for s in game.visible_ships()])
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
@@ -217,6 +223,7 @@ class ExplorationRulesTests(unittest.TestCase):
         game.ships = [Ship(1, "frigate", 0, hull=13), Ship(2, "colony_ship", 0)]
         game.next_ship_id = 3
         game.send_ship(2, 1)
+        game.ship_at(2).departure_pending = False  # Legacy journeys were committed immediately.
         game.queue_building(0, 2, "factory")
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)
@@ -326,11 +333,10 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.click("planet_return")
         self.click("system_back")
         self.click("map_fleet_1")
-        self.click("fleet_choose_destination")
         target = discovery_system(self.app.game)
         self.click(f"star_{target.id}")
         self.assertFalse(self.app.game.system_explored(target.id))
-        while self.app.game.ships[0].in_transit:
+        while self.app.game.ships[0].has_course:
             self.key(pg.K_e)
         self.assertTrue(self.app.game.system_explored(target.id))
         self.assertEqual(len(self.app.game.exploration.discoveries), 1)
@@ -390,6 +396,8 @@ class ExplorationInterfaceTests(unittest.TestCase):
         game.next_ship_id = 2
         refresh(game)
         game.send_ship(1, 0)
+        with patch("orion.ai.run_ai", return_value=[]):
+            game.advance_turn()
         game.planet_at(sid, pid).population = 77
         self.app.open_system(sid)
         self.click(f"world_{pid}")
@@ -409,7 +417,6 @@ class ExplorationInterfaceTests(unittest.TestCase):
         game.ships = [Ship(1, "scout", 0), Ship(2, "frigate", home, owner=RIVAL)]
         game.next_ship_id = 3
         self.click("map_fleet_1")
-        self.click("fleet_choose_destination")
         self.app.keyboard_mode = True
         game.selected_system = home
         text = self.drawn_text()
@@ -422,8 +429,8 @@ class ExplorationInterfaceTests(unittest.TestCase):
     def test_exploration_and_fleet_navigation_to_other_overviews_returns_safely(self):
         self.app.game.ships = [Ship(1, "scout", 0)]
         self.app.game.next_ship_id = 2
-        for origin in ("exploration", "fleet"):
-            if origin == "fleet":
+        for origin in ("exploration", "galaxy"):
+            if origin == "galaxy":
                 self.app.open_map_fleet(1)
             else:
                 self.app.open_exploration()

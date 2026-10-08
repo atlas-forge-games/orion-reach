@@ -14,7 +14,8 @@ import pygame as pg
 
 from orion.buildings import BUILDINGS
 from orion.empire import summarize_empire
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -214,6 +215,7 @@ class ResearchSaveTests(unittest.TestCase):
         game.next_ship_id = 2
         game.send_ship(1, 1)
         with tempfile.TemporaryDirectory() as folder:
+            game.ship_at(1).departure_pending = False  # Legacy course snapshot.
             storage = Storage(folder)
             path = storage.save(game)
             payload = json.loads(path.read_text())

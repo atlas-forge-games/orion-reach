@@ -13,7 +13,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame as pg
 
-from orion.model import ConstructionProject, GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import ConstructionProject, GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -86,6 +87,7 @@ class ConquestRulesTests(unittest.TestCase):
         game.ships.remove(enemy)
         for identifier in ids:
             game.send_ship(identifier, 0)
+            game.ship_at(identifier).departure_pending = False  # Already departed.
         with self.assertRaisesRegex(RuleError, "orbit"):
             game.invade(sid, pid)
 
@@ -335,6 +337,7 @@ class VictorySaveTests(unittest.TestCase):
         game.ships = [Ship(1, "frigate", 0), Ship(2, "frigate", 0, owner=RIVAL), Ship(3, "colony_ship", 0)]
         game.next_ship_id = 4
         game.send_ship(3, game.opponent.home_system)
+        game.ship_at(3).departure_pending = False  # Reproduce an already committed v8 voyage.
         game.start_combat(0)
         game.combat_move(1, 7, 4)
         game.combat_fire(1, 2)

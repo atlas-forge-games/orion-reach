@@ -47,11 +47,11 @@ def fleet_markers(app, map_rect):
         obstacles.append(pg.Rect(int(x)+10, int(y)-11, font(11, "mono").size(system.name.upper())[0]+4, 18))
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
-    groups = sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].in_transit, ships[0].id))
+    groups = sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id))
     for ships in groups:
         ship = ships[0]
         x, y = app.star_pos(app.game.systems[ship.system_id])
-        if ship.in_transit:
+        if ship.has_course:
             end = app.star_pos(app.game.systems[ship.destination])
             progress = 1-ship.turns_remaining/ship.travel_total
             x, y = x+(end[0]-x)*progress, y+(end[1]-y)*progress
@@ -72,7 +72,7 @@ def draw_map_fleets(app, map_rect):
     markers = fleet_markers(app, map_rect)
     for ships, _, _ in markers:
         ship = ships[0]
-        if ship.in_transit:
+        if ship.has_course:
             color = CYAN if ship.owner == PLAYER else RIVAL_COLOR
             origin = app.star_pos(game.systems[ship.system_id])
             end = app.star_pos(game.systems[ship.destination])
@@ -96,8 +96,80 @@ def draw_map_fleets(app, map_rect):
         ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
         text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono")
         app.button(f"map_fleet_{ships[0].id}", "", rect,
-                   lambda sid=ships[0].id: app.open_map_fleet(sid), "hotspot", enabled=not order_ids)
+                   lambda sid=ships[0].id: app.open_map_fleet(sid), "hotspot")
     surface.set_clip(clip)
+
+
+def draw_fleet_popup(app):
+    """A compact ship selector beside the map; stars remain directly clickable."""
+    surface, game = app.canvas, app.game
+    ships = app.sync_fleet_selection()
+    if not ships:
+        app.close_fleet_popup()
+        return
+    first = ships[0]
+    own = first.owner == PLAYER
+    editable = own and not first.in_transit and game.strategy_error() is None
+    app.map_order_ids = tuple(sorted(app.fleet_selected_ids)) if editable else ()
+    start = app.manifest_page*FLEET_SHIPS_PER_PAGE
+    visible = ships[start:start+FLEET_SHIPS_PER_PAGE]
+    x, y, width = 1051, 180, 325
+    bottom = y+120+len(visible)*48
+    rect = pg.Rect(x, y, width, bottom-y+126)
+    app.fleet_popup_rect = rect
+    panel(surface, rect, (10, 24, 34), CYAN if own else RIVAL_COLOR)
+    app.button("fleet_popup_panel", "", rect, lambda: None, "hotspot")
+    origin = game.systems[first.system_id]
+    title = "Fleet in transit" if first.in_transit else f"Fleet at {origin.name}"
+    text(surface, shorten(title, 241, 22), (x+18, y+17), 22, INK)
+    close = pg.Rect(x+278, y+13, 31, 31)
+    app.button("fleet_popup_close", "", close, app.close_fleet_popup)
+    cx, cy = close.center
+    pg.draw.line(surface, INK, (cx-4, cy-4), (cx+4, cy+4), 1)
+    pg.draw.line(surface, INK, (cx-4, cy+4), (cx+4, cy-4), 1)
+    status = (f"To {game.systems[first.destination].name} · {turn_label(first.turns_remaining)} remaining"
+              if first.in_transit else "Departure queued · waiting for End Turn" if first.departure_pending else
+              "Select ships, then click a destination" if own else "Rival fleet · inspection only")
+    text(surface, shorten(status, 289, 12), (x+18, y+51), 12, GOLD if first.departure_pending else MUTED)
+    if editable:
+        app.button("fleet_select_all", "All", (x+18, y+78, 85, 29), app.select_fleet_ships)
+        app.button("fleet_select_none", "Clear", (x+114, y+78, 95, 29), lambda: app.select_fleet_ships(False))
+    else:
+        text(surface, shorten(game.empire_name_for(first.owner), 288, 13), (x+18, y+85), 13, CYAN if own else RIVAL_COLOR)
+    for index, ship in enumerate(visible):
+        top = y+120+index*48
+        selected = ship.id in app.fleet_selected_ids
+        row = pg.Rect(x+16, top, 293, 42)
+        panel(surface, row, (18, 39, 48) if selected else (8, 19, 27), CYAN if selected else LINE)
+        if editable:
+            box = pg.Rect(x+26, top+13, 15, 15)
+            pg.draw.rect(surface, CYAN if selected else FAINT, box, 1)
+            if selected:
+                pg.draw.lines(surface, CYAN, False, [(x+29, top+20), (x+32, top+24), (x+38, top+16)], 2)
+        ship_icon(surface, (x+63, top+20), .37, CYAN if own else RIVAL_COLOR, kind=ship.kind)
+        text(surface, ship.name, (x+88, top+4), 14, INK)
+        text(surface, f"{ship.hull}/{ship.max_hull} hull", (x+89, top+24), 10, MUTED)
+        if editable:
+            app.button(f"fleet_select_{ship.id}", "", row, lambda sid=ship.id: app.toggle_fleet_ship(sid), "hotspot")
+    pages = max(1, (len(ships)+FLEET_SHIPS_PER_PAGE-1)//FLEET_SHIPS_PER_PAGE)
+    text(surface, f"PAGE {app.manifest_page+1}/{pages}", (x+18, bottom+12), 10, FAINT, "mono")
+    app.button("fleet_page_previous", "←", (x+203, bottom+4, 47, 27), lambda: app.change_manifest_page(-1), enabled=app.manifest_page>0)
+    app.button("fleet_page_next", "→", (x+262, bottom+4, 47, 27), lambda: app.change_manifest_page(1), enabled=app.manifest_page<pages-1)
+    text(surface, f"{len(app.fleet_selected_ids)} / {len(ships)} selected" if editable else f"{len(ships)} ships · Read only",
+         (x+18, bottom+43), 12, CYAN if own else RIVAL_COLOR)
+    if editable:
+        target = game.systems[app.fleet_route_target()]
+        destination = (f"To {target.name} · {turn_label(game.travel_turns(origin, target))}"
+                       if target.id != origin.id else f"At {origin.name}")
+        text(surface, shorten(destination, 290, 13), (x+18, bottom+66), 13, INK)
+        hint = (f"Click {origin.name} to cancel before End Turn." if first.departure_pending
+                else "Select at least one ship to give orders." if not app.fleet_selected_ids
+                else "Planets unknown until arrival." if not game.system_explored(target.id)
+                else "Click a star to set the selected ships' course.")
+    else:
+        text(surface, "Orders are locked during flight." if own else "Only your empire's ships accept orders.", (x+18, bottom+66), 12, MUTED)
+        hint = "Escape or × closes this popup."
+    text(surface, shorten(hint, 290, 11), (x+18, bottom+92), 11, GOLD if first.departure_pending else MUTED)
 
 
 def draw_fleet(app):

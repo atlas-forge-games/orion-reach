@@ -91,6 +91,7 @@ class Ship:
     owner: str = PLAYER
     speed_bonus: int = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
     hull: int | None = None
+    departure_pending: bool = False
 
     def __post_init__(self):
         if self.hull is None:
@@ -106,6 +107,10 @@ class Ship:
 
     @property
     def in_transit(self):
+        return self.destination is not None and not self.departure_pending
+
+    @property
+    def has_course(self):
         return self.destination is not None
 
     @property
@@ -113,7 +118,7 @@ class Ship:
         return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=9):
+    def from_dict(cls, data, systems, *, version=14):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
@@ -126,10 +131,13 @@ class Ship:
         destination = data["destination"]
         remaining, total = data["turns_remaining"], data["travel_total"]
         speed_bonus = data["speed_bonus"] if version >= 7 else 0
+        pending = data["departure_pending"] if version >= 14 else False
+        if type(pending) is not bool:
+            raise ValueError
         if type(speed_bonus) is not int or speed_bonus not in (0, 25, 50, 75):
             raise ValueError
         if destination is None:
-            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus:
+            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending:
                 raise ValueError
         else:
             if not _integer(destination, 0, len(systems)-1) or destination == data["system_id"]:
@@ -137,9 +145,12 @@ class Ship:
             expected = travel_turns(systems[data["system_id"]], systems[destination], speed_bonus)
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
+            if pending and remaining != total:
+                raise ValueError
         record = dict(data)
         record["hull"] = hull
         record["speed_bonus"] = speed_bonus
+        record["departure_pending"] = pending
         if version < 5:
             record["owner"] = PLAYER
         if record["owner"] not in (PLAYER, RIVAL):
@@ -552,7 +563,7 @@ class GameState:
         return system_id
 
     def can_repair(self, ship):
-        return (not ship.in_transit and any(p.owner == ship.owner for p in self.systems[ship.system_id].worlds)
+        return (not ship.has_course and any(p.owner == ship.owner for p in self.systems[ship.system_id].worlds)
                 and not self.fleet_at(ship.system_id, combat_rules.other(ship.owner)))
 
     def research_state(self, owner=PLAYER):
@@ -704,9 +715,16 @@ class GameState:
         self.diplomacy = make_contact(self.turn, self.opponent.name, race_id)
         planet.colonized, planet.owner, planet.population = True, RIVAL, 8
         planet.farmers, planet.scientists = 2, 0
+        self._starting_fleet(RIVAL, system.id)
         self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
         exploration_rules.refresh(self)
         return planet
+
+    def _starting_fleet(self, owner, system_id):
+        """One initial exploration and settlement fleet, created with the empire."""
+        for kind in ("scout", "scout", "colony_ship"):
+            self.ships.append(Ship(self.next_ship_id, kind, system_id, owner=owner))
+            self.next_ship_id += 1
 
     def planet_at(self, system_id, planet_id):
         if not _integer(system_id, 0, len(self.systems)-1):
@@ -842,7 +860,7 @@ class GameState:
         return self.send_ships([ship_id], destination, owner=owner)
 
     def send_ships(self, ship_ids, destination, *, owner=PLAYER):
-        """Send an orbiting selection together; validate every ship before moving any."""
+        """Set a course for the next End Turn; pending orders may be redirected."""
         self._require_strategy()
         identifiers = list(ship_ids)
         if not identifiers:
@@ -859,16 +877,41 @@ class GameState:
         if destination == ships[0].system_id:
             raise RuleError("The selected ships are already in this system.")
         for ship in ships:
-            duration = self._dispatch_ship(ship, destination)
+            duration = self._dispatch_ship(ship, destination, pending=True)
         return duration
 
-    def _dispatch_ship(self, ship, destination):
-        """Route a validated order, including a retreat at battle resolution."""
+    @staticmethod
+    def _clear_course(ship):
+        ship.destination = None
+        ship.turns_remaining = ship.travel_total = ship.speed_bonus = 0
+        ship.departure_pending = False
+
+    def cancel_departures(self, ship_ids, *, owner=PLAYER):
+        """Cancel a whole selection atomically, only before its first travel step."""
+        self._require_strategy()
+        identifiers = list(ship_ids)
+        if not identifiers:
+            raise RuleError("Select at least one ship.")
+        ships = [self.ship_at(identifier, owner=owner) for identifier in identifiers]
+        if len({s.id for s in ships}) != len(ships):
+            raise RuleError("Each ship can only be selected once.")
+        if any(not s.departure_pending for s in ships):
+            raise RuleError("Only departures awaiting End Turn can be cancelled.")
+        if any(s.system_id != ships[0].system_id for s in ships):
+            raise RuleError("Selected ships must be at the same system.")
+        for ship in ships:
+            self._clear_course(ship)
+        exploration_rules.refresh(self)
+        return len(ships)
+
+    def _dispatch_ship(self, ship, destination, *, pending=False):
+        """Route an order; battle retreats are already committed and cannot be cancelled."""
         exploration_rules.refresh(self)
         duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], ship.owner)
         ship.speed_bonus = self.bonuses_for(ship.owner).get("ship_speed", 0)
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
+        ship.departure_pending = pending
         return duration
 
     def colony_ships_at(self, system_id, *, owner=PLAYER):
@@ -949,6 +992,10 @@ class GameState:
         if encounter is not None:
             self.start_combat(encounter, RIVAL)
             return TurnReport(0, 0, [])
+        # End Turn commits existing orders before the AI plans against current positions.
+        for ship in self.ships:
+            ship.departure_pending = False
+        exploration_rules.refresh(self)
         repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
         gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate]
         alerts = []
@@ -964,7 +1011,8 @@ class GameState:
                             for p in s.worlds if p.colonized]
         arrivals = []
         for ship in self.ships:
-            if ship.in_transit:
+            if ship.has_course:
+                ship.departure_pending = False
                 ship.turns_remaining -= 1
                 if ship.turns_remaining == 0:
                     ship.system_id = ship.destination
@@ -1029,7 +1077,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=13):
+    def from_dict(cls, data, *, version=14):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1164,6 +1212,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         system.worlds = generate_planets(system, seed)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
                      race_id=race_id, fog_of_war=fog_of_war)
+    game._starting_fleet(PLAYER, 0)
     if with_ai and game.opponent_start_error() is None:
         game.add_opponent(rival_race_id)
     exploration_rules.refresh(game)

@@ -15,7 +15,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.exploration import refresh
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from orion.population import WORKER_ROLES
 from orion.storage import Storage
 
@@ -211,6 +212,7 @@ class WorkforceSaveTests(unittest.TestCase):
         refresh(game)
         game.send_ship(1, 0)
         game.queue_building(0, 2, "mine")
+        game.ship_at(1).departure_pending = False  # Legacy course snapshot.
         game.planet_at(0, 2).growth_progress = 65
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)

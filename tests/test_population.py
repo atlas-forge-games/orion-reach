@@ -16,7 +16,8 @@ import pygame as pg
 from orion.ai import run_ai
 from orion.empire import colony_rows, summarize_empire
 from orion.exploration import refresh
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from orion.population import BASE_FOOD, FARMER_OUTPUT, POPULATION_LIMITS
 from orion.storage import SAVE_VERSION, Storage
 from orion.victory import CampaignResult
@@ -256,7 +257,7 @@ class PopulationSaveTests(unittest.TestCase):
                     planet["farmers"], planet["scientists"] = min(2, planet["population"]), 0
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-            self.assertEqual(SAVE_VERSION, 13)
+            self.assertEqual(SAVE_VERSION, 14)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

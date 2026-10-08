@@ -23,9 +23,9 @@ def known_enemy_colonies(game):
 def scouting_orders(game):
     if not game.fog_of_war:
         return
-    incoming = {s.destination for s in game.ships_owned_by(RIVAL) if s.in_transit and s.kind == "scout"}
+    incoming = {s.destination for s in game.ships_owned_by(RIVAL) if s.has_course and s.kind == "scout"}
     for ship in sorted(game.ships_owned_by(RIVAL), key=lambda s: s.id):
-        if ship.kind != "scout" or ship.in_transit:
+        if ship.kind != "scout" or ship.has_course:
             continue
         candidates = [s for s in game.systems if s.id != ship.system_id and s.id not in incoming
                       and s.id not in game.exploration.scanned_rival]
@@ -93,8 +93,8 @@ def military_orders(game):
     ordered = set()
     staging, _ = max(empire_colonies(game, RIVAL), key=lambda row: (game.planet_yields(row[1])[0], row[1].population, -row[0].id, -row[1].id))
     for system in game.systems:
-        troops = troop_transports(game, system.id, RIVAL)
-        escorts = [s for s in ships if not s.in_transit and s.system_id == system.id]
+        troops = [s for s in troop_transports(game, system.id, RIVAL) if not s.has_course]
+        escorts = [s for s in ships if not s.has_course and s.system_id == system.id]
         if not troops or game.fleet_at(system.id):
             continue
         candidates = [(s, p) for s, p in worlds if len(troops)*TROOP_STRENGTH > 4+p.population]
@@ -111,7 +111,7 @@ def military_orders(game):
                 game.send_ship(ship.id, staging.id, owner=RIVAL)
     gate = gate_site(game, RIVAL)
     for index, ship in enumerate(ships):
-        if ship.id in ordered or ship.in_transit or game.fleet_at(ship.system_id):
+        if ship.id in ordered or ship.has_course or game.fleet_at(ship.system_id):
             continue
         if ship.hull < ship.max_hull and game.can_repair(ship):
             continue
@@ -159,7 +159,7 @@ def run_ai(game):
     scouting_orders(game)
     military_orders(game)
     for ship in sorted(game.ships_owned_by(RIVAL), key=lambda s: s.id):
-        if ship.in_transit or ship.kind != "colony_ship":
+        if ship.has_course or ship.kind != "colony_ship":
             continue
         local = available_worlds(game, game.systems[ship.system_id])
         if local:
@@ -169,7 +169,7 @@ def run_ai(game):
             continue
         incoming = {}
         for other in game.ships_owned_by(RIVAL):
-            if other.in_transit and other.kind == "colony_ship":
+            if other.has_course and other.kind == "colony_ship":
                 incoming[other.destination] = incoming.get(other.destination, 0)+1
         targets = [s for s in game.systems if len(available_worlds(game, s)) > incoming.get(s.id, 0)]
         if not targets:

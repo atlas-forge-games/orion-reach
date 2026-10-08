@@ -12,7 +12,8 @@ os.environ["SDL_AUDIODRIVER"]="dummy"
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"]="1"
 
 import pygame as pg
-from orion.model import GALAXY_SIZES, GameState, SaveError, generate_planets, new_game
+from orion.model import GALAXY_SIZES, GameState, SaveError, generate_planets
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.

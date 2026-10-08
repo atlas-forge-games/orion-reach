@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.17.0
+# Orion Reach — Python prototype 0.18.0
 
 A playable colony-building and interstellar expansion prototype with population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -82,8 +82,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
   an optional reproducible seed, **Fog of war ON/OFF**, and player/rival race choices with illustrated portraits.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
-- Click a **fleet badge** on the galaxy map to inspect its ships. Select a group,
-  click **Choose destination**, then click a star to send that group together.
+- Every new empire begins with **two scouts and one colony ship** in its home system.
+- Click a **fleet badge** to open a small popup on the galaxy map. Select ships,
+  then click a destination star. Click their departure star to cancel before End Turn.
 - Build cheap **scouts** to reveal worlds and recover one-time discoveries.
   **Exploration · X** records recovered caches, archives and derelict probes.
 - Click a planet's globe or caption to open its **planet overview**: environment,
@@ -406,19 +407,23 @@ colonies. These habitats do not change the world's natural habitability.
 
 New games include the **Helios Directorate**, starting on a habitable world
 far from your colonies. Both empires start with one colony, 8 billion inhabitants,
-120 credits and no buildings or ships. The rival's starting world retains its
+120 credits, no buildings, **two scouts and one colony ship** in their home system.
+These ships are free starting assets, independent of race and the fog setting.
+The rival's starting world retains its
 generated size, biome and minerals, so its building capacity can differ from Earth's.
 
 **Continuing a v0.5 or earlier campaign:** load your save, open **Empire → Rival
 report**, then click **Add rival**. This uses an unclaimed habitable world in a
-system without your colonies. It preserves your existing assets and progress.
+system without your colonies and gives the new rival its starting fleet.
+It preserves your existing assets and progress.
 Older saves do not gain an opponent automatically. If no suitable starting world
 remains, Add rival is disabled. Adding a rival autosaves the campaign.
 
 - The AI prioritizes farms when local food is insufficient for growth and
   reserves remaining building slots when needed to feed future inhabitants.
   Both empires use identical food production, consumption and growth rules.
-- With fog enabled, the AI builds a scout after urgent food needs and explores with its own survey
+- With fog enabled, the AI sends its starting scouts to different systems and
+  replaces lost scouts after urgent food needs. It explores with its own survey
   information. It chooses colony sites from known worlds, or explores with a colony
   ship if none are known. Its race determines the order of factories, trade centres,
   research labs and mines. Its strongest colony produces colony ships and frigates;
@@ -556,12 +561,13 @@ New campaigns default to **Fog of war: ON**. Click that setting in **New Game**
 to turn it off before beginning. The setting is saved with the campaign and is
 fixed during play. Old campaigns keep their fully revealed maps.
 
-1. Open **Sol → Earth → Change** and start a **Scout**: **25 credits, 12 work,
+1. New games give you **two scouts at Sol**, ready to explore. To build more,
+   open **Sol → Earth → Change** and start a **Scout**: **25 credits, 12 work,
    8 hull**, no weapons and no building slot. At Earth's initial industry this
-   takes **two turns**. New games still begin without ships.
-2. On the galaxy map, click your fleet badge, select the scout, click **Choose
-   destination**, then click an unexplored star. Travel speed and group movement
-   follow the same rules as other ships.
+   takes **two turns**.
+2. On the galaxy map, click your fleet badge, select a scout in the popup,
+   then click an unexplored star. Click Sol again to cancel before End Turn.
+   Travel speed and group movement follow the same rules as other ships.
 3. Arrival automatically surveys the system. Any ship can chart planets;
    **scouts additionally search for discoveries**. A discovery is recovered by
    the first empire to find it, with rewards credited immediately on that turn.
@@ -612,25 +618,26 @@ gate milestones, but omit locations you cannot currently observe.
 
 ## Build, travel and colonize
 
-1. Open **Sol → Earth → Change** and start a **Colony ship**. It costs
-   **80 credits and 42 work**, completing after seven End Turns at Earth's
-   initial 6 industry per turn, if there are no projects ahead of it.
+1. Use your **starting colony ship at Sol**. To build another, open
+   **Sol → Earth → Change** and start a **Colony ship**. It costs **80 credits
+   and 42 work**, completing after seven End Turns at Earth's initial 6 industry
+   per turn, if there are no projects ahead of it.
 2. Return to the **galaxy map** and click the cyan fleet badge beside Sol.
-   Its number is the number of ships in that fleet. The fleet screen lists their
-   types, hull health and roles; select the ships you want to send.
-3. Click **Choose destination**, then hover a star to preview its travel time.
-   **Click the destination star to issue the order immediately.** All selected
-   ships depart together; unselected ships stay in orbit. **Cancel / Escape**
-   returns to the ship list without sending anything.
+   Its number is the number of ships in that fleet. A small popup lists their
+   types and hull health; select the ships you want to send.
+3. Hover a star to preview its travel time, then **click it to queue departure**.
+   The selected ships leave together on End Turn; unselected ships stay in orbit.
+   Before then, click a different destination to change course or **click Sol
+   again to cancel**. Escape closes the popup while keeping issued orders.
 4. Use **End Turn / E** to advance the journey. Fleets shows remaining turns.
    You can save and reload during flight. Arrival is automatic; the ship waits
    in the destination system until you choose its next action.
 5. Click the destination star, open a suitable planet, click **Colonize**,
    and confirm. The ship is consumed and the planet becomes a colony with
-   **1 billion inhabitants**, 6 base industry and 1 credit income per turn.
+   **1 billion inhabitants** and 1 credit income per turn, before technology bonuses.
    It appears immediately in Empire Overview and can build buildings and ships.
 
-To settle **Mars** first, build a ship at Earth and open Mars directly; no travel
+To settle **Mars** first, use your starting colony ship and open Mars directly; no travel
 order is needed between planets in the same system.
 
 | Rule | Prototype behavior |
@@ -641,7 +648,7 @@ order is needed between planets in the same system.
 | Queue capacity | Up to 20 total projects per planet |
 | Cancellation | Shipyard lists every queued project; refunds follow the same unspent-work rule as buildings |
 | Travel time | `ceil(hypot(1.4 * dx, dy) / (0.18 * (1 + speed bonus / 100)))`, minimum one turn between distinct systems |
-| Travel restrictions | Orders require a ship in orbit; no mid-flight rerouting, fuel cost or range limit yet |
+| Travel restrictions | Orders can be changed or cancelled before End Turn; no mid-flight rerouting, fuel cost or range limit yet |
 | Settlement | Requires an arrived colony ship in the target system; consumes exactly one ship |
 | Population | 1 B starting colonists plus Biology bonuses; included in ship cost, with no homeworld deduction |
 
@@ -655,23 +662,33 @@ queue capacity and travel speed are defined in `orion/production.py`.
 ![Fleet selection](screenshots/fleet.png)
 
 - **Cyan badges** are your fleets; **orange badges** belong to the rival. Click
-  either to inspect the ships. Badges are placed clear of star click targets;
+  either to open a compact popup beside the map. Badges are placed clear of star click targets;
   a short line connects each badge to its orbit or position along a flight path.
-- Ships of one empire sharing an orbit form a fleet automatically. **Select all**,
+- Ships of one empire sharing an orbit and course form a fleet automatically. **All**,
   **Clear**, and individual checkboxes let you send all or part of it. Selections
   are retained across pages; use Previous / Next, Page Up / Down, or the wheel.
-- **Choose destination** returns to the map. Hovering a star previews the route,
-  travel time and visible rival ships there. Unknown systems reveal no planetary
-  details before arrival. A single click sends the selection.
-  Clicking the origin or empty space does not send ships. Escape, Cancel, or
-  **Change selection** returns to the manifest with your selection intact.
+- With ships selected, hover a star to preview the route and travel time;
+  **click the star directly to set their course**. The popup stays open, so you
+  can immediately click another destination to redirect them or **click their
+  origin to cancel**. No separate destination screen or confirmation is needed.
+  Unknown systems reveal no planetary details before arrival.
+- Ordered ships stay at the origin with a route line and **Departure queued**
+  status until End Turn. You can close and reopen their badge, change the selected
+  subset, redirect it, or cancel just those ships. Cancelling merges them with the
+  idle fleet. End Turn begins travel immediately, including one-turn arrivals.
+- Escape, the popup's **×**, or empty map space closes the popup. Closing it
+  keeps issued courses; merely selecting ships does not issue an order.
 - Flights with the same origin, destination and travel progress share a badge.
   Ships that leave on different turns stay separate until they arrive. Arrived
   ships join other ships of their empire already in orbit.
-- Rival fleets and ships in transit are **inspection only**. Existing travel,
-  combat and ownership rules apply; no mid-flight rerouting is added.
-- Opening another overview or ending the turn clears an unissued map order.
-  Saving records only issued journeys; loading never sends a pending selection.
+- Rival fleets and ships already in transit are **inspection only**. Once a turn
+  has advanced, a journey cannot be cancelled or redirected. Combat retreats
+  are committed immediately and cannot be cancelled.
+- Opening another overview or ending the turn clears the popup selection.
+  Saving retains queued departures, which remain editable after loading.
+  A selection that has no destination is never saved as an order.
+- Ships awaiting departure still defend, survey and block their current system.
+  Combat before departure cancels participants' queued courses.
 - The existing **Fleets · F → Course → star → Send ship** controls remain
   available for individual ships.
 
@@ -901,9 +918,10 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Open / close the exploration log | X, or Exploration on the galaxy map |
 | Choose fog of war | Fog of war ON/OFF in New Game setup |
 | Inspect a fleet | Click its cyan or orange badge on the galaxy map |
-| Send selected ships together | Fleet badge → select ships → Choose destination → click a star |
+| Send selected ships together | Fleet badge → select ships in the popup → click a star |
 | Preview a group journey | Hover a star while choosing the destination |
-| Change or cancel a group selection | Escape, Cancel, or Change selection on the destination map |
+| Cancel a queued departure | Select its fleet/ships and click the origin star before End Turn |
+| Close the fleet popup | Escape, ×, or empty map space; issued orders are kept |
 | Build ships / inspect the shared queue | Change, or click the surface shipyard |
 | Set a ship destination | Course in Fleets → click a star → Send ship |
 | Cancel an unissued course | Cancel button or Escape on the route-selection map |
@@ -944,9 +962,12 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.17 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.18 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Pre-v0.17 battles receive deterministic
+ships and travel times are preserved. Existing campaigns do **not** receive extra
+starting ships. Older journeys remain committed, including ones saved before
+their first travel step; only newly issued orders can be cancelled before departure.
+Pre-v0.17 battles receive deterministic
 deployment positions and weapons based on their empire's research. Their hulls,
 destroyed ships, current side, round and result are retained. Ships that had
 already acted are marked as having used both orders for the current round.
@@ -974,14 +995,14 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 13**, including tactical coordinates, beam loadouts, movement and
+**format version 14**, including queued departure flags, tactical coordinates, beam loadouts, movement and
 firing flags, worker assignments, paused construction progress,
 growth progress, hydroponic farms,
 the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.16 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.17 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1023,7 +1044,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard and empire-wide ship operations |
 | `orion/fleets.py` | Fleet grouping from orbit and shared travel progress |
-| `orion/galaxy_fleet_view.py` | Clickable map badges, fleet manifests and group route previews |
+| `orion/galaxy_fleet_view.py` | Clickable map badges, compact ship selection popup and route previews |
 | `orion/exploration.py` | Survey snapshots, visibility, scout discoveries and validation |
 | `orion/exploration_view.py` | Exploration log, unknown systems and map intelligence |
 | `orion/fleet_art.py` | Procedural transport, frigate and scout drawings |
@@ -1044,6 +1065,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
+| `tests/test_starting_fleets.py` | Starting ships, AI exploration, revocable departures, fog, battle timing and save compatibility |
+| `tests/scenarios.py` | Explicit empty-fleet scenarios for production and legacy regression tests |
 | `tests/test_exploration.py` | Fog boundaries, discoveries, scouts, private AI knowledge, saves and UI flows |
 | `tests/test_audio.py` | MP3 playback, mute/resume, independent controls, settings migration and device failures |
 | `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
@@ -1091,8 +1114,8 @@ python main.py --headless --screen result --screenshot victory.png
 `--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
 `unexplored`, `exploration`, `planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
 `combat`, `objectives`, `result`, and `about`.
-Galaxy, fleet, exploration, combat and result captures use local example states. Ordinary campaigns
-still start without ships. Screenshot mode does not create
+Galaxy and fleet captures use the new starting ships. Exploration, combat and
+result captures use local example states. Screenshot mode does not create
 a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.

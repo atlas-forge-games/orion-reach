@@ -118,10 +118,11 @@ def draw_fleets(app):
                 f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.beam_for(ship.kind, ship.owner).damage} damage / shot")
         text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
-        location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.in_transit else f"{origin.name} orbit"
+        location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.has_course else f"{origin.name} orbit"
         text(surface, shorten(location, 467, 18), (473, y+12), 18, CYAN)
         encounter = not ship.in_transit and bool(game.fleet_at(ship.system_id, RIVAL))
-        caption = (f"Arrives in {turn_label(ship.turns_remaining)}" if ship.in_transit else
+        caption = ("Departure queued · editable until End Turn" if ship.departure_pending else
+                   f"Arrives in {turn_label(ship.turns_remaining)}" if ship.in_transit else
                    "Opposing fleet here · Engage to begin combat" if encounter else
                    "Repairing +4 hull / turn" if ship.hull < ship.max_hull and game.can_repair(ship) else "Ready for orders")
         text(surface, caption, (474, y+43), 12, MUTED)

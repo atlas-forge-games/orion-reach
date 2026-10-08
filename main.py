@@ -32,30 +32,20 @@ def main():
                 app.game = new_game(seed=2408)
                 if args.screen in ("planet", "production", "colony", "shipyard"):
                     app.game.selected_planet = 2
-                if args.screen in ("galaxy", "fleet", "fleet_course"):
-                    from orion.model import RIVAL, Ship
-                    # Unsaved fleet fixtures for captures; ordinary starts are unchanged.
-                    home = app.game.opponent.home_system
-                    app.game.ships = [Ship(1, "frigate", 0, hull=16), Ship(2, "frigate", 0),
-                                      Ship(3, "colony_ship", 0), Ship(4, "troop_transport", 0),
-                                      Ship(5, "scout", 2), Ship(6, "frigate", home, owner=RIVAL),
-                                      Ship(7, "colony_ship", home, owner=RIVAL), Ship(8, "scout", 0)]
-                    app.game.next_ship_id = 9
-                    app.game.send_ship(5, 3)
                 if args.screen == "unexplored":
                     app.game.selected_system = 1
                 if args.screen == "exploration":
                     from orion.model import Ship
                     from orion.exploration import DISCOVERIES, discovery_at, refresh
-                    for index, kind in enumerate(DISCOVERIES, 1):
+                    for kind in DISCOVERIES:
                         system = next(s for s in app.game.systems if discovery_at(app.game, s.id) == kind
                                       and s.id != app.game.opponent.home_system)
-                        app.game.ships.append(Ship(index, "scout", system.id))
-                    app.game.next_ship_id = len(app.game.ships)+1
+                        app.game.ships.append(Ship(app.game.next_ship_id, "scout", system.id))
+                        app.game.next_ship_id += 1
                     refresh(app.game, recover=True)
                 if args.screen == "combat":
                     from orion.model import RIVAL, Ship
-                    # A local screenshot fixture; ordinary campaigns start without fleets.
+                    # A local screenshot fixture, independent of a campaign's starting fleet.
                     app.game.ships = [Ship(1, "frigate", 0), Ship(2, "frigate", 0), Ship(3, "colony_ship", 0),
                                       Ship(4, "frigate", 0, owner=RIVAL), Ship(5, "frigate", 0, owner=RIVAL),
                                       Ship(6, "colony_ship", 0, owner=RIVAL)]
@@ -79,9 +69,9 @@ def main():
             app.go("galaxy" if args.screen == "fleet_course" else "system" if args.screen == "unexplored" else args.screen)
             if args.screen in ("fleet", "fleet_course"):
                 app.open_map_fleet(1)
-                app.toggle_fleet_ship(4)
+                app.toggle_fleet_ship(2)
                 if args.screen == "fleet_course":
-                    app.plot_fleet_course()
+                    app.game.send_ships(app.map_order_ids, 1)
                     app.game.selected_system = 1
                     app.focus = "star_1"
                     app.keyboard_mode = True

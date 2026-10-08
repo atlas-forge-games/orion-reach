@@ -33,7 +33,7 @@ from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
-from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_map_fleets, draw_order_panel
+from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_map_fleets, draw_order_panel
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -127,6 +127,7 @@ class App:
         if screen not in ("galaxy","pause","settings"):
             self.route_ship_id=None
             self.map_order_ids=()
+            self.fleet_popup=False
         self.screen=screen
         self.worker_source=None
         self.buttons=[]
@@ -215,6 +216,8 @@ class App:
         self.fleet_selected_ids=set()
         self.manifest_page=0
         self.map_order_ids=()
+        self.fleet_popup=False
+        self.fleet_popup_rect=None
         self.exploration_return="galaxy"
         self.exploration_return_selection=(0,None)
         self.exploration_page=0
@@ -240,7 +243,19 @@ class App:
         self.manifest_page=0
         self.game.selected_system=ships[0].system_id
         self.game.selected_planet=None
-        self.go("fleet")
+        self.route_ship_id=None
+        self.go("galaxy")
+        self.fleet_popup=True
+        self.map_order_ids=tuple(sorted(self.fleet_selected_ids))
+        self.focus=f"fleet_select_{ships[0].id}" if self.fleet_selected_ids else "fleet_popup_close"
+
+    def close_fleet_popup(self):
+        # Closing a selector does not revoke a course that was already issued.
+        self.fleet_popup=False
+        self.fleet_popup_rect=None
+        self.map_order_ids=()
+        self.fleet_selected_ids.clear()
+        self.focus=f"star_{self.game.selected_system}" if self.game else None
 
     def toggle_fleet_ship(self,ship_id):
         ships=self.sync_fleet_selection()
@@ -250,19 +265,23 @@ class App:
             self.fleet_selected_ids.remove(ship_id)
         else:
             self.fleet_selected_ids.add(ship_id)
+        if self.fleet_popup:
+            self.map_order_ids=tuple(sorted(self.fleet_selected_ids))
         self.focus=f"fleet_select_{ship_id}"
 
     def select_fleet_ships(self,all_ships=True):
         ships=self.sync_fleet_selection()
         self.fleet_selected_ids=({s.id for s in ships if s.owner==PLAYER and not s.in_transit}
                                  if all_ships else set())
+        if self.fleet_popup:
+            self.map_order_ids=tuple(sorted(self.fleet_selected_ids))
 
     def change_manifest_page(self,delta):
         ships=self.sync_fleet_selection()
         last=max(0,(len(ships)-1)//FLEET_SHIPS_PER_PAGE)
         self.manifest_page=min(max(0,self.manifest_page+delta),last)
         visible=ships[self.manifest_page*FLEET_SHIPS_PER_PAGE:]
-        self.focus=f"fleet_select_{visible[0].id}" if visible and visible[0].owner==PLAYER and not visible[0].in_transit else "fleet_back"
+        self.focus=f"fleet_select_{visible[0].id}" if visible and visible[0].owner==PLAYER and not visible[0].in_transit else "fleet_popup_close" if self.fleet_popup else "fleet_back"
 
     def plot_fleet_course(self):
         ships=self.sync_fleet_selection()
@@ -277,12 +296,12 @@ class App:
         self.game.selected_system=ships[0].system_id
         self.game.selected_planet=None
         self.go("galaxy")
+        self.fleet_popup=True
         self.keyboard_mode=False
         self.mouse=(-1,-1)
 
     def cancel_map_order(self):
-        self.map_order_ids=()
-        self.go("fleet")
+        self.close_fleet_popup()
 
     def fleet_route_target(self):
         if not self.keyboard_mode:
@@ -295,15 +314,27 @@ class App:
 
     def send_map_fleet(self,destination):
         try:
-            count=len(self.map_order_ids)
-            duration=self.game.send_ships(self.map_order_ids,destination)
-            self.map_order_ids=()
-            self.fleet_selected_ids.clear()
+            identifiers=self.map_order_ids
+            count=len(identifiers)
+            first=self.game.ship_at(identifiers[0])
+            origin=first.system_id
+            if destination==origin:
+                if not first.departure_pending:
+                    self.toast("These ships are already here. Click another star to set a course.")
+                    return
+                self.game.cancel_departures(identifiers)
+                message=f"Departure cancelled · {count} {'ship remains' if count==1 else 'ships remain'} at {self.game.systems[origin].name}."
+            else:
+                duration=self.game.send_ships(identifiers,destination)
+                message=f"Course set to {self.game.systems[destination].name} · {turn_label(duration)} · Click {self.game.systems[origin].name} to cancel before End Turn."
+            self.fleet_anchor_id=identifiers[0]
+            self.fleet_selected_ids=set(identifiers)
+            self.manifest_page=0
             self.game.selected_system=destination
             self.game.selected_planet=None
-            self.go("galaxy")
+            self.fleet_popup=True
             if self.save_game(autosave=True):
-                self.toast(f"{count} {'ship' if count==1 else 'ships'} en route to {self.game.systems[destination].name} · {turn_label(duration)}")
+                self.toast(message)
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -358,6 +389,13 @@ class App:
     def select_star(self,system_id):
         if self.map_order_ids:
             self.send_map_fleet(system_id)
+        elif self.fleet_popup:
+            ships=self.viewed_fleet()
+            if ships and ships[0].owner==PLAYER and not ships[0].in_transit:
+                self.toast("Select at least one ship, or close the popup to open a system.")
+            else:
+                self.close_fleet_popup()
+                self.open_system(system_id)
         elif self.route_ship_id is None:
             self.open_system(system_id)
         else:
@@ -774,7 +812,7 @@ class App:
             self.toast("Resolve the battle before advancing the campaign.",True)
             return
         # An unissued map order is a UI selection, never an automatic next-turn order.
-        self.map_order_ids=()
+        self.close_fleet_popup()
         report=self.game.advance_turn()
         if self.game.result is not None:
             self.go("result")
@@ -1150,6 +1188,8 @@ class App:
             if event.type==pg.MOUSEBUTTONDOWN:
                 self.pressed=hovered.key if hovered else None
                 if hovered is None:
+                    if self.screen=="galaxy" and self.fleet_popup and not self.dialog:
+                        self.close_fleet_popup()
                     self.field=None
                     pg.key.stop_text_input()
             elif hovered and hovered.key==self.pressed:
@@ -1163,6 +1203,8 @@ class App:
             change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
             change(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="fleet" and not self.dialog and event.y:
+            self.change_manifest_page(-1 if event.y>0 else 1)
+        if event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and self.fleet_popup and not self.dialog and event.y:
             self.change_manifest_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="exploration" and not self.dialog and event.y:
             self.change_exploration_page(-1 if event.y>0 else 1)
@@ -1189,7 +1231,7 @@ class App:
                 self.field=None
                 pg.key.stop_text_input()
             elif self.screen=="galaxy":
-                if self.map_order_ids:
+                if self.fleet_popup or self.map_order_ids:
                     self.cancel_map_order()
                 else:
                     self.go("fleets") if self.route_ship_id is not None else self.pause()
@@ -1296,6 +1338,8 @@ class App:
                 change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
                 change(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="fleet" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.change_manifest_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen=="galaxy" and self.fleet_popup and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_manifest_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="exploration" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_exploration_page(1 if event.key==pg.K_PAGEDOWN else -1)
@@ -1529,13 +1573,16 @@ class App:
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)
         star=state.systems[preview]
-        draw_system_intelligence(self,star)
+        if not self.fleet_popup:
+            draw_system_intelligence(self,star)
         if self.map_order_ids:
-            draw_order_panel(self,star)
-            hint=f"MOVE {len(self.map_order_ids)} {'SHIP' if len(self.map_order_ids)==1 else 'SHIPS'} · Hover a star for travel time. Click it to send."
+            if not self.fleet_popup:
+                draw_order_panel(self,star)
+            hint=f"{len(self.map_order_ids)} {'SHIP' if len(self.map_order_ids)==1 else 'SHIPS'} SELECTED · Click a destination, or the origin to cancel departure."
         elif self.route_ship_id is None:
-            self.button("open_system","Open system →",(1075,692,277,43),
-                        lambda:self.open_system(self.game.selected_system))
+            if not self.fleet_popup:
+                self.button("open_system","Open system →",(1075,692,277,43),
+                            lambda:self.open_system(self.game.selected_system))
             hint="Click a fleet to send ships. Dim stars need a visit." if state.fog_of_war else "Click a star to survey it, or a fleet badge to inspect its ships."
         else:
             ship=state.ship_at(self.route_ship_id)
@@ -1549,8 +1596,8 @@ class App:
         text(self.canvas,shorten(hint,748,13),(64,775),13,MUTED)
         self.button("open_exploration","Exploration · X",(828,763,198,38),self.open_exploration)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
-        if self.map_order_ids:
-            self.button("cancel_fleet_course","Cancel · Esc",(64,820,186,54),self.cancel_map_order)
+        if self.fleet_popup or self.map_order_ids:
+            self.button("cancel_fleet_course","Close · Esc",(64,820,186,54),self.cancel_map_order)
         elif self.route_ship_id is None:
             self.button("pause","Menu  ·  Esc",(64,820,186,54),self.pause)
         else:
@@ -1560,6 +1607,8 @@ class App:
         income,research=state.empire_rates
         text(self.canvas,f"+{income} credits · +{research} research / turn",(585,844),12,MUTED)
         self.button("end_turn","End turn  ·  E",(1081,813,295,61),self.advance_turn,"primary")
+        if self.fleet_popup:
+            draw_fleet_popup(self)
 
     def draw_pause(self):
         getattr(self,"draw_"+self.pause_return)()

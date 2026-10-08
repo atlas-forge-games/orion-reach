@@ -13,7 +13,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
-from orion.model import ConstructionProject, GameState, RuleError, SaveError, Ship, new_game
+from orion.model import ConstructionProject, GameState, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.
@@ -106,6 +107,7 @@ class ColonizationRulesTests(unittest.TestCase):
                 self.game.send_ship(ship_id, destination)
             self.assertEqual(self.game.to_dict(), before)
         self.game.send_ship(1, 2)
+        self.game.ship_at(1).departure_pending = False  # Lock an actual flight, not a pending course.
         before = self.game.to_dict()
         with self.assertRaises(RuleError):
             self.game.send_ship(1, 3)

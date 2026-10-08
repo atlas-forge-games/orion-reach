@@ -5,7 +5,8 @@ import tempfile
 import unittest
 
 from orion.buildings import BUILDING_SLOTS
-from orion.model import GameState, RuleError, SaveError, new_game
+from orion.model import GameState, RuleError, SaveError
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.

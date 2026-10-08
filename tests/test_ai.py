@@ -14,7 +14,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -239,7 +240,9 @@ class AIRulesTests(unittest.TestCase):
             self.assertEqual(restored, game)
             self.assertEqual(path.read_bytes(), before)
             restored.add_opponent()
-            self.assertEqual(restored.ships, game.ships)
+            self.assertEqual(restored.ships_owned_by(PLAYER), game.ships)
+            self.assertEqual(sorted(s.kind for s in restored.ships_owned_by(RIVAL)),
+                             ["colony_ship", "scout", "scout"])
             self.assertEqual(restored.credits, game.credits)
             self.assertEqual(restored.systems[0], game.systems[0])
             self.assertEqual(storage.load(storage.save(restored))[0], restored)

@@ -50,6 +50,7 @@ class FleetOrderTests(unittest.TestCase):
         game.ships += [Ship(5, "frigate", 0, owner=RIVAL), Ship(6, "frigate", 1)]
         game.next_ship_id = 7
         game.send_ship(4, 2)
+        game.ship_at(4).departure_pending = False  # An already committed flight.
         for identifiers, destination in (([], 1), ([1, 99], 1), ([1, 5], 1), ([1, 4], 1),
                                          ([1, 6], 2), ([1, 1], 1), ([1, True], 1),
                                          ([1, "2"], 1), ([1, 2], 0), ([1, 2], -1),
@@ -138,29 +139,29 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
 
     def test_click_fleet_select_subset_and_send_with_one_destination_click(self):
         self.click("map_fleet_1")
-        self.assertEqual(self.app.screen, "fleet")
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertTrue(self.app.fleet_popup)
         self.assertEqual(self.app.fleet_selected_ids, {1, 2, 3, 4})
         self.click("fleet_select_2")
         self.click("fleet_select_4")
-        self.click("fleet_choose_destination")
         self.assertEqual(self.app.screen, "galaxy")
         self.assertEqual(self.app.map_order_ids, (1, 3))
         self.assertTrue(all(not s.in_transit for s in self.app.game.ships))
         self.click("star_1")
         self.assertEqual(self.app.screen, "galaxy")
-        self.assertEqual(self.app.map_order_ids, ())
-        self.assertEqual([s.id for s in self.app.game.ships if s.in_transit], [1, 3])
+        self.assertEqual(self.app.map_order_ids, (1, 3))
+        self.assertEqual([s.id for s in self.app.game.ships if s.departure_pending], [1, 3])
         restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(restored, self.app.game)
         self.assertTrue(any(b.key == "map_fleet_2" for b in self.app.buttons))
+        self.click("fleet_popup_close")
         self.click("star_1")
         self.assertEqual(self.app.screen, "system")
 
-    def test_hover_and_cancel_never_move_ships_and_selection_is_kept(self):
+    def test_hover_and_close_never_issue_orders(self):
         self.click("map_fleet_1")
         self.click("fleet_select_4")
         before = [s.__dict__.copy() for s in self.app.game.ships]
-        self.click("fleet_choose_destination")
         x, y = self.app.star_pos(self.app.game.systems[1])
         v = self.app.viewport
         self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=(round(v.x+x*v.w/1440), round(v.y+y*v.h/900)), rel=(0, 0), buttons=(0, 0, 0)))
@@ -168,34 +169,35 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.fleet_route_target(), 1)
         self.assertEqual(before, [s.__dict__ for s in self.app.game.ships])
         self.key(pg.K_ESCAPE)
-        self.assertEqual(self.app.screen, "fleet")
-        self.assertEqual(self.app.fleet_selected_ids, {1, 2, 3})
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertFalse(self.app.fleet_popup)
         self.assertEqual(self.app.map_order_ids, ())
-        self.click("fleet_choose_destination")
+        self.click("map_fleet_1")
         self.click("cancel_fleet_course")
-        self.assertEqual(self.app.screen, "fleet")
+        self.assertEqual(self.app.screen, "galaxy")
         self.assertEqual(before, [s.__dict__ for s in self.app.game.ships])
 
     def test_origin_click_and_empty_space_do_not_issue_order(self):
         self.click("map_fleet_1")
-        self.click("fleet_choose_destination")
         self.click("star_0")
         self.assertTrue(self.app.map_order_ids)
-        self.assertTrue(self.app.notice_error)
+        self.assertFalse(self.app.notice_error)
         self.click_position((78, 739))
-        self.assertTrue(self.app.map_order_ids)
+        self.assertFalse(self.app.fleet_popup)
         self.assertTrue(all(not s.in_transit for s in self.app.game.ships))
+        self.click("map_fleet_1")
         self.click("star_1")
-        self.assertFalse(self.app.map_order_ids)
+        self.assertTrue(all(s.departure_pending for s in self.app.game.ships))
 
     def test_all_none_and_selection_across_manifest_pages(self):
         self.app.game.ships = [Ship(i, "frigate", 0) for i in range(1, 15)]
         self.app.game.next_ship_id = 15
         self.click("map_fleet_1")
         self.click("fleet_select_none")
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "fleet_choose_destination").enabled)
-        self.click("fleet_choose_destination")
-        self.assertEqual(self.app.screen, "fleet")
+        self.assertFalse(self.app.map_order_ids)
+        self.click("star_1")
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertTrue(all(not s.has_course for s in self.app.game.ships))
         self.click("fleet_select_2")
         self.key(pg.K_PAGEDOWN)
         self.key(pg.K_RETURN)
@@ -204,10 +206,9 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.app.render()
         self.click("fleet_select_14")
         self.assertEqual(self.app.fleet_selected_ids, {2, 7, 14})
-        self.click("fleet_choose_destination")
         self.key(pg.K_RIGHT)
         self.key(pg.K_RETURN)
-        self.assertEqual([s.id for s in self.app.game.ships if s.in_transit], [2, 7, 14])
+        self.assertEqual([s.id for s in self.app.game.ships if s.departure_pending], [2, 7, 14])
         self.click("map_fleet_1")
         self.click("fleet_select_all")
         self.assertEqual(len(self.app.fleet_selected_ids), 11)
@@ -217,20 +218,20 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.app.game.ships += [Ship(5, "frigate", 0, owner=RIVAL)]
         self.app.game.next_ship_id = 6
         self.click("map_fleet_5")
-        self.assertEqual(self.app.screen, "fleet")
+        self.assertEqual(self.app.screen, "galaxy")
         self.assertFalse(self.app.fleet_selected_ids)
         self.assertFalse(any(b.key == "fleet_choose_destination" for b in self.app.buttons))
-        self.click("fleet_select_all")
+        self.assertFalse(any(b.key == "fleet_select_all" for b in self.app.buttons))
         self.assertFalse(self.app.fleet_selected_ids)
         self.key(pg.K_ESCAPE)
         self.app.game.send_ships([1, 2], 1)
+        self.app.game.advance_turn()
         self.click("map_fleet_1")
         self.assertFalse(self.app.fleet_selected_ids)
         self.assertFalse(any(b.key.startswith("fleet_select_") and b.enabled for b in self.app.buttons))
 
     def test_unissued_order_is_not_saved_or_replayed_after_navigation_or_end_turn(self):
         self.click("map_fleet_1")
-        self.click("fleet_choose_destination")
         self.key(pg.K_F5)
         path = next(self.app.storage.saves_dir.glob("*.json"))
         self.app.load_game(path)
@@ -238,7 +239,6 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.map_order_ids)
         self.assertTrue(all(not s.in_transit for s in self.app.game.ships))
         self.click("map_fleet_1")
-        self.click("fleet_choose_destination")
         self.key(pg.K_r)
         self.assertFalse(self.app.map_order_ids)
         self.key(pg.K_ESCAPE)
@@ -246,22 +246,22 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "system")
         self.key(pg.K_ESCAPE)
         self.click("map_fleet_1")
-        self.click("fleet_choose_destination")
         self.key(pg.K_e)
         self.assertFalse(self.app.map_order_ids)
         self.assertTrue(all(not s.in_transit for s in self.app.game.ships))
 
     def test_transit_manifest_tracks_arrival_and_requires_fresh_selection(self):
         duration = self.app.game.send_ships([1, 2], 1)
+        self.app.game.advance_turn()
         self.click("map_fleet_1")
         self.assertFalse(self.app.fleet_selected_ids)
-        for _ in range(duration):
+        for _ in range(duration-1):
             self.key(pg.K_e)
-        self.assertEqual(self.app.screen, "fleet")
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertFalse(self.app.fleet_popup)
+        self.click("map_fleet_1")
         self.assertEqual([s.id for s in self.app.viewed_fleet()], [1, 2])
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "fleet_choose_destination").enabled)
-        self.click("fleet_select_all")
-        self.click("fleet_choose_destination")
+        self.assertEqual(self.app.fleet_selected_ids, {1, 2})
         self.click("star_0")
         self.assertEqual(self.app.game.ship_at(1).destination, 0)
 
@@ -282,6 +282,41 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
                 self.assertTrue(MAP.contains(rect))
                 self.assertEqual(rect.collidelist(stars), -1)
                 self.assertEqual(rect.collidelist(rects[:index]), -1)
+
+    def test_clicking_origin_cancels_selected_departures_and_preserves_unselected_ships(self):
+        from orion.app import MAP
+        self.click("map_fleet_1")
+        self.assertFalse(self.app.fleet_popup_rect.colliderect(MAP))
+        self.click("fleet_select_2")
+        self.click("fleet_select_4")
+        self.click("star_1")
+        self.assertEqual([s.id for s in self.app.game.ships if s.departure_pending], [1, 3])
+        self.click("star_0")
+        self.assertTrue(all(not s.has_course for s in self.app.game.ships))
+        self.assertEqual(self.app.fleet_selected_ids, {1, 3})
+        self.assertEqual([s.id for s in self.app.viewed_fleet()], [1, 2, 3, 4])
+        self.key(pg.K_e)
+        self.assertTrue(all(s.system_id == 0 for s in self.app.game.ships))
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertFalse(self.app.fleet_popup)
+
+    def test_closing_or_switching_popups_keeps_orders_and_reload_allows_cancellation(self):
+        self.click("map_fleet_1")
+        self.click("fleet_select_none")
+        self.click("fleet_select_1")
+        self.click("star_1")
+        self.click("map_fleet_2")
+        self.click("star_2")
+        self.key(pg.K_ESCAPE)
+        self.assertTrue(all(s.departure_pending for s in self.app.game.ships))
+        save = self.app.storage.saves_dir/"autosave.json"
+        self.app.load_game(save)
+        self.app.render()
+        self.assertFalse(self.app.fleet_popup)
+        self.click("map_fleet_1")
+        self.click("star_0")
+        self.assertFalse(self.app.game.ship_at(1).has_course)
+        self.assertTrue(all(self.app.game.ship_at(i).destination == 2 for i in (2, 3, 4)))
 
 
 if __name__ == "__main__":

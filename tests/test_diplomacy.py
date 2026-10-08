@@ -13,7 +13,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.empire import summarize_empire
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.

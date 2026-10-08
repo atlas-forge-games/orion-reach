@@ -212,11 +212,11 @@ class CombatState:
                 raise ValueError("Battle does not match the campaign fleet")
             if ship.owner == retreating:
                 expected = game.travel_turns(game.systems[state.system_id], game.systems[state.retreat_destination], ship.owner)
-                if (original.destination != state.retreat_destination or original.turns_remaining != expected
+                if (original.departure_pending or original.destination != state.retreat_destination or original.turns_remaining != expected
                         or original.travel_total != expected
                         or original.speed_bonus != game.bonuses_for(ship.owner).get("ship_speed", 0)):
                     raise ValueError("Invalid retreat voyage")
-            elif original.in_transit:
+            elif original.in_transit or original.departure_pending:
                 raise ValueError("Travelling ship in battle")
         orbiting = {s.id for s in game.ships if not s.in_transit and s.system_id == state.system_id}
         expected_orbit = {s.id for s in ships if (state.status == "active" or s.hull > 0)
@@ -285,6 +285,10 @@ def begin_combat(game, system_id, owner="player"):
     error = engagement_error(game, system_id, owner)
     require(error is None, error)
     fleet = sorted(game.fleet_at(system_id, "player")+game.fleet_at(system_id, "rival"), key=lambda s: s.id)
+    # An engagement happens before departure. Orders cannot survive the battle unnoticed.
+    for ship in fleet:
+        if ship.departure_pending:
+            game._clear_course(ship)
     state = CombatState(system_id, owner, [CombatShip(s.id, s.kind, s.owner, s.hull, s.hull,
                          weapon=weapon_for(game, s.kind, s.owner)) for s in fleet], active_owner=owner)
     deploy(state)

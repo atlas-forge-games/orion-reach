@@ -12,7 +12,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.combat import ai_action, retreat_destination
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import empty_fleet_game as new_game
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -101,6 +102,8 @@ class CombatRulesTests(unittest.TestCase):
         with self.assertRaises(RuleError):
             unarmed.start_combat(0)
         unarmed.send_ship(1, 1)
+        self.assertIsNone(unarmed.engagement_error(0, RIVAL))  # It has not departed yet.
+        unarmed.ship_at(1).departure_pending = False
         self.assertIn("orbit", unarmed.engagement_error(0, RIVAL))
 
     def test_fixed_damage_side_turns_prevent_duplicate_or_friendly_attacks(self):
@@ -329,6 +332,7 @@ class CombatSaveTests(unittest.TestCase):
         game.ships = [Ship(1, "colony_ship", 0)]
         game.next_ship_id = 2
         game.send_ship(1, game.opponent.home_system)
+        game.ship_at(1).departure_pending = False  # A v7 course was already committed.
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)
