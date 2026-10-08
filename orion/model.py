@@ -691,15 +691,28 @@ class GameState:
         return ship
 
     def send_ship(self, ship_id, destination, *, owner=PLAYER):
+        return self.send_ships([ship_id], destination, owner=owner)
+
+    def send_ships(self, ship_ids, destination, *, owner=PLAYER):
+        """Send an orbiting selection together; validate every ship before moving any."""
         self._require_strategy()
-        ship = self.ship_at(ship_id, owner=owner)
-        if ship.in_transit:
+        identifiers = list(ship_ids)
+        if not identifiers:
+            raise RuleError("Select at least one ship to send.")
+        ships = [self.ship_at(identifier, owner=owner) for identifier in identifiers]
+        if len({ship.id for ship in ships}) != len(ships):
+            raise RuleError("Each ship can only be selected once.")
+        if any(ship.in_transit for ship in ships):
             raise RuleError("This ship is already travelling. Wait until it arrives.")
+        if any(ship.system_id != ships[0].system_id for ship in ships):
+            raise RuleError("Selected ships must be in orbit at the same system.")
         if not _integer(destination, 0, len(self.systems)-1):
             raise RuleError("Unknown destination system.")
-        if destination == ship.system_id:
-            raise RuleError("The ship is already in this system.")
-        return self._dispatch_ship(ship, destination)
+        if destination == ships[0].system_id:
+            raise RuleError("The selected ships are already in this system.")
+        for ship in ships:
+            duration = self._dispatch_ship(ship, destination)
+        return duration
 
     def _dispatch_ship(self, ship, destination):
         """Route a validated order, including a retreat at battle resolution."""

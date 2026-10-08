@@ -6,7 +6,7 @@ from .colony_view import draw_planet_tabs, turn_label
 from .fleet_art import ship_icon
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES, TROOP_STRENGTH
 from .model import PLAYER, RIVAL
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
 FLEETS_PER_PAGE = 4
 QUEUE_PER_PAGE = 5
@@ -152,35 +152,3 @@ def draw_fleets(app):
     app.button("fleets_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     text(surface, "+4 hull / turn at friendly colonies with no opposing ships in orbit.", (400, 845), 12, MUTED)
     app.button("fleets_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
-
-
-def draw_map_fleets(app, map_rect):
-    """Routes and ship locations share the galaxy's exact star coordinates."""
-    surface, game = app.canvas, app.game
-    clip = surface.get_clip()
-    surface.set_clip(map_rect)
-    idle = {}
-    for ship in game.ships:
-        origin = app.star_pos(game.systems[ship.system_id])
-        color = CYAN if ship.owner == PLAYER else RIVAL_COLOR
-        if ship.in_transit:
-            end = app.star_pos(game.systems[ship.destination])
-            pg.draw.line(surface, tuple(c//3 for c in color), origin, end, 1)
-            progress = 1-ship.turns_remaining/ship.travel_total
-            position = (origin[0]+(end[0]-origin[0])*progress, origin[1]+(end[1]-origin[1])*progress)
-            ship_icon(surface, position, .24, color, kind=ship.kind)
-        else:
-            key = ship.owner, ship.system_id
-            idle[key] = idle.get(key, 0)+1
-    for (owner, system_id), count in idle.items():
-        x, y = app.star_pos(game.systems[system_id])
-        y += 24 if owner == PLAYER else 41
-        color = CYAN if owner == PLAYER else RIVAL_COLOR
-        ship_icon(surface, (x+22, y), .22, color)
-        text(surface, str(count), (x+32, y-6), 10, color)
-    if app.route_ship_id is not None:
-        ship = game.ship_at(app.route_ship_id)
-        origin = app.star_pos(game.systems[ship.system_id])
-        end = app.star_pos(game.systems[game.selected_system])
-        pg.draw.line(surface, GOLD, origin, end, 2)
-    surface.set_clip(clip)
