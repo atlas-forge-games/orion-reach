@@ -161,7 +161,7 @@ def engagement_error(game, system_id, owner="player"):
     if not own or not enemy:
         return "Both empires need ships in orbit in this system."
     if not any(s.damage for s in own):
-        return "Bring a frigate to engage. Transports are unarmed."
+        return "Bring a frigate to engage. Scouts and transports are unarmed."
     return None
 
 
@@ -267,7 +267,8 @@ def retreat_destination(game, owner="player"):
     if game.combat is None or owner not in OWNERS:
         return None
     origin = game.systems[game.combat.system_id]
-    safe = [s for s in game.systems if s.id != origin.id and not game.fleet_at(s.id, other(owner))]
+    safe = [s for s in game.systems if s.id != origin.id and
+            not (game.system_visible(s.id, owner) and game.fleet_at(s.id, other(owner)))]
     friendly = [s for s in safe if any(p.owner == owner for p in s.worlds)]
     return min(friendly or safe, key=lambda s: (game.travel_turns(origin, s, owner),
                (1.4*(s.x-origin.x))**2+(s.y-origin.y)**2, s.id), default=None)

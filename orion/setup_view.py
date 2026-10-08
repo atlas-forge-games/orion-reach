@@ -24,6 +24,9 @@ def draw_setup(app):
         if app.size == size:
             pg.draw.line(surface, GOLD, (x, 464), (x+174, 464), 2)
     text(surface, f"{GALAXY_SIZES[app.size]} star systems", (638, 436), 14, MUTED)
+    app.button("fog_of_war", "Fog of war: ON" if app.fog_of_war else "Fog of war: OFF",
+               (919, 410, 270, 43), app.toggle_fog_of_war)
+    text(surface, "Explore to reveal" if app.fog_of_war else "Galaxy revealed", (1204, 426), 12, GOLD)
     text(surface, "YOUR RACE", (64, 491), 11, GOLD, "mono", 2)
     text(surface, "Races shape diplomacy; colony production and construction costs stay the same.", (1376, 491), 12, MUTED, right=True)
     for i, race in enumerate(RACES.values()):

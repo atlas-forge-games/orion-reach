@@ -29,25 +29,26 @@ def draw_shipyard(app):
 
     estimates = game.queue_estimates(planet)
     for index, spec in enumerate(SHIP_TYPES.values()):
-        y = 306+index*164
-        panel(surface, (64, y, 585, 158))
-        ship_icon(surface, (119, y+64), .9, kind=spec.id)
-        text(surface, spec.name, (170, y+8), 25, INK, "title")
+        y = 306+index*122
+        panel(surface, (64, y, 585, 116))
+        ship_icon(surface, (112, y+44), .65, kind=spec.id)
+        text(surface, spec.name, (153, y+7), 23, INK, "title")
         description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
                        if spec.id == "colony_ship" else f"{spec.hull} hull · {TROOP_STRENGTH} invasion attack · Unarmed"
-                       if spec.id == "troop_transport" else f"{spec.hull} hull · {spec.damage} damage per shot")
-        text(surface, description, (171, y+45), 12, CYAN)
+                       if spec.id == "troop_transport" else f"{spec.hull} hull · Surveys & discoveries · Unarmed"
+                       if spec.id == "scout" else f"{spec.hull} hull · {spec.damage} damage per shot")
+        text(surface, description, (154, y+37), 12, CYAN)
         captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
-                    "troop_transport": "Consumed in invasions. Escort with frigates."}
-        text(surface, captions[spec.id], (171, y+67), 12, MUTED)
+                    "troop_transport": "Consumed in invasions. Escort with frigates.",
+                    "scout": "Charts systems and recovers one-time discoveries."}
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
-        text(surface, f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}",
-             (171, y+93), 12, INK)
+        text(surface, shorten(f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}", 277, 11),
+             (85, y+91), 11, INK)
         reason = game.ship_build_error(system.id, planet.id, spec.id)
-        app.button(f"build_{spec.id}", f"Build {spec.name.lower()}", (88, y+119, 270, 31),
+        text(surface, shorten(reason or captions[spec.id], 471, 11), (154, y+61), 11, GOLD if reason else MUTED)
+        app.button(f"build_{spec.id}", f"Build {spec.name.lower()}", (367, y+80, 258, 31),
                    lambda kind=spec.id: app.queue_ship(kind), enabled=reason is None)
-        text(surface, shorten(reason or "No building slot needed", 250, 11), (376, y+129), 11, GOLD if reason else MUTED)
 
     panel(surface, (674, 306, 702, 487))
     text(surface, "SHARED CONSTRUCTION QUEUE", (697, 328), 11, GOLD, "mono", 1)
@@ -112,7 +113,8 @@ def draw_fleets(app):
         panel(surface, (64, y, 1312, 76))
         ship_icon(surface, (100, y+38), .67, kind=ship.kind)
         text(surface, ship.name, (142, y+12), 18, INK)
-        role = (f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
+        role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
+                f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
                 f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{ship.damage} damage / shot")
         text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
@@ -137,7 +139,7 @@ def draw_fleets(app):
         panel(surface, (64, 429, 1312, 248))
         ship_icon(surface, (144, 526), 1.6)
         text(surface, "Your fleet starts at a shipyard.", (248, 467), 28, INK, "title")
-        paragraph(surface, "Build colony ships to settle, frigates to fight, or troop transports to invade. Finished ships appear here in orbit.",
+        paragraph(surface, "Build scouts to explore, colony ships to settle, frigates to fight, or troop transports to invade. Finished ships appear here in orbit.",
                   (250, 515), 995, 16, MUTED, 27)
         home = next(((s, p) for s in game.systems for p in s.worlds if p.owner == PLAYER), None)
         if home:

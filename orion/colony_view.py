@@ -14,7 +14,8 @@ def draw_planet_tabs(app, active):
     for key, label, x, screen in (("tab_overview", "Overview", 818, "planet"),
                                    ("tab_colony", "Colony", 1008, "colony"),
                                    ("tab_shipyard", "Shipyard", 1198, "shipyard")):
-        app.button(key, label, (x, 201, 178, 49), lambda s=screen: app.go(s))
+        app.button(key, label, (x, 201, 178, 49), lambda s=screen: app.go(s),
+                   enabled=screen=="planet" or app.game.system_visible(app.game.selected_system))
         if screen == active:
             pg.draw.line(app.canvas, GOLD, (x, 250), (x+178, 250), 3)
 

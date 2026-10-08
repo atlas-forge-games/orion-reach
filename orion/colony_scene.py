@@ -23,7 +23,7 @@ class SceneBuilding:
 
 
 def is_headquarters(game, system_id, planet):
-    if not planet.colonized:
+    if not planet.colonized or not game.system_visible(system_id):
         return False
     home = game.headquarters(planet.owner)
     return bool(home and (system_id, planet.id) == (home[0].id, home[1].id))
@@ -169,7 +169,10 @@ def draw_colony_scene(app, rect, game, system, planet):
         else:
             action = lambda slot=item.slot: app.inspect_surface_building(slot)
             caption = f"{item.queued} queued" if item.queued else "Click to inspect"
-        button = app.button("surface_"+item.asset_id, "", hit, action, "hotspot")
+        live = game.system_visible(system.id)
+        if not live:
+            caption = "Last observed"
+        button = app.button("surface_"+item.asset_id, "", hit, action, "hotspot", enabled=live)
         active = app.is_active(button)
         color = GOLD if active or not item.completed else (RIVAL_COLOR if planet.owner == RIVAL else CYAN)
         pg.draw.ellipse(surface, (29, 39, 41), (target.x+5, target.bottom-19, target.w-10, 23))
@@ -196,6 +199,8 @@ def draw_colony_scene(app, rect, game, system, planet):
         footer = "Rival colony · survey only. Click a building to inspect its production."
     elif not planet.colonized:
         footer = "Survey the environment, then use Colonize when a colony ship is ready."
+    if not game.system_visible(system.id):
+        footer = "Stored survey · Buildings and ownership reflect the last observation. Send a ship to update."
     text(surface, footer, (rect.x+18, rect.bottom-24), 12, INK)
     pg.draw.rect(surface, (38, 57, 68), rect, 1)
     surface.set_clip(old_clip)

@@ -11,6 +11,7 @@ from .buildings import BUILDINGS, BUILDING_SLOTS
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_TYPES, STARTING_COLONISTS, travel_turns
 from . import combat as combat_rules
 from . import victory as victory_rules
+from . import exploration as exploration_rules
 from .races import RACES, default_rival_race
 from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
@@ -202,6 +203,7 @@ class TurnReport:
     arrivals: list[str] = field(default_factory=list)
     discoveries: list[str] = field(default_factory=list)
     alerts: list[str] = field(default_factory=list)
+    exploration: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -426,6 +428,20 @@ class GameState:
     technology: ResearchState = field(default_factory=ResearchState)
     combat: combat_rules.CombatState | None = None
     result: victory_rules.CampaignResult | None = None
+    fog_of_war: bool = False
+    exploration: exploration_rules.ExplorationState = field(default_factory=exploration_rules.ExplorationState)
+
+    def system_visible(self, system_id, owner=PLAYER):
+        return exploration_rules.is_visible(self, system_id, owner)
+
+    def system_explored(self, system_id, owner=PLAYER):
+        return exploration_rules.is_explored(self, system_id, owner)
+
+    def known_system(self, system_id, owner=PLAYER):
+        return exploration_rules.known_system(self, system_id, owner)
+
+    def visible_ships(self, owner=PLAYER):
+        return [ship for ship in self.ships if exploration_rules.ship_visible(self, ship, owner)]
 
     def strategy_error(self):
         if self.result is not None:
@@ -452,7 +468,11 @@ class GameState:
         return victory_rules.invasion_error(self, system_id, planet_id, owner)
 
     def invade(self, system_id, planet_id, *, owner=PLAYER):
-        return victory_rules.invade(self, system_id, planet_id, owner)
+        result = victory_rules.invade(self, system_id, planet_id, owner)
+        # Both sides know the outcome even if their last observing unit was lost.
+        for empire in (PLAYER, RIVAL):
+            exploration_rules.record_survey(self, system_id, empire)
+        return result
 
     def gate_error(self, system_id, planet_id, *, owner=PLAYER):
         return victory_rules.gate_error(self, system_id, planet_id, owner)
@@ -619,6 +639,7 @@ class GameState:
         self.diplomacy = make_contact(self.turn, self.opponent.name, race_id)
         planet.colonized, planet.owner, planet.population = True, RIVAL, 8
         self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
+        exploration_rules.refresh(self)
         return planet
 
     def planet_at(self, system_id, planet_id):
@@ -716,6 +737,7 @@ class GameState:
 
     def _dispatch_ship(self, ship, destination):
         """Route a validated order, including a retreat at battle resolution."""
+        exploration_rules.refresh(self)
         duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], ship.owner)
         ship.speed_bonus = self.bonuses_for(ship.owner).get("ship_speed", 0)
         ship.destination = destination
@@ -789,6 +811,7 @@ class GameState:
     def advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
         self._require_strategy()
+        exploration_rules.refresh(self)
         encounter = combat_rules.hostile_encounter(self)
         if encounter is not None:
             self.start_combat(encounter, RIVAL)
@@ -830,11 +853,13 @@ class GameState:
                     else:
                         self.rival_event(f"Completed: {message}.")
                         if item_id == ASCENSION_GATE.id:
-                            alerts.append(f"Rival gate completed on {planet.name}: five charging turns remain")
+                            location = exploration_rules.gate_location(self, system.id, planet)
+                            alerts.append(f"Rival gate completed at {location}: five charging turns remain")
         self.turn += 1
         self.year += 1
         self.credits += income
         self.research += research
+        exploration = exploration_rules.refresh(self, recover=True)
         discovered = self.advance_research()
         if self.opponent is not None:
             self.opponent.credits += rival_income
@@ -847,19 +872,21 @@ class GameState:
         rival_gate = victory_rules.gate_site(self, RIVAL)
         if (rival_gate and rival_gate[1].gate_charge == GATE_CHARGE_TURNS-1
                 and not victory_rules.gate_blocked(self, rival_gate[0].id, RIVAL)):
-            alerts.append(f"Rival gate at {rival_gate[1].name} will activate next turn unless blocked")
+            location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
+            alerts.append(f"Rival gate at {location} will activate next turn unless blocked")
+        exploration_rules.refresh(self)
         self.check_victory()
         encounter = combat_rules.hostile_encounter(self)
         if encounter is not None:
             self.start_combat(encounter, RIVAL)
         return TurnReport(income, research, completed, arrivals,
-                          [discovered.name] if discovered else [], alerts)
+                          [discovered.name] if discovered else [], alerts, exploration)
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=9):
+    def from_dict(cls, data, *, version=10):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -949,15 +976,23 @@ class GameState:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game)
             if version >= 9:
                 game.result = victory_rules.validate(game, data["result"])
+            if version >= 10:
+                if type(data["fog_of_war"]) is not bool:
+                    raise ValueError("Invalid fog setting")
+                game.fog_of_war = data["fog_of_war"]
+                game.exploration = exploration_rules.ExplorationState.from_dict(data["exploration"], game)
+            # Older games retain the completely revealed map they started with.
             return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 
 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
-             race_id="terran", rival_race_id=None):
+             race_id="terran", rival_race_id=None, fog_of_war=True):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
+    if type(fog_of_war) is not bool:
+        raise SaveError("Fog of war must be on or off.")
     if not isinstance(race_id, str) or race_id not in RACES:
         raise SaveError("Choose a valid player race.")
     if rival_race_id is not None and (not isinstance(rival_race_id, str) or rival_race_id not in RACES):
@@ -984,7 +1019,9 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
                                   rng.randint(0, 7), rng.choice(BIOMES), rng.choice(RICHNESSES)))
     for system in systems:
         system.worlds = generate_planets(system, seed)
-    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems, race_id=race_id)
+    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
+                     race_id=race_id, fog_of_war=fog_of_war)
     if with_ai and game.opponent_start_error() is None:
         game.add_opponent(rival_race_id)
+    exploration_rules.refresh(game)
     return game

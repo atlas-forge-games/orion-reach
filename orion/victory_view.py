@@ -6,6 +6,7 @@ import pygame as pg
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS
 from .research import TECHNOLOGIES
 from .victory import colonies, gate_blocked, gate_site
+from .exploration import known_rival_colonies
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 
@@ -40,7 +41,9 @@ def draw_objectives(app):
     panel(surface, (64, 286, 623, 284))
     text(surface, "01 / CONQUEST", (88, 309), 11, GOLD, "mono", 2)
     own, rival = len(colonies(game, "player")), len(colonies(game, "rival"))
-    text(surface, f"{rival} rival {'colony remains' if rival == 1 else 'colonies remain'}" if game.opponent else "No rival in this campaign",
+    conquest = (f"{len(known_rival_colonies(game))} known rival colonies" if game.fog_of_war else
+                f"{rival} rival {'colony remains' if rival == 1 else 'colonies remain'}")
+    text(surface, conquest if game.opponent else "No rival in this campaign",
          (87, 344), 29, INK, "title")
     text(surface, f"Your empire controls {own} {'colony' if own == 1 else 'colonies'}.", (89, 389), 14, CYAN)
     paragraph(surface, "Build troop transports, clear enemy ships from orbit, then invade from the planet overview. "
@@ -114,6 +117,10 @@ def draw_objectives(app):
             caption += f"Gate at {enemy_gate[1].name}: " + (f"charging {enemy_gate[1].gate_charge}/5" if enemy_gate[1].ascension_gate else "under construction")
         else:
             caption += "Ascension Theory discovered" if "ascension_theory" in enemy.completed else "researching Ascension Theory" if enemy.active == "ascension_theory" else "no gate yet"
+        if game.fog_of_war:
+            sites = [(s, p) for s, p in known_rival_colonies(game) if p.ascension_gate or
+                     any(q.item_id == ASCENSION_GATE.id for q in p.construction_queue)]
+            caption = f"Last-known rival gate: {sites[0][1].name}" if sites else "Rival research and gate location are unknown. Explore to locate its worlds."
         text(surface, shorten(caption, 652, 12), (400, 835), 12, RIVAL_COLOR)
         text(surface, "The AI can win by either path. Both gates activating together is a draw.", (400, 857), 11, FAINT)
     app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")

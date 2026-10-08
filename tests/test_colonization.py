@@ -17,7 +17,7 @@ from orion.model import ConstructionProject, GameState, RuleError, SaveError, Sh
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.
-new_game = partial(new_game, with_ai=False)
+new_game = partial(new_game, with_ai=False, fog_of_war=False)
 from orion.production import MAX_QUEUE, travel_turns
 from orion.storage import SAVE_VERSION, Storage
 

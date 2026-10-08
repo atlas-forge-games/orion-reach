@@ -7,6 +7,7 @@ from .colony_view import draw_planet_tabs
 from .colony_scene import draw_colony_scene, is_headquarters
 from .model import PLAYER, RIVAL
 from .victory import invasion_strength
+from .exploration_view import draw_unsurveyed_system
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
@@ -45,7 +46,11 @@ def system_layout(worlds):
 def draw_system(app):
     surface = app.canvas
     game = app.game
-    system = game.systems[game.selected_system]
+    system = game.known_system(game.selected_system)
+    if system is None:
+        draw_unsurveyed_system(app, game.systems[game.selected_system])
+        return
+    live = game.system_visible(system.id)
     app.chrome("SYSTEM OVERVIEW")
     app.button("system_back", "←  Galaxy map", (64, 124, 205, 48), lambda: app.go("galaxy"), "ghost")
     text(surface, f"GALAXY  /  {system.name.upper()}", (300, 143), 11, MUTED, "mono", 1)
@@ -53,8 +58,10 @@ def draw_system(app):
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
-    ships, rivals = len(game.fleet_at(system.id)), len(game.fleet_at(system.id, RIVAL))
+    ships, rivals = len(game.fleet_at(system.id)), len(game.fleet_at(system.id, RIVAL)) if live else 0
     label = f"ORBIT: {ships} YOUR SHIPS · {rivals} RIVAL SHIPS" if ships or rivals else "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY"
+    if not live:
+        label = f"LAST OBSERVED: TURN {game.exploration.survey(system.id).last_seen} · ACTIVITY UNKNOWN"
     text(surface, label, (1376, 211), 11, CYAN, "mono", 1, right=True)
     if ships and rivals:
         reason = game.engagement_error(system.id)
@@ -105,7 +112,7 @@ def draw_system(app):
     summaries = [("WORLDS", str(len(system.worlds)), "Surveyed planets"),
                  ("HABITABLE", str(habitable), "At least 35% suitability"),
                  ("COLONIES", str(colonies), "Established settlements"),
-                 ("POPULATION", f"{population} B", "Current inhabitants")]
+                 ("POPULATION", f"{population} B", "Current inhabitants" if live else "Last known inhabitants")]
     for i, (label, value, caption) in enumerate(summaries):
         x = 64+i*334
         panel(surface, (x, 645, 310, 122))
@@ -113,6 +120,8 @@ def draw_system(app):
         text(surface, value, (x+20, 688), 29, CYAN if i==2 else INK)
         text(surface, caption, (x+21, 735), 11, MUTED)
     hint = "Click a planet to survey it. Cyan: your colony · Orange: rival colony" if system.worlds else "Use Previous / Next to survey another system."
+    if not live:
+        hint = "Stored survey. Send a ship to refresh colony ownership, population and activity."
     text(surface, hint, (65, 792), 14, MUTED)
     app.button("system_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
@@ -123,8 +132,9 @@ def draw_system(app):
 def draw_planet_overview(app):
     surface = app.canvas
     game = app.game
-    system = game.systems[game.selected_system]
+    system = game.known_system(game.selected_system)
     planet = system.worlds[game.selected_planet]
+    live = game.system_visible(system.id)
     app.chrome("PLANET OVERVIEW")
     app.button("planet_back", f"←  {shorten(system.name, 138, 15)} system", (64, 124, 270, 48), lambda: app.go("system"), "ghost")
     text(surface, shorten(f"GALAXY  /  {system.name.upper()}  /  {planet.name.upper()}", 760, 11, "mono"),
@@ -151,12 +161,18 @@ def draw_planet_overview(app):
     panel(surface, (1016, 554, 360, 227))
     text(surface, "COLONY STATUS", (1036, 575), 10, GOLD, "mono", 2)
     status = "No colony established"
-    if planet.colonized:
+    if not live:
+        status = "Last known colony" if planet.colonized else "Last known: unsettled"
+    elif planet.colonized:
         status = "Headquarters" if is_headquarters(game, system.id, planet) else "Established colony"
         if planet.owner == RIVAL:
             status = "Rival headquarters" if is_headquarters(game, system.id, planet) else "Rival colony"
     text(surface, status, (1036, 602), 21, INK)
-    if planet.colonized:
+    if not live:
+        survey = game.exploration.survey(system.id)
+        paragraph(surface, f"Observed on turn {survey.last_seen}. {game.empire_name_for(planet.owner)} · {planet.population} B inhabitants at that time. Send a ship to refresh this report.",
+                  (1037, 642), 318, 14, MUTED, 25)
+    elif planet.colonized:
         text(surface, shorten(game.empire_name_for(planet.owner), 318, 13), (1037, 639), 13,
              CYAN if planet.owner == PLAYER else RIVAL_COLOR)
         text(surface, f"{planet.population} B inhabitants · {game.planet_yields(planet)[0]} IND / turn", (1037, 665), 12, INK)
@@ -180,6 +196,8 @@ def draw_planet_overview(app):
     hint = "Click buildings to manage them. E: end turn." if planet.colonized else "A colony ship is consumed when this world is settled."
     if planet.owner == RIVAL:
         hint = "Clear opposing ships, then land troop transports to capture this colony."
+    if not live:
+        hint = "Stored survey · Current activity is unknown."
     text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. {hint}",
          (65, 795), 13, MUTED)
     app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)

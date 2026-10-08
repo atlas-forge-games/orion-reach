@@ -21,7 +21,8 @@ def draw_empire(app):
 
     app.chrome("EMPIRE OVERVIEW")
     back_name = {"galaxy": "Galaxy map", "system": "System overview", "shipyard": "Shipyard", "fleets": "Fleets",
-                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report", "diplomacy": "Diplomacy", "research": "Research", "objectives": "Objectives"}[app.empire_return]
+                 "planet": "Planet overview", "colony": "Colony", "rival": "Rival report", "diplomacy": "Diplomacy", "research": "Research", "objectives": "Objectives",
+                 "fleet": "Fleet overview", "exploration": "Exploration"}[app.empire_return]
     app.button("empire_back", f"←  {back_name} · I", (64, 124, 282, 46),
                app.close_empire, "ghost")
     if app.empire_return != "galaxy":

@@ -15,6 +15,10 @@ import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from functools import partial
+
+# Preserve these pre-exploration scenarios; fog-on rules have their own tests.
+new_game = partial(new_game, fog_of_war=False)
 from orion.storage import Storage
 
 

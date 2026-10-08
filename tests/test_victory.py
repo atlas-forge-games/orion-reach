@@ -14,6 +14,10 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.model import ConstructionProject, GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from functools import partial
+
+# Preserve these pre-exploration scenarios; fog-on rules have their own tests.
+new_game = partial(new_game, fog_of_war=False)
 from orion.production import ASCENSION_GATE, GATE_CHARGE_TURNS
 from orion.research import BRANCHES, TECHNOLOGIES, choices
 from orion.storage import SAVE_VERSION, Storage

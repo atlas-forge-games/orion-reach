@@ -47,7 +47,7 @@ def fleet_markers(app, map_rect):
         obstacles.append(pg.Rect(int(x)+10, int(y)-11, font(11, "mono").size(system.name.upper())[0]+4, 18))
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
-    groups = sorted(group_fleets(app.game.ships), key=lambda ships: (ships[0].in_transit, ships[0].id))
+    groups = sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].in_transit, ships[0].id))
     for ships in groups:
         ship = ships[0]
         x, y = app.star_pos(app.game.systems[ship.system_id])
@@ -138,7 +138,8 @@ def draw_fleet(app):
                 pg.draw.lines(surface, CYAN, False, [(86, y+30), (91, y+35), (98, y+25)], 2)
         ship_icon(surface, (139, y+31), .55, CYAN if own else RIVAL_COLOR, kind=ship.kind)
         text(surface, ship.name, (190, y+8), 19, INK)
-        role = (f"{ship.damage} damage / shot" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
+        role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
+                f"{ship.damage} damage / shot" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
                 if ship.kind == "troop_transport" else f"{game.starting_colonists(first.owner)} B colonists · Unarmed")
         text(surface, role, (191, y+36), 12, MUTED)
         text(surface, f"{ship.hull} / {ship.max_hull} hull", (918, y+11), 13, INK, right=True)
@@ -157,7 +158,7 @@ def draw_fleet(app):
     text(surface, f"{len(selected)} {'ship' if len(selected)==1 else 'ships'}", (990, 348), 35, INK, "title")
     for index, spec in enumerate(SHIP_TYPES.values()):
         count = sum(s.kind == spec.id for s in selected)
-        y = 411+index*36
+        y = 406+index*28
         text(surface, spec.name, (991, y), 14, MUTED)
         text(surface, str(count), (1352, y), 15, CYAN, right=True)
     pg.draw.line(surface, LINE, (990, 524), (1352, 524))
@@ -192,15 +193,18 @@ def draw_order_panel(app, target):
     text(surface, f"Departing {origin.name}", (1075, 289), 14, CYAN)
     for index, spec in enumerate(SHIP_TYPES.values()):
         count = sum(s.kind == spec.id for s in ships)
-        text(surface, f"{count} × {spec.name}", (1075, 329+index*29), 14, MUTED)
+        text(surface, f"{count} × {spec.name}", (1075, 325+index*26), 14, MUTED)
     pg.draw.line(surface, LINE, (1075, 431), (1352, 431))
     text(surface, "DESTINATION PREVIEW", (1075, 453), 10, GOLD, "mono")
     text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")
     if duration:
         text(surface, f"Arrival in {turn_label(duration)}", (1075, 530), 16, CYAN)
-        enemy_count = len(game.fleet_at(target.id, RIVAL))
-        targets = sum(not p.colonized and game.can_settle(p) for p in target.worlds)
-        detail = f"{enemy_count} rival ships in orbit" if enemy_count else f"{targets} worlds available to settle"
+        known = game.known_system(target.id)
+        enemy_count = len(game.fleet_at(target.id, RIVAL)) if game.system_visible(target.id) else 0
+        targets = sum(not p.colonized and game.can_settle(p) for p in known.worlds) if known else 0
+        detail = ("Unsurveyed · Planets unknown" if known is None else
+                  "Last survey · Activity unknown" if not game.system_visible(target.id) else
+                  f"{enemy_count} rival ships in orbit" if enemy_count else f"{targets} worlds available to settle")
         text(surface, detail, (1075, 565), 13, MUTED)
     else:
         text(surface, "Ships are still in orbit.", (1075, 530), 15, MUTED)

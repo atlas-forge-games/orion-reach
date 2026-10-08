@@ -16,7 +16,7 @@ from orion.model import GALAXY_SIZES, GameState, SaveError, generate_planets, ne
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.
-new_game = partial(new_game, with_ai=False)
+new_game = partial(new_game, with_ai=False, fog_of_war=False)
 from orion.storage import SAVE_VERSION, Storage
 
 

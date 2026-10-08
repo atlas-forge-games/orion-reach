@@ -20,6 +20,7 @@ SHIP_TYPES = {
     "colony_ship": ShipSpec("colony_ship", "Colony ship", 80, 42, hull=12),
     "frigate": ShipSpec("frigate", "Frigate", 60, 36, hull=20, damage=5),
     "troop_transport": ShipSpec("troop_transport", "Troop transport", 80, 42, hull=16),
+    "scout": ShipSpec("scout", "Scout", 25, 12, hull=8),
 }
 
 

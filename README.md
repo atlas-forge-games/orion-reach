@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.12.0
+# Orion Reach — Python prototype 0.13.0
 
 A playable colony-building and interstellar expansion prototype with conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -79,10 +79,12 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
 - **Continue** appears when a campaign is already open in the current session.
 - New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
-  an optional reproducible seed, and player/rival race choices with illustrated portraits.
+  an optional reproducible seed, **Fog of war ON/OFF**, and player/rival race choices with illustrated portraits.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
 - Click a **fleet badge** on the galaxy map to inspect its ships. Select a group,
   click **Choose destination**, then click a star to send that group together.
+- Build cheap **scouts** to reveal worlds and recover one-time discoveries.
+  **Exploration · X** records recovered caches, archives and derelict probes.
 - Click a planet's globe or caption to open its **planet overview**: environment,
   size, gravity, minerals, habitability, orbital distance and colony status.
 - The planet overview includes a **colony surface scene** with illustrated buildings
@@ -261,9 +263,12 @@ system without your colonies. It preserves your existing assets and progress.
 Older saves do not gain an opponent automatically. If no suitable starting world
 remains, Add rival is disabled. Adding a rival autosaves the campaign.
 
-- The AI builds factories first; its race determines the order of trade centres,
-  research labs and mines. Its strongest colony produces colony ships and frigates; other colonies develop
-  their economies. The shipyard's development target rises as the empire grows.
+- With fog enabled, the AI first builds a scout and explores with its own survey
+  information. It chooses colony sites from known worlds, or explores with a colony
+  ship if none are known. Its race determines the order of factories, trade centres,
+  research labs and mines. Its strongest colony produces colony ships and frigates;
+  other colonies develop their economies. The shipyard's development target rises
+  as the empire grows.
 - Colony ships settle suitable unclaimed planets in their current system, otherwise
   travel to nearby systems with available worlds. The rival avoids sending more
   ships to a system than it has available planets. If a target is claimed while
@@ -276,9 +281,10 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
   empires' travel and construction, then deposits income in their respective
   treasuries. Newly completed ships receive their first AI order on the next
   End Turn; arrived ships can settle or reroute on the next End Turn.
-- **Rival report** shows finances, output, ships, colonies and the latest six
-  activity entries. Click **Survey** to inspect a colony's buildings and queue.
-  The report and map reveal the rival's activity; fog of war is not implemented.
+- With fog enabled, **Rival report** shows surveyed colonies and currently visible
+  ships. Old surveys are dated; treasury, research totals, hidden routes and private
+  activity are not shown. With fog off it shows finances, output, all ships, colonies
+  and the latest six activity entries. Click **Survey** to inspect a colony.
 - Your Empire Overview and Fleets list only your assets. A system can contain
   colonies from both empires, shown with cyan and orange rings. Hostile rivals
   build escorted invasion groups to capture colonies. In peacetime, the AI
@@ -387,6 +393,66 @@ empires Kharuun, with no changes to their assets or treasury. Campaigns without
 a rival stay peaceful: **Diplomacy → Rival report → Add rival** opens contact.
 Race choices are fixed for the campaign; start a new game to choose others.
 
+## Exploration and fog of war
+
+New campaigns default to **Fog of war: ON**. Click that setting in **New Game**
+to turn it off before beginning. The setting is saved with the campaign and is
+fixed during play. Old campaigns keep their fully revealed maps.
+
+1. Open **Sol → Earth → Shipyard** and build a **Scout**: **25 credits, 12 work,
+   8 hull**, no weapons and no building slot. At Earth's initial industry this
+   takes **two turns**. New games still begin without ships.
+2. On the galaxy map, click your fleet badge, select the scout, click **Choose
+   destination**, then click an unexplored star. Travel speed and group movement
+   follow the same rules as other ships.
+3. Arrival automatically surveys the system. Any ship can chart planets;
+   **scouts additionally search for discoveries**. A discovery is recovered by
+   the first empire to find it, with rewards credited immediately on that turn.
+4. Open **Exploration · X** to read the discovery log, inspect recovered systems,
+   see survey progress, or open your home colony's scout shipyard.
+
+| Information | Fog ON | Fog OFF |
+| --- | --- | --- |
+| Star positions, names and star types | Charted from the start | Visible |
+| Planets, resources and colonies | Unknown until visited | Visible |
+| Previously visited systems | Retain their last-observed survey | Always current |
+| Live system activity | Requires your colony or a ship in orbit | Visible everywhere |
+| Enemy ships in orbit | Visible only in an observed system | Visible everywhere |
+| Enemy journeys | Hidden | Visible |
+| Scout discoveries | Must be recovered by a scout | Still require a scout |
+
+Stored planet surveys show the buildings, ownership and population seen at the
+time of the visit, with a date. They do not reveal subsequent enemy changes.
+Send another ship to update them. Unobserved colony controls are disabled.
+There is no sensor radius or visibility along interstellar routes in this version.
+Retreat orders avoid **known** enemy fleets; an unobserved retreat destination
+may contain opposing ships.
+
+Discovery sites use a separate seeded generator, so the same galaxy seed keeps
+the same stars and possible finds. About 35% of systems can contain a discovery;
+starting home systems contain no recoverable discovery. Each site pays out at most once,
+including after revisiting, sending several scouts, changing ownership, or reloading.
+Simultaneous arrivals resolve in ship-ID order.
+
+| Discovery | Reward |
+| --- | --- |
+| Abandoned supply cache | 40 credits |
+| Ancient archive | 30 research points |
+| Derelict probe | 20 credits and 15 research points |
+
+Recovered research contributes to the active project; any surplus stays banked.
+Scouts are unarmed and cannot colonize or invade. They can accompany escorts,
+hold or retreat in combat, and repair at friendly colonies like other ships.
+With fog enabled, the rival builds up to two scouts and uses its own knowledge
+to explore and claim discoveries. With fog off, its existing expansion policy
+can already see all colony sites.
+
+Diplomacy remains available through the existing communications channel. It
+does not reveal enemy worlds. Science-victory warnings still announce dangerous
+gate milestones, but omit locations you cannot currently observe.
+
+![Exploration log](screenshots/exploration.png)
+
 ## Build, travel and colonize
 
 1. Open **Sol → Earth → Shipyard** and click **Build colony ship**. It costs
@@ -438,7 +504,8 @@ queue capacity and travel speed are defined in `orion/production.py`.
   **Clear**, and individual checkboxes let you send all or part of it. Selections
   are retained across pages; use Previous / Next, Page Up / Down, or the wheel.
 - **Choose destination** returns to the map. Hovering a star previews the route,
-  travel time and any rival ships there. A single click sends the selection.
+  travel time and visible rival ships there. Unknown systems reveal no planetary
+  details before arrival. A single click sends the selection.
   Clicking the origin or empty space does not send ships. Escape, Cancel, or
   **Change selection** returns to the manifest with your selection intact.
 - Flights with the same origin, destination and travel progress share a badge.
@@ -467,7 +534,7 @@ queue capacity and travel speed are defined in `orion/production.py`.
 4. On the combat screen, select one of your available ships and an enemy target,
    then click **Fire**. The AI takes its next action automatically. Each surviving
    ship acts once per round; **Hold** spends an activation without attacking.
-   Colony ships and troop transports cannot fire, but can hold or retreat with the fleet.
+   Scouts, colony ships and troop transports cannot fire, but can hold or retreat with the fleet.
 5. Resolve the battle or retreat, then choose **Return to system**. Strategic time,
    income, research, construction and other travel do not advance during combat.
    Escape pauses the battle, and Save / Load resumes the exact round and activation.
@@ -477,6 +544,7 @@ queue capacity and travel speed are defined in `orion/production.py`.
 | Colony ship | 80 | 42 | 12 | 0 (unarmed) |
 | Frigate | 60 | 36 | 20 | 5 |
 | Troop transport | 80 | 42 | 16 | 0 (8 invasion attack) |
+| Scout | 25 | 12 | 8 | 0 (unarmed) |
 
 Shots always hit their selected enemy. There are no range, movement, armour or
 shield rules yet. Sides alternate one ship activation at a time. If one side has
@@ -488,8 +556,9 @@ AI fleet retreats when a safe destination exists.
 **Losses and retreat:** ships at zero hull are destroyed. Results are committed
 once when combat ends; survivors retain damage, and destroyed ship IDs are never
 reused. Retreat withdraws all surviving ships to the nearest other friendly
-system without an opposing fleet. If there is no such friendly destination, the
-nearest other system without opposing ships is used. The confirmation names the
+system without a known opposing fleet. If there is no such friendly destination, the
+nearest other system without known opposing ships is used. With fog on, unobserved
+enemy fleets do not influence the choice. The confirmation names the
 destination and travel time. Retreat uses normal strategic travel, and damage is
 retained. Winning a space battle clears orbit; use troop transports to capture
 colonies and their buildings afterward.
@@ -570,9 +639,10 @@ or production; its result and consumed transports are saved immediately by the U
 5. The fifth clear-orbit charge wins. Protect the colony: capture destroys the
    gate, while a fleet battle by itself does not destroy the structure.
 
-The AI follows the same research, costs and charging rules. Objectives shows its
-research progress and gate location; End Turn announces rival gate construction,
-completion and the final charging turn. If both gates activate in the same turn,
+The AI follows the same research, costs and charging rules. With fog off, Objectives
+shows its research progress and gate location. With fog on, it only shows known
+colony and gate information. End Turn announces rival gate construction, completion
+and the final charging turn; unobserved locations are hidden. If both gates activate in the same turn,
 the campaign is a **draw**. No score, turn-limit, diplomatic or exploration victory
 is enabled in this version.
 
@@ -636,6 +706,8 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Open a colony from Empire Overview | Click its row, or focus it and press Enter |
 | Browse colony pages | Page Up / Down, Left / Right, mouse wheel, or Previous / Next |
 | Open / close Fleets | F, or the Fleets button while playing |
+| Open / close the exploration log | X, or Exploration on the galaxy map |
+| Choose fog of war | Fog of war ON/OFF in New Game setup |
 | Inspect a fleet | Click its cyan or orange badge on the galaxy map |
 | Send selected ships together | Fleet badge → select ships → Choose destination → click a star |
 | Preview a group journey | Hover a star while choosing the destination |
@@ -676,10 +748,12 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.12 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.13 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Fleet grouping is derived from existing
-ship data; this update keeps save format 9 and needs no migration from v0.11.
+ships and travel times are preserved. Pre-v0.13 saves retain **fog OFF** and start
+with an empty discovery log; build scouts to recover discoveries in those games.
+Start a new campaign to play with fog enabled. Fleet grouping is derived from
+existing ship data.
 Pre-combat saves gain full ship hulls and no
 active battle. v0.10 ship health, active battles and tactical turns are preserved.
 Older campaigns gain both victory paths with no existing gate or result.
@@ -691,10 +765,11 @@ no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 9**, including gates, charging progress, campaign results,
+New saves use **format version 10**, including the fog setting, per-empire surveys,
+scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.10 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.12 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -734,7 +809,9 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/fleet_views.py` | Shipyard and empire-wide ship operations |
 | `orion/fleets.py` | Fleet grouping from orbit and shared travel progress |
 | `orion/galaxy_fleet_view.py` | Clickable map badges, fleet manifests and group route previews |
-| `orion/fleet_art.py` | Procedural transport and frigate drawings |
+| `orion/exploration.py` | Survey snapshots, visibility, scout discoveries and validation |
+| `orion/exploration_view.py` | Exploration log, unknown systems and map intelligence |
+| `orion/fleet_art.py` | Procedural transport, frigate and scout drawings |
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
@@ -748,6 +825,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
+| `tests/test_exploration.py` | Fog boundaries, discoveries, scouts, private AI knowledge, saves and UI flows |
 | `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
 | `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
@@ -779,6 +857,8 @@ python main.py --headless --screen shipyard --screenshot shipyard.png
 python main.py --headless --screen fleets --screenshot fleets.png
 python main.py --headless --screen fleet --screenshot fleet.png
 python main.py --headless --screen fleet_course --screenshot fleet_course.png
+python main.py --headless --screen exploration --screenshot exploration.png
+python main.py --headless --screen unexplored --screenshot unexplored.png
 python main.py --headless --screen rival --screenshot rival.png
 python main.py --headless --screen diplomacy --screenshot diplomacy.png
 python main.py --headless --screen research --screenshot research.png
@@ -788,9 +868,9 @@ python main.py --headless --screen result --screenshot victory.png
 ```
 
 `--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
+`unexplored`, `exploration`, `planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
 `combat`, `objectives`, `result`, and `about`.
-Galaxy, fleet, combat and result captures use local example states. Ordinary campaigns
+Galaxy, fleet, exploration, combat and result captures use local example states. Ordinary campaigns
 still start without ships. Screenshot mode does not create
 a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run

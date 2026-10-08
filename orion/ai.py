@@ -5,11 +5,37 @@ from .production import PROJECTS, TROOP_STRENGTH
 from .races import RACES
 from .research import BRANCHES, choices
 from .combat import HOSTILE_BELOW
+from .exploration import gate_location
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
 
 def available_worlds(game, system):
-    return [p for p in system.worlds if not p.colonized and game.can_settle(p, RIVAL)]
+    known = game.known_system(system.id, RIVAL)
+    return [p for p in known.worlds if not p.colonized and game.can_settle(p, RIVAL)] if known else []
+
+
+def known_enemy_colonies(game):
+    return [(known, p) for s in game.systems if (known := game.known_system(s.id, RIVAL)) is not None
+            for p in known.worlds if p.owner == "player"]
+
+
+def scouting_orders(game):
+    if not game.fog_of_war:
+        return
+    incoming = {s.destination for s in game.ships_owned_by(RIVAL) if s.in_transit and s.kind == "scout"}
+    for ship in sorted(game.ships_owned_by(RIVAL), key=lambda s: s.id):
+        if ship.kind != "scout" or ship.in_transit:
+            continue
+        candidates = [s for s in game.systems if s.id != ship.system_id and s.id not in incoming
+                      and s.id not in game.exploration.scanned_rival]
+        if not candidates:
+            continue
+        origin = game.systems[ship.system_id]
+        target = min(candidates, key=lambda s: (game.system_explored(s.id, RIVAL),
+                                                game.travel_turns(origin, s, RIVAL), s.id))
+        game.send_ship(ship.id, target.id, owner=RIVAL)
+        incoming.add(target.id)
+        game.rival_event(f"Sent {ship.name} to explore {target.name}.")
 
 
 def research_choice(game):
@@ -61,8 +87,8 @@ def military_orders(game):
     if not colonies:
         return
     hostile = game.diplomacy.relations < HOSTILE_BELOW
-    targets = [s for s in game.systems if game.fleet_at(s.id)] if hostile else []
-    worlds = empire_colonies(game, "player") if hostile else []
+    targets = [s for s in game.systems if game.system_visible(s.id, RIVAL) and game.fleet_at(s.id)] if hostile else []
+    worlds = known_enemy_colonies(game) if hostile else []
     ordered = set()
     staging, _ = max(empire_colonies(game, RIVAL), key=lambda row: (game.planet_yields(row[1])[0], row[1].population, -row[0].id, -row[1].id))
     for system in game.systems:
@@ -109,6 +135,8 @@ def invasion_orders(game):
     if game.diplomacy.relations >= HOSTILE_BELOW:
         return messages
     for system in game.systems:
+        if not game.system_visible(system.id, RIVAL):
+            continue
         candidates = [p for p in system.worlds if game.invasion_error(system.id, p.id, owner=RIVAL) is None
                       and invasion_strength(game, system.id, p.id, RIVAL)[0] > 4+p.population]
         if not candidates:
@@ -127,6 +155,7 @@ def run_ai(game):
     if game.result is not None:
         return invasions
     research_choice(game)
+    scouting_orders(game)
     military_orders(game)
     for ship in sorted(game.ships_owned_by(RIVAL), key=lambda s: s.id):
         if ship.in_transit or ship.kind != "colony_ship":
@@ -143,6 +172,10 @@ def run_ai(game):
                 incoming[other.destination] = incoming.get(other.destination, 0)+1
         targets = [s for s in game.systems if len(available_worlds(game, s)) > incoming.get(s.id, 0)]
         if not targets:
+            unknown = [s for s in game.systems if not game.system_explored(s.id, RIVAL) and not incoming.get(s.id)]
+            if unknown:
+                target = min(unknown, key=lambda s: (game.travel_turns(game.systems[ship.system_id], s, RIVAL), s.id))
+                game.send_ship(ship.id, target.id, owner=RIVAL)
             continue
         origin = game.systems[ship.system_id]
         target = min(targets, key=lambda s: (
@@ -158,7 +191,7 @@ def run_ai(game):
             if game.gate_error(system.id, planet.id, owner=RIVAL) is None:
                 game.queue_gate(system.id, planet.id, owner=RIVAL)
                 game.rival_event(f"Started the Ascension Gate on {planet.name}.")
-                invasions.append(f"Rival started an Ascension Gate on {planet.name}")
+                invasions.append(f"Rival started an Ascension Gate at {gate_location(game, system.id, planet)}")
                 break
         # Save credits for the gate before placing further construction orders.
         if not gate_site(game, RIVAL):
@@ -171,8 +204,11 @@ def run_ai(game):
     military_limit = min(3, max(1, len(colonies)//2))
     transports = sum(s.kind == "troop_transport" for s in game.ships_owned_by(RIVAL)) + sum(
         project.item_id == "troop_transport" for _, p in colonies for project in p.construction_queue)
-    troop_limit = max(((4+p.population)//TROOP_STRENGTH+1 for _, p in empire_colonies(game, "player")), default=0)
-    fleet_limit = min(unclaimed, 3, 1+len(colonies)//2)
+    troop_limit = max(((4+p.population)//TROOP_STRENGTH+1 for _, p in known_enemy_colonies(game)), default=0)
+    unknown = sum(not game.system_explored(s.id, RIVAL) for s in game.systems)
+    fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
+    scouts = sum(s.kind == "scout" for s in game.ships_owned_by(RIVAL)) + sum(
+        q.item_id == "scout" for _, p in colonies for q in p.construction_queue)
     for index, (system, planet) in enumerate(colonies):
         if planet.construction_queue:
             continue
@@ -184,7 +220,14 @@ def run_ai(game):
                           and warships < military_limit)
         produce_transport = (index == 0 and game.diplomacy.relations < HOSTILE_BELOW
                              and warships > 0 and transports < troop_limit)
-        if produce_frigate:
+        produce_scout = (game.fog_of_war and index == 0 and len(game.exploration.scanned_rival) < len(game.systems)
+                         and scouts < min(2, 1+len(colonies)//3))
+        if produce_scout:
+            if game.ship_build_error(system.id, planet.id, "scout", owner=RIVAL) is None:
+                game.queue_ship(system.id, planet.id, "scout", owner=RIVAL)
+                scouts += 1
+                game.rival_event(f"Queued a scout on {planet.name}.")
+        elif produce_frigate:
             if game.ship_build_error(system.id, planet.id, "frigate", owner=RIVAL) is None:
                 game.queue_ship(system.id, planet.id, "frigate", owner=RIVAL)
                 warships += 1

@@ -73,7 +73,9 @@ def draw_diplomacy(app):
             effect = "pact_income" if action == "trade" else "pact_research"
             own_yield = base+getattr(own_race, bonus)+game.bonuses_for().get(effect, 0)
             rival_yield = base+getattr(race, bonus)+game.bonuses_for("rival").get(effect, 0)
-            text(surface, f"You: +{own_yield} {unit}/turn · Rival: +{rival_yield} {unit}/turn",
+            returns = (f"Your empire: +{own_yield} {unit}/turn" if game.fog_of_war else
+                       f"You: +{own_yield} {unit}/turn · Rival: +{rival_yield} {unit}/turn")
+            text(surface, returns,
                  (x+23, 448), 13, race.color)
             caption = "+1 relations each End Turn while active" if active else f"Accepted at {threshold:+} relations · Current: {state.relations:+}"
             text(surface, caption, (x+23, 474), 12, MUTED)

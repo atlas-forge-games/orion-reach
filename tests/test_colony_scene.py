@@ -16,6 +16,10 @@ from orion import building_art
 from orion.buildings import BUILDINGS
 from orion.colony_scene import PALETTES, is_headquarters, scene_buildings
 from orion.model import PLAYER, RIVAL, new_game
+from functools import partial
+
+# Preserve these pre-exploration scenarios; fog-on rules have their own tests.
+new_game = partial(new_game, fog_of_war=False)
 
 
 class SceneDataTests(unittest.TestCase):

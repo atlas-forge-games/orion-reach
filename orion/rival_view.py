@@ -5,11 +5,15 @@ from .model import RIVAL
 from .production import PROJECTS
 from .races import RACES
 from .research import TECHNOLOGIES
+from .exploration import known_rival_colonies
 from .ui import FAINT, GOLD, INK, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 
 def draw_rival(app):
     surface, game = app.canvas, app.game
+    if game.fog_of_war and game.opponent:
+        draw_surveyed_rival(app)
+        return
     app.chrome("RIVAL INTELLIGENCE")
     back_name = {"diplomacy": "Diplomacy", "planet": "Planet overview"}.get(app.rival_return, "Empire overview")
     app.button("rival_back", f"←  {back_name}", (64, 124, 269, 46), lambda: app.go(app.rival_return), "ghost")
@@ -32,7 +36,8 @@ def draw_rival(app):
         reason = game.opponent_start_error()
         app.button("add_rival", "Add rival", (95, 663, 283, 52), app.add_rival, "primary", enabled=reason is None)
         home = game.opponent_home()
-        caption = reason or f"Starting world: {home[1].name} · {home[0].name} system"
+        caption = reason or ("Its homeworld must be located through exploration." if game.fog_of_war else
+                             f"Starting world: {home[1].name} · {home[0].name} system")
         text(surface, shorten(caption, 928, 14), (405, 683), 14, RIVAL_COLOR)
     else:
         summary = summarize_empire(game, owner=RIVAL)
@@ -88,3 +93,47 @@ def draw_rival(app):
     else:
         text(surface, "Income includes agreements · Open Diplomacy to negotiate", (400, 848), 12, MUTED)
     app.button("rival_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary")
+
+
+def draw_surveyed_rival(app):
+    surface, game = app.canvas, app.game
+    app.chrome("RIVAL INTELLIGENCE")
+    app.button("rival_back", "←  Back", (64, 124, 225, 46), lambda: app.go(app.rival_return), "ghost")
+    app.button("rival_galaxy", "Galaxy map", (307, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
+    app.button("rival_diplomacy", "Diplomacy · D", (498, 124, 226, 46), app.open_diplomacy)
+    text(surface, game.opponent.name, (64, 190), 43, INK, "title")
+    text(surface, "Only surveyed colonies and currently visible fleets appear here.", (66, 251), 15, MUTED)
+    rows = known_rival_colonies(game)
+    ships = [s for s in game.visible_ships() if s.owner == RIVAL]
+    stats = [("KNOWN COLONIES", str(len(rows)), "Last-known ownership"),
+             ("VISIBLE SHIPS", str(len(ships)), "Observed systems only"),
+             ("TREASURY & RESEARCH", "Unknown", "Exploration does not reveal these totals")]
+    for index, (label, value, caption) in enumerate(stats):
+        x = 64+index*446
+        panel(surface, (x, 289, 420, 99))
+        text(surface, label, (x+19, 303), 10, MUTED, "mono", 1)
+        text(surface, value, (x+18, 327), 25, RIVAL_COLOR)
+        text(surface, caption, (x+19, 368), 11, MUTED)
+    panel(surface, (64, 411, 1312, 382))
+    text(surface, "SURVEYED RIVAL COLONIES", (88, 434), 11, GOLD, "mono", 1)
+    last = max(0, (len(rows)-1)//5)
+    app.rival_page = min(max(0, app.rival_page), last)
+    for index, (system, planet) in enumerate(rows[app.rival_page*5:app.rival_page*5+5]):
+        y = 475+index*54
+        text(surface, f"{planet.name} · {system.name}", (88, y), 18, INK)
+        live = game.system_visible(system.id)
+        stamp = "Observed now" if live else f"Last observed on turn {game.exploration.survey(system.id).last_seen}"
+        text(surface, f"{stamp} · {planet.population} B · {len(planet.buildings)} buildings", (89, y+27), 12, MUTED)
+        app.button(f"rival_colony_{system.id}_{planet.id}", "Survey", (1200, y+5, 150, 39),
+                   lambda sid=system.id, pid=planet.id: app.survey_rival_colony(sid, pid))
+    if not rows:
+        text(surface, "No rival colonies have been located.", (90, 494), 28, INK, "title")
+        paragraph(surface, "Explore with scouts to find their worlds. Diplomacy is available through the existing communications channel; it does not reveal their colonies, fleet routes or economy.",
+                  (92, 552), 1061, 18, MUTED, 30)
+    text(surface, f"PAGE {app.rival_page+1} / {last+1}", (89, 759), 10, FAINT, "mono")
+    app.button("rival_previous", "← Prev", (1069, 746, 134, 34), lambda: app.change_rival_page(-1), enabled=app.rival_page>0)
+    app.button("rival_next", "Next →", (1218, 746, 134, 34), lambda: app.change_rival_page(1), enabled=app.rival_page<last)
+    app.button("rival_pause", "Menu", (64, 834, 126, 45), app.pause)
+    app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)
+    text(surface, "Send a ship to refresh old surveys. Enemy voyages are hidden by fog.", (400, 845), 12, MUTED)
+    app.button("rival_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
