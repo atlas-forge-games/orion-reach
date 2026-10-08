@@ -11,6 +11,17 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
         if facing:
             values = [(-b*facing, a*facing) for a, b in values]
         return [(round(x+a*scale), round(y+b*scale)) for a, b in values]
+    if kind == "troop_transport":
+        hull = points([(-13, -29), (13, -29), (19, -14), (19, 22), (-19, 22), (-19, -14)])
+        pg.draw.polygon(surface, (31, 49, 61), hull)
+        pg.draw.polygon(surface, color, hull, max(1, round(scale)))
+        for offset in (-10, 10):
+            pod = points([(offset-5, -9), (offset+5, -9), (offset+5, 16), (offset-5, 16)])
+            pg.draw.polygon(surface, (57, 74, 81), pod)
+            pg.draw.polygon(surface, INK, pod, max(1, round(scale)))
+            pg.draw.line(surface, color, points([(offset, 25)])[0], points([(offset, 33)])[0], max(1, round(3*scale)))
+        pg.draw.line(surface, INK, points([(-7, -20)])[0], points([(7, -20)])[0], max(1, round(2*scale)))
+        return
     if kind == "frigate":
         hull = points([(0, -34), (10, -15), (10, 17), (6, 25), (-6, 25), (-10, 17), (-10, -15)])
         pg.draw.polygon(surface, (31, 49, 61), hull)

@@ -91,8 +91,8 @@ def agreement_yields(game, owner):
 
 
 def action_error(game, action):
-    if game.combat is not None:
-        return "Resolve the current battle before negotiating."
+    if game.strategy_error():
+        return game.strategy_error()
     if action not in ACTIONS:
         return "Unknown diplomatic action."
     state = game.diplomacy

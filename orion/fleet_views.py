@@ -3,9 +3,8 @@
 import pygame as pg
 
 from .colony_view import draw_planet_tabs, turn_label
-from .building_art import draw_building_art
 from .fleet_art import ship_icon
-from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
+from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES, TROOP_STRENGTH
 from .model import PLAYER, RIVAL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
@@ -21,6 +20,7 @@ def draw_shipyard(app):
     app.button("shipyard_back", "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()} / {planet.name.upper()}", 530, 11, "mono"),
          (347, 143), 11, MUTED, "mono")
+    app.button("shipyard_fleets", "Open fleets →", (924, 124, 190, 46), app.open_fleets)
     text(surface, f"YEAR {game.year} · {game.treasury_for(planet.owner or PLAYER):,} CR", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(planet.name, 720, 43, "title"), (64, 185), 43, INK, "title")
     text(surface, f"Shipyard · {game.planet_yields(planet)[0]} industry / turn · {game.empire_name_for(planet.owner)}",
@@ -29,30 +29,25 @@ def draw_shipyard(app):
 
     estimates = game.queue_estimates(planet)
     for index, spec in enumerate(SHIP_TYPES.values()):
-        y = 306+index*206
-        panel(surface, (64, y, 585, 194))
-        ship_icon(surface, (128, y+74), 1.2, kind=spec.id)
-        text(surface, spec.name, (201, y+16), 26, INK, "title")
+        y = 306+index*164
+        panel(surface, (64, y, 585, 158))
+        ship_icon(surface, (119, y+64), .9, kind=spec.id)
+        text(surface, spec.name, (170, y+8), 25, INK, "title")
         description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
-                       if spec.id == "colony_ship" else f"{spec.hull} hull · {spec.damage} damage per shot")
-        text(surface, description, (202, y+56), 13, CYAN)
-        text(surface, "Consumed when settling a world." if spec.id == "colony_ship" else
-             "Engage opposing fleets in the same system.", (202, y+82), 12, MUTED)
+                       if spec.id == "colony_ship" else f"{spec.hull} hull · {TROOP_STRENGTH} invasion attack · Unarmed"
+                       if spec.id == "troop_transport" else f"{spec.hull} hull · {spec.damage} damage per shot")
+        text(surface, description, (171, y+45), 12, CYAN)
+        captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
+                    "troop_transport": "Consumed in invasions. Escort with frigates."}
+        text(surface, captions[spec.id], (171, y+67), 12, MUTED)
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
         text(surface, f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}",
-             (88, y+119), 13, INK)
+             (171, y+93), 12, INK)
         reason = game.ship_build_error(system.id, planet.id, spec.id)
-        app.button(f"build_{spec.id}", f"Build {spec.name.lower()}", (88, y+148, 258, 34),
+        app.button(f"build_{spec.id}", f"Build {spec.name.lower()}", (88, y+119, 270, 31),
                    lambda kind=spec.id: app.queue_ship(kind), enabled=reason is None)
-        text(surface, shorten(reason or "No building slot needed", 260, 11), (365, y+159), 11, GOLD if reason else MUTED)
-
-    panel(surface, (64, 720, 585, 73))
-    draw_building_art(surface, "shipyard", (79, 725, 89, 60))
-    ready = len(game.fleet_at(system.id))
-    text(surface, f"Your ships in orbit: {ready}", (190, 734), 15, INK)
-    text(surface, "Travel, engage and repair", (191, 763), 11, MUTED)
-    app.button("shipyard_fleets", "Open fleets →", (447, 737, 180, 37), app.open_fleets)
+        text(surface, shorten(reason or "No building slot needed", 250, 11), (376, y+129), 11, GOLD if reason else MUTED)
 
     panel(surface, (674, 306, 702, 487))
     text(surface, "SHARED CONSTRUCTION QUEUE", (697, 328), 11, GOLD, "mono", 1)
@@ -85,7 +80,7 @@ def draw_shipyard(app):
     app.button("queue_next", "Next →", (1220, 739, 133, 39), lambda: app.change_shipyard_page(1), enabled=app.shipyard_page<last)
     app.button("shipyard_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("shipyard_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Build ships · Plot courses in Fleets · Settle worlds or engage enemies", (400, 840), 12, MUTED)
+    text(surface, "Fleets · F: travel and fight. Planet overview: settle or invade.", (400, 840), 12, MUTED)
     app.button("shipyard_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
 
@@ -117,7 +112,8 @@ def draw_fleets(app):
         panel(surface, (64, y, 1312, 76))
         ship_icon(surface, (100, y+38), .67, kind=ship.kind)
         text(surface, ship.name, (142, y+12), 18, INK)
-        role = f"{game.starting_colonists()} B colonists · Unarmed" if not ship.damage else f"{ship.damage} damage / shot"
+        role = (f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
+                f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{ship.damage} damage / shot")
         text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.in_transit else f"{origin.name} orbit"
@@ -141,7 +137,7 @@ def draw_fleets(app):
         panel(surface, (64, 429, 1312, 248))
         ship_icon(surface, (144, 526), 1.6)
         text(surface, "Your fleet starts at a shipyard.", (248, 467), 28, INK, "title")
-        paragraph(surface, "Build a colony ship to settle worlds or a frigate to fight. Finished ships appear here in orbit.",
+        paragraph(surface, "Build colony ships to settle, frigates to fight, or troop transports to invade. Finished ships appear here in orbit.",
                   (250, 515), 995, 16, MUTED, 27)
         home = next(((s, p) for s in game.systems for p in s.worlds if p.owner == PLAYER), None)
         if home:

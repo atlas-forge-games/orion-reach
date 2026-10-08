@@ -93,6 +93,8 @@ class AIRulesTests(unittest.TestCase):
             with self.subTest(seed=seed, size=size):
                 game = new_game(seed=seed, galaxy_size=size)
                 for _ in range(100):
+                    if game.result is not None:
+                        break
                     game.advance_turn()
                     self.assertGreaterEqual(game.opponent.credits, 0)
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)
@@ -101,7 +103,8 @@ class AIRulesTests(unittest.TestCase):
                 self.assertGreater(len({s.id for s, _ in rows}), 1)
                 self.assertTrue(any("factory" in p.buildings and "trade_center" in p.buildings for _, p in rows))
                 self.assertTrue(game.opponent.technology.completed)
-                self.assertEqual(game.credits, 920)  # Only Earth's 8 CR for 100 turns.
+                self.assertEqual(game.credits, 120+8*(game.turn-1))
+                self.assertEqual((game.result.winner, game.result.condition), (RIVAL, "science"))
                 self.assertEqual(summarize_empire(game).colonies, 1)
                 self.assertTrue(all(p.used_slots <= p.building_capacity for s in game.systems for p in s.worlds))
 
@@ -243,7 +246,7 @@ class AIRulesTests(unittest.TestCase):
             lambda d: d.pop("opponent"),
             lambda d: d["opponent"].update(credits=-1),
             lambda d: d["opponent"].update(research=True),
-            lambda d: d["opponent"].update(home_system=0, home_planet=2),
+            lambda d: d["opponent"].update(home_system=len(game.systems), home_planet=2),
             lambda d: d["opponent"].update(name=""),
             lambda d: d["opponent"]["events"][0].update(turn=2),
             lambda d: d["opponent"]["events"][0].update(message="x\ny"),

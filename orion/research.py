@@ -35,7 +35,7 @@ class Technology:
 
     @property
     def cost(self):
-        return (40, 100)[self.tier-1]
+        return (40, 100, 500)[self.tier-1]
 
 
 def tech(identifier, branch, tier, name, description, **effects):
@@ -75,6 +75,7 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("scientific_institutes", "society", 1, "Scientific Institutes", "+1 research per colony.", colony_research=1),
     tech("commerce_guilds", "society", 2, "Commerce Guilds", "+3 credits per trade center.", trade_income=3),
     tech("cultural_exchange", "society", 2, "Cultural Exchange", "Your active trade pact earns +3 credits; your research pact earns +3 research.", pact_income=3, pact_research=3),
+    tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
 )}
 
 
@@ -107,6 +108,8 @@ class ResearchState:
             return "discovered"
         if identifier == self.active:
             return "active"
+        if identifier == "ascension_theory":
+            return "available" if self.finished_branches == len(BRANCHES) else "locked"
         committed = self.completed + ([self.active] if self.active else [])
         if any(TECHNOLOGIES[t].branch == technology.branch and
                TECHNOLOGIES[t].tier == technology.tier for t in committed):
@@ -117,6 +120,10 @@ class ResearchState:
             return "locked"
         return "available"
 
+    @property
+    def finished_branches(self):
+        return sum(TECHNOLOGIES[t].tier == 2 for t in self.completed)
+
     def choice_error(self, identifier):
         if not isinstance(identifier, str) or identifier not in TECHNOLOGIES:
             return "Unknown technology."
@@ -126,6 +133,8 @@ class ResearchState:
         if status == "excluded":
             return "You chose the other technology in this tier."
         if status == "locked":
+            if identifier == "ascension_theory":
+                return "Complete tier II in all eight research branches first."
             return "Complete the previous tier in this branch first."
         if self.active:
             return "Finish your current research project first."
@@ -149,7 +158,7 @@ class ResearchState:
         if not isinstance(data, dict) or set(data) != {"completed", "active", "progress"}:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
-        if not isinstance(completed, list) or len(completed) > 16:
+        if not isinstance(completed, list) or len(completed) > 17:
             raise ValueError("Invalid discoveries")
         state = cls()
         for identifier in completed:

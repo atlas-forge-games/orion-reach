@@ -9,6 +9,7 @@ import pygame as pg
 from .building_art import draw_building_art
 from .buildings import BUILDINGS
 from .model import PLAYER, RIVAL
+from .production import SHIP_TYPES
 from .ui import CYAN, GOLD, INK, MUTED, RIVAL_COLOR, panel, text, text_image
 
 
@@ -24,11 +25,8 @@ class SceneBuilding:
 def is_headquarters(game, system_id, planet):
     if not planet.colonized:
         return False
-    if planet.owner == PLAYER:
-        return system_id == 0 and planet.id == 2
-    rival = game.opponent
-    return (planet.owner == RIVAL and rival is not None
-            and (system_id, planet.id) == (rival.home_system, rival.home_planet))
+    home = game.headquarters(planet.owner)
+    return bool(home and (system_id, planet.id) == (home[0].id, home[1].id))
 
 
 def scene_buildings(game, system_id, planet):
@@ -38,7 +36,7 @@ def scene_buildings(game, system_id, planet):
     items = []
     if is_headquarters(game, system_id, planet):
         items.append(SceneBuilding("headquarters", "Headquarters palace", 1))
-    ships = sum(project.item_id == "colony_ship" for project in planet.construction_queue)
+    ships = sum(project.item_id in SHIP_TYPES for project in planet.construction_queue)
     items.append(SceneBuilding("shipyard", "Shipyard", 1, ships))
     projects = planet.building_projects
     for building_id, spec in BUILDINGS.items():

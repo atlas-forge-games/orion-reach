@@ -32,7 +32,7 @@ def discover(game, identifier, owner=PLAYER):
 
 class ResearchRulesTests(unittest.TestCase):
     def test_two_exclusive_choices_at_each_of_two_tiers_in_eight_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 32))
+        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 33))  # 32 choices + Ascension Theory
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology
@@ -275,6 +275,8 @@ class ResearchSaveTests(unittest.TestCase):
             storage = Storage(folder)
             restored, _ = storage.load(storage.save(game))
             for _ in range(100):
+                if game.result is not None:
+                    break
                 self.assertEqual(game.advance_turn(), restored.advance_turn())
                 self.assertEqual(game, restored)
             self.assertGreater(len(game.opponent.technology.completed), 0)

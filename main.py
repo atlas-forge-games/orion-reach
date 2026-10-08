@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--data-dir", type=Path, help="override the user save/settings directory")
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("menu", "setup", "load", "settings", "galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "about"), default="menu")
+    parser.add_argument("--screen", choices=("menu", "setup", "load", "settings", "galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -26,7 +26,7 @@ def main():
     app = App(args.data_dir, capture=bool(args.screenshot))
     try:
         if args.screenshot:
-            if args.screen in ("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat"):
+            if args.screen in ("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "objectives", "result"):
                 from orion.model import new_game
                 app.game = new_game(seed=2408)
                 if args.screen in ("planet", "colony", "shipyard"):
@@ -41,6 +41,18 @@ def main():
                     app.game.start_combat(0)
                     app.game.combat_fire(1, 4)
                     app.game.combat_ai_action()
+                if args.screen == "result":
+                    from orion.research import BRANCHES, choices
+                    # Preview a science result without altering a real campaign.
+                    game = app.game
+                    game.research = 1620
+                    for branch in BRANCHES:
+                        for tier in (1, 2):
+                            game.choose_research(choices(branch, tier)[0].id)
+                    game.choose_research("ascension_theory")
+                    earth = game.planet_at(0, 2)
+                    earth.ascension_gate, earth.gate_charge = True, 5
+                    game.check_victory()
             app.go(args.screen)
             app.time = 3.0
             app.render()

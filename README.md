@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.10
+# Orion Reach — Python prototype 0.11
 
-A playable colony-building and interstellar expansion prototype with fleet combat, research, races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -87,6 +87,11 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Build **frigates**, then **Engage** opposing fleets in the same system. A separate
   tactical screen offers alternating ship actions, fixed damage, retreat, a combat
   log and persistent losses. Damaged ships can repair at friendly colonies.
+- Build **troop transports**, clear opposing ships, then **Invade colony** from a
+  rival planet's Overview tab. Capturing its last colony wins by conquest.
+- **Objectives · V** tracks both victory paths. Finish all eight research branches,
+  research **Ascension Theory**, then construct and charge an **Ascension Gate**
+  to win through science. The AI can win by either path too.
 - The galaxy map shows flight paths, ship positions and newly claimed systems.
 - The **Helios Directorate** develops its economy, builds colony ships, travels
   between systems and settles unclaimed worlds on each End Turn. Open
@@ -108,16 +113,16 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   Load Game shows dates, empire names and turns, with pagination.
 - Autosave on campaign creation, construction orders/cancellations/demolition,
   ship orders, settlement, adding a rival, diplomatic actions, research choices,
-  every combat action, End Turn, return to menu and normal exit.
+  every combat action, invasions, gate orders, End Turn, return to menu and normal exit.
 - Fullscreen, animated background and interface-sound settings persist.
 - Mouse and keyboard navigation, resizing with correct letterboxed hit regions.
 - Damaged/incompatible saves appear as unavailable instead of crashing the app.
 
-**Scope:** construct buildings, colony ships and frigates, travel between systems, and
+**Scope:** construct buildings, colony ships, frigates and troop transports, travel between systems, and
 found additional colonies alongside an expanding AI empire, and negotiate
-trade and research agreements, make permanent technology choices and fight fleet battles.
-Population growth, food, shields, advanced weapons, planetary conquest, additional
-AI empires and victory conditions are future work.
+trade and research agreements, make permanent technology choices, fight fleet battles,
+invade colonies and win through conquest or science.
+Population growth, food, shields, advanced weapons and additional AI empires are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized. Settings contains interface sounds,
@@ -208,8 +213,10 @@ technologies can also provide research income.
 | Computers | Research Networks / Trade Algorithms | Distributed Computing / Planetary Automation |
 | Society | Colonial Administration / Scientific Institutes | Commerce Guilds / Cultural Exchange |
 
-All 32 options have effects on existing game systems, described on their cards.
-You can discover up to 16 per campaign. Building bonuses affect existing and
+All 32 branch options have effects on existing game systems, described on their cards.
+You can discover 16 branch technologies plus the ultimate **Ascension Theory**
+project, available in Objectives after completing tier II in every branch.
+Either choice in each tier qualifies. Building bonuses affect existing and
 future copies; flat colony bonuses affect every owned colony. Bonuses add
 together. Percentage discounts add and the final credit price rounds up.
 Research never changes the price already paid for a project.
@@ -256,10 +263,9 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
   activity entries. Click **Survey** to inspect a colony's buildings and queue.
   The report and map reveal the rival's activity; fog of war is not implemented.
 - Your Empire Overview and Fleets list only your assets. A system can contain
-  colonies from both empires, shown with cyan and orange rings. Neither side
-  can take over an established colony. This is competition for territory and
-  development, with trade and research agreements available through Diplomacy.
-  Combat and victory conditions come later.
+  colonies from both empires, shown with cyan and orange rings. Hostile rivals
+  build escorted invasion groups to capture colonies. In peacetime, the AI
+  develops its economy and research toward an Ascension Gate.
 
 AI decisions are deterministic for a given game state. Saving and loading
 preserves its finances, orders, ships, ownership and recent activity.
@@ -278,9 +284,10 @@ globe beside the tabs retains the planetary view.
   if none is finished, it selects the first queued project of that type.
   Use the individual Colony slots to inspect other copies or queued projects.
 - The **headquarters palace** marks Earth for the player and the rival's original
-  homeworld for the AI. Click it for Empire Overview or Rival report.
+  homeworld for the AI. If that world is captured, the marker moves to a remaining
+  colony. Click it for Empire Overview or Rival report.
 - A **shipyard** appears at every colony, reflecting its existing ability to build
-  colony ships. Click it to open the Shipyard tab.
+  all three ship types. Click it to open the Shipyard tab.
 - The palace and shipyard are landmarks for existing capabilities. They use no
   building slots, charge no construction cost and provide no additional yields.
 - Rival graphics open survey controls; construction, cancellation and demolition
@@ -414,7 +421,7 @@ queue capacity and travel speed are defined in `orion/production.py`.
 4. On the combat screen, select one of your available ships and an enemy target,
    then click **Fire**. The AI takes its next action automatically. Each surviving
    ship acts once per round; **Hold** spends an activation without attacking.
-   Colony ships cannot fire, but can hold or retreat with the fleet.
+   Colony ships and troop transports cannot fire, but can hold or retreat with the fleet.
 5. Resolve the battle or retreat, then choose **Return to system**. Strategic time,
    income, research, construction and other travel do not advance during combat.
    Escape pauses the battle, and Save / Load resumes the exact round and activation.
@@ -423,6 +430,7 @@ queue capacity and travel speed are defined in `orion/production.py`.
 | --- | ---: | ---: | ---: | ---: |
 | Colony ship | 80 | 42 | 12 | 0 (unarmed) |
 | Frigate | 60 | 36 | 20 | 5 |
+| Troop transport | 80 | 42 | 16 | 0 (8 invasion attack) |
 
 Shots always hit their selected enemy. There are no range, movement, armour or
 shield rules yet. Sides alternate one ship activation at a time. If one side has
@@ -437,7 +445,8 @@ reused. Retreat withdraws all surviving ships to the nearest other friendly
 system without an opposing fleet. If there is no such friendly destination, the
 nearest other system without opposing ships is used. The confirmation names the
 destination and travel time. Retreat uses normal strategic travel, and damage is
-retained. Winning a space battle does not capture colonies or their buildings.
+retained. Winning a space battle clears orbit; use troop transports to capture
+colonies and their buildings afterward.
 
 **Repairs:** ships recover **4 hull per End Turn**, up to full health, after a
 complete turn in orbit at a system containing one of their colonies and no
@@ -460,6 +469,75 @@ action is autosaved; tactical health, activations, logs, results and retreats
 survive saving and loading.
 
 ![Fleet combat](screenshots/combat.png)
+
+## Conquest and scientific victory
+
+Open **Objectives · V** from any strategic screen. Both victory paths are always
+enabled for the player and the rival, including when continuing older saves.
+Single-empire campaigns can win through science; they do not automatically win
+conquest simply because no rival was added.
+
+### Conquest
+
+1. Build **troop transports** in the Shipyard: **80 credits, 42 work, 16 hull**
+   and **8 invasion attack** each. They are unarmed in fleet combat, so escort
+   them with frigates. Ordinary ship discounts and propulsion bonuses apply.
+2. Send them to a system containing a rival colony. Destroy or drive away **all
+   opposing ships in that system** before attempting an invasion.
+3. Open the rival planet's **Overview → Invade colony**. The forecast shows
+   total attack against **4 + the planet's population** defence. Attack must
+   be strictly greater; ties favour the defender. There is no random roll.
+4. Confirm to deploy **all your troop transports currently in that system**.
+   Every deployed transport is consumed, whether the invasion succeeds or fails.
+   One transport can take a 1 B colony (8 > 5); an 8 B homeworld needs two (16 > 12).
+
+A successful invasion transfers the population, buildings and ordinary paid
+construction queue intact. Research, treasury and fleets do not transfer. Any
+built or queued Ascension Gate is destroyed without a refund, and its charge is
+lost. If your headquarters is captured, its landmark moves to a remaining colony.
+An invasion immediately ends both treaties, sets relations to **-100**, and
+starts the usual three-turn offer cooldown, including after a failed landing.
+
+Capturing **every rival colony** wins immediately. Losing your last colony causes
+defeat even if you still have colony ships or military ships. Fleets alone cannot
+keep an empire alive. A hostile AI assembles frigates and enough transports,
+travels using the normal rules, and invades exposed colonies on End Turn. It
+favours enemy gate colonies. A decisive AI invasion stops the turn before income
+or production; its result and consumed transports are saved immediately by the UI.
+
+### Science
+
+1. Complete **tier II in all eight branches**: 16 discoveries in total. Every
+   combination of exclusive technology choices can reach this victory path.
+2. In **Objectives**, choose **Ascension Theory** for **500 RP**. It uses the
+   existing one-project research system: stored points apply immediately, then
+   normal research income contributes until completion.
+3. Choose one of your colonies in Objectives and build the **Ascension Gate**:
+   **500 credits and 300 work**, paid through the normal shared construction
+   queue. It needs no building slot, has no discount, and is limited to one built
+   or queued gate per empire. Cancel an unfinished gate from its Shipyard queue
+   for the normal unspent-work refund.
+4. After construction, keep the gate for **five charging turns**. Charging starts
+   on the turn after completion. Any opposing ship in that system pauses charging,
+   even in peacetime; existing charge is preserved and resumes when orbit clears.
+   A ship arriving that turn blocks charging immediately.
+5. The fifth clear-orbit charge wins. Protect the colony: capture destroys the
+   gate, while a fleet battle by itself does not destroy the structure.
+
+The AI follows the same research, costs and charging rules. Objectives shows its
+research progress and gate location; End Turn announces rival gate construction,
+completion and the final charging turn. If both gates activate in the same turn,
+the campaign is a **draw**. No score, turn-limit, diplomatic or exploration victory
+is enabled in this version.
+
+A final **Victory / Defeat / Draw** screen records the condition, winner and turn.
+The finished campaign stops accepting strategic orders. Save a final snapshot,
+return to the menu, or start a new campaign. Loading a finished save reopens its
+result screen; active battles and unfinished gates also resume correctly.
+
+![Victory objectives](screenshots/objectives.png)
+
+![Campaign result](screenshots/victory.png)
 
 ## Empire Overview
 
@@ -520,6 +598,9 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Inspect or add the AI opponent | Empire → Rival report |
 | Open / close Diplomacy | D, or the Diplomacy button while playing |
 | Open / close Research | R, or the Research button while playing |
+| Open / close victory objectives | V, or Objectives while playing |
+| Invade a rival colony | Troop transports in orbit → planet Overview → Invade colony |
+| Research Ascension Theory / build a gate | Objectives → research project / colony selector |
 | Browse research branches | Click a branch or use Left / Right on the Research screen |
 | Start a fleet battle | Engage in Fleets or on the system overview |
 | Attack in combat | Select your ship → select an enemy → Fire |
@@ -545,10 +626,12 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.10 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.11 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
 ships and travel times are preserved. Pre-combat saves gain full ship hulls and no
-active battle. Research from v0.9 is preserved. Each empire starts with an empty research
+active battle. v0.10 ship health, active battles and tactical turns are preserved.
+Older campaigns gain both victory paths with no existing gate or result.
+Research from v0.9 is preserved. Each empire starts with an empty research
 tree when upgrading from v0.8 or earlier; saved points can be spent immediately.
 v0.6 ownership and the rival economy are retained,
 and neutral diplomacy is added. Earlier colonies and ships become player-owned;
@@ -556,10 +639,12 @@ no rival is added until you choose Add rival. v0.5 ships, flights and production
 are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
-New saves use **format version 8**, including ship hulls, active or resolved battles,
+New saves use **format version 9**, including gates, charging progress, campaign results,
+troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.9 or earlier. Loading resumes the
-combat screen if a battle is unfinished or awaiting acknowledgement; otherwise
+and diplomacy. They cannot be opened by v0.10 or earlier. Loading resumes the
+result screen if the campaign is finished, or the combat screen if a battle is
+unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
 Keep an older manual snapshot if you plan to switch back; normal gameplay
 updates the autosave. Unissued route previews are not saved as orders.
@@ -590,6 +675,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/research_view.py` | Branches, tiers, project progress and research controls |
 | `orion/combat.py` | Battle snapshots, alternating actions, AI targeting, retreat and validation |
 | `orion/combat_view.py` | Tactical formations, health bars, targeting, logs and results |
+| `orion/victory.py` | Invasions, Ascension Gates, victory checks and outcome validation |
+| `orion/victory_view.py` | Objectives, gate controls and final campaign results |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard, fleets and galaxy-map routes |
 | `orion/fleet_art.py` | Procedural transport and frigate drawings |
@@ -609,11 +696,12 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
+| `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. The next practical increments are population
 growth, food and more advanced technology tiers.
-Shields, advanced weapons and planetary conquest can follow. Bump the save version and add
+Shields, advanced weapons and ship customization can follow. Bump the save version and add
 migrations when the data schema changes.
 
 ## Development checks
@@ -635,11 +723,14 @@ python main.py --headless --screen rival --screenshot rival.png
 python main.py --headless --screen diplomacy --screenshot diplomacy.png
 python main.py --headless --screen research --screenshot research.png
 python main.py --headless --screen combat --screenshot combat.png
+python main.py --headless --screen objectives --screenshot objectives.png
+python main.py --headless --screen result --screenshot victory.png
 ```
 
 `--screen` supports `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
-`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, `research`, `combat`, and `about`.
-The combat capture uses a local example encounter. Screenshot mode does not create
+`planet`, `colony`, `empire`, `shipyard`, `fleets`, `rival`, `diplomacy`, `research`,
+`combat`, `objectives`, `result`, and `about`.
+Combat and result captures use local example states. Screenshot mode does not create
 a campaign save or change your settings.
 To regenerate art only, install `numpy` and `Pillow` and run
 `python tools/build_art.py`; these are not needed to play.

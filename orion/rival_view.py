@@ -66,7 +66,7 @@ def draw_rival(app):
         text(surface, "RIVAL COLONIES", (849, 427), 11, GOLD, "mono", 2)
         for i, (system, planet) in enumerate(rows[app.rival_page*5:app.rival_page*5+5]):
             y = 464+i*50
-            name = planet.name + (" · Home" if (system.id, planet.id) == (rival.home_system, rival.home_planet) else "")
+            name = planet.name + (" · HQ" if game.headquarters(RIVAL) == (system, planet) else "")
             text(surface, shorten(name, 349, 15), (849, y), 15, INK)
             project = PROJECTS[planet.construction_queue[0].item_id].name if planet.construction_queue else "Idle"
             text(surface, f"{len(planet.buildings)} buildings · {project}", (850, y+24), 11, MUTED)
@@ -75,7 +75,7 @@ def draw_rival(app):
         text(surface, f"{app.rival_page+1} / {last+1}", (850, 750), 11, FAINT, "mono")
         app.button("rival_previous", "← Prev", (1090, 730, 126, 34), lambda: app.change_rival_page(-1), enabled=app.rival_page>0)
         app.button("rival_next", "Next →", (1228, 730, 126, 34), lambda: app.change_rival_page(1), enabled=app.rival_page<last)
-        text(surface, "Race to settle unclaimed worlds. Rival colonies can be surveyed; they cannot be managed or captured.",
+        text(surface, "Survey rival colonies to plan invasions. Objectives · V tracks both empires' progress toward victory.",
              (65, 798), 13, MUTED)
     app.button("rival_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)

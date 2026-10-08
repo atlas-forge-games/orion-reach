@@ -6,6 +6,7 @@ from .planet_art import draw_planet, draw_star
 from .colony_view import draw_planet_tabs
 from .colony_scene import draw_colony_scene, is_headquarters
 from .model import PLAYER, RIVAL
+from .victory import invasion_strength
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
@@ -153,13 +154,23 @@ def draw_planet_overview(app):
     if planet.colonized:
         status = "Headquarters" if is_headquarters(game, system.id, planet) else "Established colony"
         if planet.owner == RIVAL:
-            status = "Rival headquarters" if is_headquarters(game, system.id, planet) else "Rival colony · survey only"
+            status = "Rival headquarters" if is_headquarters(game, system.id, planet) else "Rival colony"
     text(surface, status, (1036, 602), 21, INK)
     if planet.colonized:
         text(surface, shorten(game.empire_name_for(planet.owner), 318, 13), (1037, 639), 13,
              CYAN if planet.owner == PLAYER else RIVAL_COLOR)
         text(surface, f"{planet.population} B inhabitants · {game.planet_yields(planet)[0]} IND / turn", (1037, 665), 12, INK)
-        paragraph(surface, BIOME_NOTES[planet.biome], (1037, 696), 318, 12, MUTED, 18)
+        if planet.owner == RIVAL:
+            attack, defence = invasion_strength(game, system.id, planet.id)
+            reason = game.invasion_error(system.id, planet.id)
+            text(surface, f"{attack} attack / {defence} defence · {'Capture' if attack > defence else 'Defeat'} predicted", (1037, 690), 12, CYAN if attack > defence else GOLD)
+            app.button("invade_planet", "Invade colony", (1037, 713, 318, 35), app.invade_request, enabled=reason is None)
+            text(surface, shorten(reason or "All transports consumed. Ties favour defenders.", 318, 10), (1037, 759), 10, MUTED)
+        elif planet.ascension_gate:
+            text(surface, f"Ascension Gate · {planet.gate_charge}/5 charged turns", (1037, 699), 13, CYAN)
+            app.button("planet_objectives", "View victory progress", (1037, 729, 318, 35), app.open_objectives)
+        else:
+            paragraph(surface, BIOME_NOTES[planet.biome], (1037, 696), 318, 12, MUTED, 18)
     else:
         reason = game.colonize_error(system.id, planet.id)
         app.button("colonize_planet", "Colonize", (1037, 637, 318, 40), app.colonize_request, enabled=reason is None)
@@ -168,7 +179,7 @@ def draw_planet_overview(app):
 
     hint = "Click buildings to manage them. E: end turn." if planet.colonized else "A colony ship is consumed when this world is settled."
     if planet.owner == RIVAL:
-        hint = "Inspect the rival's buildings and production in the Colony and Shipyard tabs."
+        hint = "Clear opposing ships, then land troop transports to capture this colony."
     text(surface, f"{planet.size} worlds have {planet.building_capacity} building slots. {hint}",
          (65, 795), 13, MUTED)
     app.button("planet_pause", "Menu", (64, 832, 127, 46), app.pause)

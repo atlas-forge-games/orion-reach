@@ -151,8 +151,8 @@ class CombatState:
 
 
 def engagement_error(game, system_id, owner="player"):
-    if game.combat is not None:
-        return "Resolve the current battle first."
+    if game.strategy_error():
+        return game.strategy_error()
     if type(system_id) is not int or not 0 <= system_id < len(game.systems):
         return "Unknown solar system."
     if owner not in OWNERS or game.opponent is None:
@@ -161,7 +161,7 @@ def engagement_error(game, system_id, owner="player"):
     if not own or not enemy:
         return "Both empires need ships in orbit in this system."
     if not any(s.damage for s in own):
-        return "Bring a frigate to engage. Colony ships are unarmed."
+        return "Bring a frigate to engage. Transports are unarmed."
     return None
 
 
@@ -193,7 +193,7 @@ def action_error(game, owner, ship_id=None, target_id=None):
         if target_id is not None:
             target = state.ship(target_id)
             if ship.damage == 0:
-                return "Colony ships are unarmed. Hold or retreat."
+                return "Transports are unarmed. Hold or retreat."
             if target is None or target.owner == owner or target.hull <= 0:
                 return "Choose a surviving enemy ship."
     return None

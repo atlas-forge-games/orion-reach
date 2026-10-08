@@ -23,6 +23,8 @@ from .research_view import draw_research
 from .research import BRANCHES, TECHNOLOGIES, choices
 from .combat import retreat_destination
 from .combat_view import SHIPS_PER_PAGE, draw_combat
+from .victory import colonies, invasion_strength, troop_transports
+from .victory_view import draw_objectives, draw_result
 from .production import SHIP_TYPES
 from .setup_view import draw_setup
 from .races import RACES, default_rival_race
@@ -34,7 +36,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat")
+GAME_SCREENS=("galaxy", "system", "planet", "colony", "empire", "shipyard", "fleets", "rival", "diplomacy", "research", "combat", "objectives", "result")
 
 
 class App:
@@ -104,9 +106,11 @@ class App:
     def go(self,screen):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
-        if self.game and self.game.combat is not None and screen in GAME_SCREENS:
+        if self.game and self.game.result is not None and screen in GAME_SCREENS:
+            screen="result"
+        elif self.game and self.game.combat is not None and screen in GAME_SCREENS:
             screen="combat"
-        elif screen=="combat":
+        elif screen in ("combat","result"):
             screen="galaxy"
         if screen in ("planet","colony","shipyard") and self.game.selected_planet is None:
             screen="system"
@@ -137,6 +141,10 @@ class App:
             self.focus="diplomacy_back"
         if screen=="research":
             self.focus=f"research_branch_{self.research_branch}"
+        if screen=="objectives":
+            self.focus="objectives_back"
+        if screen=="result":
+            self.focus="result_menu"
         if screen=="combat":
             self.sync_combat_selection()
             self.combat_ai_due=self.time+.8
@@ -288,6 +296,62 @@ class App:
         self.research_return="galaxy"
         self.research_return_selection=(0,None)
         self.research_branch="construction"
+        self.objectives_return="galaxy"
+        self.gate_colony_index=0
+
+    def open_objectives(self):
+        if self.screen=="objectives":
+            self.close_objectives()
+        elif self.screen in GAME_SCREENS:
+            self.objectives_return=self.screen
+            self.go("objectives")
+
+    def close_objectives(self):
+        self.go(self.objectives_return)
+
+    def change_gate_colony(self,delta):
+        self.gate_colony_index=min(max(0,self.gate_colony_index+delta),max(0,len(colonies(self.game,PLAYER))-1))
+
+    def gate_request(self,system_id,planet_id):
+        error=self.game.gate_error(system_id,planet_id)
+        if error:
+            self.toast(error,True)
+            return
+        planet=self.game.planet_at(system_id,planet_id)
+        def build():
+            try:
+                self.game.queue_gate(system_id,planet_id)
+                if self.save_game(autosave=True):
+                    self.toast(f"Ascension Gate queued on {planet.name}. Protect it until activation.")
+            except RuleError as exc:
+                self.toast(exc,True)
+        self.confirm("Build the Ascension Gate?",
+                     f"Pay 500 CR to queue 300 work on {planet.name}. Then charge for five turns with no opposing ships in orbit. "
+                     "Capturing this colony destroys the gate.","Build gate",build)
+
+    def invade_request(self):
+        system_id,planet_id=self.game.selected_system,self.game.selected_planet
+        error=self.game.invasion_error(system_id,planet_id)
+        if error:
+            self.toast(error,True)
+            return
+        planet=self.game.planet_at(system_id,planet_id)
+        attack,defence=invasion_strength(self.game,system_id,planet_id)
+        count=len(troop_transports(self.game,system_id))
+        def invade():
+            try:
+                report=self.game.invade(system_id,planet_id)
+                self.colony_slot=None
+                self.go("result" if self.game.result else "planet")
+                if self.save_game(autosave=True):
+                    self.toast(f"{'Captured' if report.captured else 'Invasion failed at'} {planet.name} · {count} transports consumed",not report.captured)
+            except RuleError as exc:
+                self.toast(exc,True)
+        outcome="Capture predicted." if attack>defence else "Defeat predicted; bring more transports."
+        self.confirm("Invade this colony?",
+                     f"{attack} attack vs {defence} defence. {outcome} All {count} transports are consumed. "
+                     "Invasion ends treaties and sets relations to -100. Capture destroys any Ascension Gate.",
+                     "Invade colony",invade)
 
     def open_research(self):
         if self.screen=="research":
@@ -296,7 +360,9 @@ class App:
             self.research_return=self.screen
             self.research_return_selection=(self.game.selected_system,self.game.selected_planet)
             if self.game.technology.active:
-                self.research_branch=TECHNOLOGIES[self.game.technology.active].branch
+                branch=TECHNOLOGIES[self.game.technology.active].branch
+                if branch in BRANCHES:
+                    self.research_branch=branch
             self.go("research")
 
     def close_research(self):
@@ -313,7 +379,7 @@ class App:
             self.toast(error,True)
             return
         technology=TECHNOLOGIES[identifier]
-        alternative=next(t for t in choices(technology.branch,technology.tier) if t.id!=identifier)
+        alternative=next((t for t in choices(technology.branch,technology.tier) if t.id!=identifier),None)
         def choose():
             try:
                 discovered=self.game.choose_research(identifier)
@@ -321,10 +387,11 @@ class App:
                     self.toast(f"Discovered {discovered.name}." if discovered else f"Research started: {technology.name}.")
             except RuleError as exc:
                 self.toast(exc,True)
-        self.confirm("Commit to this technology?",
-                     f"Research {technology.name} for {technology.cost} RP. {alternative.name} becomes unavailable. "
-                     "This choice is permanent; banked points are applied immediately.",
-                     "Start research",choose)
+        body=(f"Research {technology.name} for {technology.cost} RP. {alternative.name} becomes unavailable. "
+              "This choice is permanent; banked points are applied immediately." if alternative else
+              "Research Ascension Theory for 500 RP to unlock the Ascension Gate. Banked points are applied immediately; "
+              "your normal research output supplies the rest.")
+        self.confirm("Commit to this technology?",body,"Start research",choose)
 
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
@@ -534,12 +601,17 @@ class App:
         self.toast(f"Welcome back, {state.empire_name}.")
 
     def advance_turn(self):
+        if self.game.result is not None:
+            self.go("result")
+            return
         if self.game.combat is not None:
             self.go("combat")
             self.toast("Resolve the battle before advancing the campaign.",True)
             return
         report=self.game.advance_turn()
-        if self.game.combat is not None:
+        if self.game.result is not None:
+            self.go("result")
+        elif self.game.combat is not None:
             self.reset_combat_view()
             self.go("combat")
         if self.screen=="empire":
@@ -554,8 +626,10 @@ class App:
                 message+=" · Completed: "+", ".join(report.completed)
             if report.arrivals:
                 message+=" · Arrived: "+", ".join(report.arrivals)
+            if report.alerts:
+                message=" · ".join(report.alerts)+" · "+message
             self.toast(message+" · Autosaved")
-            if report.completed or report.arrivals or report.discoveries:
+            if report.completed or report.arrivals or report.discoveries or report.alerts:
                 self.notice_until=self.time+7
 
     def reset_combat_view(self):
@@ -817,6 +891,10 @@ class App:
                 self.close_diplomacy()
             elif self.screen=="research":
                 self.close_research()
+            elif self.screen=="objectives":
+                self.close_objectives()
+            elif self.screen=="result":
+                self.to_menu()
             elif self.screen=="combat":
                 self.pause()
             elif self.screen=="pause":
@@ -858,7 +936,7 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected:
                 self.activate(selected)
-        elif self.screen=="combat" and not self.dialog:
+        elif self.screen in ("combat","result") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
         elif self.screen in GAME_SCREENS and not self.dialog:
@@ -874,6 +952,8 @@ class App:
                 self.open_diplomacy()
             elif event.key==pg.K_r:
                 self.open_research()
+            elif event.key==pg.K_v:
+                self.open_objectives()
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
@@ -911,15 +991,18 @@ class App:
         emblem(self.canvas,77,64,.62)
         text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
-        if self.screen in GAME_SCREENS and self.screen not in ("empire","combat"):
+        if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","result"):
             self.button("open_empire","Empire · I",(998,39,179,46),self.open_empire)
-        if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat"):
+        if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","result"):
             self.button("open_fleets","Fleets · F",(807,39,177,46),self.open_fleets)
-        if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat"):
+        if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat","result"):
             self.button("open_diplomacy","Diplomacy · D",(590,39,203,46),self.open_diplomacy)
-        if self.screen in GAME_SCREENS and self.screen not in ("research","combat"):
+        if self.screen in GAME_SCREENS and self.screen not in ("research","combat","result"):
             self.button("open_research","Research · R",(395,39,181,46),self.open_research)
-        text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
+        if self.screen in GAME_SCREENS and self.screen not in ("combat","result"):
+            self.button("open_objectives","Objectives · V",(1191,39,185,46),self.open_objectives)
+        else:
+            text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
         if back:
             self.button("back","←  Back",(62,126,118,46),back,"ghost")
@@ -1173,15 +1256,21 @@ class App:
     def draw_combat(self):
         draw_combat(self)
 
+    def draw_objectives(self):
+        draw_objectives(self)
+
+    def draw_result(self):
+        draw_result(self)
+
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Choose a race, build an empire, research technologies, and negotiate with an expanding AI rival. Build frigates and fight opposing fleets in turn-based battles. Save and resume your campaigns.",
+        paragraph(self.canvas,"Choose a race, build an empire, research technologies, and negotiate with an expanding AI rival. Fight fleet battles and invade colonies, or build the Ascension Gate to win through science.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Population growth, food, more empires, planetary conquest, shields and advanced weapons. Research offers eight branches with permanent technology choices.",
+        paragraph(self.canvas,"Population growth, food, more empires, shields and advanced weapons. Research offers eight branches with permanent technology choices and an ultimate Ascension project.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)

@@ -31,13 +31,16 @@ def draw_research(app):
         pg.draw.rect(surface, LINE, (86, 379, 624, 4))
         pg.draw.rect(surface, CYAN, (86, 379, round(624*state.progress/active.cost), 4))
         app.button("research_show_active", "View", (740, 326, 100, 40),
-                   lambda: app.select_research_branch(active.branch))
+                   (lambda: app.select_research_branch(active.branch)) if active.branch in BRANCHES else app.open_objectives)
     else:
-        done = len(state.completed) == 16
-        text(surface, "Research programme complete" if done else "Choose a technology below", (85, 321), 23, INK)
+        done = "ascension_theory" in state.completed
+        capstone = state.finished_branches == 8 and not done
+        text(surface, "Research programme complete" if done else "Ascension Theory available" if capstone else "Choose a technology below", (85, 321), 23, INK)
         caption = (f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}." if state.completed else
                    "Build a research lab on a colony to generate research points.")
         text(surface, caption, (86, 361), 12, MUTED)
+        if capstone or done:
+            app.button("research_objectives", "View", (740, 326, 100, 40), app.open_objectives)
     for x, label, value, caption in (
         (885, "RESEARCH OUTPUT", f"+{rate} RP", "per turn"),
         (1082, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
@@ -84,6 +87,6 @@ def draw_research(app):
 
     app.button("research_save", "Save · F5", (64, 835, 172, 44), app.save_game)
     app.button("research_pause", "Menu", (250, 835, 132, 44), app.pause)
-    text(surface, "Choices are permanent. The other technology in that tier becomes unavailable.", (409, 828), 12, MUTED)
-    text(surface, "Bonuses stack. Discounts add; new order prices round up. Unused research is banked.", (409, 851), 10, FAINT)
+    text(surface, "Complete all eight branches to unlock Ascension Theory in Objectives · V.", (409, 828), 12, MUTED)
+    text(surface, "Choices are permanent. Bonuses stack. Unused research is banked.", (409, 851), 10, FAINT)
     app.button("research_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
