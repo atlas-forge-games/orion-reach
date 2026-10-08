@@ -520,6 +520,9 @@ class GameState:
     def engagement_error(self, system_id, owner=PLAYER):
         return combat_rules.engagement_error(self, system_id, owner)
 
+    def beam_for(self, kind, owner=PLAYER):
+        return combat_rules.BEAMS[combat_rules.weapon_for(self, kind, owner)]
+
     def start_combat(self, system_id, owner=PLAYER):
         return combat_rules.begin_combat(self, system_id, owner)
 
@@ -528,6 +531,12 @@ class GameState:
 
     def combat_hold(self, ship_id, owner=PLAYER):
         return combat_rules.hold(self, ship_id, owner)
+
+    def combat_move(self, ship_id, x, y, owner=PLAYER):
+        return combat_rules.move(self, ship_id, x, y, owner)
+
+    def combat_end_turn(self, owner=PLAYER):
+        return combat_rules.end_turn(self, owner)
 
     def combat_retreat(self, owner=PLAYER):
         return combat_rules.retreat(self, owner)
@@ -1020,7 +1029,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=12):
+    def from_dict(cls, data, *, version=13):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1107,7 +1116,7 @@ class GameState:
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
             if version >= 8 and data["combat"] is not None:
-                game.combat = combat_rules.CombatState.from_dict(data["combat"], game)
+                game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
                 game.result = victory_rules.validate(game, data["result"])
             if version >= 10:

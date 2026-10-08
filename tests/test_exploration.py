@@ -182,9 +182,13 @@ class ExplorationRulesTests(unittest.TestCase):
         refresh(game, recover=True)
         self.assertIn("unarmed", game.engagement_error(home).lower())
         game.start_combat(home, RIVAL)
-        game.combat_ai_action()
-        game.combat_hold(1)
-        game.combat_ai_action()
+        for _ in range(20):
+            if game.combat.status != "active":
+                break
+            if game.combat.active_owner == RIVAL:
+                game.combat_ai_action()
+            else:
+                game.combat_end_turn()
         self.assertEqual(game.combat.status, "rival_victory")
         self.assertFalse(game.system_visible(home))
         self.assertIsNotNone(game.known_system(home))

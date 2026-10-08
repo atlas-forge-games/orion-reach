@@ -15,7 +15,7 @@ class Branch:
 BRANCHES = {b.id: b for b in (
     Branch("construction", "Construction", "Build productive colonies and efficient shipyards."),
     Branch("power", "Power & Propulsion", "Choose faster voyages or stronger planetary power grids."),
-    Branch("physics", "Physics", "Expand your empire's ability to discover new technologies."),
+    Branch("physics", "Physics", "Advance research instruments and beam weapons."),
     Branch("fields", "Force Fields", "Protect settlements and work in hostile environments."),
     Branch("materials", "Materials & Chemistry", "Improve extraction, alloys and construction materials."),
     Branch("biology", "Biology", "Support larger expeditions and more prosperous colonies."),
@@ -54,7 +54,7 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("research_instruments", "physics", 1, "Research Instruments", "+2 research per laboratory.", lab_research=2),
     tech("field_laboratories", "physics", 1, "Field Laboratories", "+1 research per colony.", colony_research=1),
     tech("planetary_observatories", "physics", 2, "Planetary Observatories", "+3 research per colony.", colony_research=3),
-    tech("quantum_optics", "physics", 2, "Quantum Optics", "+3 research per laboratory.", lab_research=3),
+    tech("quantum_optics", "physics", 2, "Quantum Optics", "+3 research per laboratory. Frigates gain quantum beams: 7 damage, 7 range.", lab_research=3, beam_level=1),
     tech("radiation_shields", "fields", 1, "Radiation Shields", "Colony ships can settle barren worlds.", barren=1),
     tech("habitat_shields", "fields", 1, "Habitat Shields", "+2 credits per desert or tundra colony.", rough_income=2),
     tech("thermal_barriers", "fields", 2, "Thermal Barriers", "Colony ships can settle volcanic worlds.", volcanic=1),

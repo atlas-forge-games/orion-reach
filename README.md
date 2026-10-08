@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.16.0
+# Orion Reach — Python prototype 0.17.0
 
 A playable colony-building and interstellar expansion prototype with population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -107,9 +107,10 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   a colony row to open its planet overview.
 - Build colony ships in the **Shipyard**, send them from the galaxy map or **Fleets**, advance
   travel with End Turn, and settle new worlds from their planet overviews.
-- Build **frigates**, then **Engage** opposing fleets in the same system. A separate
-  tactical screen offers alternating ship actions, fixed damage, retreat, a combat
-  log and persistent losses. Damaged ships can repair at friendly colonies.
+- Build **frigates**, then **Engage** opposing fleets in the same system. A dedicated
+  tactical battlefield lets ships maneuver and fire by clicking enemies, with
+  coloured beams, impact flashes and destruction explosions. Damaged ships can
+  repair at friendly colonies.
 - Build **troop transports**, clear opposing ships, then **Invade colony** from a
   rival planet's Overview tab. Capturing its last colony wins by conquest.
 - **Objectives · V** tracks both victory paths. Finish all eight research branches,
@@ -146,7 +147,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 found additional colonies alongside an expanding AI empire, and negotiate
 trade and research agreements, make permanent technology choices, fight fleet battles,
 feed and grow colonies, invade worlds and win through conquest or science.
-Food shipments, shields, advanced weapons and additional AI empires are future work.
+Food shipments, shields, missiles, ship customization and additional AI empires are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized.
@@ -687,27 +688,53 @@ queue capacity and travel speed are defined in `orion/production.py`.
 3. Click **Engage** in Fleets or **Engage opposing fleet** on the system overview.
    You need at least one frigate and opposing ships in orbit. The confirmation
    explains the whole-fleet commitment and diplomatic consequences.
-4. On the combat screen, select one of your available ships and an enemy target,
-   then click **Fire**. The AI takes its next action automatically. Each surviving
-   ship acts once per round; **Hold** spends an activation without attacking.
-   Scouts, colony ships and troop transports cannot fire, but can hold or retreat with the fleet.
-5. Resolve the battle or retreat, then choose **Return to system**. Strategic time,
+4. On the battlefield, **click a friendly ship**, then a **highlighted empty cell**
+   to move. **Click an enemy ship** within weapon range to fire immediately.
+   Cyan cells show reachable destinations; the dim purple area shows weapon range.
+   Red target outlines mark enemies the selected ship can shoot. Each ship has
+   **one move and one shot per turn**, usable in either order. Movement animates
+   along its path; beams, impact flashes, damage numbers and explosions show hits.
+5. Give orders to your other ships, then click **End turn · E**. The AI moves and
+   fires its fleet under the same rules. **Done ship** skips that ship's remaining
+   orders; **Next ship · N** cycles ships with orders available. Ending your turn
+   skips any unused orders. Scouts and transports can maneuver but cannot fire.
+6. Resolve the battle or retreat, then choose **Return to system**. Strategic time,
    income, research, construction and other travel do not advance during combat.
-   Escape pauses the battle, and Save / Load resumes the exact round and activation.
+   Escape pauses the battle and its effects. Save / Load retains the exact round,
+   positions, hulls and remaining orders. Loading resumes after the last applied
+   action; it does not replay animations or apply damage twice.
 
-| Ship | Base credits | Work | Hull | Damage per shot |
-| --- | ---: | ---: | ---: | ---: |
-| Colony ship | 80 | 42 | 12 | 0 (unarmed) |
-| Frigate | 60 | 36 | 20 | 5 |
-| Troop transport | 80 | 42 | 16 | 0 (8 invasion attack) |
-| Scout | 25 | 12 | 8 | 0 (unarmed) |
+| Ship | Base credits | Work | Hull | Movement | Base damage per shot |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Colony ship | 80 | 42 | 12 | 2 cells | 0 (unarmed) |
+| Frigate | 60 | 36 | 20 | 3 cells | 5 |
+| Troop transport | 80 | 42 | 16 | 2 cells | 0 (8 invasion attack) |
+| Scout | 25 | 12 | 8 | 5 cells | 0 (unarmed) |
 
-Shots always hit their selected enemy. There are no range, movement, armour or
-shield rules yet. Sides alternate one ship activation at a time. If one side has
-used all of its ships, the other finishes its remaining activations. A new round
-then makes every surviving ship available again. The initiating empire acts first.
-The AI prefers finishing damaged targets and attacking armed ships; an unarmed
-AI fleet retreats when a safe destination exists.
+| Beam technology | Colour | Damage | Range |
+| --- | --- | ---: | ---: |
+| Standard laser | Red | 5 | 6 cells |
+| Quantum Optics (Physics II) | Violet | 7 | 7 cells |
+
+Quantum Optics retains its +3 research per laboratory and equips all existing
+and new frigates with quantum beams for subsequent battles. Both empires use
+the same weapon colours and rules; researching the alternative Physics II
+technology keeps the standard laser. Fleet and construction screens display the
+current damage. Ship costs and hulls are unchanged.
+
+Movement uses eight directions, one movement point per adjacent cell. Routes
+cannot pass through another ship or cut an occupied corner. A move may use fewer
+than all available points, but still uses the ship's one move for this turn.
+Destroyed ships no longer block cells. Weapon range uses straight-line distance
+between cell centres; shots always hit, and other ships do not block beams.
+There are no shields, armour, facing bonuses or ammunition limits yet.
+
+The initiating empire takes the first fleet turn. A round ends after both fleet
+turns, restoring movement and weapons. The AI approaches to weapon range,
+prefers finishing damaged targets and attacking armed ships, and moves its
+civilian ships away from threats. An entirely unarmed AI fleet retreats when a
+safe destination exists. Large fleets extend the map vertically; use the mouse
+wheel, Page Up / Page Down, or map arrows to scroll. Next ship reveals its position.
 
 **Losses and retreat:** ships at zero hull are destroyed. Results are committed
 once when combat ends; survivors retain damage, and destroyed ship IDs are never
@@ -736,10 +763,12 @@ A hostile encounter already in orbit interrupts End Turn before income or
 production is applied. A hostile fleet arriving during End Turn starts combat
 after that strategic turn completes. Only one battle runs at a time, and no
 strategic orders can be issued until its result is acknowledged. Every combat
-action is autosaved; tactical health, activations, logs, results and retreats
+action is autosaved; tactical positions, weapons, used orders, health, logs, results and retreats
 survive saving and loading.
 
 ![Fleet combat](screenshots/combat.png)
+
+![Maneuvering, beam fire and destruction](screenshots/combat_animation.gif)
 
 ## Conquest and scientific victory
 
@@ -888,8 +917,11 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Research Ascension Theory / build a gate | Objectives → research project / colony selector |
 | Browse research branches | Click a branch or use Left / Right on the Research screen |
 | Start a fleet battle | Engage in Fleets or on the system overview |
-| Attack in combat | Select your ship → select an enemy → Fire |
-| Skip a ship's action | Select your ship → Hold |
+| Move in combat | Select your ship → click a highlighted empty cell |
+| Attack in combat | Select your ship → click an enemy within weapon range |
+| Finish a tactical turn | End turn / E; passes to the opposing fleet |
+| Skip remaining ship orders | Done ship; Next ship / N selects another ship |
+| Scroll a large battlefield | Mouse wheel, Page Up / Page Down, or map arrows |
 | Withdraw from combat | Retreat, then confirm the destination |
 | Pause / resume combat | Escape or Menu; Resume returns to the same battle |
 | Mute music / adjust its volume | Settings → Background music / Music volume |
@@ -912,9 +944,14 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.16 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.17 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
-ships and travel times are preserved. Pre-v0.16 colonies and stored surveys gain
+ships and travel times are preserved. Pre-v0.17 battles receive deterministic
+deployment positions and weapons based on their empire's research. Their hulls,
+destroyed ships, current side, round and result are retained. Ships that had
+already acted are marked as having used both orders for the current round.
+Old results and retreats remain resolved and are not applied again.
+Pre-v0.16 colonies and stored surveys gain
 up to two farmers, zero scientists and the remaining population as industrial
 workers. Their saved populations and growth progress are retained; old surveys
 are not refreshed. Industry now follows assigned workers instead of a fixed base
@@ -937,13 +974,14 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 12**, including worker assignments, paused construction progress,
+**format version 13**, including tactical coordinates, beam loadouts, movement and
+firing flags, worker assignments, paused construction progress,
 growth progress, hydroponic farms,
 the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.15 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.16 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -976,8 +1014,9 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/diplomacy_view.py` | Diplomatic contact and negotiation screen |
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
 | `orion/research_view.py` | Branches, tiers, project progress and research controls |
-| `orion/combat.py` | Battle snapshots, alternating actions, AI targeting, retreat and validation |
-| `orion/combat_view.py` | Tactical formations, health bars, targeting, logs and results |
+| `orion/combat.py` | Tactical positions, movement paths, weapons, side turns, AI, retreat and validation |
+| `orion/combat_view.py` | Clickable battlefield, movement/range overlays, health bars, logs and results |
+| `orion/combat_effects.py` | Presentation-only movement, beams, impact flashes and destruction explosions |
 | `orion/branding.py` | Supplied studio logo, proportional scaling, splash and menu credit |
 | `orion/victory.py` | Invasions, Ascension Gates, victory checks and outcome validation |
 | `orion/victory_view.py` | Objectives, gate controls and final campaign results |
@@ -1012,12 +1051,13 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
+| `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. Possible next foundations include food
 shipments and more advanced technology tiers.
-Shields, advanced weapons and ship customization can follow. Bump the save version and add
+Shields, missiles and ship customization can follow. Bump the save version and add
 migrations when the data schema changes.
 
 ## Development checks

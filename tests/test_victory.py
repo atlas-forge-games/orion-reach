@@ -336,13 +336,22 @@ class VictorySaveTests(unittest.TestCase):
         game.next_ship_id = 4
         game.send_ship(3, game.opponent.home_system)
         game.start_combat(0)
+        game.combat_move(1, 7, 4)
         game.combat_fire(1, 2)
+        game.combat_end_turn()
+        # v8 had no positions: a resumed battle deploys its surviving snapshot.
+        from orion.combat import deploy
+        deploy(game.combat)
         with tempfile.TemporaryDirectory() as directory:
             storage = Storage(directory)
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 8
             payload["game"].pop("result")
+            payload["game"]["combat"].pop("moved")
+            for ship in payload["game"]["combat"]["ships"]:
+                for key in ("x", "y", "weapon"):
+                    ship.pop(key)
             for system in payload["game"]["systems"]:
                 for planet in system["worlds"]:
                     planet.pop("ascension_gate")
@@ -352,6 +361,7 @@ class VictorySaveTests(unittest.TestCase):
             restored, _ = storage.load(path)
             self.assertEqual(restored, game)
             self.assertEqual(path.read_bytes(), original)
+            restored.combat_ai_action()
             restored.combat_ai_action()
             self.assertEqual(restored.combat.ship(1).hull, 15)
             saved = storage.save(restored)

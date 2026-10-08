@@ -61,8 +61,9 @@ def main():
                                       Ship(6, "colony_ship", 0, owner=RIVAL)]
                     app.game.next_ship_id = 7
                     app.game.start_combat(0)
+                    app.game.combat_move(1, 7, 4)
                     app.game.combat_fire(1, 4)
-                    app.game.combat_ai_action()
+                    app.game.combat_move(2, 7, 5)
                 if args.screen == "result":
                     from orion.research import BRANCHES, choices
                     # Preview a science result without altering a real campaign.

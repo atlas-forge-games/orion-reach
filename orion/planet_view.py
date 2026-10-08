@@ -221,7 +221,7 @@ def draw_production(app):
         price = game.project_price(item_id)
         text(surface, f"{price} CR · {spec.work_cost} work", (x+85, y+42), 12, GOLD)
         reason = game.project_error(sid, pid, item_id)
-        detail = compact_yields(game, spec, planet)+" / turn" if item_id in BUILDINGS else f"{spec.hull} hull · {spec.damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
+        detail = compact_yields(game, spec, planet)+" / turn" if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
         text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
         app.button("production_build_"+item_id, "Start", (x+312, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen), enabled=reason is None)

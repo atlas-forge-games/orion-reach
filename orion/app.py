@@ -23,7 +23,8 @@ from .diplomacy_view import draw_diplomacy
 from .research_view import draw_research
 from .research import BRANCHES, TECHNOLOGIES, choices
 from .combat import retreat_destination
-from .combat_view import SHIPS_PER_PAGE, draw_combat
+from .combat_view import VISIBLE_ROWS, draw_combat
+from .combat_effects import CombatAnimation
 from .victory import colonies, invasion_strength, troop_transports
 from .victory_view import draw_objectives, draw_result
 from .production import PROJECTS, SHIP_TYPES
@@ -163,7 +164,8 @@ class App:
         if screen=="combat":
             self.sync_combat_selection()
             self.combat_ai_due=self.time+.8
-            self.focus="combat_continue" if self.game.combat.status!="active" else "combat_fire"
+            self.combat_last_update=self.time
+            self.focus="combat_continue" if self.game.combat.status!="active" else "combat_end_turn"
         if screen=="system":
             known=self.game.known_system(self.game.selected_system)
             worlds=known.worlds if known else []
@@ -804,7 +806,9 @@ class App:
     def reset_combat_view(self):
         self.combat_ship_id=None
         self.combat_target_id=None
-        self.combat_pages={PLAYER:0,RIVAL:0}
+        self.combat_camera_row=0
+        self.combat_animation=None
+        self.combat_last_update=self.time
         self.combat_ai_due=self.time+.8
 
     def sync_combat_selection(self):
@@ -815,12 +819,34 @@ class App:
         targets=battle.fleet(RIVAL)
         if not any(s.id==self.combat_ship_id for s in ready):
             self.combat_ship_id=ready[0].id if ready else None
-            if ready:
-                self.combat_pages[PLAYER]=battle.fleet(PLAYER,alive=False).index(ready[0])//SHIPS_PER_PAGE
         if not any(s.id==self.combat_target_id for s in targets):
             self.combat_target_id=targets[0].id if targets else None
-            if targets:
-                self.combat_pages[RIVAL]=battle.fleet(RIVAL,alive=False).index(targets[0])//SHIPS_PER_PAGE
+        if battle.active_owner==PLAYER and self.combat_ship_id is not None:
+            self.reveal_combat_row(battle.ship(self.combat_ship_id).y)
+
+    def combat_input_ready(self):
+        return (self.screen=="combat" and not self.dialog and self.game is not None
+                and self.game.combat is not None and self.game.combat.status=="active"
+                and self.game.combat.active_owner==PLAYER and self.combat_animation is None)
+
+    def pan_combat(self,delta):
+        last=max(0,self.game.combat.rows-VISIBLE_ROWS)
+        self.combat_camera_row=min(last,max(0,self.combat_camera_row+delta))
+
+    def reveal_combat_row(self,row):
+        if not self.combat_camera_row<=row<self.combat_camera_row+VISIBLE_ROWS:
+            last=max(0,self.game.combat.rows-VISIBLE_ROWS)
+            self.combat_camera_row=min(last,max(0,row-VISIBLE_ROWS//2))
+
+    def next_combat_ship(self):
+        if not self.combat_input_ready():
+            return
+        ready=self.game.combat.ready(PLAYER)
+        if ready:
+            identifiers=[s.id for s in ready]
+            index=identifiers.index(self.combat_ship_id) if self.combat_ship_id in identifiers else -1
+            self.combat_ship_id=identifiers[(index+1)%len(identifiers)]
+            self.reveal_combat_row(self.game.combat.ship(self.combat_ship_id).y)
 
     def engage_request(self,system_id):
         error=self.game.engagement_error(system_id)
@@ -843,35 +869,63 @@ class App:
                      "Engage fleet",engage)
 
     def select_combat_ship(self,owner,ship_id):
+        if not self.combat_input_ready():
+            return
+        ship=self.game.combat.ship(ship_id)
+        if ship is None or ship.hull<=0 or ship.owner!=owner:
+            return
         if owner==PLAYER:
             self.combat_ship_id=ship_id
         else:
             self.combat_target_id=ship_id
+            self.combat_action("fire")
 
-    def change_combat_page(self,owner,delta):
-        fleet=self.game.combat.fleet(owner,alive=False)
-        last=max(0,(len(fleet)-1)//SHIPS_PER_PAGE)
-        self.combat_pages[owner]=min(max(0,self.combat_pages[owner]+delta),last)
-
-    def after_combat_action(self):
-        self.sync_combat_selection()
-        self.combat_ai_due=self.time+.8
+    def after_combat_action(self,event):
+        self.combat_animation=CombatAnimation.from_action(self.game.combat,event)
+        self.combat_last_update=self.time
+        if self.combat_animation:
+            rows=[point[1] for point in self.combat_animation.path]
+            if min(rows)<self.combat_camera_row or max(rows)>=self.combat_camera_row+VISIBLE_ROWS:
+                last=max(0,self.game.combat.rows-VISIBLE_ROWS)
+                self.combat_camera_row=min(last,max(0,(min(rows)+max(rows))//2-VISIBLE_ROWS//2))
+        else:
+            self.sync_combat_selection()
+        self.combat_ai_due=self.time+.4
         self.save_game(autosave=True)
-        self.focus="combat_continue" if self.game.combat.status!="active" else "combat_fire"
+        self.focus="combat_end_turn"
+
+    def move_combat_ship(self,x,y):
+        if not self.combat_input_ready():
+            return
+        try:
+            path=self.game.combat_move(self.combat_ship_id,x,y)
+            self.after_combat_action({"kind":"move","ship_id":self.combat_ship_id,"path":path})
+        except RuleError as exc:
+            self.toast(exc,True)
 
     def combat_action(self,action):
+        if not self.combat_input_ready():
+            return
         try:
+            event={"kind":action}
             if action=="fire":
-                self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
+                damage=self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
+                event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage)
             elif action=="hold":
                 self.game.combat_hold(self.combat_ship_id)
             elif action=="retreat":
                 self.game.combat_retreat()
-            self.after_combat_action()
+            elif action=="end_turn":
+                self.game.combat_end_turn()
+            else:
+                return
+            self.after_combat_action(event)
         except RuleError as exc:
             self.toast(exc,True)
 
     def retreat_request(self):
+        if not self.combat_input_ready():
+            return
         destination=retreat_destination(self.game)
         if destination is None:
             self.toast("No safe retreat destination is available.",True)
@@ -883,14 +937,25 @@ class App:
                      "Retreat fleet",lambda:self.combat_action("retreat"))
 
     def update_combat(self):
-        if (self.screen!="combat" or self.dialog or self.game is None or self.game.combat is None
-                or self.game.combat.status!="active" or self.game.combat.active_owner!=RIVAL
-                or self.time<self.combat_ai_due):
+        delta=max(0,self.time-self.combat_last_update)
+        self.combat_last_update=self.time
+        if self.screen!="combat" or self.dialog or self.game is None or self.game.combat is None:
             return
-        self.game.combat_ai_action()
-        self.after_combat_action()
+        if self.combat_animation:
+            self.combat_animation.elapsed+=delta
+            if self.combat_animation.finished:
+                self.combat_animation=None
+                self.sync_combat_selection()
+                self.combat_ai_due=self.time+.35
+                self.focus="combat_continue" if self.game.combat.status!="active" else "combat_end_turn"
+            return
+        if (self.game.combat.status=="active" and self.game.combat.active_owner==RIVAL
+                and self.time>=self.combat_ai_due):
+            self.after_combat_action(self.game.combat_ai_action())
 
     def finish_combat(self):
+        if self.combat_animation:
+            return
         try:
             system_id=self.game.finish_combat()
             self.reset_combat_view()
@@ -1101,6 +1166,8 @@ class App:
             self.change_manifest_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="exploration" and not self.dialog and event.y:
             self.change_exploration_page(-1 if event.y>0 else 1)
+        if event.type==pg.MOUSEWHEEL and self.screen=="combat" and not self.dialog and event.y:
+            self.pan_combat(-event.y*2)
         if event.type==pg.TEXTINPUT and self.field and not self.dialog:
             current=getattr(self,self.field)
             if self.select_all:
@@ -1197,6 +1264,13 @@ class App:
         elif self.screen in ("combat","result") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
+            elif self.screen=="combat":
+                if event.key==pg.K_e:
+                    self.combat_action("end_turn")
+                elif event.key==pg.K_n:
+                    self.next_combat_ship()
+                elif event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                    self.pan_combat(-3 if event.key==pg.K_PAGEUP else 3)
         elif self.screen in GAME_SCREENS and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()

@@ -11,7 +11,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame as pg
 
-from orion.combat import retreat_destination
+from orion.combat import ai_action, retreat_destination
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
 from functools import partial
 
@@ -31,12 +31,22 @@ def encounter(own=("frigate",), enemy=("frigate",), start=True):
 
 
 def player_action(game):
-    ship = next((s for s in game.combat.ready(PLAYER) if s.damage), game.combat.ready(PLAYER)[0])
-    if ship.damage:
-        target = min(game.combat.fleet(RIVAL), key=lambda s: (-s.damage, s.hull, s.id))
-        game.combat_fire(ship.id, target.id)
+    if any(s.damage for s in game.combat.fleet(PLAYER)):
+        ai_action(game, PLAYER)
     else:
-        game.combat_hold(ship.id)
+        ready = game.combat.ready(PLAYER)
+        if ready:
+            game.combat_hold(ready[0].id)
+        else:
+            game.combat_end_turn()
+
+
+def enemy_turn(game):
+    for _ in range(100):
+        if game.combat.status != "active" or game.combat.active_owner != RIVAL:
+            return
+        game.combat_ai_action()
+    raise AssertionError("Enemy turn did not terminate")
 
 
 def resolve_battle(game):
@@ -93,40 +103,43 @@ class CombatRulesTests(unittest.TestCase):
         unarmed.send_ship(1, 1)
         self.assertIn("orbit", unarmed.engagement_error(0, RIVAL))
 
-    def test_fixed_damage_alternates_and_prevents_duplicate_or_friendly_attacks(self):
+    def test_fixed_damage_side_turns_prevent_duplicate_or_friendly_attacks(self):
         game = encounter(own=("frigate", "frigate"), enemy=("frigate", "colony_ship"))
         for attacker, target in ((True, 3), (3, 1), (1, 2), (None, 3), (1, None), (1, 99)):
             before = game.to_dict()
             with self.assertRaises(RuleError):
                 game.combat_fire(attacker, target)
             self.assertEqual(game.to_dict(), before)
+        game.combat_move(1, 7, 4)
         self.assertEqual(game.combat_fire(1, 3), 5)
-        self.assertEqual((game.combat.ship(3).hull, game.combat.active_owner), (15, RIVAL))
+        self.assertEqual((game.combat.ship(3).hull, game.combat.active_owner), (15, PLAYER))
         with self.assertRaises(RuleError):
-            game.combat_fire(2, 3)
-        game.combat_ai_action()
-        self.assertEqual(game.combat.active_owner, PLAYER)
+            game.combat_fire(3, 1, RIVAL)
         before = game.to_dict()
         with self.assertRaises(RuleError):
             game.combat_fire(1, 3)
         self.assertEqual(game.to_dict(), before)
-        game.combat_fire(2, 3)
-        game.combat_ai_action()  # The transport holds; the armed ship cannot fire twice.
+        game.combat_move(2, 7, 5)
+        game.combat_fire(2, 4)
+        game.combat_end_turn()
+        with self.assertRaises(RuleError):
+            game.combat_fire(2, 4)
+        enemy_turn(game)
         self.assertEqual((game.combat.round, game.combat.acted, game.combat.active_owner), (2, [], PLAYER))
         self.assertEqual(game.combat.ship(1).hull, 15)
 
-    def test_unarmed_hold_and_unequal_fleets_do_not_stall_activation_order(self):
+    def test_unarmed_hold_and_unequal_fleets_do_not_stall_turn_order(self):
         game = encounter(own=("frigate", "colony_ship"), enemy=("frigate", "frigate", "frigate"))
+        game.combat_move(1, 7, 4)
         game.combat_fire(1, 3)
-        game.combat_ai_action()
         before = game.to_dict()
         with self.assertRaisesRegex(RuleError, "unarmed"):
             game.combat_fire(2, 3)
         self.assertEqual(game.to_dict(), before)
         game.combat_hold(2)
-        game.combat_ai_action()
+        game.combat_end_turn()
         self.assertEqual(game.combat.active_owner, RIVAL)
-        game.combat_ai_action()
+        enemy_turn(game)
         self.assertEqual((game.combat.round, game.combat.active_owner), (2, PLAYER))
         resolve_battle(game)
         self.assertEqual(game.combat.status, "rival_victory")
@@ -158,8 +171,10 @@ class CombatRulesTests(unittest.TestCase):
         world = friend.worlds[0]
         world.colonized, world.owner, world.population = True, PLAYER, 1
         game.start_combat(0)
+        game.combat_move(1, 7, 4)
         game.combat_fire(1, 3)
-        game.combat_ai_action()
+        game.combat_end_turn()
+        enemy_turn(game)
         self.assertEqual(retreat_destination(game).id, friend.id)
         eta = game.travel_turns(game.systems[0], friend)
         game.combat_retreat()
@@ -172,14 +187,16 @@ class CombatRulesTests(unittest.TestCase):
 
     def test_retreat_fallback_and_civilian_ai_escape(self):
         game = encounter(enemy=("colony_ship",))
+        game.combat_move(1, 7, 4)
         game.combat_fire(1, 2)
+        game.combat_end_turn()
         game.combat_ai_action()
         self.assertEqual(game.combat.status, "rival_retreat")
         self.assertEqual(game.ship_at(2, owner=RIVAL).hull, 7)
         self.assertEqual(game.ship_at(2, owner=RIVAL).destination, game.opponent.home_system)
         own = encounter(own=("colony_ship",), start=False)
         own.start_combat(0, RIVAL)
-        own.combat_ai_action()
+        enemy_turn(own)
         self.assertEqual(own.combat.active_owner, PLAYER)
         destination = retreat_destination(own)
         self.assertIsNotNone(destination)
@@ -279,7 +296,9 @@ class CombatRulesTests(unittest.TestCase):
 class CombatSaveTests(unittest.TestCase):
     def test_save_before_ai_action_and_after_retreat_or_victory_preserves_exact_state(self):
         game = encounter(own=("frigate", "frigate", "colony_ship"), enemy=("frigate", "frigate"))
+        game.combat_move(1, 7, 4)
         game.combat_fire(1, 4)
+        game.combat_end_turn()
         self.assertEqual(game.ship_at(4, owner=RIVAL).hull, 20)  # Tactical damage is committed on resolution.
         self.assertEqual(game.combat.ship(4).hull, 15)
         with tempfile.TemporaryDirectory() as folder:
@@ -329,7 +348,7 @@ class CombatSaveTests(unittest.TestCase):
         mutations = [
             lambda d: d.update(system_id=999), lambda d: d.update(round=True),
             lambda d: d.update(active_owner="unknown"), lambda d: d.update(acted=[1, 1]),
-            lambda d: d.update(acted=[999]), lambda d: d.update(acted=[1]),
+            lambda d: d.update(acted=[999]), lambda d: d.update(moved=[True]),
             lambda d: d.update(status="player_victory", active_owner=None),
             lambda d: d.update(retreat_destination=1), lambda d: d.update(ships=d["ships"][:1]),
             lambda d: d["ships"][0].update(hull=21), lambda d: d["ships"][0].update(hull=True),
@@ -395,6 +414,12 @@ class CombatScreenTests(unittest.TestCase):
         self.app.update_combat()
         self.app.render()
 
+    def finish_animation(self):
+        if self.app.combat_animation:
+            self.app.time += 2
+            self.app.update_combat()
+            self.app.render()
+
     def test_build_frigate_and_engage_from_fleet_with_cancel_safe_confirmation(self):
         self.app.go("shipyard")
         self.click("build_frigate")
@@ -416,9 +441,10 @@ class CombatScreenTests(unittest.TestCase):
         game = self.app.game
         initial_turn = game.turn
         self.click("combat_ship_1")
+        self.click("combat_cell_7_4")
+        self.finish_animation()
         self.click("combat_ship_2")
-        self.click("combat_fire")
-        self.assertEqual(game.combat.active_owner, RIVAL)
+        self.assertEqual(game.combat.active_owner, PLAYER)
         self.assertFalse(next(b for b in self.app.buttons if b.key == "combat_fire").enabled)
         before = game.to_dict()
         for key in (pg.K_e, pg.K_i, pg.K_r, pg.K_d, pg.K_f):
@@ -438,13 +464,16 @@ class CombatScreenTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "combat")
         self.assertEqual(self.app.game, game)
         game = self.app.game
-        for _ in range(10):
+        for _ in range(40):
+            self.finish_animation()
             if game.combat.status != "active":
                 break
             if game.combat.active_owner == RIVAL:
                 self.enemy_action()
-            else:
+            elif game.combat.ready(PLAYER) and game.combat.can_fire(game.combat.ship(self.app.combat_ship_id)):
                 self.click("combat_fire")
+            else:
+                self.click("combat_end_turn")
         self.assertEqual(game.combat.status, "player_victory")
         self.assertEqual(game.turn, initial_turn)
         self.click("combat_continue")
@@ -467,17 +496,16 @@ class CombatScreenTests(unittest.TestCase):
         self.assertIsNone(self.app.game.combat)
         self.assertEqual(self.app.game.turn, 1)
 
-    def test_large_fleets_page_and_target_selection_stay_accessible(self):
+    def test_all_ships_are_on_the_battlefield_and_clicking_enemy_fires(self):
         self.app.game = encounter(own=("frigate",)*6, enemy=("frigate",)*6)
         self.app.reset_combat_view()
         self.app.go("combat")
-        self.click("combat_player_next")
         self.click("combat_ship_6")
-        self.click("combat_rival_next")
+        self.click("combat_cell_7_7")
+        self.finish_animation()
         self.click("combat_ship_12")
-        self.click("combat_fire")
         self.assertEqual(self.app.game.combat.ship(12).hull, 15)
-        self.enemy_action()
+        self.finish_animation()
         self.assertEqual(self.app.game.combat.active_owner, PLAYER)
         self.assertEqual(GameState.from_dict(self.app.game.to_dict()), self.app.game)
 

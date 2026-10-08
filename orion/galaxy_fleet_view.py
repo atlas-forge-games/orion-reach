@@ -139,7 +139,7 @@ def draw_fleet(app):
         ship_icon(surface, (139, y+31), .55, CYAN if own else RIVAL_COLOR, kind=ship.kind)
         text(surface, ship.name, (190, y+8), 19, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
-                f"{ship.damage} damage / shot" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
+                f"{game.beam_for(ship.kind, ship.owner).damage} damage / shot" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
                 if ship.kind == "troop_transport" else f"{game.starting_colonists(first.owner)} B colonists · Unarmed")
         text(surface, role, (191, y+36), 12, MUTED)
         text(surface, f"{ship.hull} / {ship.max_hull} hull", (918, y+11), 13, INK, right=True)
@@ -162,7 +162,7 @@ def draw_fleet(app):
         text(surface, spec.name, (991, y), 14, MUTED)
         text(surface, str(count), (1352, y), 15, CYAN, right=True)
     pg.draw.line(surface, LINE, (990, 524), (1352, 524))
-    text(surface, f"{sum(s.hull for s in selected)} hull · {sum(s.damage for s in selected)} damage / volley", (991, 540), 14, INK)
+    text(surface, f"{sum(s.hull for s in selected)} hull · {sum(game.beam_for(s.kind, s.owner).damage for s in selected)} damage / volley", (991, 540), 14, INK)
     description = ("Choose a destination, then click a star on the map to send the selected ships. Unchecked ships stay in orbit."
                    if commandable else "These ships are travelling together. Advance turns to reach their destination; courses cannot be changed in flight."
                    if first.in_transit else "You can inspect this fleet, but only its empire can issue movement orders.")
