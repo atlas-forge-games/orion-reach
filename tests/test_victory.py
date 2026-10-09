@@ -57,9 +57,10 @@ def extra_colony(game, owner):
 class ConquestRulesTests(unittest.TestCase):
     def test_troop_transports_use_real_costs_queue_and_ship_rules(self):
         game = new_game(seed=2408, with_ai=False)
+        game.planet_at(0, 2).buildings = ["barracks"]
         game.queue_ship(0, 2, "troop_transport")
         earth = game.planet_at(0, 2)
-        self.assertEqual((game.credits, earth.used_slots, game.queue_estimates(earth)), (40, 0, [7]))
+        self.assertEqual((game.credits, earth.used_slots, game.queue_estimates(earth)), (40, 1, [7]))
         for _ in range(7):
             game.advance_turn()
         ship = game.ships[0]
@@ -467,6 +468,7 @@ class VictoryScreenTests(unittest.TestCase):
 
     def test_build_transport_then_capture_through_controls_and_preserve_final_result(self):
         game = self.app.game
+        game.planet_at(0, 2).buildings = ["barracks"]
         self.app.go("shipyard")
         self.click("build_troop_transport")
         self.assertEqual(game.planet_at(0, 2).construction_queue[0].item_id, "troop_transport")
@@ -476,10 +478,12 @@ class VictoryScreenTests(unittest.TestCase):
         self.app.open_planet(pid)
         before = game.to_dict()
         self.click("invade_planet")
-        self.click("dialog_cancel")
+        self.click("ground_cancel")
         self.assertEqual(game.to_dict(), before)
         self.click("invade_planet")
-        self.click("dialog_ok")
+        self.click("ground_launch")
+        self.assertEqual(self.app.screen, "ground")
+        self.click("ground_continue")
         self.assertEqual(self.app.screen, "result")
         self.assertEqual(game.result.winner, PLAYER)
         before = game.to_dict()

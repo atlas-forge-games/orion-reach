@@ -5,10 +5,10 @@ import pygame as pg
 
 from .ui import ASSETS
 
-BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm")
+BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm", "barracks", "fortifications")
 
 
-@lru_cache(maxsize=7)
+@lru_cache(maxsize=9)
 def load_building_art(building_id):
     if building_id not in BUILDING_ART_IDS:
         raise ValueError(f"Unknown building artwork: {building_id}")
@@ -26,6 +26,25 @@ def load_building_art(building_id):
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
     image = pg.Surface((120, 110), pg.SRCALPHA)
+    if building_id in ("barracks", "fortifications"):
+        pg.draw.polygon(image, (50, 65, 69), [(4, 74), (57, 41), (117, 68), (65, 109)])
+        if building_id == "barracks":
+            for x, y in ((12, 54), (43, 36), (72, 52)):
+                pg.draw.rect(image, (72, 93, 100), (x, y, 30, 34))
+                pg.draw.polygon(image, (119, 145, 148), [(x-2, y), (x+15, y-10), (x+32, y), (x+15, y+8)])
+                pg.draw.rect(image, (22, 40, 47), (x+11, y+15, 9, 19))
+                pg.draw.rect(image, (140, 214, 204), (x+3, y+10, 5, 4))
+            pg.draw.line(image, (180, 195, 185), (64, 14), (64, 60), 2)
+            pg.draw.polygon(image, (214, 173, 92), [(65, 15), (91, 20), (65, 28)])
+        else:
+            pg.draw.polygon(image, (83, 100, 107), [(12, 69), (59, 45), (107, 68), (107, 86), (61, 104), (12, 85)])
+            for x, y in ((12, 51), (44, 31), (81, 49)):
+                pg.draw.rect(image, (98, 116, 121), (x, y, 23, 35))
+                pg.draw.rect(image, (148, 163, 164), (x-3, y-5, 29, 12))
+                pg.draw.rect(image, (29, 47, 55), (x+6, y+13, 11, 6))
+                pg.draw.line(image, (187, 167, 122), (x+12, y+1), (x+28, y-9), 5)
+            pg.draw.rect(image, (25, 40, 48), (48, 79, 19, 22))
+        return image
     if building_id == "hydroponic_farm":
         pg.draw.polygon(image, (64, 88, 88), [(5, 66), (62, 37), (116, 61), (60, 103)])
         pg.draw.polygon(image, (36, 54, 64), [(5, 66), (60, 103), (60, 109), (5, 73)])

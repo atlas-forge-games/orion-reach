@@ -144,6 +144,8 @@ PLACEMENTS = {
     "mine": (165, 399, 168, 146),
     "trade_center": (464, 399, 187, 146),
     "shipyard": (762, 399, 248, 148),
+    "barracks": (314, 305, 140, 58),
+    "fortifications": (606, 305, 124, 58),
 }
 
 

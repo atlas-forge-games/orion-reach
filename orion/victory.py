@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, TROOP_STRENGTH
+from .ground_combat import GroundRound, forces, resolve
 
 @dataclass(frozen=True)
 class CampaignResult:
@@ -20,6 +21,13 @@ class InvasionReport:
     defence: int
     transports: int
     captured: bool
+    defender: str
+    militia: int
+    garrison: int
+    defence_bonus: int
+    attacker_survivors: int
+    defender_survivors: int
+    rounds: tuple[GroundRound, ...]
 
 
 def colonies(game, owner):
@@ -32,7 +40,7 @@ def troop_transports(game, system_id, owner="player"):
 
 def invasion_strength(game, system_id, planet_id, owner="player"):
     return (len(troop_transports(game, system_id, owner))*TROOP_STRENGTH,
-            4+game.planet_at(system_id, planet_id).population)
+            forces(game.planet_at(system_id, planet_id)).strength)
 
 
 def invasion_error(game, system_id, planet_id, owner="player"):
@@ -59,27 +67,40 @@ def invade(game, system_id, planet_id, owner="player"):
     defender = planet.owner
     transports = troop_transports(game, system_id, owner)
     attack, defence = invasion_strength(game, system_id, planet_id, owner)
-    captured = attack > defence  # A tie favours the defending colony.
+    defending = forces(planet)
+    outcome = resolve(attack, defending)
+    captured = outcome.captured
     for ship in transports:
         game.ships.remove(ship)
     if captured:
         planet.owner = owner
+        planet.garrison = outcome.attackers
+        planet.militia_losses = 4+planet.population
         # Populations, buildings and normal paid projects survive occupation.
         # The gate is bound to its original empire and cannot be inherited.
         planet.ascension_gate, planet.gate_charge = False, 0
         planet.construction_queue[:] = [p for p in planet.construction_queue if p.item_id != ASCENSION_GATE.id]
+    else:
+        # Trained troops fight at the front. Civilian population is unchanged;
+        # militia losses recover one troop per turn, trained losses need barracks.
+        casualties = defending.troops-outcome.defenders
+        planet.militia_losses += max(0, casualties-planet.garrison)
+        planet.garrison = max(0, planet.garrison-casualties)
     state = game.diplomacy_between(owner, defender)
     state.trade_active = state.research_active = False
     state.relations, state.offer_ready_turn = -100, game.turn+3
     message = (f"{game.empire_name_for(owner)} {'captured' if captured else 'failed to capture'} {planet.name}: "
-               f"{attack} attack vs {defence} defence. {len(transports)} transports consumed.")
+               f"{attack-outcome.attackers} attacking and {defending.troops-outcome.defenders} defending troops lost. "
+               f"{len(transports)} transports consumed.")
     state.record(game.turn, message)
     for participant in (owner, defender):
         if participant != "player":
             game.rival_event(message, turn=game.turn, owner=participant)
     game.eliminate_defeated()
     game.check_victory()
-    return InvasionReport(owner, system_id, planet_id, attack, defence, len(transports), captured)
+    return InvasionReport(owner, system_id, planet_id, attack, defence, len(transports), captured,
+                          defender, defending.militia, defending.garrison, defending.defence_bonus,
+                          outcome.attackers, outcome.defenders, outcome.rounds)
 
 
 def gate_site(game, owner="player"):

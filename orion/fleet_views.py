@@ -40,7 +40,7 @@ def draw_shipyard(app):
                        if spec.id == "scout" else f"{spec.hull} hull · {game.beam_for(spec.id, planet.owner or PLAYER).damage} damage per shot")
         text(surface, description, (154, y+37), 12, CYAN)
         captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
-                    "troop_transport": "Consumed in invasions. Escort with frigates.",
+                    "troop_transport": "Needs barracks. Includes 8 troops; consumed on landing.",
                     "scout": "Charts systems and recovers one-time discoveries."}
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"

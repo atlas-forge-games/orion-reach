@@ -21,11 +21,21 @@ def draw_planet_tabs(app, active):
 
 
 def compact_yields(game, definition, planet):
+    if definition.training:
+        return f"+{definition.training} TROOP · CAP {definition.garrison_limit}"
+    if definition.defence_bonus:
+        return f"+{definition.defence_bonus}% DEFENCE"
     values = game.building_yields(definition, planet)
     parts = [f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v]
     if definition.food:
         parts.append(f"+{definition.food} FOOD")
     return " · ".join(parts)
+
+
+def building_effect(game, definition, planet):
+    if definition.training:
+        return f"+{definition.training} troop / turn · limit {definition.garrison_limit}"
+    return compact_yields(game, definition, planet)+(" / turn" if not definition.defence_bonus else "")
 
 
 def turn_label(count):
@@ -106,18 +116,18 @@ def draw_colony(app):
             text(surface, "Choose a building" if planet.colonized else "Colony required", (x+12, y+65), 10, FAINT)
         app.button(f"colony_slot_{index}", "", rect, lambda i=index: app.select_colony_slot(i), "hotspot")
 
-    # Repeat copies are allowed, constrained by slots and credits.
+    # Fit all seven building choices above the bottom controls.
     for i, definition in enumerate(BUILDINGS.values()):
-        x, y = 751, 414+i*77
-        panel(surface, (x, y, 625, 71))
-        draw_building_art(surface, definition.id, (x+7, y+5, 56, 59))
-        text(surface, definition.name, (x+70, y+5), 17, INK)
-        text(surface, compact_yields(game, definition, planet)+" / turn", (x+70, y+29), 11, CYAN)
+        x, y = 751, 410+i*57
+        panel(surface, (x, y, 625, 53))
+        draw_building_art(surface, definition.id, (x+7, y+4, 54, 45))
+        text(surface, definition.name, (x+70, y+3), 15, INK)
+        text(surface, building_effect(game, definition, planet), (x+245, y+6), 10, CYAN)
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
         text(surface, f"{price} CR   ·   {definition.work_cost} work   ·   {eta}",
-             (x+70, y+51), 11, MUTED)
+             (x+70, y+32), 11, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
         hint = "1 slot"
@@ -131,9 +141,11 @@ def draw_colony(app):
             label, hint = "Full", "Queue limit"
         elif game.credits < price:
             label, hint = "Funds", f"Need {price} CR"
-        app.button(f"build_{definition.id}", label, (x+506, y+7, 103, 35),
+        elif definition.unique and reason:
+            label, hint = "Built / queued", "1 per colony"
+        app.button(f"build_{definition.id}", label, (x+492, y+3, 117, 28),
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
-        text(surface, hint, (x+510, y+51), 9, FAINT, "mono")
+        text(surface, hint, (x+510, y+36), 9, FAINT, "mono")
 
     # Inspect an existing building or queued project, with reversible queue cancellation.
     panel(surface, (64, 711, 662, 82))
@@ -141,7 +153,7 @@ def draw_colony(app):
     if slot is not None and 0 <= slot < len(planet.buildings):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, definition.name, (82, 724), 18, INK)
-        text(surface, compact_yields(game, definition, planet)+" / turn", (82, 754), 13, CYAN)
+        text(surface, building_effect(game, definition, planet), (82, 754), 13, CYAN)
         app.button("demolish_building", "Demolish", (549, 729, 156, 45),
                    lambda i=slot: app.demolish_request(i), enabled=planet.owner == PLAYER)
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:

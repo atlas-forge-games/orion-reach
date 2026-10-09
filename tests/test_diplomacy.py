@@ -205,6 +205,7 @@ class DiplomacySaveTests(unittest.TestCase):
         for system in game.systems:
             for planet in system.worlds:
                 planet.growth_progress = 0  # Legacy saves had no growth progress.
+                planet.garrison = planet.militia_losses = 0  # Or persistent ground forces.
                 planet.farmers, planet.scientists = min(2, planet.population), 0
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)

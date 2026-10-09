@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.25.1
+# Orion Reach — Python prototype 0.26.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,38 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.25.1: fully random surroundings
+## New in v0.26: ground forces and invasions
+
+Colonies now have standing garrisons, militia and fortifications. Ground battles
+resolve automatically, with a landing preview and a round-by-round casualty report.
+
+- **Barracks:** 50 CR, 30 work, one building slot. Trains one garrison troop per
+  turn up to eight, starting the turn after completion. One per colony. Also
+  enables construction of troop transports on that colony.
+- **Fortifications:** 60 CR, 36 work, one building slot. Gives all defending
+  troops **+50% firepower**. One per colony; no stacking.
+- **Troop transports:** include eight expeditionary troops in their existing
+  cost. They recruit separately from the local garrison; no manual loading is needed.
+- **Militia:** colonies start with `4 + population` militia. Casualties persist
+  and one militia troop remusters per turn. Troop losses do not remove civilian
+  population or change worker assignments.
+- **Invasions:** clear enemy ships, open the rival planet, choose **Plan ground
+  invasion**, review the preview, then **Launch invasion**. All local transports
+  are consumed. Successful invaders become the occupation garrison; captured
+  militia start at zero and remuster gradually. Occupation forces above eight
+  are retained, but barracks cannot replenish beyond their training limit.
+- **AI:** trains defenders, builds fortifications and assembles enough transports
+  for the known defences. Its invasions use the same rules. Attacks on your
+  colonies produce battle reports before any campaign defeat screen.
+
+Existing campaigns can use these features immediately. Old colonies start with
+zero trained garrison and full militia; existing transports and paid orders are
+preserved. No new campaign is required. Battle outcomes and casualties are saved;
+the displayed casualty report is a session view, not a saved replay.
+
+![Ground invasion preview](screenshots/ground_invasion.png)
+
+## Fully random surroundings
 
 Starting neighborhoods are now left as generated. No stars are moved closer to
 an empire and no nearby planets are made colonizable. You may start with several
@@ -292,7 +323,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   tactical battlefield lets ships maneuver and fire by clicking enemies, with
   coloured beams, impact flashes and destruction explosions. Damaged ships can
   repair at friendly colonies.
-- Build **troop transports**, clear opposing ships, then **Invade colony** from a
+- Build **barracks** and **troop transports**, clear opposing ships, then **Plan ground invasion** from a
   rival planet's Overview tab. Capturing its last colony wins by conquest.
 - **Objectives · V** tracks both victory paths. Finish all eight research branches,
   research **Ascension Theory**, then construct and charge an **Ascension Gate**
@@ -328,7 +359,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 found additional colonies alongside an expanding AI empire, and negotiate
 trade and research agreements, make permanent technology choices, fight fleet battles,
 feed and grow colonies, invade worlds and win through conquest or science.
-Food shipments, shields, missiles, ship customization and additional AI empires are future work.
+Food shipments, manual ground tactics and advanced racial ground abilities are future work.
 Planet attributes, population and
 habitability are illustrative game data. Sol intentionally includes only four
 inner worlds; its artwork is stylized.
@@ -1078,17 +1109,33 @@ conquest simply because no rival was added.
 
 ### Conquest
 
-1. Build **troop transports** in the Shipyard: **80 credits, 42 work, 16 hull**
-   and **8 invasion attack** each. They are unarmed in fleet combat, so escort
+1. Build **barracks**, then **troop transports** in the Shipyard: **80 credits,
+   42 work, 16 hull** and **8 troops** each. They are unarmed in fleet combat, so escort
    them with frigates. Ordinary ship discounts and propulsion bonuses apply.
 2. Send them to a system containing a rival colony. Destroy or drive away **all
    opposing ships in that system** before attempting an invasion.
-3. Open the rival planet's **Overview → Invade colony**. The forecast shows
-   total attack against **4 + the planet's population** defence. Attack must
-   be strictly greater; ties favour the defender. There is no random roll.
-4. Confirm to deploy **all your troop transports currently in that system**.
+3. Open the rival planet's **Overview → Plan ground invasion**. The forecast
+   shows invading troops, defending militia and garrison, fortification bonuses
+   and the exact predicted survivors. There is no random roll.
+4. Choose **Launch invasion** to deploy **all your troop transports currently in that system**.
    Every deployed transport is consumed, whether the invasion succeeds or fails.
-   One transport can take a 1 B colony (8 > 5); an 8 B homeworld needs two (16 > 12).
+   One transport can take an undefended 1 B colony; an unfortified 8 B homeworld
+   without a trained garrison needs two. Garrisons and fortifications raise that requirement.
+
+Each round both sides fire simultaneously, using their troops at the start of
+the round. Invaders inflict `ceil(attackers / 4)` casualties. Defenders inflict
+`ceil(defenders * (100 + defence_bonus) / 400)` casualties. Losses are capped at
+the troops remaining. Combat continues until a side is exhausted; capture needs
+at least one surviving attacker and no remaining defenders. Mutual destruction
+leaves ownership with the defender, with no troops magically replenished.
+
+Defending garrison troops take losses first, then militia. Failed attacks can
+therefore weaken a colony for a follow-up assault. Barracks replenish the trained
+garrison by one per turn up to eight; militia remuster by one per turn independently.
+On capture, surviving invaders form the new garrison and militia start at zero.
+Demolishing barracks stops garrison training and new transport orders; troops and
+already-paid transport projects remain. Fortification bonuses disappear when
+the building is demolished.
 
 A successful invasion transfers the population, buildings and ordinary paid
 construction queue intact. Research, treasury and fleets do not transfer. Any
@@ -1245,7 +1292,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.25.1 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.26 loads all earlier prototype saves without rewriting the
 source file during loading. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
 require a new campaign. Saved courses retain their original destinations and durations;
@@ -1286,7 +1333,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 20**, identifying multiple rival empires, bilateral relations,
+**format version 21**, adding garrisons and persistent militia casualties to
+planets and survey snapshots, while retaining multiple rival empires, bilateral relations,
 and independent exploration and guardian knowledge for every empire.
 The existing schema retains saved blueprints, immutable ship and construction
 loadouts, and remaining tactical shields. It also supports all four guardian types and their weapons,
@@ -1298,7 +1346,7 @@ the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.22 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.25.1 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1340,6 +1388,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/combat_effects.py` | Presentation-only movement, beams, impact flashes and destruction explosions |
 | `orion/branding.py` | Supplied studio logo, proportional scaling, splash and menu credit |
 | `orion/victory.py` | Invasions, Ascension Gates, victory checks and outcome validation |
+| `orion/ground_combat.py` | Garrison training, militia recovery and simultaneous casualty rounds |
+| `orion/ground_view.py` | Invasion previews and ground battle reports |
 | `orion/victory_view.py` | Objectives, gate controls and final campaign results |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard and empire-wide ship operations |
@@ -1411,6 +1461,9 @@ python main.py --headless --screen rival --screenshot rival.png
 python main.py --headless --screen diplomacy --screenshot diplomacy.png
 python main.py --headless --screen research --screenshot research.png
 python main.py --headless --screen combat --screenshot combat.png
+python main.py --headless --screen ground --screenshot ground_invasion.png
+python main.py --headless --screen ground_result --screenshot ground_result.png
+python main.py --headless --screen ground_defence --screenshot ground_defence.png
 python main.py --headless --screen guarded --screenshot guarded.png
 python main.py --headless --screen monster --screenshot monster.png
 python main.py --headless --screen crystal --screenshot crystal.png
@@ -1426,7 +1479,7 @@ python main.py --headless --screen result --screenshot victory.png
 
 `--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
 `unexplored`, `exploration`, `planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
-`combat`, `guarded`, `monster`, `crystal`, `sentinel`, `leviathan`, `ruins`,
+`combat`, `ground`, `ground_result`, `ground_defence`, `guarded`, `monster`, `crystal`, `sentinel`, `leviathan`, `ruins`,
 `leviathan_system`, `guardian_map`, `gaia`, `objectives`, `result`, and `about`.
 Galaxy and fleet captures use the new starting ships. Exploration, combat and
 result captures use local example states. Screenshot mode does not create

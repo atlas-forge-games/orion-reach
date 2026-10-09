@@ -25,8 +25,9 @@ from .research import BRANCHES, TECHNOLOGIES, choices
 from .combat import retreat_destination
 from .combat_view import VISIBLE_ROWS, draw_combat
 from .combat_effects import CombatAnimation
-from .victory import colonies, invasion_strength, troop_transports
+from .victory import colonies
 from .victory_view import draw_objectives, draw_result
+from .ground_view import draw_ground
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
@@ -45,7 +46,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "objectives", "result", "exploration", "designer")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer")
 
 
 class App:
@@ -104,6 +105,7 @@ class App:
         self.reset_empire_view()
         self.reset_fleet_view()
         self.reset_combat_view()
+        self.reset_ground_view()
         self.load_rows=[]
         self.load_page=0
         self.audio=Audio(enabled=not capture)
@@ -120,11 +122,15 @@ class App:
     def go(self,screen):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
-        if self.game and self.game.result is not None and screen in GAME_SCREENS:
+        if self.game and self.ground_reports and screen in GAME_SCREENS:
+            screen="ground"
+        elif self.game and self.game.result is not None and screen in GAME_SCREENS:
             screen="result"
         elif self.game and self.game.combat is not None and screen in GAME_SCREENS:
             screen="combat"
         elif screen in ("combat","result"):
+            screen="galaxy"
+        if screen=="ground" and not self.ground_reports and self.ground_target is None:
             screen="galaxy"
         if screen in ("planet","colony","shipyard","production") and self.game.selected_planet is None:
             screen="system"
@@ -176,6 +182,8 @@ class App:
             self.focus="objectives_back"
         if screen=="result":
             self.focus="result_menu"
+        if screen=="ground":
+            self.focus="ground_continue" if self.ground_reports else "ground_launch"
         if screen=="combat":
             self.sync_combat_selection()
             self.combat_ai_due=self.time+.8
@@ -522,23 +530,37 @@ class App:
         if error:
             self.toast(error,True)
             return
-        planet=self.game.planet_at(system_id,planet_id)
-        attack,defence=invasion_strength(self.game,system_id,planet_id)
-        count=len(troop_transports(self.game,system_id))
-        def invade():
-            try:
-                report=self.game.invade(system_id,planet_id)
-                self.colony_slot=None
-                self.go("result" if self.game.result else "planet")
-                if self.save_game(autosave=True):
-                    self.toast(f"{'Captured' if report.captured else 'Invasion failed at'} {planet.name} · {count} transports consumed",not report.captured)
-            except RuleError as exc:
-                self.toast(exc,True)
-        outcome="Capture predicted." if attack>defence else "Defeat predicted; bring more transports."
-        self.confirm("Invade this colony?",
-                     f"{attack} attack vs {defence} defence. {outcome} All {count} transports are consumed. "
-                     "Invasion ends treaties and sets relations to -100. Capture destroys any Ascension Gate.",
-                     "Invade colony",invade)
+        self.ground_target=(system_id,planet_id)
+        self.ground_return="planet"
+        self.ground_page=0
+        self.go("ground")
+
+    def reset_ground_view(self):
+        self.ground_target=None
+        self.ground_reports=[]
+        self.ground_return="galaxy"
+        self.ground_page=0
+
+    def launch_ground_assault(self):
+        if self.ground_target is None or self.ground_reports:
+            return
+        try:
+            report=self.game.invade(*self.ground_target)
+        except RuleError as exc:
+            self.toast(exc,True)
+            return
+        self.ground_reports.append(report)
+        self.ground_target=None
+        self.colony_slot=None
+        self.go("ground")
+        self.save_game(autosave=True)
+
+    def close_ground(self):
+        if self.ground_reports:
+            self.ground_reports.pop(0)
+        self.ground_target=None
+        self.ground_page=0
+        self.go("ground" if self.ground_reports else self.ground_return)
 
     def open_research(self):
         if self.screen=="research":
@@ -786,6 +808,7 @@ class App:
         self.reset_empire_view()
         self.reset_fleet_view()
         self.reset_combat_view()
+        self.reset_ground_view()
         self.go("galaxy")
         self.save_game(autosave=True)
 
@@ -840,10 +863,14 @@ class App:
         self.reset_empire_view()
         self.reset_fleet_view()
         self.reset_combat_view()
+        self.reset_ground_view()
         self.go("galaxy")
         self.toast(f"Welcome back, {state.empire_name}.")
 
     def advance_turn(self):
+        if self.ground_reports or self.screen=="ground":
+            self.go("ground")
+            return
         if self.game.result is not None:
             self.go("result")
             return
@@ -854,7 +881,12 @@ class App:
         # An unissued map order is a UI selection, never an automatic next-turn order.
         self.close_fleet_popup()
         report=self.game.advance_turn()
-        if self.game.result is not None:
+        if report.ground_battles:
+            self.ground_reports.extend(report.ground_battles)
+            self.ground_return="galaxy"
+            self.ground_page=0
+            self.go("ground")
+        elif self.game.result is not None:
             self.go("result")
         elif self.game.combat is not None:
             self.reset_combat_view()
@@ -1389,6 +1421,8 @@ class App:
                 self.to_menu()
             elif self.screen=="combat":
                 self.pause()
+            elif self.screen=="ground":
+                self.close_ground()
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
@@ -1428,7 +1462,7 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected:
                 self.activate(selected)
-        elif self.screen in ("combat","result") and not self.dialog:
+        elif self.screen in ("combat","ground","result") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
             elif self.screen=="combat":
@@ -1506,15 +1540,15 @@ class App:
         emblem(self.canvas,77,64,.62)
         text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
-        if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","ground","result"):
             self.button("open_empire","Empire · I",(998,39,179,46),self.open_empire)
-        if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","ground","result"):
             self.button("open_fleets","Fleets · F",(807,39,177,46),self.open_fleets)
-        if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat","ground","result"):
             self.button("open_diplomacy","Diplomacy · D",(590,39,203,46),self.open_diplomacy)
-        if self.screen in GAME_SCREENS and self.screen not in ("research","combat","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("research","combat","ground","result"):
             self.button("open_research","Research · R",(395,39,181,46),self.open_research)
-        if self.screen in GAME_SCREENS and self.screen not in ("combat","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("combat","ground","result"):
             self.button("open_objectives","Objectives · V",(1191,39,185,46),self.open_objectives)
         else:
             text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
@@ -1802,6 +1836,9 @@ class App:
 
     def draw_combat(self):
         draw_combat(self)
+
+    def draw_ground(self):
+        draw_ground(self)
 
     def draw_objectives(self):
         draw_objectives(self)

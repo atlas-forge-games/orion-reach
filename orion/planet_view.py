@@ -6,7 +6,8 @@ import pygame as pg
 from .building_art import draw_building_art
 from .buildings import BUILDINGS
 from .colony_scene import draw_colony_scene
-from .colony_view import compact_yields
+from .colony_view import building_effect
+from .ground_combat import forces, training_limit
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .empires import empire_color
@@ -15,7 +16,6 @@ from .population import BASE_FOOD, FARMER_OUTPUT, WORKER_ROLES
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
 from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
-from .victory import invasion_strength
 
 GREEN = (154, 200, 133)
 SCIENCE = (165, 172, 232)
@@ -175,8 +175,7 @@ def construction_panel(app, game, system, planet, live):
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
     elif planet.owner in game.opponents:
-        attack, defence = invasion_strength(game, system.id, planet.id)
-        app.button("invade_planet", f"Invade · {attack} vs {defence}", (1090, 257, 310, 29), app.invade_request,
+        app.button("invade_planet", "Plan ground invasion", (1090, 257, 310, 29), app.invade_request,
                    enabled=game.invasion_error(system.id, planet.id) is None)
     else:
         reason = game.colonize_error(system.id, planet.id)
@@ -203,7 +202,17 @@ def draw_planet_overview(app):
     text(surface, facts, (52, 339), 13, INK)
     if planet.ascension_gate and live:
         app.button("planet_objectives", f"Ascension Gate · {planet.gate_charge}/5", (1110, 330, 288, 34), app.open_objectives)
-    text(surface, f"{len(planet.buildings)} buildings · {len(planet.building_projects)} reserved / {planet.building_capacity} slots · {planet.habitability}% habitability · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
+    if planet.colonized:
+        defence = forces(planet)
+        caption = (f"{len(planet.buildings)} buildings · {len(planet.building_projects)} reserved / {planet.building_capacity} slots"
+                   f"    GROUND: {defence.garrison} garrison + {defence.militia} militia · +{defence.defence_bonus}% firepower")
+        if not live:
+            caption += " · Last observed"
+        elif training_limit(planet):
+            caption += f" · Barracks +1/turn, limit {training_limit(planet)}"
+        text(surface, shorten(caption, 1162, 12), (24, 854), 12, CYAN)
+    else:
+        text(surface, f"{planet.building_capacity} building slots · {planet.habitability}% habitability · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
     text(surface, "Click buildings to inspect · E: End turn · R: Research · I: Empire · P: Menu · F5: Save", (24, 877), 11, MUTED)
     app.button("planet_return", "Return", (1210, 851, 206, 42), lambda: app.go("system"), "primary")
 
@@ -231,7 +240,7 @@ def draw_production(app):
         price = game.project_price(item_id)
         text(surface, f"{price} CR · {spec.work_cost} work", (x+85, y+42), 12, GOLD)
         reason = game.project_error(sid, pid, item_id)
-        detail = compact_yields(game, spec, planet)+" / turn" if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
+        detail = building_effect(game, spec, planet) if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
         if design:
             detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
         text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)

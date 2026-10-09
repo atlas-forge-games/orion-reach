@@ -46,8 +46,8 @@ def draw_objectives(app):
     text(surface, conquest if game.opponent else "No rival in this campaign",
          (87, 344), 29, INK, "title")
     text(surface, f"Your empire controls {own} {'colony' if own == 1 else 'colonies'}.", (89, 389), 14, CYAN)
-    paragraph(surface, "Build troop transports, clear enemy ships from orbit, then invade from the planet overview. "
-              "Each transport brings 8 attack; colonies defend with 4 + population. Attack must exceed defence.",
+    paragraph(surface, "Build barracks, then troop transports (8 troops each). Clear enemy ships from orbit and plan an invasion from the planet overview. "
+              "Garrisons and fortifications strengthen colony defence.",
               (89, 424), 566, 14, MUTED, 23)
     text(surface, "Losing every colony ends an empire, even if its ships survive.", (89, 540), 12, GOLD)
 

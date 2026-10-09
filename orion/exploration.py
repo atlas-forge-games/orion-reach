@@ -59,7 +59,7 @@ class ExplorationState:
         return self.scanned_others.setdefault(owner, [])
 
     @classmethod
-    def from_dict(cls, data, game, *, version=20):
+    def from_dict(cls, data, game, *, version=21):
         from .model import Planet, _integer
         if version < 20 and isinstance(data, dict):
             data = {k: v for k, v in data.items() if k != "scanned_others"}
@@ -152,7 +152,7 @@ def known_system(game, system_id, owner="player"):
     survey = game.exploration.survey(system_id, owner)
     if survey is None:
         return None
-    return replace(system, worlds=[Planet.from_dict(world, index, version=18)
+    return replace(system, worlds=[Planet.from_dict(world, index)
                                    for index, world in enumerate(survey.worlds)])
 
 

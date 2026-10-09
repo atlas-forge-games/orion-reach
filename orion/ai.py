@@ -8,6 +8,7 @@ from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
 from . import monsters
+from .ground_combat import forces, resolve, transports_needed
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
 
@@ -116,7 +117,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
         escorts = [s for s in ships if not s.has_course and s.system_id == system.id]
         if not troops or game.foreign_fleet(system.id, owner):
             continue
-        candidates = [(s, p) for s, p in worlds if len(troops)*TROOP_STRENGTH > 4+p.population]
+        candidates = [(s, p) for s, p in worlds if resolve(len(troops)*TROOP_STRENGTH, forces(p)).captured]
         if candidates and escorts:
             destination, _ = min(candidates, key=lambda row: (
                 not row[1].ascension_gate, game.travel_turns(system, row[0], owner), row[1].population, row[0].id, row[1].id))
@@ -150,7 +151,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
                              f"Sent {ship.name} toward opposing ships at {destination.name}.")
 
 
-def invasion_orders(game, owner=RIVAL):
+def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
     messages = []
     hostile = enemies(game, owner)
     if not hostile:
@@ -159,20 +160,23 @@ def invasion_orders(game, owner=RIVAL):
         if not game.system_visible(system.id, owner):
             continue
         candidates = [p for p in system.worlds if p.owner in hostile and game.invasion_error(system.id, p.id, owner=owner) is None
-                      and invasion_strength(game, system.id, p.id, owner)[0] > 4+p.population]
+                      and resolve(invasion_strength(game, system.id, p.id, owner)[0], forces(p)).captured]
         if not candidates:
             continue
         planet = min(candidates, key=lambda p: (not p.ascension_gate, p.population, p.id))
-        game.invade(system.id, planet.id, owner=owner)
-        messages.append(f"Rival captured {planet.name}")
+        report = game.invade(system.id, planet.id, owner=owner)
+        if ground_reports is not None and "player" in (report.attacker, report.defender):
+            ground_reports.append(report)
+        if "player" in (report.attacker, report.defender) or game.system_visible(system.id):
+            messages.append(f"{game.empire_name_for(owner)} captured {planet.name}")
         if game.result is not None:
             break
     return messages
 
 
-def run_ai(game, owner=RIVAL):
+def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
-    invasions = invasion_orders(game, owner)
+    invasions = invasion_orders(game, owner, ground_reports=ground_reports)
     if game.result is not None:
         return invasions
     research_choice(game, owner)
@@ -238,7 +242,9 @@ def run_ai(game, owner=RIVAL):
         military_limit = max(military_limit, max((g.spec.hull*5+79)//80 for g in guarded))
     transports = sum(s.kind == "troop_transport" for s in game.ships_owned_by(owner)) + sum(
         project.item_id == "troop_transport" for _, p in colonies for project in p.construction_queue)
-    troop_limit = max(((4+p.population)//TROOP_STRENGTH+1 for _, p in known_enemy_colonies(game, owner)), default=0)
+    hostile = enemies(game, owner)
+    troop_limit = max((transports_needed(p, TROOP_STRENGTH) for s, p in known_enemy_colonies(game, owner)
+                       if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
     unknown = sum(not game.system_explored(s.id, owner) for s in game.systems)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
     scouts = sum(s.kind == "scout" for s in game.ships_owned_by(owner)) + sum(
@@ -257,6 +263,27 @@ def run_ai(game, owner=RIVAL):
             if game.build_error(system.id, planet.id, "hydroponic_farm", owner=owner) is None:
                 game.queue_building(system.id, planet.id, "hydroponic_farm", owner=owner)
                 event(game, owner, f"Started a hydroponic farm on {planet.name}.")
+            continue
+        # Reserve local defence before peaceful development fills every slot.
+        # The main shipyard needs barracks to recruit expeditionary troops.
+        military_building = None
+        if "barracks" not in planet.buildings and (hostile or len(planet.buildings) >= 2):
+            military_building = "barracks"
+        elif hostile and "fortifications" not in planet.buildings and "barracks" in planet.buildings:
+            military_building = "fortifications"
+        if (military_building == "barracks" and index == 0 and hostile and transports < troop_limit
+                and planet.free_slots == 0
+                and game.treasury_for(owner) >= game.project_price("barracks", owner)):
+            # Older, fully developed colonies need room for the new troop facility.
+            # Preserve farms and the last research lab; prefer redundant industry.
+            replaceable = [i for i, b in enumerate(planet.buildings) if b in ("factory", "mine", "trade_center")]
+            if replaceable:
+                slot = max(replaceable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
+                game.demolish_building(system.id, planet.id, slot, owner=owner)
+        if military_building and planet.free_slots > 0:
+            if game.build_error(system.id, planet.id, military_building, owner=owner) is None:
+                game.queue_building(system.id, planet.id, military_building, owner=owner)
+                event(game, owner, f"Started {PROJECTS[military_building].name} on {planet.name}.")
             continue
         # The strongest colony supplies ships. Other worlds build their economies.
         # Expansion raises the shipyard's development target, preventing stagnation.

@@ -15,6 +15,7 @@ from . import victory as victory_rules
 from . import exploration as exploration_rules
 from . import population as population_rules
 from . import monsters as monster_rules
+from . import ground_combat as ground_rules
 from .races import RACES, default_rival_race
 from .empires import EMPIRE_IDS, RIVAL_IDS, MAX_RIVALS, relation_key
 from .research import ResearchState, building_yields, colony_yields
@@ -241,6 +242,7 @@ class TurnReport:
     alerts: list[str] = field(default_factory=list)
     exploration: list[str] = field(default_factory=list)
     population: list[str] = field(default_factory=list)
+    ground_battles: list[victory_rules.InvasionReport] = field(default_factory=list)
 
 
 @dataclass
@@ -262,6 +264,8 @@ class Planet:
     growth_progress: int = 0
     farmers: int = 0
     scientists: int = 0
+    garrison: int = 0
+    militia_losses: int = 0
 
     @property
     def workers(self):
@@ -346,7 +350,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=18):
+    def from_dict(cls, data, expected_id, *, version=21):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -363,6 +367,15 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 21:
+            record["garrison"] = 0
+            record["militia_losses"] = 0
+        if (not _integer(record["garrison"], 0, ground_rules.MAX_GARRISON)
+                or (not data["colonized"] and record["garrison"] != 0)):
+            raise ValueError("Invalid planetary garrison")
+        if (not _integer(record["militia_losses"], 0, 104)
+                or (not data["colonized"] and record["militia_losses"] != 0)):
+            raise ValueError("Invalid militia casualties")
         if version < 12:
             record["farmers"] = min(2, data["population"])
             record["scientists"] = 0
@@ -424,6 +437,9 @@ class Planet:
             projects.append(ConstructionProject(**item))
         if len(buildings)+sum(p.reserves_slot for p in projects) > BUILDING_SLOTS[data["size"]]:
             raise ValueError
+        for identifier, spec in BUILDINGS.items():
+            if spec.unique and buildings.count(identifier)+sum(p.item_id == identifier for p in projects) > 1:
+                raise ValueError("Duplicate military building")
         if not data["colonized"] and (buildings or projects):
             raise ValueError
         record["construction_queue"] = projects
@@ -883,6 +899,9 @@ class GameState:
             return "Establish a colony before constructing buildings."
         if planet.owner != owner:
             return "This colony belongs to another empire."
+        if BUILDINGS[building_id].unique and (building_id in planet.buildings or
+                any(p.item_id == building_id for p in planet.construction_queue)):
+            return "Only one of this building is allowed per colony."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
         if planet.free_slots <= 0:
@@ -978,6 +997,8 @@ class GameState:
             return "Ships can only be built at an established colony."
         if planet.owner != owner:
             return "This colony belongs to another empire."
+        if kind == "troop_transport" and "barracks" not in planet.buildings:
+            return "Build barracks on this colony to train transport troops."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
         if self.treasury_for(owner) < self.project_price(kind, owner):
@@ -1151,19 +1172,22 @@ class GameState:
         exploration_rules.refresh(self)
         repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
         gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate]
-        alerts = []
+        alerts, ground_battles = [], []
         from .ai import run_ai
         for owner in self.opponents:
             if not self.colony_systems(owner):
                 continue
-            alerts.extend(run_ai(self, owner))
+            alerts.extend(run_ai(self, owner, ground_reports=ground_battles))
             if self.result is not None:
-                return TurnReport(0, 0, [], alerts=alerts)
+                return TurnReport(0, 0, [], alerts=alerts, ground_battles=ground_battles)
         advance_diplomacy(self)
         income, research = self.empire_rates
         rival_rates = {owner: self.empire_rates_for(owner) for owner in self.opponents}
         population_start = [(p, self.population_report(p)) for s in self.systems
                             for p in s.worlds if p.colonized]
+        # Newly completed barracks begin training on the following turn.
+        for planet, _ in population_start:
+            ground_rules.train(planet)
         arrivals = []
         for ship in self.ships:
             if ship.has_course:
@@ -1224,13 +1248,13 @@ class GameState:
         self.check_victory()
         combat_rules.intercept(self)
         return TurnReport(income, research, completed, arrivals,
-                          [discovered.name] if discovered else [], alerts, exploration, population)
+                          [discovered.name] if discovered else [], alerts, exploration, population, ground_battles)
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=20):
+    def from_dict(cls, data, *, version=21):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
