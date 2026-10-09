@@ -40,6 +40,7 @@ from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
 from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects
+from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -228,12 +229,31 @@ class App:
         worlds=self.game.systems[self.game.selected_system].worlds
         if not 0 <= planet_id < len(worlds):
             return
+        if self.screen in ("galaxy","system"):
+            self.planet_return=self.screen
         self.game.selected_planet=planet_id
         self.colony_slot=None
         self.shipyard_page=0
         self.go("planet")
 
+    def close_planet(self):
+        self.go(self.planet_return)
+        if self.screen=="galaxy" and self.game.selected_planet is not None:
+            self.galaxy_planet_page=self.game.selected_planet//PLANETS_PER_PAGE
+            self.focus=f"galaxy_world_{self.game.selected_planet}"
+
+    def change_galaxy_planet_page(self,delta):
+        known=self.game.known_system(self.game.selected_system)
+        if known is None or not known.worlds:
+            return
+        last=(len(known.worlds)-1)//PLANETS_PER_PAGE
+        self.galaxy_planet_page=max(0,min(last,self.galaxy_planet_page+delta))
+        self.focus=f"galaxy_world_{known.worlds[self.galaxy_planet_page*PLANETS_PER_PAGE].id}"
+
     def reset_fleet_view(self):
+        self.planet_return="system"
+        self.galaxy_planet_page=0
+        self.galaxy_page_system=None
         self.fleet_return="galaxy"
         self.fleet_return_selection=(0,None)
         self.fleet_page=0
@@ -388,6 +408,8 @@ class App:
 
     def open_shipyard(self,system_id,planet_id):
         self.game.planet_at(system_id,planet_id)
+        if self.screen not in ("planet","colony","shipyard","production"):
+            self.planet_return="galaxy" if self.screen=="galaxy" else "system"
         self.game.selected_system=system_id
         self.game.selected_planet=planet_id
         self.shipyard_page=0
@@ -428,12 +450,24 @@ class App:
         elif self.fleet_popup:
             ships=self.viewed_fleet()
             if ships and ships[0].owner==PLAYER and not ships[0].in_transit:
-                self.toast("Select at least one ship, or close the popup to open a system.")
+                self.toast("Select at least one ship, or close the popup to inspect a system.")
             else:
                 self.close_fleet_popup()
-                self.open_system(system_id)
+                self.select_star(system_id)
         elif self.route_ship_id is None:
-            self.open_system(system_id)
+            if self.game.selected_system != system_id:
+                self.game.selected_planet=None
+                self.galaxy_planet_page=0
+            self.game.selected_system=system_id
+            known=self.game.known_system(system_id)
+            worlds=known.worlds if known else []
+            self.focus="open_system"
+            if worlds:
+                first=next((p.id for p in worlds if p.colonized),0)
+                chosen=self.game.selected_planet if self.game.selected_planet is not None else first
+                self.galaxy_page_system=system_id
+                self.galaxy_planet_page=chosen//PLANETS_PER_PAGE
+                self.focus=f"galaxy_world_{chosen}"
         else:
             self.game.selected_system=system_id
             self.game.selected_planet=None
@@ -633,6 +667,7 @@ class App:
 
     def open_empire_colony(self,system_id,planet_id):
         self.game.planet_at(system_id,planet_id)
+        self.planet_return="system"
         self.game.selected_system=system_id
         self.game.selected_planet=planet_id
         self.colony_slot=None
@@ -1369,9 +1404,11 @@ class App:
                         self.close_fleet_popup()
                     self.field=None
                     pg.key.stop_text_input()
-            elif hovered and hovered.key==self.pressed:
+            else:
+                pressed=self.pressed
                 self.pressed=None
-                self.activate(hovered)
+                if hovered and hovered.key==pressed:
+                    self.activate(hovered)
         if event.type==pg.MOUSEWHEEL and self.screen=="load" and not self.dialog:
             self.change_load_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="empire" and not self.dialog and event.y:
@@ -1383,6 +1420,9 @@ class App:
             self.change_manifest_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and self.fleet_popup and not self.dialog and event.y:
             self.change_manifest_page(-1 if event.y>0 else 1)
+        elif (event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and not self.dialog and event.y
+              and not self.map_order_ids and self.route_ship_id is None and SYSTEM_PANEL.collidepoint(self.mouse)):
+            self.change_galaxy_planet_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="exploration" and not self.dialog and event.y:
             self.change_exploration_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="combat" and not self.dialog and event.y:
@@ -1428,7 +1468,7 @@ class App:
                 if self.worker_source:
                     self.worker_source=None
                 else:
-                    self.go("system")
+                    self.close_planet()
             elif self.screen in ("colony","shipyard","production"):
                 self.go("planet")
             elif self.screen=="fleets":
@@ -1523,6 +1563,9 @@ class App:
                 self.open_news()
             elif self.screen=="news" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_news_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif (self.screen=="galaxy" and not self.fleet_popup and not self.map_order_ids
+                  and self.route_ship_id is None and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN)):
+                self.change_galaxy_planet_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
@@ -1562,10 +1605,11 @@ class App:
         return ((self.keyboard_mode and self.focus==button.key) or
                 (not self.keyboard_mode and button.rect.collidepoint(self.mouse)))
 
-    def button(self,key,label,rect,action,style="normal",subtitle="",enabled=True):
-        b=Button(key,label,pg.Rect(rect),action,subtitle,style,enabled)
+    def button(self,key,label,rect,action,style="normal",subtitle="",enabled=True,*,icon="",shortcut="",badge=""):
+        b=Button(key,label,pg.Rect(rect),action,subtitle,style,enabled,icon,shortcut,badge)
         self.buttons.append(b)
-        b.draw(self.canvas,self.is_active(b))
+        active=self.is_active(b)
+        b.draw(self.canvas,active,active and self.pressed==key)
         return b
 
     def chrome(self,section="COMMAND",back=None):
@@ -1573,15 +1617,15 @@ class App:
         text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
         if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","ground","result"):
-            self.button("open_empire","Empire · I",(998,39,179,46),self.open_empire)
+            self.button("open_empire","Empire",(998,31,179,64),self.open_empire,"command",icon="empire",shortcut="I")
         if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","ground","result"):
-            self.button("open_fleets","Fleets · F",(807,39,177,46),self.open_fleets)
+            self.button("open_fleets","Fleets",(807,31,177,64),self.open_fleets,"command",icon="fleets",shortcut="F")
         if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat","ground","result"):
-            self.button("open_diplomacy","Diplomacy · D",(590,39,203,46),self.open_diplomacy)
+            self.button("open_diplomacy","Diplomacy",(590,31,203,64),self.open_diplomacy,"command",icon="diplomacy",shortcut="D")
         if self.screen in GAME_SCREENS and self.screen not in ("research","combat","ground","result"):
-            self.button("open_research","Research · R",(395,39,181,46),self.open_research)
+            self.button("open_research","Research",(395,31,181,64),self.open_research,"command",icon="research",shortcut="R")
         if self.screen in GAME_SCREENS and self.screen not in ("combat","ground","result"):
-            self.button("open_objectives","Objectives · V",(1191,39,185,46),self.open_objectives)
+            self.button("open_objectives","Objectives",(1191,31,185,64),self.open_objectives,"command",icon="objectives",shortcut="V")
         else:
             text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
         pg.draw.line(self.canvas,LINE,(64,107),(1376,107))
@@ -1775,23 +1819,23 @@ class App:
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)
         star=state.systems[preview]
-        if not self.fleet_popup:
-            draw_system_intelligence(self,star)
+        if not self.fleet_popup and not self.map_order_ids:
+            if self.route_ship_id is None:
+                draw_system_panel(self,star)
+            else:
+                draw_system_intelligence(self,star)
         if self.map_order_ids:
             if not self.fleet_popup:
                 draw_order_panel(self,star)
             hint=f"{len(self.map_order_ids)} {'SHIP' if len(self.map_order_ids)==1 else 'SHIPS'} SELECTED · Click a destination, or the origin to cancel departure."
         elif self.route_ship_id is None:
-            if not self.fleet_popup:
-                self.button("open_system","Open system →",(1075,692,277,43),
-                            lambda:self.open_system(self.game.selected_system))
-            hint="Click a fleet to send ships. Dim stars need a visit." if state.fog_of_war else "Click a star to survey it, or a fleet badge to inspect its ships."
+            hint="Select a star, then a planet on the right. Click a fleet to send ships."
         else:
             ship=state.ship_at(self.route_ship_id)
             duration=state.travel_turns(state.systems[ship.system_id],star)
             blocked=not state.within_fuel_range(star.id)
             label="Out of fuel range" if blocked else f"Send ship · {turn_label(duration)}" if duration else "Current system"
-            self.button("send_course",label,(1075,692,277,43),self.send_course,enabled=duration>0 and not blocked)
+            self.button("send_course",label,(1075,692,277,43),self.send_course,"command",enabled=duration>0 and not blocked,icon="course")
             known=state.known_system(star.id)
             targets=sum(not p.colonized and state.can_settle(p) for p in known.worlds) if known else 0
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
@@ -1799,21 +1843,23 @@ class App:
                   +("Colonize closer worlds or research fuel tanks." if blocked else detail))
         text(self.canvas,shorten(hint,544,13),(64,775),13,MUTED)
         unread=news_rules.unread_count(state)
-        self.button("open_news",f"News ({unread}) · N" if unread else "Turn news · N",(619,763,195,38),self.open_news)
-        self.button("open_exploration","Exploration · X",(828,763,198,38),self.open_exploration)
+        self.button("open_news","News" if unread else "Turn news",(619,763,195,38),self.open_news,"command",
+                    icon="news",shortcut="N",badge=str(min(unread,99))+("+" if unread>99 else "") if unread else "")
+        self.button("open_exploration","Exploration",(828,763,198,38),self.open_exploration,"command",icon="exploration",shortcut="X")
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
         if self.fleet_popup or self.map_order_ids:
-            self.button("cancel_fleet_course","Close · Esc",(64,820,186,54),self.cancel_map_order)
+            self.button("cancel_fleet_course","Close",(64,820,186,54),self.cancel_map_order,"command",icon="close",shortcut="Esc")
         elif self.route_ship_id is None:
-            self.button("pause","Menu  ·  Esc",(64,820,186,54),self.pause)
+            self.button("pause","Menu",(64,820,186,54),self.pause,"command",icon="menu",shortcut="Esc")
         else:
-            self.button("cancel_course","Cancel · Esc",(64,820,186,54),lambda:self.go("fleets"))
-        self.button("save","Save game  ·  F5",(264,820,229,54),self.save_game)
+            self.button("cancel_course","Cancel",(64,820,186,54),lambda:self.go("fleets"),"command",icon="close",shortcut="Esc")
+        self.button("save","Save game",(264,820,229,54),self.save_game,"command",icon="save",shortcut="F5")
         text(self.canvas,"EMPIRE ECONOMY",(585,821),10,GOLD,"mono",2)
         income,research=state.empire_rates
         upkeep=sum(p.maintenance_per_turn for s in state.systems for p in s.worlds if p.owner == PLAYER)
         text(self.canvas,f"{income:+} CR net · {upkeep} upkeep · +{research} RP/turn",(585,844),12,RED if income < 0 else MUTED)
-        self.button("end_turn","End turn  ·  E",(1081,813,295,61),self.advance_turn,"primary")
+        self.button("end_turn","End turn",(1081,813,295,61),self.advance_turn,"command_primary",
+                    subtitle=f"Turn {state.turn+1} · Year {state.year+1}",icon="turn",shortcut="E")
         if self.fleet_popup:
             draw_fleet_popup(self)
 

@@ -484,8 +484,7 @@ class GuardianUITests(unittest.TestCase):
         app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.click(f"guardian_{guardian.system_id}")
         self.assertEqual(app.game.selected_system, guardian.system_id)
-        self.assertEqual(app.screen, "system")
-        self.click("system_back")
+        self.assertEqual(app.screen, "galaxy")
         self.click("map_fleet_1")
         app.mouse = next(b.rect.center for b in app.buttons if b.key == f"guardian_{guardian.system_id}")
         app.keyboard_mode = False

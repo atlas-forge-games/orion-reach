@@ -279,7 +279,7 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.click("star_0")
-        self.click("world_2")
+        self.click("galaxy_world_2")
         self.click("surface_shipyard")
         self.click("build_colony_ship")
         self.assertEqual(self.app.game.credits, 40)

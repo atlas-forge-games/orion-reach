@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.30.0
+# Orion Reach — Python prototype 0.32.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,49 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.32: systems beside the galaxy map
+
+Clicking a star now updates a **system overview on the right of the galaxy map**.
+Its planets appear in orbital order, with planet artwork, names, environments,
+sizes, mineral richness, ownership and population or habitability. System totals,
+fleet counts, scout-survey status and known guardians remain visible.
+
+- Click a planet row to open its existing planet overview directly. The
+  **Galaxy map** button or Escape returns to the map, retaining your selection.
+  This return path survives visits to the colony, shipyard and production views.
+- Systems with more than four planets use two pages. Use the small arrows,
+  Page Up/Down, or scroll over the panel. Returning from a planet restores its page.
+- **Full system view** still opens the complete orbital diagram. Planets opened
+  there return to that view as before. All detailed planet information is retained.
+- Uncharted systems show no planet details. Remote systems show their last survey
+  and its turn, with current enemy activity hidden. Live systems allow fleet or
+  guardian engagements from the panel, with the existing confirmation step.
+- Fleet badges and destination orders keep their existing controls. Left/Right
+  browses stars; Enter focuses a planet row, then Enter opens the focused planet.
+
+This is an interface update. Game rules and **save format 24** are unchanged;
+existing campaigns can continue immediately.
+
+![Planets in the galaxy sidebar](screenshots/galaxy_system_panel.png)
+
+## New in v0.31: galaxy command buttons
+
+The galaxy controls now have beveled frames, shaded surfaces and distinct icons.
+Research, Diplomacy, Fleets, Empire and Objectives use the same navigation style
+across the strategy screens. Keyboard shortcuts appear in separate key badges.
+
+The gold **End turn** control shows the upcoming turn and year. Menu, Save,
+Turn news, Exploration, Open system and individual ship-course controls use
+matching buttons. Unread news has a gold count badge.
+
+Hover and keyboard focus highlight the border and icon; pressing a button
+visibly depresses it. Disabled actions stay dim. Releasing the mouse outside a
+button cancels the press. Existing shortcuts and navigation remain available.
+This is an interface update: the game rules and **save format 24** are unchanged.
+Existing campaigns can continue without migration or a new game.
+
+![Galaxy command buttons](screenshots/galaxy_buttons.png)
 
 ## New in v0.30: buildings, workforce and maintenance
 
@@ -462,7 +505,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Continue** appears when a campaign is already open in the current session.
 - Two-step New Game setup: choose one of eleven illustrated races, then set
   empire name, galaxy size (24/48/72 systems), optional seed, **Fog of war ON/OFF** and rival count.
-- Click a star on the galaxy map to open a dedicated **solar-system screen**.
+- Click a star to inspect its **system and planets beside the galaxy map**.
+  Click a planet row to open it directly, or choose **Full system view** for the orbital diagram.
 - New empires begin with **two scouts and one colony ship**, or the **Varkesh raiding fleet**, in their home system.
 - Click a **fleet badge** to open a small popup on the galaxy map. Select ships,
   then click a destination star. Click their departure star to cancel before End Turn.
@@ -471,7 +515,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   help choose destinations; colony expansion and fuel-tank research extend supply.
 - Build cheap **scouts** to reveal worlds and recover one-time discoveries.
   **Exploration · X** records recovered caches, archives and derelict probes.
-- Click a planet's globe or caption to open its **planet overview**: environment,
+- Click a planet row, or its globe/caption in the full system view, to open its **planet overview**: environment,
   size, gravity, minerals, habitability, orbital distance and colony status.
 - The planet overview includes a **colony surface scene** with illustrated buildings
   and landscapes for all six environments. Click a building to inspect it,
@@ -514,7 +558,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Research · R** opens eight branches, each with two tiers and two mutually
   exclusive choices per tier. Discover technologies that improve production,
   science, commerce, construction prices, travel and colonization. The rival researches too.
-- Back buttons and Escape follow **Colony → Planet → System → Galaxy**. Pause, settings
+- Back buttons and Escape follow **Colony → Planet → Galaxy**, or return through
+  **System** when the planet was opened from the full orbital diagram. Pause, settings
   and Continue preserve the active overview. Use the planet list to switch
   worlds, or Left/Right; system Previous/Next controls browse other systems.
 - These are separate full-window screens inside the game, not additional
@@ -1419,16 +1464,18 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Activate focused control | Left click, Enter or Space |
 | Edit name/seed | Click field or focus it and press Enter; type; Enter finishes |
 | Replace field contents | Ctrl+A (Cmd+A on macOS), then type |
-| Back through Colony → Planet → System → Galaxy | Escape or the Back button |
+| Back through Colony → Planet → Galaxy (or the full system view) | Escape or the Back button |
 | Pause / resume on the galaxy screen | Escape |
 | Pause from any overview | P, or Menu where shown |
 | Fullscreen | F11 |
 | Save a manual snapshot | F5, or Save Game where shown |
 | Advance one turn | E, or End Turn |
-| Open a solar system | Click a star; or Left / Right then Enter on the galaxy screen |
-| Open a planet | Click its globe/caption; or Left / Right then Enter in the system screen |
+| Inspect a solar system beside the galaxy map | Click a star, or Left / Right on the galaxy screen |
+| Browse system-panel pages | Panel arrows, Page Up / Down, or scroll over the panel |
+| Open the full orbital diagram | Full system view in the system panel |
+| Open a planet | Click its panel row or globe/caption; Enter activates a focused planet |
 | Browse planets while viewing details | Click a planet in the top-left system list, or Left / Right |
-| Return to the solar system | Return, or Escape after cancelling any worker selection |
+| Return to the galaxy map or full system view | Galaxy map / System view button, or Escape after cancelling any worker selection |
 | Assign workers | Click a worker row, then click the destination role |
 | Choose / prioritize production | Change on the planet overview |
 | Buy the current project | Buy on the planet overview, then confirm the price |
@@ -1487,7 +1534,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.30 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.31 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -1566,6 +1613,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/planet_view.py` | Landscape-led planet view, output icons, worker rows and production chooser |
 | `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
 | `orion/buildings.py` | Building costs, base output, workforce bonuses, upkeep and size-based capacity |
+| `orion/command_buttons.py` | Beveled command controls, scalable icons and interaction states |
 | `orion/population.py` | Local food production, consumption, population limits and growth |
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |

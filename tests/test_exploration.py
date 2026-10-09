@@ -366,6 +366,10 @@ class ExplorationInterfaceTests(unittest.TestCase):
         sid = game.opponent.home_system
         secret = game.planet_at(sid, game.opponent.home_planet).name
         self.click(f"star_{sid}")
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertFalse(any(b.key.startswith("galaxy_world_") for b in self.app.buttons))
+        self.assertNotIn(secret, self.drawn_text())
+        self.click("open_system")
         self.assertEqual(self.app.screen, "system")
         self.assertFalse(any(b.key.startswith("world_") for b in self.app.buttons))
         self.assertNotIn(secret, self.drawn_text())

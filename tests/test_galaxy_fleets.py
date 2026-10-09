@@ -161,7 +161,8 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertTrue(any(b.key == "map_fleet_2" for b in self.app.buttons))
         self.click("fleet_popup_close")
         self.click("star_1")
-        self.assertEqual(self.app.screen, "system")
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertEqual(self.app.game.selected_system, 1)
 
     def test_hover_and_close_never_issue_orders(self):
         self.click("map_fleet_1")
@@ -248,8 +249,8 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.map_order_ids)
         self.key(pg.K_ESCAPE)
         self.click("star_1")
-        self.assertEqual(self.app.screen, "system")
-        self.key(pg.K_ESCAPE)
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertEqual(self.app.game.selected_system, 1)
         self.click("map_fleet_1")
         self.key(pg.K_e)
         self.assertFalse(self.app.map_order_ids)
