@@ -86,9 +86,11 @@ def draw_battlefield(app):
         if is_selected or targetable or ship.id == app.combat_target_id:
             pg.draw.rect(surface, GOLD if is_selected else RED if targetable else FAINT, box, 1, border_radius=6)
         ship_icon(surface, (cx, cy-3), .55, color, kind=ship.kind, facing=1 if ship.owner == PLAYER else -1)
-        hull = ship.hull+(effect.damage if before_impact else 0)
+        hull = min(ship.max_hull, ship.hull+(effect.damage if before_impact else 0))
         pg.draw.rect(surface, LINE, (cx-18, cy+19, 36, 3))
         pg.draw.rect(surface, color, (cx-18, cy+19, round(36*hull/ship.max_hull), 3))
+        if ship.design and ship.design.shields:
+            pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.design.shields), 2))
         text(surface, "GUARD" if ship.owner == MONSTER else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.owner == PLAYER and ship.hull > 0:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship))):
@@ -129,6 +131,8 @@ def draw_combat(app):
             ship_icon(surface, (1357, 254), .85, CYAN, kind=ship.kind, facing=1)
             text(surface, shorten(ship.name, 235, 21), (x, 235), 21, INK)
             text(surface, f"HULL  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
+            if ship.design:
+                text(surface, f"SHIELDS {ship.shields}/{ship.design.shields} · PD {ship.design.interception}%", (x, 286), 10, MUTED, "mono")
             for left, title, available, value in ((x, "MOVEMENT", battle.can_move(ship), f"{ship.movement} cells"),
                                                    (1239, "WEAPON", battle.can_fire(ship), "Ready" if ship.damage else "Unarmed")):
                 panel(surface, (left, 301, 149, 58))
@@ -137,17 +141,19 @@ def draw_combat(app):
                      (left+10, 329), 15, CYAN if available else FAINT)
             beam = BEAMS[ship.weapon]
             pg.draw.line(surface, beam.color, (x, 383), (x+23, 383), 3)
-            text(surface, beam.name, (x+34, 371), 17, beam.color)
-            text(surface, f"{ship.damage} damage  ·  Range {ship.weapon_range}" if ship.damage else "Move or withdraw with your fleet.",
+            text(surface, "Weapon volley" if ship.design else beam.name, (x+34, 371), 17, beam.color)
+            text(surface, f"Up to {ship.damage} damage · Range {ship.weapon_range}" if ship.damage else "Move or withdraw with your fleet.",
                  (x, 400), 12, MUTED)
+            if ship.design:
+                text(surface, "Only weapons in range fire; one volley per turn.", (x, 420), 11, MUTED)
         else:
             paragraph(surface, "Your ships have finished their orders. End your turn to let the opponent act.", (x, 239), 308, 16, MUTED, 26)
         pg.draw.line(surface, LINE, (x, 432), (1388, 432))
         text(surface, "ENEMY TARGET", (x, 449), 10, RIVAL_COLOR, "mono", 1)
-        text(surface, target.name if target else "Click an enemy ship", (x, 473), 18, INK)
+        text(surface, shorten(target.name, 308, 18) if target else "Click an enemy ship", (x, 473), 18, INK)
         if target and target.owner == MONSTER:
             ship_icon(surface, (1356, 472), .57, kind=target.kind)
-        caption = f"{target.hull}/{target.max_hull} hull" if target else "Targets must be within weapon range."
+        caption = f"{target.hull}/{target.max_hull} hull · {target.shields} shields" if target else "Targets must be within weapon range."
         if target and ship:
             caption += f"  ·  Distance {math.dist(ship.position, target.position):.1f}"
         text(surface, caption, (x, 503), 12, MUTED)

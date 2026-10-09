@@ -73,7 +73,7 @@ def draw_rival(app):
             y = 464+i*50
             name = planet.name + (" · HQ" if game.headquarters(RIVAL) == (system, planet) else "")
             text(surface, shorten(name, 349, 15), (849, y), 15, INK)
-            project = PROJECTS[planet.construction_queue[0].item_id].name if planet.construction_queue else "Idle"
+            project = planet.construction_queue[0].spec.name if planet.construction_queue else "Idle"
             text(surface, f"{len(planet.buildings)} buildings · {project}", (850, y+24), 11, MUTED)
             app.button(f"rival_colony_{system.id}_{planet.id}", "Survey", (1228, y, 126, 37),
                        lambda sid=system.id, pid=planet.id: app.survey_rival_colony(sid, pid))

@@ -19,6 +19,7 @@ class CombatAnimation:
     damage: int = 0
     destroyed: bool = False
     elapsed: float = 0.0
+    weapons: tuple[str, ...] = ()
 
     @classmethod
     def from_action(cls, battle, action):
@@ -27,7 +28,8 @@ class CombatAnimation:
         if action["kind"] == "fire":
             ship, target = battle.ship(action["ship_id"]), battle.ship(action["target_id"])
             return cls("fire", ship.id, (ship.position, target.position), target.id,
-                       ship.weapon, action["damage"], target.hull == 0)
+                       ship.weapon, action["damage"], target.hull == 0,
+                       weapons=tuple(dict.fromkeys(w for w, _ in ship.volley(target))))
         return None
 
     @property
@@ -56,15 +58,23 @@ class CombatAnimation:
         origin, target = (project(p) for p in self.path)
         color = BEAMS[self.weapon].color
         age = self.elapsed
-        if age < .34:
-            reach = min(1, age/.1)
-            tip = (round(origin[0]+(target[0]-origin[0])*reach),
-                   round(origin[1]+(target[1]-origin[1])*reach))
-            pg.draw.line(surface, tuple(round(c*.22) for c in color), origin, tip, 11)
-            pg.draw.line(surface, color, origin, tip, 5)
-            pg.draw.line(surface, (255, 245, 232), origin, tip, 2)
-            pg.draw.circle(surface, color, origin, 7)
-            pg.draw.circle(surface, INK, origin, 3)
+        for index, weapon in enumerate(self.weapons or (self.weapon,)):
+            shade = BEAMS[weapon].color
+            if age < .34:
+                reach = min(1, age/(.18 if weapon == "torpedo" else .1))
+                start = (origin[0], origin[1]+index*4)
+                tip = (round(start[0]+(target[0]-start[0])*reach),
+                       round(start[1]+(target[1]-start[1])*reach))
+                if weapon == "torpedo":
+                    tail = (round(tip[0]+(start[0]-tip[0])*.08), round(tip[1]+(start[1]-tip[1])*.08))
+                    pg.draw.line(surface, shade, tail, tip, 4)
+                    pg.draw.circle(surface, INK, tip, 4)
+                else:
+                    pg.draw.line(surface, tuple(round(c*.22) for c in shade), start, tip, 11)
+                    pg.draw.line(surface, shade, start, tip, 5)
+                    pg.draw.line(surface, (255, 245, 232), start, tip, 2)
+                    pg.draw.circle(surface, shade, start, 7)
+                    pg.draw.circle(surface, INK, start, 3)
         if age >= .18:
             impact = age-.18
             if self.destroyed:

@@ -103,7 +103,7 @@ def draw_empire(app):
              (918, y+31), 10, GOLD if not planet.free_slots else MUTED, right=True)
         if planet.construction_queue:
             project = planet.construction_queue[0]
-            definition = PROJECTS[project.item_id]
+            definition = project.spec
             eta = game.queue_estimates(planet)[0]
             text(surface, definition.name, (950, y+7), 15, INK)
             text(surface, turn_label(eta), (1318, y+8), 12, GOLD, right=True)

@@ -36,7 +36,7 @@ def scene_buildings(game, system_id, planet):
     items = []
     if is_headquarters(game, system_id, planet):
         items.append(SceneBuilding("headquarters", "Headquarters palace", 1))
-    ships = sum(project.item_id in SHIP_TYPES for project in planet.construction_queue)
+    ships = sum(project.is_ship for project in planet.construction_queue)
     items.append(SceneBuilding("shipyard", "Shipyard", 1, ships))
     projects = planet.building_projects
     for building_id, spec in BUILDINGS.items():

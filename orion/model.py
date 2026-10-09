@@ -8,6 +8,7 @@ import random
 from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
+from .designs import HULLS, MAX_DESIGNS, ShipDesign, loadout_error
 from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, distance_ly, travel_turns
 from . import combat as combat_rules
 from . import victory as victory_rules
@@ -62,18 +63,27 @@ class ConstructionProject:
     item_id: str
     progress: int = 0
     paid_credits: int | None = None
+    design: ShipDesign | None = None
 
     def __post_init__(self):
         if self.paid_credits is None:
-            self.paid_credits = PROJECTS[self.item_id].credit_cost
+            self.paid_credits = self.spec.credit_cost
+
+    @property
+    def spec(self):
+        return self.design or PROJECTS[self.item_id]
+
+    @property
+    def is_ship(self):
+        return self.design is not None or self.item_id in SHIP_TYPES
 
     @property
     def remaining_work(self):
-        return PROJECTS[self.item_id].work_cost-self.progress
+        return self.spec.work_cost-self.progress
 
     @property
     def refund(self):
-        definition = PROJECTS[self.item_id]
+        definition = self.spec
         return self.paid_credits*self.remaining_work//definition.work_cost
 
     @property
@@ -94,6 +104,7 @@ class Ship:
     hull: int | None = None
     departure_pending: bool = False
     cruise_speed: float = SHIP_SPEED  # Snapshot so balance updates do not change saved flights.
+    design: ShipDesign | None = None
 
     def __post_init__(self):
         if self.hull is None:
@@ -101,11 +112,11 @@ class Ship:
 
     @property
     def max_hull(self):
-        return SHIP_TYPES[self.kind].hull
+        return self.design.hull if self.design else SHIP_TYPES[self.kind].hull
 
     @property
     def damage(self):
-        return SHIP_TYPES[self.kind].damage
+        return self.design.damage if self.design else SHIP_TYPES[self.kind].damage
 
     @property
     def in_transit(self):
@@ -117,16 +128,18 @@ class Ship:
 
     @property
     def name(self):
-        return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
+        return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=17):
+    def from_dict(cls, data, systems, *, version=18):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
-        if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
+        design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
+        if (not isinstance(data["kind"], str) or data["kind"] not in (HULLS if design else SHIP_TYPES)
+                or (design and design.kind != data["kind"])):
             raise ValueError
         hull = data["hull"] if version >= 8 else SHIP_TYPES[data["kind"]].hull
-        if not _integer(hull, 1, SHIP_TYPES[data["kind"]].hull):
+        if not _integer(hull, 1, design.hull if design else SHIP_TYPES[data["kind"]].hull):
             raise ValueError
         if not _integer(data["system_id"], 0, len(systems)-1):
             raise ValueError
@@ -154,6 +167,7 @@ class Ship:
             if pending and remaining != total:
                 raise ValueError
         record = dict(data)
+        record["design"] = design
         record["hull"] = hull
         record["speed_bonus"] = speed_bonus
         record["departure_pending"] = pending
@@ -291,7 +305,7 @@ class Planet:
     def industry_per_turn(self):
         return self.yields_per_turn[0]
 
-    def advance_construction(self, bonuses=None):
+    def advance_construction(self, bonuses=None, *, projects=False):
         """Use this turn's starting industry, carrying overflow into queued projects."""
         work = colony_yields(self, bonuses or {})[0]
         completed = []
@@ -301,16 +315,16 @@ class Planet:
             project.progress += applied
             work -= applied
             if project.remaining_work == 0:
-                completed.append(self.finish_current_project())
+                completed.append(self.finish_current_project(project=projects))
         return completed
 
-    def finish_current_project(self):
-        project = self.construction_queue.pop(0)
-        if project.reserves_slot:
-            self.buildings.append(project.item_id)
-        elif project.item_id == ASCENSION_GATE.id:
+    def finish_current_project(self, *, project=False):
+        completed = self.construction_queue.pop(0)
+        if completed.reserves_slot:
+            self.buildings.append(completed.item_id)
+        elif completed.item_id == ASCENSION_GATE.id:
             self.ascension_gate, self.gate_charge = True, 0
-        return project.item_id
+        return completed if project else completed.item_id
 
     def queue_estimates(self, additional=None, *, bonuses=None):
         """Exact turns until completion, assuming no future player changes."""
@@ -319,7 +333,7 @@ class Planet:
         forecast = replace(self, buildings=self.buildings.copy(),
                            construction_queue=[replace(p) for p in self.construction_queue])
         if additional is not None:
-            forecast.construction_queue.append(ConstructionProject(additional))
+            forecast.construction_queue.append(replace(additional) if isinstance(additional, ConstructionProject) else ConstructionProject(additional))
         turns, estimates = 0, []
         while forecast.construction_queue:
             turns += 1
@@ -329,7 +343,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=12):
+    def from_dict(cls, data, expected_id, *, version=18):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -391,10 +405,13 @@ class Planet:
                 item["item_id"] = item.pop("building_id")
                 if item["item_id"] not in BUILDINGS:
                     raise ValueError
-            if not isinstance(item["item_id"], str) or item["item_id"] not in PROJECTS:
+            design = ShipDesign.from_dict(item["design"]) if version >= 18 and item["design"] is not None else None
+            item["design"] = design
+            if (not isinstance(item["item_id"], str) or
+                    (item["item_id"] != design.id if design else item["item_id"] not in PROJECTS)):
                 raise ValueError
-            cost = PROJECTS[item["item_id"]].work_cost
-            price = PROJECTS[item["item_id"]].credit_cost
+            spec = design or PROJECTS[item["item_id"]]
+            cost, price = spec.work_cost, spec.credit_cost
             if version < 7:
                 item["paid_credits"] = price
             if not _integer(item["paid_credits"], 1, price):
@@ -479,6 +496,36 @@ class GameState:
     fog_of_war: bool = False
     exploration: exploration_rules.ExplorationState = field(default_factory=exploration_rules.ExplorationState)
     guardians: list[monster_rules.Guardian] = field(default_factory=list)
+    designs: list[ShipDesign] = field(default_factory=list)
+
+    def design_for(self, identifier):
+        return next((d for d in self.designs if d.id == identifier), None)
+
+    def save_design(self, name, kind, modules, identifier=None):
+        self._require_strategy()
+        name = name.strip() if isinstance(name, str) else name
+        if not _name(name):
+            raise RuleError("Choose a name of 1–28 printable characters.")
+        error = loadout_error(kind, modules, self.technology.completed)
+        if error:
+            raise RuleError(error)
+        if identifier is not None and self.design_for(identifier) is None:
+            raise RuleError("Choose an existing design to update.")
+        if any(d.name.casefold() == name.casefold() and d.id != identifier for d in self.designs):
+            raise RuleError("Another design already uses this name.")
+        if identifier is None:
+            if len(self.designs) >= MAX_DESIGNS:
+                raise RuleError("All 24 design slots are occupied. Update an existing design.")
+            identifier = f"design_{len(self.designs)+1}"
+        design = ShipDesign(identifier, name, kind, tuple(modules))
+        self.designs = [design if d.id == identifier else d for d in self.designs] if self.design_for(identifier) else self.designs+[design]
+        return design
+
+    def project_spec(self, identifier):
+        return self.design_for(identifier) or PROJECTS[identifier]
+
+    def ship_attack(self, ship):
+        return ship.design.damage if ship.design else self.beam_for(ship.kind, ship.owner).damage
 
     def system_visible(self, system_id, owner=PLAYER):
         return exploration_rules.is_visible(self, system_id, owner)
@@ -633,6 +680,8 @@ class GameState:
         return building_yields(definition, planet.richness, self.bonuses_for(planet.owner or PLAYER))
 
     def queue_estimates(self, planet, additional=None):
+        if self.design_for(additional):
+            additional = ConstructionProject(additional, design=self.design_for(additional))
         return planet.queue_estimates(additional, bonuses=self.bonuses_for(planet.owner))
 
     def project_price(self, item_id, owner=PLAYER):
@@ -640,7 +689,7 @@ class GameState:
             return ASCENSION_GATE.credit_cost
         key = "building_discount" if item_id in BUILDINGS else "ship_discount"
         discount = self.bonuses_for(owner).get(key, 0)
-        return max(1, math.ceil(PROJECTS[item_id].credit_cost*(100-discount)/100))
+        return max(1, math.ceil(self.project_spec(item_id).credit_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER):
         return travel_turns(origin, destination, self.bonuses_for(owner).get("ship_speed", 0))
@@ -797,7 +846,7 @@ class GameState:
             return "Unknown construction project."
         if item_id in BUILDINGS:
             return self.build_error(system_id, planet_id, item_id, owner=owner)
-        if item_id in SHIP_TYPES:
+        if item_id in SHIP_TYPES or self.design_for(item_id):
             return self.ship_build_error(system_id, planet_id, item_id, owner=owner)
         if item_id == ASCENSION_GATE.id:
             return self.gate_error(system_id, planet_id, owner=owner)
@@ -810,7 +859,7 @@ class GameState:
             raise RuleError(error)
         if item_id in BUILDINGS:
             self.queue_building(system_id, planet_id, item_id, owner=owner)
-        elif item_id in SHIP_TYPES:
+        elif item_id in SHIP_TYPES or self.design_for(item_id):
             self.queue_ship(system_id, planet_id, item_id, owner=owner)
         else:
             self.queue_gate(system_id, planet_id, owner=owner)
@@ -847,18 +896,25 @@ class GameState:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         self._empire(owner).credits -= self.buy_construction_cost(system_id, planet_id)
-        item_id = planet.finish_current_project()
-        if item_id in SHIP_TYPES:
-            self.ships.append(Ship(self.next_ship_id, item_id, system_id, owner=owner))
+        project = planet.finish_current_project(project=True)
+        self._complete_ship(project, system_id, owner)
+        return project.item_id
+
+    def _complete_ship(self, project, system_id, owner):
+        if project.is_ship:
+            kind = project.design.kind if project.design else project.item_id
+            self.ships.append(Ship(self.next_ship_id, kind, system_id, owner=owner, design=project.design))
             self.next_ship_id += 1
-        return item_id
 
     def ship_build_error(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
         if self.strategy_error():
             return self.strategy_error()
         planet = self.planet_at(system_id, planet_id)
-        if not isinstance(kind, str) or kind not in SHIP_TYPES:
+        design = self.design_for(kind) if isinstance(kind, str) and owner == PLAYER else None
+        if not isinstance(kind, str) or (kind not in SHIP_TYPES and design is None):
             return "Unknown ship type."
+        if design and loadout_error(design.kind, design.modules, self.technology.completed):
+            return "This design requires undiscovered technology."
         if not planet.colonized:
             return "Ships can only be built at an established colony."
         if planet.owner != owner:
@@ -876,7 +932,7 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         price = self.project_price(kind, owner)
         self._empire(owner).credits -= price
-        planet.construction_queue.append(ConstructionProject(kind, paid_credits=price))
+        planet.construction_queue.append(ConstructionProject(kind, paid_credits=price, design=self.design_for(kind)))
 
     def ship_at(self, ship_id, *, owner=PLAYER):
         ship = next((s for s in self.ships if type(ship_id) is int and s.id == ship_id), None)
@@ -1066,11 +1122,10 @@ class GameState:
         completed = []
         for system in self.systems:
             for planet in system.worlds:
-                for item_id in planet.advance_construction(self.bonuses_for(planet.owner)):
-                    if item_id in SHIP_TYPES:
-                        self.ships.append(Ship(self.next_ship_id, item_id, system.id, owner=planet.owner))
-                        self.next_ship_id += 1
-                    message = f"{PROJECTS[item_id].name} on {planet.name}"
+                for project in planet.advance_construction(self.bonuses_for(planet.owner), projects=True):
+                    item_id = project.item_id
+                    self._complete_ship(project, system.id, planet.owner)
+                    message = f"{project.spec.name} on {planet.name}"
                     if planet.owner == PLAYER:
                         completed.append(message)
                     else:
@@ -1118,7 +1173,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=17):
+    def from_dict(cls, data, *, version=18):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1204,6 +1259,17 @@ class GameState:
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
+            if version >= 18:
+                if not isinstance(data["designs"], list) or len(data["designs"]) > MAX_DESIGNS:
+                    raise ValueError("Invalid design library")
+                game.designs = [ShipDesign.from_dict(d) for d in data["designs"]]
+                if ([d.id for d in game.designs] != [f"design_{i+1}" for i in range(len(game.designs))]
+                        or len({d.name.casefold() for d in game.designs}) != len(game.designs)):
+                    raise ValueError("Duplicate ship designs")
+                snapshots = game.designs+[s.design for s in ships if s.design and s.owner == PLAYER]
+                snapshots += [p.design for s in systems for w in s.worlds if w.owner == PLAYER for p in w.construction_queue if p.design]
+                if any(loadout_error(d.kind, d.modules, technology.completed) for d in snapshots):
+                    raise ValueError("Undiscovered ship equipment")
             if version >= 16:
                 game.guardians = monster_rules.parse_guardians(data["guardians"], game)
             if version >= 8 and data["combat"] is not None:

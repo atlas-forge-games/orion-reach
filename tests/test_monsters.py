@@ -379,7 +379,11 @@ class GuardianSaveTests(unittest.TestCase):
         game, _, _ = encounter()
         game.guardians = [g for g in game.guardians if g.kind in ("space_serpent", "crystal_guardian")]
         original = game.to_dict()
-        self.assertEqual(GameState.from_dict(original, version=16), game)
+        legacy = game.to_dict()
+        for ship in legacy["combat"]["ships"]:
+            ship.pop("design")
+            ship.pop("shields")
+        self.assertEqual(GameState.from_dict(legacy, version=16), game)
         self.assertEqual(game.to_dict(), original)
 
     def test_v15_load_does_not_add_guardians_or_change_worlds_and_orders(self):

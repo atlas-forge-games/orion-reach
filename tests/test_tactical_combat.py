@@ -163,7 +163,7 @@ class TacticalRulesTests(unittest.TestCase):
             old = data["game"]["combat"]
             old.pop("moved")
             for ship in old["ships"]:
-                for field in ("x", "y", "weapon"):
+                for field in ("x", "y", "weapon", "design", "shields"):
                     ship.pop(field)
             path.write_text(json.dumps(data))
             original = path.read_bytes()
@@ -175,7 +175,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-            self.assertEqual(SAVE_VERSION, 17)
+            self.assertEqual(SAVE_VERSION, 18)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()

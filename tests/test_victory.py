@@ -356,7 +356,7 @@ class VictorySaveTests(unittest.TestCase):
             payload["game"].pop("result")
             payload["game"]["combat"].pop("moved")
             for ship in payload["game"]["combat"]["ships"]:
-                for key in ("x", "y", "weapon"):
+                for key in ("x", "y", "weapon", "design", "shields"):
                     ship.pop(key)
             for system in payload["game"]["systems"]:
                 for planet in system["worlds"]:

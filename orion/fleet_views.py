@@ -26,6 +26,7 @@ def draw_shipyard(app):
     text(surface, f"Shipyard · {game.planet_yields(planet)[0]} industry / turn · {game.empire_name_for(planet.owner)}",
          (66, 249), 14, MUTED)
     draw_planet_tabs(app, "shipyard")
+    app.button("shipyard_designer", "Custom ships / designer →", (985, 259, 391, 34), app.open_designer, enabled=planet.owner==PLAYER)
 
     estimates = game.queue_estimates(planet)
     for index, spec in enumerate(SHIP_TYPES.values()):
@@ -59,7 +60,7 @@ def draw_shipyard(app):
     start = app.shipyard_page*QUEUE_PER_PAGE
     for index in range(start, min(start+QUEUE_PER_PAGE, len(planet.construction_queue))):
         project = planet.construction_queue[index]
-        definition = PROJECTS[project.item_id]
+        definition = project.spec
         y = 394+(index-start)*65
         panel(surface, (697, y, 656, 58), (8, 18, 26))
         text(surface, f"{index+1:02}", (711, y+12), 11, GOLD, "mono")
@@ -91,11 +92,12 @@ def draw_fleets(app):
     app.chrome("FLEET OPERATIONS")
     app.button("fleets_back", "←  Back · F", (64, 124, 190, 46), app.close_fleets, "ghost")
     app.button("fleets_galaxy", "Galaxy map", (269, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
+    app.button("fleets_designer", "Ship designer", (459, 124, 212, 46), app.open_designer)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Fleet operations", (64, 190), 43, INK, "title")
     text(surface, "Explore, settle and defend. Ships in the same system fight together.", (66, 251), 14, MUTED)
     ready = sum(not s.in_transit for s in ships)
-    queued = sum(p.item_id in SHIP_TYPES for system in game.systems for planet in system.worlds
+    queued = sum(p.is_ship for system in game.systems for planet in system.worlds
                  if planet.owner == PLAYER for p in planet.construction_queue)
     stats = [("READY IN ORBIT", ready), ("IN TRANSIT", len(ships)-ready), ("UNDER CONSTRUCTION", queued)]
     for i, (label, value) in enumerate(stats):
@@ -115,7 +117,7 @@ def draw_fleets(app):
         text(surface, ship.name, (142, y+12), 18, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
-                f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.beam_for(ship.kind, ship.owner).damage} damage / shot")
+                f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.ship_attack(ship)} damage / volley")
         text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.has_course else f"{origin.name} orbit"

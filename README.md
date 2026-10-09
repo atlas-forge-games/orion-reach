@@ -1,11 +1,75 @@
-# Orion Reach — Python prototype 0.21.0
+# Orion Reach — Python prototype 0.22.0
 
-A playable colony-building and interstellar expansion prototype with guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.22: basic ship designer
+
+Open **Fleets → Ship designer**, **Shipyard → Custom ships / designer**, or
+**Planet → Change → Ship designer**. Choose a hull, enter a name, and add or
+remove modules with the + / − buttons. Save your blueprint, choose an owned
+colony with the arrows, and click **Queue ship**. Designs also appear in the
+planet's **Change production** catalogue; use its page arrows for more projects.
+Queuing pays the credit cost immediately and uses the colony's usual construction
+queue, industry, buy-production and cancellation rules. Ship discounts apply.
+
+| Hull | Base hull | Shared capacity | Weapon limit | Defense limit | Support limit | Tactical movement |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Frigate | 20 | 4 | 3 | 2 | 1 | 4 |
+| Cruiser | 42 | 8 | 5 | 4 | 2 | 3 |
+| Battleship | 75 | 12 | 8 | 6 | 2 | 2 |
+
+Category limits count **capacity units**, not the number of modules, and share
+the hull's total capacity. All three hulls are available from the start; every
+saved design must contain at least one weapon. Empty capacity is allowed.
+
+| Module | Capacity | Effect | Unlock |
+| --- | ---: | --- | --- |
+| Laser cannon | 1 weapon | 5 damage, range 6 | Starting equipment |
+| Torpedo launcher | 2 weapon | 10 damage, range 8 | Starting equipment |
+| Quantum battery | 2 weapon | 14 damage, range 7 | Quantum Optics |
+| Armor plate | 1 defense | +8 hull, −1 tactical movement, minimum 1 | Starting equipment |
+| Shield generator | 1 defense | +12 shields | Radiation Shields |
+| Point defense | 1 defense | −30% incoming torpedo damage per module, capped at −60% | Starting equipment |
+| Maneuvering thruster | 1 support | +1 tactical movement | Ion Drives |
+| Combat scanner | 1 support | +1 range for all weapons, maximum one scanner | Research Networks |
+
+Each ship still moves once and fires one volley per tactical turn. **Only mounted
+weapons within range fire**, so a distant target may receive only your torpedoes.
+Point defense reduces each torpedo's damage before shields absorb it; remaining
+damage hits the hull. Shields do not regenerate during a battle and start full
+at the next battle. Beams retain their technology's color; torpedoes travel as
+projectiles, and destroyed ships retain the explosion effect. Armor adds hull
+instead of a second damage-reduction calculation. Hull size, armor and thrusters
+affect tactical movement; strategic travel speed and fuel range keep their existing rules.
+
+Up to **24 blueprints** can be saved per campaign. Select one to update it, or
+rename it and choose **Save as new**. **Updating a blueprint changes future orders
+only.** Ships already built and projects already queued retain their name, hull,
+equipment, costs and work requirement. Newly researched equipment must be fitted
+to a design; designed ships do not receive automatic upgrades. Blueprints and
+orders autosave when saved or queued through the designer. F5 saves the campaign;
+unsaved edits in the designer are only a draft.
+
+Existing saves can use the designer immediately. Their fleets and queued projects
+remain standard ships; standard frigates retain their original research-based
+laser/quantum upgrade. The AI still builds its standard catalogue in this first
+version. Refitting, power budgets, racial module systems and AI design selection
+are future work.
+
+![Ship designer](screenshots/designer.png)
+![Designed ships in tactical combat](screenshots/design_combat.png)
+
+Development previews:
+
+```sh
+python main.py --headless --screen designer --screenshot screenshots/designer.png
+python main.py --headless --screen design_combat --screenshot screenshots/design_combat.png
+```
 
 ## Run
 
@@ -1065,7 +1129,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.21 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.22 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
 ships and travel times are preserved. Already issued pre-v0.19 journeys keep
 their original faster speed, destination and remaining turns, even outside the
@@ -1102,7 +1166,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 17**, supporting all four guardian types and their weapons,
+**format version 18**, adding saved blueprints, immutable ship and construction
+loadouts, and remaining tactical shields. It also supports all four guardian types and their weapons,
 including guardian locations, persistent health and private
 last-seen status, plus base cruise-speed snapshots, queued departure flags, tactical coordinates, beam loadouts, movement and
 firing flags, worker assignments, paused construction progress,
@@ -1111,7 +1176,7 @@ the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.20 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.21 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.

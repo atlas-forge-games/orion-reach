@@ -28,6 +28,8 @@ from .combat_effects import CombatAnimation
 from .victory import colonies, invasion_strength, troop_transports
 from .victory_view import draw_objectives, draw_result
 from .production import PROJECTS, SHIP_TYPES
+from .designs import loadout_error
+from .designer_view import draft, draw_designer
 from .setup_view import draw_setup
 from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
@@ -42,7 +44,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "objectives", "result", "exploration")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "objectives", "result", "exploration", "designer")
 
 
 class App:
@@ -91,6 +93,12 @@ class App:
         self.colony_slot=None
         self.worker_source=None
         self.production_page=0
+        self.catalog_page=0
+        self.designer_return="fleets"
+        self.design_campaign=None
+        self.design_location=(0,2)
+        self.design_page=0
+        self.new_design()
         self.reset_empire_view()
         self.reset_fleet_view()
         self.reset_combat_view()
@@ -431,7 +439,7 @@ class App:
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
             self.shipyard_page=(len(planet.construction_queue)-1)//QUEUE_PER_PAGE
             if self.save_game(autosave=True):
-                self.toast(f"{SHIP_TYPES[kind].name} queued · {planet.construction_queue[-1].paid_credits} CR paid")
+                self.toast(f"{self.game.project_spec(kind).name} queued · {planet.construction_queue[-1].paid_credits} CR paid")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -804,6 +812,7 @@ class App:
             self.toast(exc,True)
             return
         self.game=state
+        self.design_campaign=None
         self.colony_slot=None
         self.reset_empire_view()
         self.reset_fleet_view()
@@ -1041,7 +1050,78 @@ class App:
 
     def open_production(self):
         self.production_page=0
+        self.catalog_page=0
         self.go("production")
+
+    def open_designer(self):
+        if not self.game or self.game.strategy_error():
+            return
+        if self.design_campaign != self.game.campaign_id:
+            self.new_design()
+            self.design_page=0
+            self.design_campaign=self.game.campaign_id
+        self.designer_return=self.screen if self.screen in GAME_SCREENS and self.screen!="designer" else "fleets"
+        self.design_location=(self.game.selected_system,self.game.selected_planet)
+        self.go("designer")
+
+    def new_design(self):
+        self.design_id=None
+        self.design_name=""
+        self.design_kind="frigate"
+        self.design_modules=["laser","armor"]
+
+    def load_design(self,design):
+        self.design_id,self.design_name,self.design_kind=design.id,design.name,design.kind
+        self.design_modules=list(design.modules)
+        self.field=None
+        pg.key.stop_text_input()
+
+    def choose_design_hull(self,kind):
+        self.design_kind=kind
+
+    def change_design_module(self,identifier,amount):
+        if amount<0:
+            if identifier in self.design_modules:
+                self.design_modules.remove(identifier)
+        elif not loadout_error(self.design_kind,[*self.design_modules,identifier],self.game.technology.completed,require_weapon=False):
+            self.design_modules.append(identifier)
+
+    def design_page_change(self,delta):
+        self.design_page=max(0,min(max(0,(len(self.game.designs)-1)//7),self.design_page+delta))
+
+    def design_colony(self):
+        colonies=[(s,p) for s in self.game.systems for p in s.worlds if p.owner==PLAYER]
+        return next(((s,p) for s,p in colonies if (s.id,p.id)==self.design_location), colonies[0] if colonies else None)
+
+    def cycle_design_colony(self,delta):
+        colonies=[(s.id,p.id) for s in self.game.systems for p in s.worlds if p.owner==PLAYER]
+        colony=self.design_colony()
+        if colony:
+            index=colonies.index((colony[0].id,colony[1].id))
+            self.design_location=colonies[(index+delta)%len(colonies)]
+
+    def save_ship_design(self,copy=False):
+        try:
+            design=self.game.save_design(self.design_name,self.design_kind,self.design_modules,None if copy else self.design_id)
+            self.load_design(design)
+            self.design_page=self.game.designs.index(design)//7
+            if self.save_game(autosave=True):
+                self.toast(f"{design.name} saved · Existing ships and orders retain their equipment")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def build_ship_design(self):
+        colony=self.design_colony()
+        saved=self.game.design_for(self.design_id)
+        if colony is None or saved!=draft(self):
+            self.toast("Save your design and select a colony first.",True)
+            return
+        try:
+            self.game.queue_ship(colony[0].id,colony[1].id,saved.id)
+            if self.save_game(autosave=True):
+                self.toast(f"{saved.name} queued at {colony[1].name}")
+        except RuleError as exc:
+            self.toast(exc,True)
 
     def change_production_page(self,delta):
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
@@ -1052,7 +1132,7 @@ class App:
             self.game.change_production(self.game.selected_system,self.game.selected_planet,item_id)
             self.go("planet")
             if self.save_game(autosave=True):
-                self.toast(f"Now building {PROJECTS[item_id].name} · Previous projects remain queued")
+                self.toast(f"Now building {self.game.project_spec(item_id).name} · Previous projects remain queued")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -1071,7 +1151,7 @@ class App:
             self.toast(error,True)
             return
         project=self.game.planet_at(sid,pid).construction_queue[0]
-        name=PROJECTS[project.item_id].name
+        name=project.spec.name
         price=self.game.buy_construction_cost(sid,pid)
         def buy():
             try:
@@ -1253,6 +1333,8 @@ class App:
                     self.go("fleets") if self.route_ship_id is not None else self.pause()
             elif self.screen=="fleet":
                 self.go("galaxy")
+            elif self.screen=="designer":
+                self.go(self.designer_return)
             elif self.screen=="exploration":
                 self.close_exploration()
             elif self.screen=="system":
@@ -1672,6 +1754,9 @@ class App:
 
     def draw_shipyard(self):
         draw_shipyard(self)
+
+    def draw_designer(self):
+        draw_designer(self)
 
     def draw_fleets(self):
         draw_fleets(self)

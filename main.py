@@ -25,7 +25,7 @@ def main():
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", *GUARDIAN_PREVIEWS, "objectives", "result", "about"), default="menu")
+    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -39,7 +39,7 @@ def main():
     app = App(args.data_dir, capture=bool(args.screenshot), skip_intro=args.skip_intro)
     try:
         if args.screenshot:
-            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", *GUARDIAN_PREVIEWS, "objectives", "result"):
+            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, "objectives", "result"):
                 from orion.model import new_game
                 app.game = new_game(seed=2408)
                 if args.screen in ("planet", "production", "colony", "shipyard"):
@@ -66,6 +66,20 @@ def main():
                     app.game.combat_move(1, 7, 4)
                     app.game.combat_fire(1, 4)
                     app.game.combat_move(2, 7, 5)
+                if args.screen in ("designer", "design_combat"):
+                    from orion.model import Ship, RIVAL
+                    game = app.game
+                    game.technology.completed = ["ion_drives", "radiation_shields", "research_networks"]
+                    lancer = game.save_design("Lancer", "frigate", ["torpedo", "shield", "scanner"])
+                    aegis = game.save_design("Aegis", "cruiser", ["laser", "laser", "torpedo", "armor", "shield", "point_defense", "engine"])
+                    game.credits = 750
+                    if args.screen == "design_combat":
+                        game.ships = [Ship(1, "cruiser", 0, design=aegis), Ship(2, "frigate", 0, design=lancer),
+                                      Ship(3, "frigate", 0, owner=RIVAL), Ship(4, "frigate", 0, owner=RIVAL)]
+                        game.next_ship_id = 5
+                        game.start_combat(0)
+                        game.combat_move(1, 7, 4)
+                        game.combat_move(2, 7, 5)
                 if args.screen in GUARDIAN_PREVIEWS:
                     from orion.model import Ship
                     from orion.exploration import refresh
@@ -104,9 +118,12 @@ def main():
                     earth = game.planet_at(0, 2)
                     earth.ascension_gate, earth.gate_charge = True, 5
                     game.check_victory()
-            preview_screen = {"fleet_course": "galaxy", "unexplored": "system",
+            preview_screen = {"fleet_course": "galaxy", "unexplored": "system", "design_combat": "combat",
                               **{name: screen for name, (_, screen) in GUARDIAN_PREVIEWS.items()}}
             app.go(preview_screen.get(args.screen, args.screen))
+            if args.screen == "designer":
+                app.design_campaign = app.game.campaign_id
+                app.load_design(aegis)
             if args.screen in ("fleet", "fleet_course"):
                 app.open_map_fleet(1)
                 app.toggle_fleet_ship(2)

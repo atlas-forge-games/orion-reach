@@ -16,6 +16,22 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
         if facing:
             values = [(-b*facing, a*facing) for a, b in values]
         return [(round(x+a*scale), round(y+b*scale)) for a, b in values]
+    if kind in ("cruiser", "battleship"):
+        heavy = kind == "battleship"
+        width = 17 if heavy else 12
+        hull = points([(0, -35), (width, -18), (width, 24), (-width, 24), (-width, -18)])
+        pg.draw.polygon(surface, (31, 49, 61), hull)
+        pg.draw.polygon(surface, color, hull, max(1, round(scale)))
+        for side in (-1, 1):
+            wing = points([(side*width, -20 if heavy else -3), (side*29, -9 if heavy else 7),
+                           (side*29, 25), (side*width, 19)])
+            pg.draw.polygon(surface, (46, 63, 74), wing)
+            pg.draw.polygon(surface, color, wing, max(1, round(scale)))
+            for top in ((-13, 3, 17) if heavy else (4, 19)):
+                pg.draw.circle(surface, INK, points([(side*22, top)])[0], max(1, round(2*scale)))
+            pg.draw.line(surface, color, points([(side*10, 27)])[0], points([(side*10, 34)])[0], max(1, round(4*scale)))
+        pg.draw.lines(surface, INK, False, points([(-6, -12), (0, -22), (6, -12), (0, 10), (-6, -12)]), max(1, round(scale)))
+        return
     if kind == "scout":
         hull = points([(0, -30), (8, -8), (6, 18), (0, 25), (-6, 18), (-8, -8)])
         pg.draw.polygon(surface, (22, 46, 56), hull)

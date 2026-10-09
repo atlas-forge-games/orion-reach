@@ -10,6 +10,7 @@ from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from . import monsters
 from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
+from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
 FLEET_SHIPS_PER_PAGE = 6
@@ -296,7 +297,7 @@ def draw_fleet(app):
         ship_icon(surface, (139, y+31), .55, CYAN if own else RIVAL_COLOR, kind=ship.kind)
         text(surface, ship.name, (190, y+8), 19, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
-                f"{game.beam_for(ship.kind, ship.owner).damage} damage / shot" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
+                f"{game.ship_attack(ship)} damage / volley" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
                 if ship.kind == "troop_transport" else f"{game.starting_colonists(first.owner)} B colonists · Unarmed")
         text(surface, role, (191, y+36), 12, MUTED)
         text(surface, f"{ship.hull} / {ship.max_hull} hull", (918, y+11), 13, INK, right=True)
@@ -313,13 +314,13 @@ def draw_fleet(app):
     text(surface, "SELECTED FOR DEPARTURE" if commandable else "FLEET MANIFEST", (990, 312), 11, GOLD, "mono", 1)
     selected = [s for s in ships if s.id in app.fleet_selected_ids] if commandable else ships
     text(surface, f"{len(selected)} {'ship' if len(selected)==1 else 'ships'}", (990, 348), 35, INK, "title")
-    for index, spec in enumerate(SHIP_TYPES.values()):
-        count = sum(s.kind == spec.id for s in selected)
-        y = 406+index*28
-        text(surface, spec.name, (991, y), 14, MUTED)
-        text(surface, str(count), (1352, y), 15, CYAN, right=True)
+    for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
+        count = sum(s.kind == kind for s in selected)
+        y = 406+index*19
+        text(surface, spec.name, (991, y), 12, MUTED)
+        text(surface, str(count), (1352, y), 12, CYAN, right=True)
     pg.draw.line(surface, LINE, (990, 524), (1352, 524))
-    text(surface, f"{sum(s.hull for s in selected)} hull · {sum(game.beam_for(s.kind, s.owner).damage for s in selected)} damage / volley", (991, 540), 14, INK)
+    text(surface, f"{sum(s.hull for s in selected)} hull · {sum(game.ship_attack(s) for s in selected)} damage / volley", (991, 540), 14, INK)
     description = ("Choose a destination, then click a star on the map to send the selected ships. Unchecked ships stay in orbit."
                    if commandable else "These ships are travelling together. Advance turns to reach their destination; courses cannot be changed in flight."
                    if first.in_transit else "You can inspect this fleet, but only its empire can issue movement orders.")
@@ -348,9 +349,9 @@ def draw_order_panel(app, target):
     text(surface, "CHOOSE DESTINATION", (1075, 203), 10, GOLD, "mono", 1)
     text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (1075, 245), 25, INK, "title")
     text(surface, f"Departing {origin.name}", (1075, 289), 14, CYAN)
-    for index, spec in enumerate(SHIP_TYPES.values()):
-        count = sum(s.kind == spec.id for s in ships)
-        text(surface, f"{count} × {spec.name}", (1075, 325+index*26), 14, MUTED)
+    for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
+        count = sum(s.kind == kind for s in ships)
+        text(surface, f"{count} × {spec.name}", (1075, 325+index*18), 12, MUTED)
     pg.draw.line(surface, LINE, (1075, 431), (1352, 431))
     text(surface, "DESTINATION PREVIEW", (1075, 453), 10, GOLD, "mono")
     text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")

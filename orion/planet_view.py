@@ -12,6 +12,7 @@ from .model import PLAYER, RIVAL
 from .planet_art import draw_planet
 from .population import BASE_FOOD, FARMER_OUTPUT, WORKER_ROLES
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
+from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 from .victory import invasion_strength
 
@@ -52,12 +53,12 @@ def worker_icon(surface, x, y, color):
     pg.draw.line(surface, color, (x, y+15), (x+4, y+22), 2)
 
 
-def project_art(surface, item_id, rect):
+def project_art(surface, item_id, rect, design=None):
     rect = pg.Rect(rect)
     if item_id in BUILDINGS:
         draw_building_art(surface, item_id, rect)
-    elif item_id in SHIP_TYPES:
-        ship_icon(surface, rect.center, min(rect.w/64, rect.h/74), kind=item_id)
+    elif item_id in SHIP_TYPES or design:
+        ship_icon(surface, rect.center, min(rect.w/64, rect.h/74), kind=design.kind if design else item_id)
     else:
         pg.draw.ellipse(surface, CYAN, rect.inflate(-rect.w//3, -8), 4)
         pg.draw.ellipse(surface, GOLD, rect.inflate(-rect.w//2, -18), 2)
@@ -145,9 +146,9 @@ def construction_panel(app, game, system, planet, live):
     queue = planet.construction_queue
     if queue:
         project = queue[0]
-        spec = PROJECTS[project.item_id]
+        spec = project.spec
         text(surface, shorten(spec.name, 307, 20), (1090, 91), 20, INK)
-        project_art(surface, project.item_id, (1095, 122, 93, 85))
+        project_art(surface, project.item_id, (1095, 122, 93, 85), project.design)
         turns = game.queue_estimates(planet)[0] if live else None
         text(surface, f"{turns} {'turn' if turns == 1 else 'turns'}" if live else "Last observed", (1205, 131), 22, CYAN)
         text(surface, f"{project.progress} / {spec.work_cost} work", (1205, 169), 12, MUTED)
@@ -212,20 +213,30 @@ def draw_production(app):
     identifiers = list(BUILDINGS)+list(SHIP_TYPES)
     if "ascension_theory" in game.technology.completed:
         identifiers.append(ASCENSION_GATE.id)
-    for i, item_id in enumerate(identifiers):
-        spec = PROJECTS[item_id]
+    identifiers.extend(d.id for d in game.designs)
+    catalog_pages = max(1, math.ceil(len(identifiers)/10))
+    app.catalog_page = min(app.catalog_page, catalog_pages-1)
+    for i, item_id in enumerate(identifiers[app.catalog_page*10:app.catalog_page*10+10]):
+        spec = game.project_spec(item_id)
+        design = game.design_for(item_id)
         x, y = 40+(i%2)*446, 125+(i//2)*135
         panel(surface, (x, y, 428, 120))
-        project_art(surface, item_id, (x+10, y+14, 65, 72))
+        project_art(surface, item_id, (x+10, y+14, 65, 72), design)
         text(surface, shorten(spec.name, 330, 18), (x+85, y+12), 18, INK)
         price = game.project_price(item_id)
         text(surface, f"{price} CR · {spec.work_cost} work", (x+85, y+42), 12, GOLD)
         reason = game.project_error(sid, pid, item_id)
         detail = compact_yields(game, spec, planet)+" / turn" if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
+        if design:
+            detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
         text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
         app.button("production_build_"+item_id, "Start", (x+312, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen), enabled=reason is None)
         text(surface, shorten(reason or "Previous work is retained", 294, 10), (x+13, y+94), 10, MUTED)
+    app.button("catalog_previous", "←", (40, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page-1), enabled=app.catalog_page > 0)
+    text(surface, f"Projects {app.catalog_page+1} / {catalog_pages}", (120, 801), 12, MUTED)
+    app.button("catalog_next", "→", (334, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page+1), enabled=app.catalog_page < catalog_pages-1)
+    app.button("production_designer", "Ship designer →", (620, 793, 294, 30), app.open_designer)
     panel(surface, (944, 125, 456, 660))
     queue = planet.construction_queue
     text(surface, f"CONSTRUCTION QUEUE · {len(queue)}/20", (960, 143), 12, GOLD, "mono")
@@ -234,7 +245,7 @@ def draw_production(app):
     estimates = game.queue_estimates(planet)
     for i in range(app.production_page*6, min(len(queue), (app.production_page+1)*6)):
         project = queue[i]
-        spec = PROJECTS[project.item_id]
+        spec = project.spec
         y = 180+(i%6)*82
         button = app.button(f"production_priority_{i}", "", (960, y, 370, 70),
                             lambda index=i: app.prioritize_production(index), "hotspot")

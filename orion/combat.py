@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import math
 
 from .production import SHIP_TYPES
+from .designs import HULLS, ShipDesign
 from .monsters import MONSTER, MONSTERS, alive_at, at as guardian_at, observe, known_status, commit_battle_result
 
 COMBAT_TYPES = {**SHIP_TYPES, **MONSTERS}
@@ -30,6 +31,7 @@ BEAMS = {
     "none": Beam("Unarmed", 0, 0, (133, 151, 160)),
     "laser": Beam("Laser", 5, 6, (255, 80, 76)),
     "quantum": Beam("Quantum beam", 7, 7, (187, 113, 255)),
+    "torpedo": Beam("Torpedo", 10, 8, (255, 188, 79)),
     "plasma_breath": Beam("Plasma breath", 8, 4, (104, 255, 144)),
     "crystal_ray": Beam("Crystal ray", 10, 7, (102, 220, 255)),
     "ancient_lance": Beam("Ancient lance", 12, 8, (255, 198, 104)),
@@ -65,26 +67,33 @@ class CombatShip:
     x: int = 0
     y: int = 0
     weapon: str = "none"
+    design: ShipDesign | None = None
+    shields: int = 0
 
     @property
     def name(self):
-        return MONSTERS[self.kind].name if self.kind in MONSTERS else f"{SHIP_TYPES[self.kind].name} {self.id:03}"
+        return MONSTERS[self.kind].name if self.kind in MONSTERS else f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @property
     def max_hull(self):
-        return COMBAT_TYPES[self.kind].hull
+        return self.design.hull if self.design else COMBAT_TYPES[self.kind].hull
 
     @property
     def damage(self):
-        return BEAMS[self.weapon].damage
+        return self.design.damage if self.design else BEAMS[self.weapon].damage
 
     @property
     def weapon_range(self):
-        return BEAMS[self.weapon].range
+        return self.design.weapon_range if self.design else BEAMS[self.weapon].range
 
     @property
     def movement(self):
-        return MOVEMENT[self.kind]
+        return self.design.movement if self.design else MOVEMENT[self.kind]
+
+    def volley(self, target):
+        if self.design:
+            return tuple((m.weapon, m.damage) for m in self.design.volley(math.dist(self.position, target.position)))
+        return ((self.weapon, self.damage),)
 
     @property
     def position(self):
@@ -142,7 +151,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=17):
+    def from_dict(cls, data, game, *, version=18):
         from .model import _integer, _name
         # Migrate copies so reading a save never mutates its source payload.
         if version < 13 and isinstance(data, dict):
@@ -175,22 +184,31 @@ class CombatState:
             fields = {"id", "kind", "owner", "hull", "initial_hull"}
             if version >= 13:
                 fields |= {"x", "y", "weapon"}
+            if version >= 18:
+                fields |= {"design", "shields"}
             if not isinstance(row, dict) or set(row) != fields:
                 raise ValueError("Invalid combat ship")
             monster = row["owner"] == MONSTER
+            design = ShipDesign.from_dict(row["design"]) if version >= 18 and row["design"] is not None else None
+            if design and (monster or design.kind != row["kind"]):
+                raise ValueError("Invalid battle blueprint")
             if ((not guardian or row["id"] != guardian.combat_id or type(row["id"]) is not int) if monster
                     else not _integer(row["id"], 1, game.next_ship_id-1)):
                 raise ValueError("Invalid combat identifier")
             if (row["owner"] not in sides or
-                    not isinstance(row["kind"], str) or row["kind"] not in (MONSTERS if monster else SHIP_TYPES) or
-                    not _integer(row["initial_hull"], 1, COMBAT_TYPES[row["kind"]].hull) or
+                    not isinstance(row["kind"], str) or row["kind"] not in (MONSTERS if monster else HULLS if design else SHIP_TYPES) or
+                    not _integer(row["initial_hull"], 1, design.hull if design else COMBAT_TYPES[row["kind"]].hull) or
                     not _integer(row["hull"], 0, row["initial_hull"])):
                 raise ValueError("Invalid combat ship health")
             if version < 13:
                 row = {**row, "weapon": weapon_for(game, row["kind"], row["owner"])}
             elif (not isinstance(row["weapon"], str) or row["weapon"] not in BEAMS
-                  or row["weapon"] != weapon_for(game, row["kind"], row["owner"])):
+                  or row["weapon"] != (design.weapon if design else weapon_for(game, row["kind"], row["owner"]))):
                 raise ValueError("Invalid combat weapon")
+            shields = row["shields"] if version >= 18 else 0
+            if not _integer(shields, 0, design.shields if design else 0) or (row["hull"] == 0 and shields):
+                raise ValueError("Invalid shields")
+            row = {**row, "design": design, "shields": shields}
             ships.append(CombatShip(**row))
         identifiers = {s.id for s in ships}
         if len(identifiers) != len(ships) or {s.owner for s in ships} != set(sides):
@@ -246,6 +264,7 @@ class CombatState:
                     raise ValueError("Destroyed ship survived in the campaign")
                 continue
             if (original is None or original.owner != ship.owner or original.kind != ship.kind
+                    or original.design != ship.design
                     or original.system_id != state.system_id
                     or original.hull != (ship.initial_hull if state.status == "active" else ship.hull)):
                 raise ValueError("Battle does not match the campaign fleet")
@@ -323,6 +342,12 @@ def engagement_error(game, system_id, owner="player"):
     return None
 
 
+def battle_ship(game, ship):
+    return CombatShip(ship.id, ship.kind, ship.owner, ship.hull, ship.hull,
+                      weapon=ship.design.weapon if ship.design else weapon_for(game, ship.kind, ship.owner),
+                      design=ship.design, shields=ship.design.shields if ship.design else 0)
+
+
 def begin_combat(game, system_id, owner="player"):
     error = engagement_error(game, system_id, owner)
     require(error is None, error)
@@ -333,8 +358,7 @@ def begin_combat(game, system_id, owner="player"):
     for ship in fleet:
         if ship.departure_pending:
             game._clear_course(ship)
-    state = CombatState(system_id, owner, [CombatShip(s.id, s.kind, s.owner, s.hull, s.hull,
-                         weapon=weapon_for(game, s.kind, s.owner)) for s in fleet], active_owner=owner)
+    state = CombatState(system_id, owner, [battle_ship(game, s) for s in fleet], active_owner=owner)
     deploy(state)
     state.record(f"{game.empire_name_for(owner)} initiated combat at {game.systems[system_id].name}.")
     game.combat = state
@@ -354,7 +378,7 @@ def begin_guardian_combat(game, system_id, owner="player"):
     for ship in fleet:
         if ship.departure_pending:
             game._clear_course(ship)
-    ships = [CombatShip(s.id, s.kind, owner, s.hull, s.hull, weapon=weapon_for(game, s.kind, owner)) for s in fleet]
+    ships = [battle_ship(game, s) for s in fleet]
     ships.append(CombatShip(guardian.combat_id, guardian.kind, MONSTER, guardian.hull, guardian.hull, weapon=guardian.spec.weapon))
     state = CombatState(system_id, owner, ships, active_owner=owner)
     deploy(state)
@@ -463,11 +487,20 @@ def fire(game, ship_id, target_id, owner="player"):
     state = game.combat
     attacker, target = state.ship(ship_id), state.ship(target_id)
     require(attacker is not None and target is not None, "Choose an attacker and target.")
-    damage = min(attacker.damage, target.hull)
-    target.hull -= damage
+    damage, absorbed = 0, 0
+    for weapon, strength in attacker.volley(target):
+        if weapon == "torpedo" and target.design:
+            strength = max(1, math.ceil(strength*(100-target.design.interception)/100))
+        blocked = min(strength, target.shields)
+        target.shields -= blocked
+        absorbed += blocked
+        hit = min(strength-blocked, target.hull)
+        target.hull -= hit
+        damage += hit
     state.acted.append(attacker.id)
     suffix = " Destroyed." if target.hull == 0 else f" {target.hull}/{target.max_hull} hull remains."
-    state.record(f"{attacker.name} hit {target.name} for {damage}.{suffix}")
+    protection = f" Shields absorbed {absorbed}." if absorbed else ""
+    state.record(f"{attacker.name} hit {target.name} for {damage}.{protection}{suffix}")
     check_losses(game)
     return damage
 
