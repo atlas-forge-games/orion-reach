@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from functools import lru_cache
 from .buildings import BUILDINGS
+from .population import LUSH_BIOMES, assembly_work
 
 
 @dataclass(frozen=True)
@@ -184,7 +185,12 @@ def building_yields(definition, richness, bonuses):
     return industry, income, research
 
 
-def colony_yields(planet, bonuses):
+def scaled_output(value, percent):
+    """Round bonuses up and penalties down; do not create output from zero."""
+    return (value*(100+percent)+(99 if percent > 0 else 0))//100
+
+
+def gross_colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
     industry = max(1, planet.workers)+bonuses.get("colony_industry", 0)
@@ -196,4 +202,14 @@ def colony_yields(planet, bonuses):
     income += (planet.population//2)*bonuses.get("income_per_two_pop", 0)
     if planet.biome in ("Desert", "Tundra"):
         income += bonuses.get("rough_income", 0)
-    return industry, income, research
+    industry_percent = bonuses.get("industry_percent", 0)
+    if planet.biome not in LUSH_BIOMES:
+        industry_percent += bonuses.get("harsh_industry_percent", 0)
+    return (max(1, scaled_output(industry, industry_percent)),
+            scaled_output(income, bonuses.get("income_percent", 0)),
+            scaled_output(research, bonuses.get("research_percent", 0)))
+
+
+def colony_yields(planet, bonuses):
+    industry, income, research = gross_colony_yields(planet, bonuses)
+    return industry-assembly_work(planet, industry, bonuses), income, research

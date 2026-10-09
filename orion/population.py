@@ -9,10 +9,35 @@ BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Vo
 FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Tundra": 2, "Barren": 1, "Volcanic": 1, "Gaia": 3}
 WORKER_ROLES = ("farmers", "workers", "scientists")
 GROWTH_THRESHOLD = 100
+LUSH_BIOMES = ("Terran", "Ocean", "Gaia")
 
 
-def population_capacity(planet):
-    return POPULATION_LIMITS[planet.size] + (4 if planet.biome == "Gaia" else 0)
+def population_capacity(planet, bonuses=None):
+    base = POPULATION_LIMITS[planet.size] + (4 if planet.biome == "Gaia" else 0)
+    return base*(100+(bonuses or {}).get("capacity_percent", 0))//100
+
+
+def food_required(population, bonuses=None):
+    return (population*(100+(bonuses or {}).get("food_use_percent", 0))+99)//100
+
+
+def assembly_work(planet, industry, bonuses):
+    if planet.population >= population_capacity(planet, bonuses):
+        return 0
+    # Reserve at least one industry for construction, even on new outposts.
+    return min(max(0, industry-1), (industry*bonuses.get("assembly_percent", 0)+99)//100)
+
+
+def farmers_needed(planet, bonuses, surplus=2):
+    if not food_required(planet.population, bonuses):
+        return 0
+    food = report(planet, bonuses)
+    passive = food.produced-planet.farmers*FARMER_OUTPUT[planet.biome]
+    # Fractional consumption can equal the final limit a billion early (Lithar).
+    # Keep a surplus until actually full, while preserving ordinary allocations.
+    room = max(1, food_required(food.capacity, bonuses)-food.consumed)
+    target = food.consumed+(min(surplus, room) if planet.population < food.capacity else 0)
+    return min(planet.population, max(0, (target-passive+FARMER_OUTPUT[planet.biome]-1)//FARMER_OUTPUT[planet.biome]))
 
 
 @dataclass(frozen=True)
@@ -23,10 +48,15 @@ class PopulationReport:
     progress: int
     colonized: bool
     growth_limit: int = 25
+    food_required: int | None = None
+    growth_percent: int = 100
+    assembly: bool = False
+    assembly_industry: int = 0
+    passive_growth: int = 0
 
     @property
     def consumed(self):
-        return self.population if self.colonized else 0
+        return (self.population if self.food_required is None else self.food_required) if self.colonized else 0
 
     @property
     def balance(self):
@@ -36,7 +66,12 @@ class PopulationReport:
     def growth_rate(self):
         if not self.colonized or not 0 < self.population < self.capacity:
             return 0
-        return max(0, min(self.growth_limit, 5*self.balance))
+        if self.assembly:
+            return min(25, 5*self.assembly_industry)
+        if self.passive_growth:
+            return self.passive_growth
+        base = max(0, min(self.growth_limit, 5*self.balance))
+        return max(1, base*self.growth_percent//100) if base else 0
 
     @property
     def turns_to_growth(self):
@@ -53,6 +88,10 @@ class PopulationReport:
             return "Food shortage"
         if self.population >= self.capacity:
             return "At population limit"
+        if self.assembly:
+            return "Assembling" if self.assembly_industry else "Needs more industry to assemble population"
+        if self.passive_growth:
+            return "Growing"
         if not self.balance:
             return "Needs food surplus"
         return "Growing"
@@ -61,18 +100,32 @@ class PopulationReport:
     def growth_caption(self):
         turns = self.turns_to_growth
         if turns is not None:
-            return f"{self.progress}% · +1 B in {turns} {'turn' if turns == 1 else 'turns'}"
+            prefix = f"Assembly: {self.assembly_industry} industry · " if self.assembly else ""
+            return f"{prefix}{self.progress}% · +1 B in {turns} {'turn' if turns == 1 else 'turns'}"
         return self.status
 
 
 def report(planet, bonuses=None):
+    bonuses = bonuses or {}
     produced = 0
-    if planet.colonized:
-        produced = BASE_FOOD[planet.biome] + (bonuses or {}).get("colony_food", 0)
+    needs_food = 100+bonuses.get("food_use_percent", 0) > 0
+    if planet.colonized and needs_food:
+        produced = BASE_FOOD[planet.biome] + bonuses.get("colony_food", 0)
+        if planet.biome in LUSH_BIOMES:
+            produced += bonuses.get("lush_food", 0)
         produced += planet.farmers * FARMER_OUTPUT[planet.biome]
         produced += sum(BUILDINGS[b].food for b in planet.buildings)
-    return PopulationReport(planet.population, population_capacity(planet), produced,
-                            planet.growth_progress, planet.colonized, 35 if planet.biome == "Gaia" else 25)
+    growth = 100+bonuses.get("growth_percent", 0)
+    if planet.biome in LUSH_BIOMES:
+        growth += bonuses.get("lush_growth_percent", 0)
+    reserved = 0
+    if bonuses.get("assembly_percent") and planet.colonized:
+        from .research import gross_colony_yields
+        reserved = assembly_work(planet, gross_colony_yields(planet, bonuses)[0], bonuses)
+    return PopulationReport(planet.population, population_capacity(planet, bonuses), produced,
+                            planet.growth_progress, planet.colonized, 35 if planet.biome == "Gaia" else 25,
+                            food_required(planet.population, bonuses), growth,
+                            bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0))
 
 
 def advance(planet, start):

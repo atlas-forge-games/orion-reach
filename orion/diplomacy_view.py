@@ -106,7 +106,7 @@ def draw_diplomacy(app):
             text(surface, f"T{event.turn:03}", (450, y), 10, FAINT, "mono")
             text(surface, shorten(event.message, 834, 12), (516, y-1), 12, INK)
 
-    text(surface, "Agreements benefit both empires. Combat and declarations of war come later.", (65, 798), 13, MUTED)
+    text(surface, "Agreements benefit both empires. Attacking a rival breaks your treaties.", (65, 798), 13, MUTED)
     app.button("diplomacy_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("diplomacy_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     text(surface, "D: diplomacy · I: empire · E: advance one turn", (400, 848), 12, MUTED)

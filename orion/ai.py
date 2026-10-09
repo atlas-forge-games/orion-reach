@@ -6,7 +6,7 @@ from .races import RACES
 from .research import BRANCHES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
-from .population import FARMER_OUTPUT
+from .population import farmers_needed, food_required
 from . import monsters
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
@@ -56,18 +56,14 @@ def research_choice(game):
                 game.choose_research(identifier, owner=RIVAL)
                 return
     race = game.opponent.race_id
-    priority = {
-        "terran": ("computers", "construction", "society"),
-        "kharuun": ("construction", "materials", "physics"),
-        "aelari": ("physics", "computers", "biology"),
-    }[race]
+    priority = RACES[race].research_priority
     branches = priority + tuple(b for b in BRANCHES if b not in priority)
     # Each tuple follows catalogue branch order, with one option per tier.
     preferences = {
         "terran": ((1, 0, 1, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1, 1, 1)),
         "kharuun": ((0, 0, 0, 0, 0, 1, 1, 0), (1, 0, 1, 0, 1, 0, 1, 0)),
         "aelari": ((1, 1, 0, 0, 0, 0, 0, 1), (0, 0, 1, 0, 0, 1, 0, 1)),
-    }[race]
+    }.get(race, ((1, 0, 1, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1, 1, 1)))
     for tier in (1, 2):
         for branch in branches:
             index = tuple(BRANCHES).index(branch)
@@ -202,10 +198,7 @@ def run_ai(game):
 
     colonies = [(s, p) for s in game.systems for p in s.worlds if p.owner == RIVAL]
     for system, planet in colonies:
-        food = game.population_report(planet)
-        per_farmer = FARMER_OUTPUT[planet.biome]
-        passive = food.produced-planet.farmers*per_farmer
-        farmers = min(planet.population, max(0, (min(food.capacity, planet.population+2)-passive+per_farmer-1)//per_farmer))
+        farmers = farmers_needed(planet, game.bonuses_for(RIVAL))
         remaining = planet.population-farmers
         scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
         game.set_workforce(system.id, planet.id, farmers, scientists, owner=RIVAL)
@@ -243,8 +236,9 @@ def run_ai(game):
             continue
         food = game.population_report(planet)
         farm_food = PROJECTS["hydroponic_farm"].food
-        farms_needed = max(0, (food.capacity-food.produced+farm_food-1)//farm_food)
-        needs_food = (food.produced < min(food.capacity, planet.population+2)
+        full_consumption = food_required(food.capacity, game.bonuses_for(RIVAL))
+        farms_needed = max(0, (full_consumption-food.produced+farm_food-1)//farm_food)
+        needs_food = food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
                       or planet.farmers > 2
                       or 0 < planet.free_slots <= farms_needed)
         if needs_food and planet.free_slots > 0:

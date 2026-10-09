@@ -172,6 +172,8 @@ class InterfaceTests(unittest.TestCase):
 
     def test_new_save_load_through_actual_events(self):
         self.click("new")
+        self.assertEqual(self.app.screen,"race_select")
+        self.click("setup_next")
         self.assertEqual(self.app.screen,"setup")
         self.click("empire")
         self.app.handle_event(pg.event.Event(pg.TEXTINPUT,text="Kies Federation"))

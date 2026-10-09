@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.22.0
+# Orion Reach — Python prototype 0.23.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,56 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.22: basic ship designer
+## New in v0.23: eleven races and two-step setup
+
+**New Game** first opens a portrait gallery of all eleven races. Select a race
+to see its identity and implemented abilities, then choose **Continue → Galaxy
+options**. The second screen contains your empire name, seed, galaxy size,
+fog-of-war toggle and rival race. **Change race**, Back and Escape return to the
+first screen without losing your settings. Custom empire names are preserved.
+
+Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same traits:
+
+| Race | Initial gameplay traits |
+| --- | --- |
+| Lithar | Settle every biome; double population capacity; half food consumption, rounded up; one-quarter normal growth rate. |
+| Varkesh | Ships cost 20% fewer credits; population capacity +50%; colony research −20%. |
+| Wanderers | +15 ly fuel range from colonies; ships cost 15% fewer credits; colony industry −15%. |
+| Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
+| Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
+| Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
+| The Concord | Envoys +2 relations; trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
+| The Remnant | Start with 80 unspent research points; colony research +25%, industry −20%. |
+
+Nexus reserve **20% of gross industry**, rounded up, for assembly until the
+population limit, always leaving at least one industry for construction. Each
+reserved industry produces 5 growth progress, capped at 25 per turn; 100 progress
+adds one billion inhabitants. The planet screen shows the reserved industry and
+net construction output. Assembly stops at capacity. Aetheri add one billion
+every ten turns while below capacity, independently of food. Foodless races
+start without farmers, and their AI does not build farms. Their food bonuses
+have no effect. Construction forecasts account for assembly and racial growth.
+
+Racial output modifiers apply after workers, buildings and technology; positive
+output bonuses round up, penalties round down, with a minimum of one industry.
+Growth uses whole progress points, rounded down with a minimum of one when food
+allows growth. Credit discounts add to research discounts and apply to standard
+ships and new custom-design orders. Existing payments and ships are unchanged.
+Racial capacity and output follow the current owner; mixed-species populations
+are not simulated yet. Population limits in the colony UI include racial traits.
+
+This is the **first playable trait version**. All races still use planet-based
+colonies and start with two scouts and one colony ship. Varkesh may colonize;
+single-world raiding, captives and tribute are future systems. Wanderers do not
+yet live on mobile arks or move shipyards. Biological ship modules, energy-ship
+combat abilities, migration and Remnant relic recovery also remain future work.
+The original three races retain their existing rules. Start a new campaign to
+choose a new race; existing campaigns keep their identities and progress.
+
+![Race selection](screenshots/race_select.png)
+![Galaxy options](screenshots/setup.png)
+
+## Ship designer (v0.22)
 
 Open **Fleets → Ship designer**, **Shipyard → Custom ships / designer**, or
 **Planet → Change → Ship designer**. Choose a hull, enter a name, and add or
@@ -144,8 +193,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
 - **Distant Stars** background music, with a separate music toggle and volume control.
 - **Continue** appears when a campaign is already open in the current session.
-- New Game setup: editable empire name, three galaxy sizes (24/48/72 systems),
-  an optional reproducible seed, **Fog of war ON/OFF**, and player/rival race choices with illustrated portraits.
+- Two-step New Game setup: choose one of eleven illustrated races, then set
+  empire name, galaxy size (24/48/72 systems), optional seed, **Fog of war ON/OFF** and rival race.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
 - Every new empire begins with **two scouts and one colony ship** in its home system.
 - Click a **fleet badge** to open a small popup on the galaxy map. Select ships,
@@ -572,8 +621,9 @@ rival empire, the Helios Directorate. These are original prototype identities:
 | Kharuun | Crystalline builders and engineers | An active trade pact yields 6 CR/turn instead of 5 | Mining before labs; trade at +15, research at +45 relations |
 | Aelari | Amphibious scholars and archivists | An active research agreement yields 4 RP/turn instead of 3 | Labs before trade centres; trade at +30, research at +15 relations |
 
-Traits apply to whichever empire belongs to that race. Race selection does not
-change building costs, base colony production, habitability or travel speed.
+These original three races retain their diplomatic traits and standard colony
+rules. The eight additional races and their economic, growth and exploration
+traits are listed in **New in v0.23** above. Traits apply to the player and AI.
 For this version, every player race starts on Earth; the rival starts on a
 distant generated world. A race and an empire are separate: two empires may
 belong to the same race. Changing races does not overwrite a custom empire name.
@@ -583,7 +633,7 @@ the rival's portrait and a smaller portrait of your own race. The PNG files live
 in `assets/portraits/`; replace one using the same filename and restart the game
 to change its appearance. Portraits preserve their aspect ratio and are cached
 for rendering. If an image is missing or unreadable, its race emblem appears
-instead. Portraits work with existing saves; no save-format change is needed.
+instead. Portraits also work with existing saves.
 
 ![Race selection with portraits](screenshots/setup.png)
 
@@ -1110,7 +1160,8 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Withdraw from combat | Retreat, then confirm the destination |
 | Pause / resume combat | Escape or Menu; Resume returns to the same battle |
 | Mute music / adjust its volume | Settings → Background music / Music volume |
-| Choose player and rival races | New Game |
+| Choose your race | New Game → first screen |
+| Set galaxy options and rival race | Continue → Galaxy options |
 
 ## Save locations
 
@@ -1129,7 +1180,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.22 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.23 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
 ships and travel times are preserved. Already issued pre-v0.19 journeys keep
 their original faster speed, destination and remaining turns, even outside the
@@ -1166,7 +1217,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 18**, adding saved blueprints, immutable ship and construction
+**format version 19**, identifying the expanded race catalogue and racial rules.
+The existing schema retains saved blueprints, immutable ship and construction
 loadouts, and remaining tactical shields. It also supports all four guardian types and their weapons,
 including guardian locations, persistent health and private
 last-seen status, plus base cruise-speed snapshots, queued departure flags, tactical coordinates, beam loadouts, movement and
@@ -1176,7 +1228,7 @@ the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.21 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.22 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1200,11 +1252,11 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
 | `orion/ai.py` | Deterministic rival construction, travel and settlement policy |
 | `orion/rival_view.py` | Rival economy, activity and colony survey report |
-| `orion/races.py` | Race identities, diplomatic traits and AI development preferences |
+| `orion/races.py` | Eleven race identities, racial traits and AI preferences |
 | `orion/race_art.py` | Cached race portraits and procedural fallback seals |
 | `orion/building_art.py` | Cached transparent building sprites and fallback art |
 | `orion/colony_scene.py` | Seeded landscapes, headquarters markers and clickable colony graphics |
-| `orion/setup_view.py` | Campaign and race selection screen |
+| `orion/setup_view.py` | Race gallery and separate galaxy-options screen |
 | `orion/diplomacy.py` | Relations, offers, treaty income, cooldowns and diplomatic history |
 | `orion/diplomacy_view.py` | Diplomatic contact and negotiation screen |
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |

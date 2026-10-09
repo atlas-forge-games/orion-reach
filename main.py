@@ -25,7 +25,7 @@ def main():
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, "objectives", "result", "about"), default="menu")
+    parser.add_argument("--screen", choices=("splash", "menu", "race_select", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:

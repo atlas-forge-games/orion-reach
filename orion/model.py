@@ -625,7 +625,13 @@ class GameState:
         return self._empire(owner).technology
 
     def bonuses_for(self, owner=PLAYER):
-        return self.research_state(owner).bonuses if owner is not None else {}
+        if owner is None:
+            return {}
+        empire = self._empire(owner)
+        bonuses = empire.technology.bonuses.copy()
+        for key, value in RACES[empire.race_id].effects:
+            bonuses[key] = bonuses.get(key, 0)+value
+        return bonuses
 
     def research_error(self, identifier, *, owner=PLAYER):
         if self.strategy_error():
@@ -651,7 +657,7 @@ class GameState:
         return colony_yields(planet, self.bonuses_for(planet.owner))
 
     def population_report(self, planet):
-        return population_rules.report(planet, self.bonuses_for(planet.owner))
+        return population_rules.report(planet, self.bonuses_for(planet.owner or PLAYER))
 
     def set_workforce(self, system_id, planet_id, farmers, scientists, *, owner=PLAYER):
         self._require_strategy()
@@ -792,9 +798,12 @@ class GameState:
             raise RuleError(error)
         system, planet = self.opponent_home()
         self.opponent = Opponent("Helios Directorate", system.id, planet.id, race_id=race_id)
+        self.opponent.research = RACES[race_id].starting_research
         self.diplomacy = make_contact(self.turn, self.opponent.name, race_id)
         planet.colonized, planet.owner, planet.population = True, RIVAL, 8
         planet.farmers, planet.scientists = 2, 0
+        if not population_rules.food_required(8, self.bonuses_for(RIVAL)):
+            planet.farmers = 0
         self._starting_fleet(RIVAL, system.id)
         self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
         exploration_rules.refresh(self)
@@ -1039,9 +1048,8 @@ class GameState:
         planet.population = self.starting_colonists(owner)
         planet.growth_progress = 0
         # New settlements first supply their inhabitants, then assign industry.
-        passive = population_rules.BASE_FOOD[planet.biome]+self.bonuses_for(owner).get("colony_food", 0)
-        rate = population_rules.FARMER_OUTPUT[planet.biome]
-        planet.farmers = min(planet.population, max(0, (planet.population+1-passive+rate-1)//rate))
+        planet.farmers = 0
+        planet.farmers = population_rules.farmers_needed(planet, self.bonuses_for(owner), surplus=1)
         planet.scientists = 0
         self.ships.remove(ship)
         return planet
@@ -1173,7 +1181,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=18):
+    def from_dict(cls, data, *, version=19):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1323,6 +1331,9 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         system.worlds = generate_planets(system, seed)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
                      race_id=race_id, fog_of_war=fog_of_war)
+    game.research = RACES[race_id].starting_research
+    if not population_rules.food_required(8, game.bonuses_for()):
+        game.planet_at(0, 2).farmers = 0
     game._starting_fleet(PLAYER, 0)
     if with_ai and game.opponent_start_error() is None:
         game.add_opponent(rival_race_id)

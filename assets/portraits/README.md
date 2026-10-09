@@ -1,6 +1,6 @@
 # Orion Reach — race portraits v1
 
-Three original race portrait assets generated with the built-in image-generation tool.
+Eleven original race portrait assets generated with the built-in image-generation tool.
 The game uses these portraits on the New Game race cards and the Diplomacy
 screen, including your own empire's profile. Extract updates into the repository
 root to place the files under assets/portraits/.
@@ -10,12 +10,26 @@ root to place the files under assets/portraits/.
 | Terrans | terran-v1.png |
 | Kharuun | kharuun-v1.png |
 | Aelari | aelari-v1.png |
+| Lithar | lithar-v1.png |
+| Varkesh | varkesh-v1.png |
+| Wanderers | wanderers-v1.png |
+| Xenonflora | xenonflora-v1.png |
+| Nexus | nexus-v1.png |
+| Aetheri | aetheri-v1.png |
+| The Concord | concord-v1.png |
+| The Remnant | remnant-v1.png |
 
 Each file is the unmodified generated PNG, with an opaque dark background.
 The renderer preserves their aspect ratio and caches loaded and scaled images.
 Missing or unreadable images fall back to the matching procedural race emblem.
-To replace a portrait, keep its filename and restart the game. The existing race
-IDs are terran, kharuun and aelari.
+To replace a portrait, keep its filename and restart the game. The filename stem
+before `-v1` is the stable race ID. The eight additions use the selected final
+portraits: Lithar are irregular living stones, Varkesh are crablike raiders,
+Wanderers are mothlike navigators, Xenonflora are branching plant organisms,
+Nexus are linked floating machines, Aetheri are loops of luminous energy,
+the Concord are symbiotic organisms, and the Remnant is a hooded humanoid
+survivor with a proud, patient, melancholy expression. Earlier portrait drafts
+are not included in the game.
 
 ## Generation prompts
 

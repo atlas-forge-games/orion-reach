@@ -93,13 +93,15 @@ def workforce_panel(app, game, planet, live):
     owned = live and planet.owner == PLAYER
     panel(surface, (286, 54, 774, 244))
     text(surface, "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
-    text(surface, f"{planet.population} WORKERS / {planet.population_capacity} B LIMIT", (1043, 66), 10, INK, "mono", right=True)
     industry, credits, research = game.planet_yields(planet) if live else (None, None, None)
     food = game.population_report(planet) if live else None
+    text(surface, f"{planet.population} WORKERS / {food.capacity if food else '—'} B LIMIT", (1043, 66), 10, INK, "mono", right=True)
+    needs_food = game.bonuses_for(planet.owner or PLAYER).get("food_use_percent", 0) > -100
     outputs = [("credits", "CREDITS", f"+{credits}" if live else "—", "colony income", GOLD),
                ("food", "FOOD / USED", f"{food.produced} / {food.consumed}" if live else "—",
-                f"{food.balance:+} surplus" if live else "last survey", RED if live and food.balance < 0 else GREEN),
-               ("industry", "INDUSTRY", str(industry) if live else "—", "construction", CYAN),
+                (f"{food.balance:+} surplus" if needs_food else "not required") if live else "last survey", RED if live and food.balance < 0 else GREEN),
+               ("industry", "INDUSTRY", str(industry) if live else "—",
+                f"{food.assembly_industry} to assembly" if food and food.assembly_industry else "construction", CYAN),
                ("research", "RESEARCH", f"+{research}" if live else "—", "research points", SCIENCE)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*186
@@ -108,13 +110,15 @@ def workforce_panel(app, game, planet, live):
         text(surface, label, (x+40, 91), 9, MUTED, "mono")
         text(surface, value, (x+40, 109), 21, color)
         text(surface, caption, (x+174, 124), 9, MUTED, right=True)
-    details = {"farmers": f"{FARMER_OUTPUT[planet.biome]} food each", "workers": "1 industry each", "scientists": "2 research each"}
+    details = {"farmers": f"{FARMER_OUTPUT[planet.biome]} food each" if needs_food else "food not required",
+               "workers": "1 base industry each", "scientists": "2 base research each"}
     for index, role in enumerate(WORKER_ROLES):
         y = 150+index*41
         count = getattr(planet, role)
         color = ROLE_COLORS[role]
         button = app.button("worker_"+role, "", (302, y, 742, 34), lambda job=role: app.select_worker_role(job),
-                            "hotspot", enabled=owned and (count > 0 or app.worker_source is not None))
+                            "hotspot", enabled=owned and (count > 0 or app.worker_source is not None)
+                            and (role != "farmers" or needs_food or count > 0))
         active = app.is_active(button)
         if active or app.worker_source == role:
             panel(surface, button.rect, (23, 38, 45), color)

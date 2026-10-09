@@ -30,7 +30,7 @@ from .victory_view import draw_objectives, draw_result
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
-from .setup_view import draw_setup
+from .setup_view import draw_race_select, draw_setup
 from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
@@ -148,6 +148,10 @@ class App:
             self.campaign_view=screen
         if screen=="galaxy":
             self.focus=f"star_{self.game.selected_system}"
+        if screen=="race_select":
+            self.focus=f"race_{self.race_id}"
+        if screen=="setup":
+            self.focus="empire"
         if screen=="colony":
             self.focus="build_factory"
         if screen=="shipyard":
@@ -1335,6 +1339,8 @@ class App:
                 self.go("galaxy")
             elif self.screen=="designer":
                 self.go(self.designer_return)
+            elif self.screen=="setup":
+                self.go("race_select")
             elif self.screen=="exploration":
                 self.close_exploration()
             elif self.screen=="system":
@@ -1507,12 +1513,12 @@ class App:
         text(self.canvas,"One world. A thousand possibilities.",(149,377),16,MUTED)
         if self.game:
             self.button("resume","Continue",(88,444,417,66),lambda:self.go(self.campaign_view),"primary")
-            self.button("new","New Game",(88,523,417,64),lambda:self.go("setup"),"menu")
+            self.button("new","New Game",(88,523,417,64),lambda:self.go("race_select"),"menu")
             self.button("load","Load Game",(88,592,417,64),lambda:self.go("load"),"menu")
             self.button("settings","Settings",(88,661,417,60),lambda:self.show_settings(),"menu")
             self.button("quit","Quit",(88,726,417,60),self.quit_request,"menu")
         else:
-            self.button("new","New Game",(88,454,417,66),lambda:self.go("setup"),"primary")
+            self.button("new","New Game",(88,454,417,66),lambda:self.go("race_select"),"primary")
             self.button("load","Load Game",(88,535,417,70),lambda:self.go("load"),"menu","Return to your empire")
             self.button("settings","Settings",(88,618,417,66),lambda:self.show_settings(),"menu")
             self.button("quit","Quit",(88,697,417,66),self.quit_request,"menu")
@@ -1564,6 +1570,9 @@ class App:
     def draw_setup(self):
         draw_setup(self)
 
+    def draw_race_select(self):
+        draw_race_select(self)
+
     def change_load_page(self,delta):
         pages=max(1,(len(self.load_rows)+3)//4)
         self.load_page=max(0,min(pages-1,self.load_page+delta))
@@ -1577,7 +1586,7 @@ class App:
             emblem(self.canvas,720,421,1.3)
             text(self.canvas,"Your story is still unwritten.",(511,490),25,INK,"title")
             text(self.canvas,"Begin a new expedition to create your first save.",(498,540),15,MUTED)
-            self.button("empty_new","Start a new game",(548,594,345,60),lambda:self.go("setup"),"primary")
+            self.button("empty_new","Start a new game",(548,594,345,60),lambda:self.go("race_select"),"primary")
             return
         for i,row in enumerate(self.load_rows[self.load_page*4:self.load_page*4+4]):
             y=325+i*108

@@ -24,12 +24,13 @@ from orion.storage import Storage
 
 
 class DiplomacyRulesTests(unittest.TestCase):
-    def test_races_are_selectable_and_preserve_starting_production(self):
+    def test_races_are_selectable_and_original_races_preserve_starting_production(self):
         for race_id in RACES:
             game = new_game(seed=2408, race_id=race_id)
             self.assertEqual(game.race_id, race_id)
             self.assertNotEqual(game.opponent.race_id, race_id)
-            self.assertEqual(game.planet_at(0, 2).yields_per_turn, (6, 8, 0))
+            if race_id in ("terran", "kharuun", "aelari"):
+                self.assertEqual(game.planet_yields(game.planet_at(0, 2)), (6, 8, 0))
             self.assertEqual(game.credits, 120)
             self.assertEqual(game.diplomacy.relations, 0)
             for rival_race in RACES:
@@ -171,8 +172,8 @@ class DiplomacyRulesTests(unittest.TestCase):
             game = new_game(seed=2408, rival_race_id=race_id)
             for _ in range(70):
                 game.advance_turn()
-            self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4)
-            self.assertTrue(game.opponent.technology.completed)
+            self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4, race_id)
+            self.assertTrue(game.opponent.technology.completed, race_id)
             # Earth earns 8/turn for 10 turns, 9 for 20, then 10 for 40.
             self.assertEqual(game.credits, 120+8*10+9*20+10*40)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
@@ -298,6 +299,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.app.empire = "Custom civilization"
         self.click("race_aelari")
         self.assertEqual(self.app.empire, "Custom civilization")
+        self.click("setup_next")
         self.click("rival_race_terran")
         self.app.seed = "2408"
         self.click("launch")

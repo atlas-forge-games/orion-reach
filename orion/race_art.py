@@ -17,7 +17,7 @@ def _load_portrait(race_id):
         return None
 
 
-@lru_cache(maxsize=24)
+@lru_cache(maxsize=64)
 def _scaled_portrait(race_id, size):
     portrait = _load_portrait(race_id)
     if portrait is None:
@@ -64,7 +64,7 @@ def draw_race_emblem(surface, race_id, center, radius=50):
         for vertex in vertices:
             pg.draw.line(surface, color, pt(0, -.04), vertex, width)
         pg.draw.line(surface, color, pt(-.43, .48), pt(.43, .48), width)
-    else:
+    elif race_id == "aelari":
         pg.draw.lines(surface, color, False, [pt(-.58, .30), pt(-.33, -.02), pt(0, -.69),
                                              pt(.33, -.02), pt(.58, .30)], width)
         for offset in (.22, .45, .68):
@@ -73,3 +73,33 @@ def draw_race_emblem(surface, race_id, center, radius=50):
         pg.draw.circle(surface, color, pt(0, -.08), round(radius*.12), width)
         for a, b in ((-.55, -.52), (.55, -.52)):
             pg.draw.circle(surface, color, pt(a, b), max(2, round(radius*.04)))
+    elif race_id == "lithar":
+        for a, b, r in ((-.34, .28, .27), (.28, .3, .32), (0, -.3, .4)):
+            vertices = [pt(a+r*math.cos(i*math.tau/5), b+r*math.sin(i*math.tau/5)) for i in range(5)]
+            pg.draw.polygon(surface, color, vertices, width)
+    elif race_id == "varkesh":
+        pg.draw.polygon(surface, color, [pt(0, -.5), pt(.4, 0), pt(0, .6), pt(-.4, 0)], width)
+        for sign in (-1, 1):
+            pg.draw.lines(surface, color, False, [pt(sign*.25, .1), pt(sign*.7, -.15), pt(sign*.55, -.6)], width)
+    elif race_id == "wanderers":
+        pg.draw.polygon(surface, color, [pt(0, -.75), pt(.55, .55), pt(0, .27), pt(-.55, .55)], width)
+        pg.draw.line(surface, color, pt(-.72, 0), pt(.72, 0), width)
+    elif race_id == "xenonflora":
+        pg.draw.line(surface, color, pt(0, .7), pt(0, -.6), width)
+        for sign in (-1, 1):
+            for height in (-.35, .15):
+                pg.draw.lines(surface, color, False, [pt(0, height+.3), pt(sign*.5, height), pt(sign*.3, height-.3)], width)
+    elif race_id == "nexus":
+        nodes = [pt(math.cos(i*math.tau/3)*.6, math.sin(i*math.tau/3)*.6) for i in range(3)]
+        pg.draw.polygon(surface, color, nodes, width)
+        for cx, cy in nodes:
+            pg.draw.rect(surface, color, (cx-radius*.16, cy-radius*.16, radius*.32, radius*.32), width)
+    elif race_id == "aetheri":
+        for offset in (-.17, .17):
+            pg.draw.ellipse(surface, color, (x+radius*(offset-.4), y-radius*.65, radius*.8, radius*1.3), width)
+    elif race_id == "concord":
+        for offset in (-.25, .25):
+            pg.draw.circle(surface, color, pt(offset, 0), round(radius*.45), width)
+    else:  # Remnant: a broken halo and the last light beneath it.
+        pg.draw.arc(surface, color, (x-radius*.6, y-radius*.65, radius*1.2, radius*1.2), .25, math.pi*1.8, width)
+        pg.draw.polygon(surface, color, [pt(0, -.3), pt(.17, .5), pt(-.17, .5)], width)
