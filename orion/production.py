@@ -30,9 +30,10 @@ class SpecialProject:
     name: str
     credit_cost: int
     work_cost: int
+    maintenance: int = 0
 
 
-ASCENSION_GATE = SpecialProject("ascension_gate", "Ascension Gate", 500, 300)
+ASCENSION_GATE = SpecialProject("ascension_gate", "Ascension Gate", 500, 300, maintenance=5)
 PROJECTS = {**BUILDINGS, **SHIP_TYPES, ASCENSION_GATE.id: ASCENSION_GATE}
 MAX_QUEUE = 20
 SHIP_SPEED = .02  # 2 light-years per turn; travel time depends on the generated distance.

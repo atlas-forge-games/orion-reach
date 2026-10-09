@@ -43,12 +43,12 @@ class ColonizationRulesTests(unittest.TestCase):
         self.game.queue_building(0, 2, "mine")
         before = self.game.to_dict()
         self.assertEqual(self.earth.used_slots, 2)
-        self.assertEqual(self.earth.queue_estimates(), [4, 9, 10])
+        self.assertEqual(self.earth.queue_estimates(), [4, 7, 8])
         self.assertEqual(self.game.to_dict(), before)
-        for _ in range(9):
+        for _ in range(7):
             self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory"])
-        self.assertEqual(self.earth.construction_queue[0].progress, 8)
+        self.assertEqual(self.earth.construction_queue[0].progress, 6)
         self.assertEqual(self.game.ships, [Ship(1, "colony_ship", 0)])
         self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory", "mine"])

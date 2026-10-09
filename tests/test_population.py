@@ -87,7 +87,7 @@ class PopulationRulesTests(unittest.TestCase):
                 self.assertEqual((self.earth.population, self.earth.growth_progress), (population, 90))
         self.earth.buildings = ["hydroponic_farm"]
         self.game.advance_turn()
-        self.assertEqual((self.earth.population, self.earth.growth_progress), (12, 5))
+        self.assertEqual((self.earth.population, self.earth.growth_progress), (12, 15))
 
     def test_food_is_local_even_when_empire_has_a_net_surplus(self):
         mars = self.game.planet_at(0, 3)
@@ -110,7 +110,7 @@ class PopulationRulesTests(unittest.TestCase):
             result = self.game.advance_turn()
         self.assertEqual(result.completed, ["Hydroponic farm on Earth"])
         self.assertEqual((self.earth.population, self.earth.growth_progress), (8, 30))
-        self.assertEqual(self.game.population_report(self.earth).produced, 14)
+        self.assertEqual(self.game.population_report(self.earth).produced, 16)
         self.game.advance_turn()
         self.assertEqual(self.earth.growth_progress, 55)
         self.assertEqual(self.game.demolish_building(0, 2, 0), "hydroponic_farm")
@@ -127,9 +127,9 @@ class PopulationRulesTests(unittest.TestCase):
         self.game.choose_research("symbiotic_farming")
         result = self.game.advance_turn()
         self.assertEqual(result.discoveries, ["Symbiotic Farming"])
-        self.assertEqual((self.earth.growth_progress, result.income), (0, 10))
+        self.assertEqual((self.earth.growth_progress, result.income), (0, 8))
         self.assertEqual(self.game.population_report(self.earth).produced, 12)
-        self.assertEqual(self.game.advance_turn().income, 12)
+        self.assertEqual(self.game.advance_turn().income, 10)
         self.assertEqual(self.earth.growth_progress, 10)
 
     def test_new_colonies_use_biology_colonists_and_begin_at_zero_progress(self):
@@ -151,18 +151,19 @@ class PopulationRulesTests(unittest.TestCase):
         home.size, home.biome = "Medium", "Tundra"
         for _ in range(10):
             game.advance_turn()
-        self.assertEqual(home.buildings, ["hydroponic_farm"]*2)
-        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (140, 9, 0))
+        self.assertEqual(home.buildings, ["hydroponic_farm", "factory"])
+        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (121, 9, 0))
         game.advance_turn()
-        self.assertEqual(home.growth_progress, 15)
+        self.assertEqual(home.growth_progress, 20)
         self.assertEqual(game.planet_at(0, 2).growth_progress, 5)
         self.assertEqual(game.credits, 209)  # Rival farms do not spend player credits.
 
     def test_ai_reserves_remaining_slots_to_support_future_population(self):
         game = new_game(seed=2408, fog_of_war=False)
         home = game.planet_at(game.opponent.home_system, game.opponent.home_planet)
-        home.size, home.biome, home.population = "Medium", "Terran", 8
-        home.buildings = ["research_lab"]*6
+        home.size, home.biome, home.population = "Small", "Terran", 8
+        # One slot remains; income already covers the existing labs and a farm.
+        home.buildings = ["research_lab"]*4+["trade_center"]
         self.assertEqual(game.population_report(home).balance, 2)
         run_ai(game)
         self.assertEqual(home.construction_queue[0].item_id, "hydroponic_farm")
@@ -258,7 +259,7 @@ class PopulationSaveTests(unittest.TestCase):
                     planet["farmers"], planet["scientists"] = min(2, planet["population"]), 0
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 23)
+        self.assertEqual(SAVE_VERSION, 24)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)
@@ -310,7 +311,7 @@ class PopulationInterfaceTests(unittest.TestCase):
                 app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_e, mod=0))
                 app.render()
             self.assertEqual((earth.population, earth.growth_progress), (9, 5))
-            self.assertEqual(app.game.population_report(earth).produced, 14)
+            self.assertEqual(app.game.population_report(earth).produced, 16)
             click("surface_hydroponic_farm")
             self.assertEqual((app.screen, app.colony_slot), ("colony", 0))
             restored, _ = app.storage.load(app.storage.save(app.game))

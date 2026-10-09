@@ -37,7 +37,7 @@ def draw_empire(app):
 
     stats = [
         ("COLONIES", str(summary.colonies), f"{summary.population:,} B · {summary.slaves} enslaved" if summary.slaves else f"{summary.population:,} B inhabitants", INK),
-        ("TREASURY", f"{game.credits:,} CR", f"+{summary.income:,} CR / turn", GOLD),
+        ("TREASURY", f"{game.credits:,} CR", f"{summary.income:+,} CR net / turn", RED if game.credits < 0 else GOLD),
         ("TOTAL INDUSTRY", f"{summary.industry:,} IND", "Per turn · used locally", CYAN),
         ("RESEARCH STORED", f"{game.research:,} RP", f"+{summary.research:,} RP / turn", CYAN),
         ("BUILDING SLOTS", f"{summary.used_slots} / {summary.capacity}",
@@ -66,7 +66,7 @@ def draw_empire(app):
         ("population", "POP / LIMIT", 342, 104),
         ("food", "FOOD NET", 464, 88),
         ("industry", "INDUSTRY", 569, 77),
-        ("income", "INCOME", 658, 77),
+        ("income", "NET CR", 658, 77),
         ("research", "RESEARCH", 745, 81),
         ("slots", "SLOTS", 839, 96),
     ]
@@ -96,9 +96,11 @@ def draw_empire(app):
         text(surface, growth, (440, y+31), 9, MUTED, right=True)
         text(surface, f"{food.balance:+}", (545, y+7), 16, RED if food.balance<0 else CYAN, right=True)
         text(surface, f"{food.produced} / {food.consumed} used", (545, y+31), 9, MUTED, right=True)
-        for value, right, color in ((str(industry), 635, CYAN), (f"+{income}", 721, INK),
+        for value, right, color in ((str(industry), 635, CYAN),
                                     (f"+{research}", 813, CYAN)):
             text(surface, value, (right, y+17), 16, color, right=True)
+        text(surface, f"{income:+}", (721, y+7), 16, RED if income < 0 else INK, right=True)
+        text(surface, f"{planet.maintenance_per_turn} upkeep", (721, y+31), 9, MUTED, right=True)
         text(surface, f"{planet.used_slots} / {planet.building_capacity}", (918, y+6), 15, INK, right=True)
         text(surface, "Full" if not planet.free_slots else f"{planet.free_slots} free",
              (918, y+31), 10, GOLD if not planet.free_slots else MUTED, right=True)
@@ -142,8 +144,8 @@ def draw_empire(app):
                enabled=app.empire_page<last_page)
     app.button("empire_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("empire_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    caption = (f"Agreements included: +{summary.agreement_income} CR, +{summary.agreement_research} RP / turn."
-               if summary.agreement_income or summary.agreement_research else "All output rates are per turn. Industry stays on its planet.")
+    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn. Trade included."
     text(surface, caption, (400, 835), 12, MUTED)
-    text(surface, "Page Up / Down or mouse wheel: browse colonies", (400, 857), 11, FAINT)
+    text(surface, "Future income repays debt; buildings keep operating." if game.credits < 0 else
+         "Page Up / Down or mouse wheel: browse colonies", (400, 857), 11, FAINT)
     app.button("empire_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)

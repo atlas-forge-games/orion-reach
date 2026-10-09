@@ -1,5 +1,8 @@
 """Deterministic expansion AI. All orders use the same rules as player orders."""
 
+from dataclasses import replace
+
+from .buildings import BUILDINGS
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, TROOP_STRENGTH
 from .races import RACES
@@ -102,6 +105,67 @@ def development_choice(planet, race_id="kharuun"):
             return item
     # Keep adding a mix of industry, income and research on larger worlds.
     return ("factory", "trade_center", "research_lab")[(len(planet.buildings)-4) % 3]
+
+
+def projected_colony(planet, extra=None):
+    """A copy with all paid buildings, plus an optional proposed order, complete."""
+    buildings = planet.buildings+[q.item_id for q in planet.construction_queue if q.item_id in BUILDINGS]
+    if extra is not None:
+        buildings = buildings+[extra]
+    return replace(planet, buildings=buildings,
+                   ascension_gate=planet.ascension_gate or any(q.item_id == "ascension_gate" for q in planet.construction_queue))
+
+
+def projected_income(game, owner, extra=None):
+    """Budget for all paid building orders as well as the proposed next one."""
+    income = game.diplomatic_yields(owner)[0]
+    for system, planet in empire_colonies(game, owner):
+        item = extra[2] if extra and extra[:2] == (system.id, planet.id) else None
+        income += game.planet_yields(projected_colony(planet, item))[1]
+    return income
+
+
+def queue_building(game, system, planet, item, owner):
+    """Cover future upkeep before committing to more expensive infrastructure."""
+    if (game.planet_yields(projected_colony(planet, item))[1] < 0
+            or projected_income(game, owner, (system.id, planet.id, item)) < 1):
+        item = "trade_center"
+    if game.build_error(system.id, planet.id, item, owner=owner) is not None:
+        return False
+    game.queue_building(system.id, planet.id, item, owner=owner)
+    event(game, owner, f"Started {PROJECTS[item].name} on {planet.name}.")
+    return True
+
+
+def recover_budget(game, owner):
+    """Prioritize revenue, or retire unaffordable buildings while preserving food."""
+    target = 1  # Retain a small surplus so a depleted treasury can recover.
+    if game.empire_rates_for(owner)[0] >= target or projected_income(game, owner) >= target:
+        return
+    colonies = empire_colonies(game, owner)
+    for system, planet in colonies:
+        if game.build_error(system.id, planet.id, "trade_center", owner=owner) is None:
+            queue_building(game, system, planet, "trade_center", owner)
+            return
+    while game.empire_rates_for(owner)[0] < target:
+        options = []
+        for system, planet in colonies:
+            for index, item in enumerate(planet.buildings):
+                future = replace(planet, buildings=planet.buildings[:index]+planet.buildings[index+1:])
+                future.farmers = farmers_needed(future, game.bonuses_for(owner))
+                future.scientists = min(future.scientists, future.workforce-future.farmers)
+                if game.population_report(future).balance < 0:
+                    continue
+                saving = game.planet_yields(future)[1]-game.planet_yields(planet)[1]
+                if saving > 0:
+                    options.append((item == "hydroponic_farm", item == "barracks", item == "research_lab",
+                                    -saving, system.id, planet.id, index, future))
+        if not options:
+            return
+        *_, sid, pid, index, future = min(options, key=lambda row: row[:-1])
+        item = game.demolish_building(sid, pid, index, owner=owner)
+        game.set_workforce(sid, pid, future.farmers, future.scientists, owner=owner)
+        event(game, owner, f"Retired {PROJECTS[item].name} on {future.name} to restore the budget.")
 
 
 def announce_raid(game, owner, defender, system):
@@ -250,6 +314,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         remaining = planet.workforce-farmers
         scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
         game.set_workforce(system.id, planet.id, farmers, scientists, owner=owner)
+    recover_budget(game, owner)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
     if "ascension_theory" in game._empire(owner).technology.completed and not gate_site(game, owner):
         for system, planet in colonies:
@@ -287,16 +352,14 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         if planet.construction_queue:
             continue
         food = game.population_report(planet)
-        farm_food = PROJECTS["hydroponic_farm"].food
+        farm_food = PROJECTS["hydroponic_farm"].food+planet.farmers*PROJECTS["hydroponic_farm"].food_per_farmer
         full_consumption = food_required(food.capacity+planet.slaves, game.bonuses_for(owner))
         farms_needed = max(0, (full_consumption-food.produced+farm_food-1)//farm_food)
         needs_food = food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
                       or planet.farmers > 2
                       or 0 < planet.free_slots <= farms_needed)
         if needs_food and planet.free_slots > 0:
-            if game.build_error(system.id, planet.id, "hydroponic_farm", owner=owner) is None:
-                game.queue_building(system.id, planet.id, "hydroponic_farm", owner=owner)
-                event(game, owner, f"Started a hydroponic farm on {planet.name}.")
+            queue_building(game, system, planet, "hydroponic_farm", owner)
             continue
         # Reserve local defence before peaceful development fills every slot.
         # The main shipyard needs barracks to recruit expeditionary troops.
@@ -315,14 +378,15 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 slot = max(replaceable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
                 game.demolish_building(system.id, planet.id, slot, owner=owner)
         if military_building and planet.free_slots > 0:
-            if game.build_error(system.id, planet.id, military_building, owner=owner) is None:
-                game.queue_building(system.id, planet.id, military_building, owner=owner)
-                event(game, owner, f"Started {PROJECTS[military_building].name} on {planet.name}.")
+            queue_building(game, system, planet, military_building, owner)
             continue
         # The strongest colony supplies ships. Other worlds build their economies.
         # Expansion raises the shipyard's development target, preventing stagnation.
         target_buildings = min(planet.building_capacity, 2+len(colonies)//2)
-        produce_ship = index == 0 and fleet_size < fleet_limit and len(planet.buildings) >= target_buildings
+        # Fund an initial research base before repeated expansion consumes all
+        # spare credits, especially for slow-growing civilizations.
+        research_ready = game.empire_rates_for(owner)[1] > 0 or len(colonies) == 1 or planet.free_slots == 0
+        produce_ship = index == 0 and fleet_size < fleet_limit and len(planet.buildings) >= target_buildings and research_ready
         produce_frigate = (index == 0 and game.turn >= 12 and len(planet.buildings) >= 2
                           and warships < military_limit)
         produce_transport = (index == 0 and bool(enemies(game, owner))
@@ -351,7 +415,5 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 event(game, owner, f"Started a colony ship on {planet.name}.")
         elif planet.free_slots > 0:
             item = development_choice(planet, game._empire(owner).race_id)
-            if game.build_error(system.id, planet.id, item, owner=owner) is None:
-                game.queue_building(system.id, planet.id, item, owner=owner)
-                event(game, owner, f"Started {PROJECTS[item].name} on {planet.name}.")
+            queue_building(game, system, planet, item, owner)
     return invasions

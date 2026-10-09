@@ -111,7 +111,7 @@ def action_error(game, action, target="rival"):
     if game.turn < cooldown:
         return f"Available on turn {cooldown}."
     cost = ENVOY_COST if action == "envoy" else GIFT_COST if action == "gift" else 0
-    if game.credits < cost:
+    if cost and game.credits < cost:
         return f"Requires {cost} credits."
     if state.relations == 100 and action in ("envoy", "gift"):
         return "Relations are already at their maximum."

@@ -914,7 +914,7 @@ class App:
         if self.screen=="empire":
             self.focus_empire_row()
         if self.save_game(autosave=True):
-            message=f"Turn {self.game.turn} · +{report.income} CR · +{report.research} RP"
+            message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP"
             if self.game.combat is not None:
                 message+=" · Enemy fleet engaged at "+self.game.systems[self.game.combat.system_id].name
             if report.discoveries:
@@ -1811,7 +1811,8 @@ class App:
         self.button("save","Save game  ·  F5",(264,820,229,54),self.save_game)
         text(self.canvas,"EMPIRE ECONOMY",(585,821),10,GOLD,"mono",2)
         income,research=state.empire_rates
-        text(self.canvas,f"+{income} credits · +{research} research / turn",(585,844),12,MUTED)
+        upkeep=sum(p.maintenance_per_turn for s in state.systems for p in s.worlds if p.owner == PLAYER)
+        text(self.canvas,f"{income:+} CR net · {upkeep} upkeep · +{research} RP/turn",(585,844),12,RED if income < 0 else MUTED)
         self.button("end_turn","End turn  ·  E",(1081,813,295,61),self.advance_turn,"primary")
         if self.fleet_popup:
             draw_fleet_popup(self)

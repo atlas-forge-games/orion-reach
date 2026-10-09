@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.28.0
+# Orion Reach — Python prototype 0.30.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,81 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.30: buildings, workforce and maintenance
+
+Economic buildings now combine a fixed base output with a bonus for each
+assigned worker, farmer or scientist. Trade centres also earn extra credits
+from every population unit. The complete costs and effects are listed under
+**Build your first colony** below.
+
+- A factory adds **4 industry plus 1 per industrial worker**. Earth's first
+  factory therefore raises its initial 6 industry to **16**, with **2 CR/turn**
+  maintenance. Reassigning a worker immediately changes the bonus.
+- Mines add mineral-scaled base and worker industry; labs improve scientists;
+  farms improve farmers. Completed copies stack additively. Fractional mine
+  and trade bonuses are totalled before rounding down once per colony.
+  Native citizens and Varkesh slaves receive the same bonuses.
+- All seven regular buildings cost **1–2 CR/turn** to maintain. A completed
+  Ascension Gate costs **5 CR/turn**. Automatic headquarters and shipyard
+  landmarks remain free. Foodless civilizations still pay upkeep on any farms.
+- **Net income = gross income minus maintenance.** Racial output modifiers
+  affect gross income; maintenance remains a fixed cost. Colony screens and
+  Empire Overview show gross income, upkeep and net income. Building catalogues
+  and inspection panels show each building's upkeep and workforce bonus.
+- A building produces and incurs upkeep starting on the turn after completion;
+  paid orders still in the queue incur none. Demolition stops both immediately.
+  Construction forecasts include the new industry and food bonuses.
+- A deficit reduces the treasury and can create **debt**. Future net income
+  repays it. Existing buildings and already paid construction keep operating;
+  new purchases require enough credits. There is no interest. The AI plans for
+  queued upkeep, funds young colonies with trade centres, and can retire costly
+  facilities to recover a deficit while preserving food supplies.
+
+Existing campaigns gain the new economy when loaded, with their saved credits,
+population, assignments, buildings and paid construction progress preserved.
+No retrospective upkeep is charged. **No new campaign is required.** New saves
+use **format 24** so both player and rival treasuries can retain debt.
+
+![Building output, workforce bonuses and maintenance](screenshots/building_catalogue.png)
+
+![Colony economy and improved worker output](screenshots/building_economy.png)
+
+## New in v0.29: civilization home systems
+
+Each civilization now starts with its own system and planet names, for both
+players and AI empires. The galaxy-options screen shows your selected home
+system and homeworld before you begin.
+
+| Civilization | Home system | Homeworld | Other starting planets |
+| --- | --- | --- | --- |
+| Terrans | Sol | Earth | Mercury, Venus, Mars |
+| Kharuun | Zharum | Kharduun | Orvek, Talzun, Dravik |
+| Aelari | Aelys | Namaris | Syrin, Pelara, Thalun |
+| Lithar | Tharok | Durath | Keld, Ormun, Voldrak |
+| Varkesh | Rhazek | Drazhak | Skarn, Vordash, Kreth |
+| Wanderers | Wayfarer | Haven | Ember, Landfall, Farwatch |
+| Xenonflora | Viridia | Sylvaris | Rootfall, Mycela, Florath |
+| Nexus | Axiom | Origin | Relay, Foundry, Matrix |
+| Aetheri | Luminara | Veylume | Ilyon, Seris, Orae |
+| The Concord | Seryn | Dyara | Enna, Belora, Thessa |
+| The Remnant | Avarion | Elyndra | Vesper, Orath, Nyth |
+
+Haven is the Wanderers' ancestral gathering place. Names are assigned to the
+actual starting colony; the neighboring names follow orbital order. AI home
+systems retain their generated planet counts. Larger systems use orbital
+numbers for extra worlds, such as **Zharum V**. If a custom game uses the same
+civilization twice, the second name set gets a suffix, such as **Rhazek 2** and
+**Drazhak 2**, so systems and planets remain distinct.
+
+Starting locations, biomes, orbits, resources, fleets and population are
+unchanged. **Start a new campaign for the new names.** Loading an existing save
+preserves all current names and surveys. An AI newly added to a solo campaign
+receives its own home names, without revealing changes to previously surveyed
+colonies. Captured worlds and awakened Remnant tombs retain their existing names.
+That release used **save format 23**, compatible with v0.28.
+
+![Civilization home names in galaxy setup](screenshots/home_systems_setup.png)
 
 ## New in v0.28: Varkesh raiding clans
 
@@ -174,7 +249,7 @@ On the second **New Game** screen, choose **0–5 rivals**. Their races are draw
 randomly without duplicates, excluding your own race. Empire name, galaxy size,
 seed and fog of war remain on this screen; your race is still selected first.
 
-Your home system, **Sol**, now appears at a random location. Rival home systems
+Your civilization's home system appears at a random location. Rival home systems
 are also chosen randomly, with a preference for at least 20 light-years between
 starting empires. When a crowded map has no suitable separated system, the next
 home uses the most distant available system. Every empire starts in a different
@@ -401,7 +476,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - The planet overview includes a **colony surface scene** with illustrated buildings
   and landscapes for all six environments. Click a building to inspect it,
   the shipyard to build ships, or the headquarters palace to open the empire report.
-- Sol contains Mercury, Venus, Earth and Mars. Other systems have reproducible
+- Terran players start with Sol's Mercury, Venus, Earth and Mars; other
+  civilizations have their own names. Other systems have reproducible
   planet data and distinct illustrations for six environment types.
 - The planet screen centres on the colony landscape. A system directory sits at
   top left, visual output totals and worker assignments across the top, and
@@ -492,7 +568,7 @@ tools are required to play it.
 Open a planet from its solar-system overview. Its landscape and buildings fill
 the main view. The left panel lists every surveyed planet in the system with
 basic information; click a row to switch planets. The top strip shows this
-colony's **credit income, food produced/used, industry and research per turn**
+colony's **net credit income, food produced/used, industry and research per turn**
 with distinct icons and colours. Empire treasury is separate in the title bar.
 
 Every **1 billion inhabitants is one worker**. Click a worker row to select one
@@ -500,14 +576,19 @@ person, then click another row to move them. Click the same row or press Escape
 to cancel selection. A move is free, is autosaved, and immediately updates the
 displayed production and construction forecast.
 
-- **Farmers:** produce food at the biome-specific rate shown below.
-- **Workers:** produce 1 industry each, in addition to buildings and technology.
+- **Farmers:** produce food at the biome-specific rate shown below, plus
+  **1 food each per completed hydroponic farm**.
+- **Workers:** produce 1 industry each, plus **1 per factory** and **0.5 per
+  mining complex** on Average worlds, in addition to flat building and technology output.
+  The mining bonus scales with mineral richness.
   A colony always has at least 1 basic industry, even with no industrial workers.
-- **Scientists:** produce 2 research each, in addition to laboratories and technology.
+- **Scientists:** produce 2 research each, plus **1 per research lab**, in
+  addition to flat laboratory and technology output.
 
-Buildings retain their flat output bonuses; they do not require assigned staff
-in this prototype. Tax income remains 1 credit per billion inhabitants, regardless
-of their job. New inhabitants enter the industrial workforce. New settlements
+Buildings retain their flat output even when nobody is assigned to the relevant
+job. Their workforce bonuses scale with that job's assigned population. Tax
+income is 1 credit per billion inhabitants, plus **0.5 per trade centre**,
+regardless of job; maintenance is deducted afterward. New inhabitants enter the industrial workforce. New settlements
 first assign farmers to support their population, with the remainder in industry.
 Worker assignments are preserved when saving, loading or capturing a colony.
 
@@ -545,7 +626,8 @@ Start or load a game, then click **Sol → Earth → Change**. Click **Start** b
 a building in the catalogue, then advance turns with **E**.
 Earth starts with 120 empire credits, 6 industry per turn, and 8 credits per
 turn from its population. A first factory costs 45 credits and completes after
-four End Turns; it raises industry from 6 to 10 for subsequent turns.
+four End Turns; it raises industry from 6 to 16 and reduces net income from
+8 to 6 credits for subsequent turns.
 
 | Planet size | Building slots |
 | --- | ---: |
@@ -559,13 +641,22 @@ Each completed or queued building uses one slot. Repeated copies of a building
 are allowed, and their outputs add together. Planet size determines capacity;
 habitability does not change it in this version.
 
-| Building | Upfront credits | Construction work | Output per turn |
-| --- | ---: | ---: | --- |
-| Factory | 45 | 24 | +4 industry |
-| Mining complex | 30 | 18 | +1 / +2 / +3 industry on Poor / Average / Rich worlds, plus +1 credit |
-| Trade centre | 40 | 24 | +4 credits |
-| Research lab | 50 | 30 | +4 research points |
-| Hydroponic farm | 30 | 18 | +4 food on every biome |
+| Building | Upfront CR | Work | Base effect per turn | Workforce bonus per copy | Upkeep CR/turn |
+| --- | ---: | ---: | --- | --- | ---: |
+| Factory | 45 | 24 | +4 industry | +1 industry per industrial worker | 2 |
+| Mining complex | 30 | 18 | +2 industry and +1 credit on Average minerals | +0.5 industry per industrial worker on Average minerals | 1 |
+| Trade centre | 40 | 24 | +4 credits | +0.5 credits per population unit, any job | 1 |
+| Research lab | 50 | 30 | +4 research points | +1 research per scientist | 2 |
+| Hydroponic farm | 30 | 18 | +4 food on every biome | +1 food per farmer | 1 |
+| Barracks | 50 | 30 | Trains 1 garrison troop per turn to 8; enables troop transport construction | None; one per colony | 1 |
+| Fortifications | 60 | 36 | +50% defending firepower | None; one per colony | 2 |
+
+Mining base industry and workforce bonuses use the same mineral multiplier:
+**Poor ×0.5, Average ×1, Rich ×1.5, Ultra-rich ×3**. The fixed +1 credit
+does not scale. Bonuses from repeated completed buildings add together;
+fractional worker industry and population credit bonuses are rounded down
+after summing all copies. For example, two Average mines give one worker a
+combined **+1 industry**, in addition to each mine's flat output.
 
 These are base values. Discovered technologies change the prices and outputs
 shown in the catalogue. Capacity and work costs remain unchanged.
@@ -576,20 +667,23 @@ shown in the catalogue. Capacity and work costs remain unchanged.
   including speed increases from factories/mines that will finish ahead of it.
   Queue forecasts also include population growth adding industrial workers;
   they assume no future reassignment or new research bonuses.
-- A turn collects output from buildings operational at its start. A newly
-  completed building starts producing on the following turn.
+- A turn collects output and pays maintenance for buildings operational at
+  its start. A newly completed building starts producing and incurring upkeep
+  on the following turn. Queued projects incur no maintenance.
 - Click a queued slot to inspect it and **Cancel**. An unstarted project returns
   its full credit cost; a partially built project refunds
   `floor(credits actually paid × remaining work / total work)`. The displayed refund
   is exact, even if a discount is discovered after the order was placed.
 - Click an operational building to **Demolish** it. Confirmation is required;
-  its output stops immediately and its construction cost is not refunded.
+  its output and maintenance stop immediately; its construction cost is not refunded.
 - Uncolonized planets show their capacity, with construction disabled until
   settled. Bring a colony ship to the system and use the planet's Overview tab.
 
 Basic industry comes from industrial workers (minimum 1 per colony), plus
-buildings and technology. Every colony earns one credit per billion inhabitants.
-All colony income and research contribute to the empire totals.
+buildings and technology. Every colony earns one credit per billion inhabitants,
+plus building and technology income, less building maintenance.
+All net colony income and research contribute to the empire totals. Deficits
+reduce the treasury and can create debt, repaid by future net income.
 Building costs, work and slots can be tuned in `orion/buildings.py`.
 
 ## Population growth and food
@@ -607,8 +701,9 @@ feed another colony. There is no food stockpile or shipping in this version.
 | Barren / Volcanic | 0 | 1 |
 
 Build a **Hydroponic farm** through **Change** for **30 credits, 18 construction
-work and one building slot**. Each completed farm adds **4 food per turn** on
-any biome, starting on the turn after completion. Farms can be repeated and
+work and one building slot**. Each completed farm adds **4 food per turn plus
+1 per assigned farmer** on any biome, at **1 CR/turn** maintenance, starting on
+the turn after completion. Farms can be repeated and
 use the normal construction, discount, cancellation and demolition rules.
 They appear as clickable greenhouses on the planet surface.
 
@@ -785,7 +880,7 @@ system list keeps the other planets available without leaving the colony view.
 - Clicking a building opens the Colony tab and selects its first completed copy;
   if none is finished, it selects the first queued project of that type.
   Use the individual Colony slots to inspect other copies or queued projects.
-- The **headquarters palace** marks Earth for the player and the rival's original
+- The **headquarters palace** marks the player's homeworld and the rival's original
   homeworld for the AI. If that world is captured, the marker moves to a remaining
   colony. Click it for Empire Overview or Rival report.
 - A **shipyard** appears at every colony, reflecting its existing ability to build
@@ -817,8 +912,8 @@ selected randomly. These are the three original prototype identities:
 These original three races retain their diplomatic traits and standard colony
 rules. The eight additional races and their economic, growth and exploration
 traits are listed in **Races and two-step setup** above. Traits apply to the player and AI.
-Every player race starts on Earth, in a randomly placed Sol system; rivals start
-on separate generated worlds. New expeditions use a different race for every
+Every civilization uses its own home system and homeworld names, listed above;
+rivals start on separate generated worlds. New expeditions use a different race for every
 empire. Existing saves can retain two empires of the same race. Changing races
 does not overwrite a custom empire name.
 
@@ -1309,7 +1404,7 @@ Save, End Turn, pause, settings and Continue work from the overview. The list
 and totals refresh after construction and turn changes. Industry remains local
 to each planet; the empire total is a report, not a shared construction pool.
 
-Earth is the starting colony; each newly settled world appears in the directory.
+Your homeworld is the starting colony; each newly settled world appears in the directory.
 The current project may be a building or a ship. Ship construction counts as
 activity but does not reserve a building slot. View filters,
 sort order and page are kept during play and reset when starting/loading a game.
@@ -1392,8 +1487,9 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.28 loads all earlier prototype saves without rewriting the
-source file during loading. Existing empire identities, home positions and rival
+**Compatibility:** v0.30 loads all earlier prototype saves without rewriting the
+source file during loading. Existing treasuries and paid construction are retained;
+the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
 require a new campaign. Saved courses retain their original destinations and durations;
 new courses use the smaller base fuel range.
@@ -1433,7 +1529,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 23**, adding slave population to worlds and surveys, private
+**format version 24**, supporting negative treasuries for building maintenance
+debt. They retain slave population in worlds and surveys, private
 raid records and fractional Varkesh voyage speeds, while retaining hidden tomb
 worlds, once-only awakening outcomes, private turn-news records and an optional
 emergent Remnant enclave, plus
@@ -1450,7 +1547,7 @@ the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.27 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.29 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1468,7 +1565,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/system_views.py` | Solar-system overview and orbital layout |
 | `orion/planet_view.py` | Landscape-led planet view, output icons, worker rows and production chooser |
 | `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
-| `orion/buildings.py` | Building definitions, costs, outputs and size-based capacity |
+| `orion/buildings.py` | Building costs, base output, workforce bonuses, upkeep and size-based capacity |
 | `orion/population.py` | Local food production, consumption, population limits and growth |
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
@@ -1476,7 +1573,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/empires.py` | Stable empire identifiers and distinct map colors |
 | `orion/rival_selector.py` | Shared diplomatic contact and intelligence selector |
 | `orion/rival_view.py` | Rival economy, activity and colony survey report |
-| `orion/races.py` | Eleven race identities, racial traits and AI preferences |
+| `orion/races.py` | Eleven race identities, home names, racial traits and AI preferences |
+| `orion/home_systems.py` | Starting-system and planet names, duplicate handling and survey continuity |
 | `orion/race_art.py` | Cached race portraits and procedural fallback seals |
 | `orion/building_art.py` | Cached transparent building sprites and fallback art |
 | `orion/colony_scene.py` | Seeded landscapes, headquarters markers and clickable colony graphics |
@@ -1541,6 +1639,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
 | `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
+| `tests/test_home_systems.py` | Civilization home names, unchanged generation, repeated races and survey privacy |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. Possible next foundations include food

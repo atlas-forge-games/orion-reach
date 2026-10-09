@@ -11,7 +11,7 @@ import tempfile
 
 from .model import GameState, SaveError
 
-SAVE_VERSION = 23
+SAVE_VERSION = 24
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30}
 

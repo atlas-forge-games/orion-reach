@@ -19,8 +19,9 @@ from . import ground_combat as ground_rules
 from . import tomb_worlds as tomb_rules
 from . import raiding as raid_rules
 from .races import RACES, default_rival_race
+from .home_systems import name_home
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
-from .research import ResearchState, building_yields, colony_yields
+from .research import ResearchState, building_yields, colony_yields, colony_maintenance
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
                         agreement_yields, make_contact, take_action)
 
@@ -137,7 +138,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=23):
+    def from_dict(cls, data, systems, *, version=24):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -208,7 +209,8 @@ class Opponent:
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
-            if not _integer(data[key], 0, 1_000_000_000):
+            minimum = -1_000_000_000 if key == "credits" and version >= 24 else 0
+            if not _integer(data[key], minimum, 1_000_000_000):
                 raise ValueError
         if not _integer(data["home_system"], 0, len(systems)-1):
             raise ValueError
@@ -306,15 +308,11 @@ class Planet:
 
     @property
     def yields_per_turn(self):
-        if not self.colonized:
-            return (0, 0, 0)
-        industry, income, research = max(1, self.workers), self.workforce, 2*self.scientists
-        for building_id in self.buildings:
-            extra = BUILDINGS[building_id].yields(self.richness)
-            industry += extra[0]
-            income += extra[1]
-            research += extra[2]
-        return industry, income, research
+        return colony_yields(self, {})
+
+    @property
+    def maintenance_per_turn(self):
+        return colony_maintenance(self)
 
     @property
     def industry_per_turn(self):
@@ -361,7 +359,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=23):
+    def from_dict(cls, data, expected_id, *, version=24):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -894,6 +892,7 @@ class GameState:
         return planet
 
     def _place_opponent(self, owner, race_id, system, planet, name):
+        name_home(self, system, planet, race_id)
         self._register_opponent(owner, race_id, system, planet, name)
         planet.colonized, planet.owner, planet.population = True, owner, 8
         planet.farmers, planet.scientists = 2, 0
@@ -1266,6 +1265,10 @@ class GameState:
         self.turn += 1
         self.year += 1
         self.credits += income
+        if income < 0:
+            alerts.append(f"Budget deficit: {income} CR/turn after building maintenance")
+        if self.credits < 0:
+            alerts.append(f"Treasury debt: {-self.credits} CR; future income repays it")
         self.research += research
         population = []
         for planet, start in population_start:
@@ -1304,7 +1307,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=23):
+    def from_dict(cls, data, *, version=24):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1324,7 +1327,7 @@ class GameState:
                 raise ValueError
             if data["year"] != 2299 + data["turn"] or type(data["year"]) is not int:
                 raise ValueError
-            if not _integer(data["credits"], 0, 1_000_000_000):
+            if not _integer(data["credits"], -1_000_000_000 if version >= 24 else 0, 1_000_000_000):
                 raise ValueError
             research = data["research"] if version >= 3 else 0
             if not _integer(research, 0, 1_000_000_000):
@@ -1474,7 +1477,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     starts = random.Random(f"orion-starts-v1:{seed}")
     left, right, top, bottom = GALAXY_BOUNDS
     if random_starts:
-        # Keep the familiar homeworld, but place its system anywhere in the galaxy.
+        # Keep the starting world's properties, but place its system anywhere.
         systems[0].x, systems[0].y = starts.uniform(left, right), starts.uniform(top, bottom)
     count = GALAXY_SIZES[galaxy_size]
     for i in range(1, count):
@@ -1490,6 +1493,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         system.worlds = generate_planets(system, seed)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
                      race_id=race_id, fog_of_war=fog_of_war)
+    name_home(game, systems[0], systems[0].worlds[2], race_id)
     game.research = RACES[race_id].starting_research
     if not population_rules.food_required(8, game.bonuses_for()):
         game.planet_at(0, 2).farmers = 0

@@ -104,12 +104,12 @@ class ResearchRulesTests(unittest.TestCase):
         home.richness = earth.richness
         for identifier in ("research_instruments", "research_networks", "superconductors"):
             discover(game, identifier)
-        self.assertEqual(game.planet_yields(earth), (15, 13, 19))
-        self.assertEqual(game.planet_yields(home), (12, 13, 8))
+        self.assertEqual(game.planet_yields(earth), (24, 9, 19))
+        self.assertEqual(game.planet_yields(home), (21, 9, 8))
         self.assertEqual(game.building_yields(BUILDINGS["research_lab"], earth), (0, 0, 9))
         summary = summarize_empire(game)
-        self.assertEqual((summary.industry, summary.income, summary.research), (15, 13, 19))
-        self.assertEqual(game.empire_rates, (13, 19))
+        self.assertEqual((summary.industry, summary.income, summary.research), (24, 9, 19))
+        self.assertEqual(game.empire_rates, (9, 19))
         self.assertEqual(game.planet_yields(game.planet_at(0, 3)), (0, 0, 0))
 
     def test_forecasts_match_shared_production_with_researched_factory_output(self):
@@ -122,14 +122,14 @@ class ResearchRulesTests(unittest.TestCase):
         game.queue_building(0, 2, "factory")
         game.queue_ship(0, 2)
         before = game.to_dict()
-        self.assertEqual(game.queue_estimates(earth, "mine"), [4, 6, 8, 9])
+        self.assertEqual(game.queue_estimates(earth, "mine"), [4, 6, 7, 8])
         self.assertEqual(game.to_dict(), before)
         game.queue_building(0, 2, "mine")
         actual = []
         for turn in range(1, 10):
             report = game.advance_turn()
             actual.extend([turn]*len(report.completed))
-        self.assertEqual(actual, [4, 6, 8, 9])
+        self.assertEqual(actual, [4, 6, 7, 8])
 
     def test_discounts_and_refunds_use_original_payment_even_after_discoveries(self):
         game = new_game(seed=2408, with_ai=False)
@@ -196,13 +196,13 @@ class ResearchRulesTests(unittest.TestCase):
         earth.biome = "Desert"
         for identifier in ("habitat_shields", "symbiotic_farming", "ecology_networks", "trade_algorithms"):
             discover(game, identifier)
-        self.assertEqual(game.planet_yields(earth), (6, 22, 0))  # 8 + trade 6 + habitat 2 + farming 2 + ecology 4
+        self.assertEqual(game.planet_yields(earth), (6, 25, 0))  # 8 + trade 6+4 + habitat 2 + farming 2 + ecology 4 - upkeep 1
         discover(game, "cultural_exchange")
         self.assertEqual(game.diplomatic_yields(), (0, 0))
         game.diplomacy.trade_active = game.diplomacy.research_active = True
         self.assertEqual(game.diplomatic_yields(), (8, 7))
         self.assertEqual(game.diplomatic_yields(RIVAL), (6, 3))
-        self.assertEqual(game.empire_rates, (32, 7))  # Colonial Administration adds another 2 CR.
+        self.assertEqual(game.empire_rates, (35, 7))  # Colonial Administration adds another 2 CR.
 
 
 class ResearchSaveTests(unittest.TestCase):

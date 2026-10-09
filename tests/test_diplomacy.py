@@ -170,7 +170,10 @@ class DiplomacyRulesTests(unittest.TestCase):
     def test_each_rival_race_still_expands_and_develops(self):
         for race_id in RACES:
             game = new_game(seed=2408, rival_race_id=race_id)
-            for _ in range(70):
+            # Quarter-speed Lithar growth now takes longer to fund expansion
+            # while supporting building maintenance and an initial research base.
+            turns = 100 if race_id == "lithar" else 70
+            for _ in range(turns):
                 game.advance_turn()
             if race_id == "varkesh":
                 self.assertEqual(summarize_empire(game, owner=RIVAL).colonies, 1)
@@ -178,8 +181,8 @@ class DiplomacyRulesTests(unittest.TestCase):
             else:
                 self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4, race_id)
             self.assertTrue(game.opponent.technology.completed, race_id)
-            # Earth earns 8/turn for 10 turns, 9 for 20, then 10 for 40.
-            self.assertEqual(game.credits, 120+8*10+9*20+10*40)
+            # Earth earns 8/turn for 10 turns, 9 for 20, then 10 thereafter.
+            self.assertEqual(game.credits, 120+8*10+9*20+10*(turns-30))
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
 

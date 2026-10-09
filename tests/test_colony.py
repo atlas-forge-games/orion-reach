@@ -61,25 +61,24 @@ class ColonyRulesTests(unittest.TestCase):
         for building in ("factory", "factory", "mine"):
             self.game.queue_building(0, 2, building)
         before = self.game.to_dict()
-        self.assertEqual(self.earth.queue_estimates(), [4, 7, 8])
-        self.assertEqual(self.earth.queue_estimates("research_lab"), [4, 7, 8, 10])
+        self.assertEqual(self.earth.queue_estimates(), [4, 6, 7])
+        self.assertEqual(self.earth.queue_estimates("research_lab"), [4, 6, 7, 8])
         self.assertEqual(self.game.to_dict(), before)
         for _ in range(4):
             self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory"])
         self.assertEqual(self.earth.construction_queue[0].progress, 0)
-        for _ in range(2):
-            self.game.advance_turn()
-        self.assertEqual(self.earth.construction_queue[0].progress, 20)
+        self.game.advance_turn()
+        self.assertEqual(self.earth.construction_queue[0].progress, 16)
         self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory", "factory"])
-        self.assertEqual(self.earth.construction_queue[0].progress, 6)
+        self.assertEqual(self.earth.construction_queue[0].progress, 8)
         report = self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory", "factory", "mine"])
         self.assertEqual(self.earth.construction_queue, [])
-        self.assertEqual(report.income, 8)
-        self.assertEqual(self.earth.yields_per_turn, (16, 9, 0))
-        self.assertEqual(self.game.advance_turn().income, 9)
+        self.assertEqual(report.income, 4)
+        self.assertEqual(self.earth.yields_per_turn, (31, 4, 0))
+        self.assertEqual(self.game.advance_turn().income, 4)
 
     def test_cancel_refunds_unspent_work_and_releases_the_slot(self):
         self.game.queue_building(0, 2, "factory")
@@ -111,10 +110,10 @@ class ColonyRulesTests(unittest.TestCase):
 
     def test_minerals_only_scale_mining_industry(self):
         self.earth.buildings = ["factory", "mine", "trade_center", "research_lab"]
-        for richness, expected_industry in (("Poor", 11), ("Average", 12), ("Rich", 13)):
+        for richness, expected_industry in (("Poor", 18), ("Average", 21), ("Rich", 23)):
             self.earth.richness = richness
-            self.assertEqual(self.earth.yields_per_turn, (expected_industry, 13, 4))
-        self.assertEqual(self.game.empire_rates, (13, 4))
+            self.assertEqual(self.earth.yields_per_turn, (expected_industry, 11, 4))
+        self.assertEqual(self.game.empire_rates, (11, 4))
         self.assertEqual(self.game.systems[0].worlds[3].yields_per_turn, (0, 0, 0))
 
     def test_income_and_research_begin_after_completion(self):
@@ -126,10 +125,10 @@ class ColonyRulesTests(unittest.TestCase):
         self.assertEqual(self.earth.buildings, ["trade_center"])
         for _ in range(5):
             report = self.game.advance_turn()
-            self.assertEqual((report.income, report.research), (12, 0))
+            self.assertEqual((report.income, report.research), (15, 0))
         self.assertEqual(self.earth.buildings, ["trade_center", "research_lab"])
         report = self.game.advance_turn()
-        self.assertEqual((report.income, report.research), (12, 4))
+        self.assertEqual((report.income, report.research), (13, 4))
         self.assertEqual(self.game.research, 4)
 
     def test_partial_queue_and_research_survive_save_and_continue_identically(self):

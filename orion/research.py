@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, workforce_bonuses
+from .production import ASCENSION_GATE
 from .population import LUSH_BIOMES, assembly_work
 
 
@@ -193,9 +194,10 @@ def scaled_output(value, percent):
 def gross_colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
-    industry = max(1, planet.workers)+bonuses.get("colony_industry", 0)
-    income = planet.workforce+bonuses.get("colony_income", 0)
-    research = 2*planet.scientists+bonuses.get("colony_research", 0)
+    staff = workforce_bonuses(planet)
+    industry = max(1, planet.workers)+int(planet.workers*staff.industry)+bonuses.get("colony_industry", 0)
+    income = planet.workforce+int(planet.workforce*staff.income)+bonuses.get("colony_income", 0)
+    research = (2+staff.research)*planet.scientists+bonuses.get("colony_research", 0)
     for identifier in planet.buildings:
         extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
         industry, income, research = industry+extra[0], income+extra[1], research+extra[2]
@@ -210,6 +212,12 @@ def gross_colony_yields(planet, bonuses):
             scaled_output(research, bonuses.get("research_percent", 0)))
 
 
+def colony_maintenance(planet):
+    if not planet.colonized:
+        return 0
+    return sum(BUILDINGS[b].maintenance for b in planet.buildings)+(ASCENSION_GATE.maintenance if planet.ascension_gate else 0)
+
+
 def colony_yields(planet, bonuses):
     industry, income, research = gross_colony_yields(planet, bonuses)
-    return industry-assembly_work(planet, industry, bonuses), income, research
+    return industry-assembly_work(planet, industry, bonuses), income-colony_maintenance(planet), research

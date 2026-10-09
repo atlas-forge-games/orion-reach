@@ -35,7 +35,9 @@ def compact_yields(game, definition, planet):
 def building_effect(game, definition, planet):
     if definition.training:
         return f"+{definition.training} troop / turn · limit {definition.garrison_limit}"
-    return compact_yields(game, definition, planet)+(" / turn" if not definition.defence_bonus else "")
+    effect = compact_yields(game, definition, planet)
+    bonus = definition.workforce_text(planet.richness)
+    return effect+(" · "+bonus if bonus else "")
 
 
 def turn_label(count):
@@ -62,7 +64,7 @@ def draw_colony(app):
     food = game.population_report(planet)
     food_color = RED if food.balance < 0 else GOLD if food.balance == 0 else CYAN
     stats = [("INDUSTRY / TURN", f"{industry} IND", "Construction on this world", CYAN),
-             ("INCOME / TURN", f"+{income} CR", "Population and buildings", INK),
+             ("NET INCOME / TURN", f"{income:+} CR", f"{income+planet.maintenance_per_turn} gross − {planet.maintenance_per_turn} upkeep", RED if income < 0 else INK),
              ("RESEARCH / TURN", f"+{science} RP", "Empire research project", CYAN),
              ("FOOD / CONSUMED", f"{food.produced} / {food.consumed}", f"{food.balance:+} food / turn · local", food_color),
              ("NATIVE / SLAVES" if planet.slaves else "POPULATION / LIMIT",
@@ -123,12 +125,12 @@ def draw_colony(app):
         panel(surface, (x, y, 625, 53))
         draw_building_art(surface, definition.id, (x+7, y+4, 54, 45))
         text(surface, definition.name, (x+70, y+3), 15, INK)
-        text(surface, building_effect(game, definition, planet), (x+245, y+6), 10, CYAN)
+        text(surface, shorten(building_effect(game, definition, planet), 410, 10), (x+70, y+23), 10, CYAN)
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
-        text(surface, f"{price} CR   ·   {definition.work_cost} work   ·   {eta}",
-             (x+70, y+32), 11, MUTED)
+        text(surface, shorten(f"{price} CR · {definition.work_cost} work · {eta} · Upkeep {definition.maintenance} CR/turn", 410, 10),
+             (x+70, y+38), 10, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
         hint = "1 slot"
@@ -154,7 +156,8 @@ def draw_colony(app):
     if slot is not None and 0 <= slot < len(planet.buildings):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, definition.name, (82, 724), 18, INK)
-        text(surface, building_effect(game, definition, planet), (82, 754), 13, CYAN)
+        text(surface, shorten(building_effect(game, definition, planet), 451, 11), (82, 750), 11, CYAN)
+        text(surface, f"Maintenance: {definition.maintenance} CR/turn per building", (82, 774), 10, MUTED)
         app.button("demolish_building", "Demolish", (549, 729, 156, 45),
                    lambda i=slot: app.demolish_request(i), enabled=planet.owner == PLAYER)
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:
@@ -180,6 +183,6 @@ def draw_colony(app):
 
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
-    text(surface, "Pay when queued. Output starts the turn after completion.", (399, 828), 12, MUTED)
+    text(surface, "Output and upkeep begin the turn after completion.", (399, 828), 12, MUTED)
     text(surface, "Food stays local: 1 per billion inhabitants. Surplus enables growth.", (399, 850), 11, FAINT)
     app.button("colony_end_turn", "End turn · E", (1081, 816, 295, 63), app.advance_turn, "primary")

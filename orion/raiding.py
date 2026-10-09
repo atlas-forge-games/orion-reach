@@ -80,7 +80,7 @@ def raid(game, system_id, planet_id, owner="player"):
     razed = False
     if outcome.captured:
         captives, maximum = expected_loot(game, planet, owner)
-        credits = min(maximum, game.treasury_for(defender), max(0, 1_000_000_000-game.treasury_for(owner)))
+        credits = min(maximum, max(0, game.treasury_for(defender)), max(0, 1_000_000_000-game.treasury_for(owner)))
         game._empire(defender).credits -= credits
         game._empire(owner).credits += credits
         # Existing captives transfer first. Everyone uses the same population unit.

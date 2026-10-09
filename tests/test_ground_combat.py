@@ -268,7 +268,8 @@ class GroundAITests(unittest.TestCase):
         sid, pid = game.opponent.home_system, game.opponent.home_planet
         place_near(game, sid)
         home = game.planet_at(sid, pid)
-        home.buildings = ["hydroponic_farm", "research_lab"]+["factory"]*(home.building_capacity-2)
+        # Keep this full colony solvent so military expansion is the priority.
+        home.buildings = ["hydroponic_farm", "research_lab"]+["trade_center"]*2+["factory"]*(home.building_capacity-4)
         game.opponent.credits = 300
         run_ai(game)
         self.assertEqual(home.construction_queue[0].item_id, "barracks")

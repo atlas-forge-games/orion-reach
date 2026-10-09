@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, workforce_bonuses
 
 POPULATION_LIMITS = {"Tiny": 8, "Small": 12, "Medium": 16, "Large": 20, "Huge": 24}
 BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Volcanic": 0, "Gaia": 12}
@@ -28,16 +28,21 @@ def assembly_work(planet, industry, bonuses):
     return min(max(0, industry-1), (industry*bonuses.get("assembly_percent", 0)+99)//100)
 
 
+def farmer_output(planet):
+    return FARMER_OUTPUT[planet.biome]+workforce_bonuses(planet).food
+
+
 def farmers_needed(planet, bonuses, surplus=2):
     if not food_required(planet.workforce, bonuses):
         return 0
     food = report(planet, bonuses)
-    passive = food.produced-planet.farmers*FARMER_OUTPUT[planet.biome]
+    output = farmer_output(planet)
+    passive = food.produced-planet.farmers*output
     # Fractional consumption can equal the final limit a billion early (Lithar).
     # Keep a surplus until actually full, while preserving ordinary allocations.
     room = max(1, food_required(food.capacity+planet.slaves, bonuses)-food.consumed)
     target = food.consumed+(min(surplus, room) if planet.population < food.capacity else 0)
-    return min(planet.workforce, max(0, (target-passive+FARMER_OUTPUT[planet.biome]-1)//FARMER_OUTPUT[planet.biome]))
+    return min(planet.workforce, max(0, (target-passive+output-1)//output))
 
 
 def clamp_workforce(planet):
@@ -125,7 +130,7 @@ def report(planet, bonuses=None):
         produced = BASE_FOOD[planet.biome] + bonuses.get("colony_food", 0)
         if planet.biome in LUSH_BIOMES:
             produced += bonuses.get("lush_food", 0)
-        produced += planet.farmers * FARMER_OUTPUT[planet.biome]
+        produced += planet.farmers * farmer_output(planet)
         produced += sum(BUILDINGS[b].food for b in planet.buildings)
     growth = 100+bonuses.get("growth_percent", 0)
     if planet.biome in LUSH_BIOMES:

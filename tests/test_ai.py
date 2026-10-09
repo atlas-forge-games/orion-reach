@@ -61,9 +61,9 @@ class AIRulesTests(unittest.TestCase):
         home.buildings = ["research_lab"]
         game.opponent.credits = 0  # AI cannot place another project before income.
         game.advance_turn()
-        self.assertEqual((game.research, game.opponent.research), (0, 6))
+        self.assertEqual((game.research, game.opponent.research), (0, 7))
         self.assertEqual(summarize_empire(game).research, 0)
-        self.assertEqual(summarize_empire(game, owner=RIVAL).research, 6)
+        self.assertEqual(summarize_empire(game, owner=RIVAL).research, 7)
 
     def test_every_mutating_order_rejects_the_other_empires_assets_atomically(self):
         game = new_game(seed=2408)
@@ -268,7 +268,7 @@ class AIRulesTests(unittest.TestCase):
             lambda d: d["ships"][0].pop("owner"),
             lambda d: d.update(opponent=None),
             lambda d: d.pop("opponent"),
-            lambda d: d["opponent"].update(credits=-1),
+            lambda d: d["opponent"].update(credits=-1_000_000_001),
             lambda d: d["opponent"].update(research=True),
             lambda d: d["opponent"].update(home_system=len(game.systems), home_planet=2),
             lambda d: d["opponent"].update(name=""),

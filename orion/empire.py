@@ -15,6 +15,8 @@ class EmpireSummary:
     slaves: int = 0
     industry: int = 0
     income: int = 0
+    gross_income: int = 0
+    maintenance: int = 0
     research: int = 0
     used_slots: int = 0
     capacity: int = 0
@@ -64,6 +66,8 @@ def summarize_empire(game, *, owner=PLAYER):
         slaves=sum(p.slaves for p in colonies),
         industry=sum(output[0] for output in outputs),
         income=sum(output[1] for output in outputs)+trade,
+        gross_income=sum(output[1]+p.maintenance_per_turn for output, p in zip(outputs, colonies))+trade,
+        maintenance=sum(p.maintenance_per_turn for p in colonies),
         research=sum(output[2] for output in outputs)+research,
         used_slots=sum(p.used_slots for p in colonies),
         capacity=sum(p.building_capacity for p in colonies),

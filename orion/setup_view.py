@@ -49,8 +49,8 @@ def draw_setup(app):
     draw_race_portrait(surface, race.id, (115, 320, 236, 236))
     text(surface, race.name, (86, 578), 29, race.color, "title")
     text(surface, race.focus, (88, 620), 13, INK)
-    paragraph(surface, "Your civilization is selected. Go back at any time to compare races; your settings will be kept.",
-              (88, 654), 286, 14, MUTED, 23)
+    text(surface, f"Home system: {race.home_system}", (88, 654), 14, MUTED)
+    text(surface, f"Homeworld: {race.homeworld}", (88, 681), 14, MUTED)
     app.button("setup_back", "← Change race", (86, 733, 294, 42), lambda: app.go("race_select"))
     app.input_box("empire", "EMPIRE NAME", app.empire, (430, 325, 586, 55), "Your civilization")
     app.input_box("seed", "GALAXY SEED · OPTIONAL", app.seed, (1034, 325, 342, 55), "Random")

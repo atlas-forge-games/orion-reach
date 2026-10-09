@@ -44,10 +44,10 @@ class EmpireReportTests(unittest.TestCase):
     def test_totals_cover_all_colonies_and_reserved_slots(self):
         game = varied_empire()
         self.assertEqual(summarize_empire(game), EmpireSummary(
-            colonies=4, population=17, industry=32, income=23, research=16,
+            colonies=4, population=17, industry=52, income=10, gross_income=27, maintenance=17, research=16,
             used_slots=11, capacity=28, projects=1, idle=3,
             food_produced=14, food_consumed=17, food_shortages=3))
-        self.assertEqual(game.empire_rates, (23, 16))
+        self.assertEqual(game.empire_rates, (10, 16))
         colony_rows(game, "full", "population", True)
         self.assertEqual(summarize_empire(game).colonies, 4)
 
@@ -60,7 +60,7 @@ class EmpireReportTests(unittest.TestCase):
         self.assertEqual(names(filter_by="full"), ["Mercury"])
         self.assertEqual(names(sort_by="population", descending=True), ["Earth", "Altair Haven", "Mars", "Mercury"])
         self.assertEqual(names(sort_by="industry", descending=True), ["Altair Haven", "Earth", "Mars", "Mercury"])
-        self.assertEqual(names(sort_by="income", descending=True), ["Earth", "Altair Haven", "Mars", "Mercury"])
+        self.assertEqual(names(sort_by="income", descending=True), ["Earth", "Mars", "Altair Haven", "Mercury"])
         self.assertEqual(names(sort_by="research", descending=True), ["Mercury", "Altair Haven", "Earth", "Mars"])
         self.assertEqual(names(sort_by="slots", descending=True), ["Mercury", "Altair Haven", "Earth", "Mars"])
 

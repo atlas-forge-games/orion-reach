@@ -48,7 +48,7 @@ def draw_rival(app):
         ships = game.ships_owned_by(owner)
         stats = [
             ("COLONIES", str(summary.colonies), f"{summary.population} B inhabitants"),
-            ("TREASURY", f"{rival.credits:,} CR", f"+{summary.income} CR / turn"),
+            ("TREASURY", f"{rival.credits:,} CR", f"{summary.income:+} CR net / turn"),
             ("TOTAL INDUSTRY", f"{summary.industry} IND", "Per turn · used locally"),
             ("RESEARCH STORED", f"{rival.research:,} RP", f"+{summary.research} RP / turn"),
             ("FLEET SIZE", str(len(ships)), f"{sum(s.kind == 'frigate' for s in ships)} frigates · {sum(s.in_transit for s in ships)} travelling"),

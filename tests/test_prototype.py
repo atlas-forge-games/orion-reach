@@ -384,7 +384,7 @@ class InterfaceTests(unittest.TestCase):
         for _ in range(4):
             self.key(pg.K_e)
         self.assertEqual(earth.buildings,["factory"])
-        self.assertEqual(earth.industry_per_turn,10)
+        self.assertEqual(earth.industry_per_turn,16)
         self.click("colony_slot_0")
         self.click("demolish_building")
         self.assertIsNotNone(self.app.dialog)

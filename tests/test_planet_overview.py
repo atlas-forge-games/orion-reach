@@ -116,7 +116,7 @@ class ProductionTests(unittest.TestCase):
         self.assertEqual(self.earth.growth_progress, 10)
         self.assertEqual(self.earth.buildings, ["hydroponic_farm"])
         self.assertEqual(self.earth.construction_queue, [next_project])
-        self.assertEqual(self.game.population_report(self.earth).produced, 14)
+        self.assertEqual(self.game.population_report(self.earth).produced, 16)
 
     def test_buying_ships_commissions_once_with_unique_ids_and_owner(self):
         game = new_game(seed=2408, fog_of_war=False)
@@ -296,7 +296,7 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         with patch.object(planet_view, "text", wraps=planet_view.text) as drawn:
             self.app.render()
         strings = [str(call.args[1]) for call in drawn.call_args_list]
-        for expected in ("CREDITS", "FOOD / USED", "INDUSTRY", "RESEARCH", "+2", "10 / 8", "5"):
+        for expected in ("NET CREDITS", "FOOD / USED", "INDUSTRY", "RESEARCH", "+2", "10 / 8", "5"):
             self.assertIn(expected, strings)
 
     def test_change_buy_confirmation_and_return_follow_real_controls(self):

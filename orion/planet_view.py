@@ -4,15 +4,15 @@ import math
 import pygame as pg
 
 from .building_art import draw_building_art
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, workforce_bonuses
 from .colony_scene import draw_colony_scene
-from .colony_view import building_effect
+from .colony_view import building_effect, compact_yields
 from .ground_combat import forces, training_limit
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .empires import empire_color
 from .planet_art import draw_planet
-from .population import BASE_FOOD, FARMER_OUTPUT, WORKER_ROLES
+from .population import BASE_FOOD, WORKER_ROLES, farmer_output
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
 from .designs import HULLS
 from . import raiding
@@ -101,7 +101,9 @@ def workforce_panel(app, game, planet, live):
               f"{planet.population} WORKERS / {food.capacity if food else '—'} B LIMIT")
     text(surface, counts, (1043, 66), 10, INK, "mono", right=True)
     needs_food = game.bonuses_for(planet.owner or PLAYER).get("food_use_percent", 0) > -100
-    outputs = [("credits", "CREDITS", f"+{credits}" if live else "—", "colony income", GOLD),
+    upkeep = planet.maintenance_per_turn
+    outputs = [("credits", "NET CREDITS", f"{credits:+}" if live else "—",
+                f"{credits+upkeep} gross · {upkeep} upkeep" if live else "last survey", RED if live and credits < 0 else GOLD),
                ("food", "FOOD / USED", f"{food.produced} / {food.consumed}" if live else "—",
                 (f"{food.balance:+} surplus" if needs_food else "not required") if live else "last survey", RED if live and food.balance < 0 else GREEN),
                ("industry", "INDUSTRY", str(industry) if live else "—",
@@ -114,8 +116,9 @@ def workforce_panel(app, game, planet, live):
         text(surface, label, (x+40, 91), 9, MUTED, "mono")
         text(surface, value, (x+40, 109), 21, color)
         text(surface, caption, (x+174, 124), 9, MUTED, right=True)
-    details = {"farmers": f"{FARMER_OUTPUT[planet.biome]} food each" if needs_food else "food not required",
-               "workers": "1 base industry each", "scientists": "2 base research each"}
+    staff = workforce_bonuses(planet)
+    details = {"farmers": f"{farmer_output(planet)} food each" if needs_food else "food not required",
+               "workers": f"{1+staff.industry:g} base IND each", "scientists": f"{2+staff.research} base RP each"}
     for index, role in enumerate(WORKER_ROLES):
         y = 150+index*41
         count = getattr(planet, role)
@@ -246,12 +249,18 @@ def draw_production(app):
         project_art(surface, item_id, (x+10, y+14, 65, 72), design)
         text(surface, shorten(spec.name, 330, 18), (x+85, y+12), 18, INK)
         price = game.project_price(item_id)
-        text(surface, f"{price} CR · {spec.work_cost} work", (x+85, y+42), 12, GOLD)
+        upkeep = getattr(spec, "maintenance", 0)
+        cost = f"{price} CR · {spec.work_cost} work"+(f" · Upkeep {upkeep} CR/turn" if upkeep else "")
+        text(surface, cost, (x+85, y+42), 10, GOLD)
         reason = game.project_error(sid, pid, item_id)
         detail = building_effect(game, spec, planet) if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
         if design:
             detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
-        text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
+        if item_id in BUILDINGS:
+            text(surface, compact_yields(game, spec, planet), (x+85, y+62), 10, CYAN)
+            text(surface, spec.workforce_text(planet.richness), (x+85, y+78), 10, CYAN)
+        else:
+            text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
         app.button("production_build_"+item_id, "Start", (x+312, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen), enabled=reason is None)
         text(surface, shorten(reason or "Previous work is retained", 294, 10), (x+13, y+94), 10, MUTED)
