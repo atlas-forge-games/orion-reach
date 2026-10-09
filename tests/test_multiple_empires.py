@@ -53,7 +53,8 @@ class RandomStartTests(unittest.TestCase):
                     for owner in game.owners:
                         system, world = game.headquarters(owner)
                         self.assertEqual((world.owner, world.population), (owner, 8))
-                        self.assertEqual(sorted(s.kind for s in game.ships_owned_by(owner)), ["colony_ship", "scout", "scout"])
+                        expected = ["frigate", "scout", "scout", "troop_transport", "troop_transport"] if game._empire(owner).race_id == "varkesh" else ["colony_ship", "scout", "scout"]
+                        self.assertEqual(sorted(s.kind for s in game.ships_owned_by(owner)), expected)
                         self.assertEqual({s.system_id for s in game.ships_owned_by(owner)}, {system.id})
                         self.assertEqual([s.system_id for s in game.exploration.surveys if s.owner == owner], [system.id])
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)

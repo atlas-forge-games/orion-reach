@@ -75,5 +75,7 @@ def draw_setup(app):
     paragraph(surface, "Rival races are drawn randomly, without duplicates. Every empire starts in a different system, with its own fleet and economy.",
               (431, 720), 912, 14, MUTED, 22)
     text(surface, "Random starting locations across a rectangular galaxy.", (431, 781), 14, GOLD)
-    text(surface, "Start: two scouts and one colony ship · Base fuel range: 7 ly", (65, 842), 13, MUTED)
+    starting = ("Start: 2 scouts, 1 frigate, 2 troop transports · Range: 10.5 ly" if race.id == "varkesh" else
+                "Start: two scouts and one colony ship · Base fuel range: 7 ly")
+    text(surface, starting, (65, 842), 13, MUTED)
     app.button("launch", "Begin expedition", (966, 831, 410, 48), app.start_game, "primary")

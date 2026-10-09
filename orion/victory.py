@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, TROOP_STRENGTH
 from .ground_combat import GroundRound, forces, resolve
+from .population import liberate
 
 @dataclass(frozen=True)
 class CampaignResult:
@@ -29,6 +30,9 @@ class InvasionReport:
     defender_survivors: int
     rounds: tuple[GroundRound, ...]
     cause: str = "invasion"
+    slaves_taken: int = 0
+    credits_stolen: int = 0
+    colony_razed: bool = False
 
 
 def colonies(game, owner):
@@ -45,6 +49,7 @@ def invasion_strength(game, system_id, planet_id, owner="player"):
 
 
 def invasion_error(game, system_id, planet_id, owner="player"):
+    from .raiding import is_varkesh, homeworld
     if game.strategy_error():
         return game.strategy_error()
     if owner not in game.owners or not game.opponents:
@@ -56,11 +61,16 @@ def invasion_error(game, system_id, planet_id, owner="player"):
         return "Clear all opposing ships from this system before invading."
     if not troop_transports(game, system_id, owner):
         return "Bring troop transports into orbit first."
+    if is_varkesh(game, owner) and homeworld(game, owner) is None:
+        return "Raids require your original homeworld to receive captives and returning troops."
     return None
 
 
 def invade(game, system_id, planet_id, owner="player"):
     from .model import RuleError
+    from .raiding import is_varkesh, raid
+    if is_varkesh(game, owner):
+        return raid(game, system_id, planet_id, owner)
     error = invasion_error(game, system_id, planet_id, owner)
     if error:
         raise RuleError(error)
@@ -88,6 +98,7 @@ def invade(game, system_id, planet_id, owner="player"):
 def apply_ground_outcome(planet, owner, defending, outcome):
     """Transport invasions and buried armies have identical occupation rules."""
     if outcome.captured:
+        liberate(planet)
         planet.owner = owner
         planet.garrison = outcome.attackers
         planet.militia_losses = 4+planet.population
@@ -98,9 +109,13 @@ def apply_ground_outcome(planet, owner, defending, outcome):
     else:
         # Trained troops fight at the front. Civilian population is unchanged;
         # militia losses recover one troop per turn, trained losses need barracks.
-        casualties = defending.troops-outcome.defenders
-        planet.militia_losses += max(0, casualties-planet.garrison)
-        planet.garrison = max(0, planet.garrison-casualties)
+        apply_ground_casualties(planet, defending, outcome.defenders)
+
+
+def apply_ground_casualties(planet, defending, survivors):
+    casualties = defending.troops-survivors
+    planet.militia_losses += max(0, casualties-planet.garrison)
+    planet.garrison = max(0, planet.garrison-casualties)
 
 
 def record_ground_hostility(game, owner, defender, message):

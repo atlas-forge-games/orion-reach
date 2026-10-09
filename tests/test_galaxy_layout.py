@@ -21,12 +21,13 @@ class RectangularGalaxyTests(unittest.TestCase):
         for race in RACES:
             game = new_game(seed=2408, race_id=race, rival_count=0)
             old_range = 50 if race == "wanderers" else 35
-            self.assertEqual(game.fuel_range(), old_range/5)
+            multiplier = 1.5 if race == "varkesh" else 1
+            self.assertEqual(game.fuel_range(), old_range/5*multiplier)
             game.research += 140
             game.choose_research("lightweight_alloys")
-            self.assertEqual(game.fuel_range(), old_range/5+10)
+            self.assertEqual(game.fuel_range(), (old_range/5+10)*multiplier)
             game.choose_research("composite_structures")
-            self.assertEqual(game.fuel_range(), old_range/5+25)
+            self.assertEqual(game.fuel_range(), (old_range/5+25)*multiplier)
 
     def test_starting_empires_do_not_relocate_or_terraform_surrounding_systems(self):
         for size in GALAXY_SIZES:

@@ -160,7 +160,7 @@ def draw_result(app):
         x = 92+i*641
         panel(surface, (x, 578, 615, 122))
         text(surface, game.empire_name_for(owner), (x+22, 594), 22, INK)
-        population = sum(p.population for _, p in colonies(game, owner))
+        population = sum(p.workforce for _, p in colonies(game, owner))
         count = len(colonies(game, owner))
         text(surface, f"{count} {'colony' if count == 1 else 'colonies'} · {population} B inhabitants · {len(game.ships_owned_by(owner))} ships", (x+23, 634), 14, MUTED)
         text(surface, f"{len(game.research_state(owner).completed)} technologies discovered", (x+23, 667), 12, CYAN)

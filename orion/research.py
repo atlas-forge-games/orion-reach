@@ -194,12 +194,12 @@ def gross_colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
     industry = max(1, planet.workers)+bonuses.get("colony_industry", 0)
-    income = planet.population+bonuses.get("colony_income", 0)
+    income = planet.workforce+bonuses.get("colony_income", 0)
     research = 2*planet.scientists+bonuses.get("colony_research", 0)
     for identifier in planet.buildings:
         extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
         industry, income, research = industry+extra[0], income+extra[1], research+extra[2]
-    income += (planet.population//2)*bonuses.get("income_per_two_pop", 0)
+    income += (planet.workforce//2)*bonuses.get("income_per_two_pop", 0)
     if planet.biome in ("Desert", "Tundra"):
         income += bonuses.get("rough_income", 0)
     industry_percent = bonuses.get("industry_percent", 0)

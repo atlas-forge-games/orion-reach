@@ -15,6 +15,7 @@ from .planet_art import draw_planet
 from .population import BASE_FOOD, FARMER_OUTPUT, WORKER_ROLES
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
 from .designs import HULLS
+from . import raiding
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 GREEN = (154, 200, 133)
@@ -83,7 +84,7 @@ def system_panel(app, game, system, planet, live):
         text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
         if row_height>=30:
             text(app.canvas, f"{world.biome} · {world.size} · {world.richness}", (64, y+18), 9, MUTED)
-        basic = f"{world.population} B" if world.colonized else world.size[:1]
+        basic = f"{world.workforce} B" if world.colonized else world.size[:1]
         text(app.canvas, basic, (255, y+1), 10, color, right=True)
     if len(system.worlds) <= 4:
         text(app.canvas, "COLORS IDENTIFY EACH EMPIRE", (38, 272), 9, MUTED, "mono")
@@ -96,7 +97,9 @@ def workforce_panel(app, game, planet, live):
     text(surface, "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
     industry, credits, research = game.planet_yields(planet) if live else (None, None, None)
     food = game.population_report(planet) if live else None
-    text(surface, f"{planet.population} WORKERS / {food.capacity if food else '—'} B LIMIT", (1043, 66), 10, INK, "mono", right=True)
+    counts = (f"{planet.population} NATIVE + {planet.slaves} SLAVES" if planet.slaves else
+              f"{planet.population} WORKERS / {food.capacity if food else '—'} B LIMIT")
+    text(surface, counts, (1043, 66), 10, INK, "mono", right=True)
     needs_food = game.bonuses_for(planet.owner or PLAYER).get("food_use_percent", 0) > -100
     outputs = [("credits", "CREDITS", f"+{credits}" if live else "—", "colony income", GOLD),
                ("food", "FOOD / USED", f"{food.produced} / {food.consumed}" if live else "—",
@@ -131,7 +134,7 @@ def workforce_panel(app, game, planet, live):
             text(surface, f"+{count-24}", (883, y+9), 11, color)
         text(surface, details[role] if live else "last observed", (1032, y+10), 10, MUTED, right=True)
     if not live:
-        caption = f"Stored survey · {planet.population} B inhabitants last observed. Current production is unknown."
+        caption = f"Stored survey · {planet.workforce} B inhabitants last observed. Current production is unknown."
     elif not planet.colonized:
         caption = f"{BASE_FOOD[planet.biome]} natural food · Establish a colony to assign workers."
     elif not owned:
@@ -165,6 +168,7 @@ def construction_panel(app, game, system, planet, live):
         paragraph(surface, "Send a ship to refresh this survey." if not live else
                   "Build a structure or launch a ship from this colony." if owned else
                   "Production can be changed by this colony's owner." if planet.colonized else
+                  "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
                   f"{planet.biome} · {planet.size} · {planet.richness} minerals. Bring a colony ship to settle here.",
                   (1090, 143), 306, 14, MUTED, 25)
     if owned:
@@ -175,7 +179,7 @@ def construction_panel(app, game, system, planet, live):
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
     elif planet.owner in game.opponents:
-        app.button("invade_planet", "Plan ground invasion", (1090, 257, 310, 29), app.invade_request,
+        app.button("invade_planet", "Plan colony raid" if raiding.is_varkesh(game) else "Plan ground invasion", (1090, 257, 310, 29), app.invade_request,
                    enabled=game.invasion_error(system.id, planet.id) is None)
     else:
         reason = game.colonize_error(system.id, planet.id)
@@ -200,6 +204,10 @@ def draw_planet_overview(app):
     facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {planet.richness} minerals"
     panel(surface, (40, 330, 700, 34), (10, 23, 30))
     text(surface, facts, (52, 339), 13, INK)
+    if planet.slaves or (raiding.is_varkesh(game, planet.owner) and (system.id, planet.id) == raiding.home_location(game, planet.owner)):
+        panel(surface, (40, 372, 700, 62), (10, 23, 30))
+        text(surface, f"SLAVE POPULATION: {planet.slaves} / 100 · NATIVE: {planet.population} B", (52, 383), 13, GOLD)
+        text(surface, "Normal worker output and food use · 5% death chance per unit each turn", (52, 409), 12, MUTED)
     if planet.ascension_gate and live:
         app.button("planet_objectives", f"Ascension Gate · {planet.gate_charge}/5", (1110, 330, 288, 34), app.open_objectives)
     if planet.colonized:

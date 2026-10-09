@@ -365,6 +365,8 @@ class GroundInterfaceTests(unittest.TestCase):
 
     def test_multiple_ai_invasions_are_acknowledged_before_final_defeat(self):
         game = self.app.game = scenario(rival_count=2)
+        # This fixture covers occupation, while Varkesh raids have their own news flow.
+        game.other_opponents["rival_2"].race_id = "aelari"
         system, planet = next((s, p) for s in game.systems[1:] for p in s.worlds
                               if not p.colonized and p.habitability > 0
                               and all(w.owner is None for w in s.worlds))

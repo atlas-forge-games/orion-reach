@@ -31,7 +31,7 @@ def draw_fuel_range(app, map_rect):
         pg.draw.ellipse(overlay, (67, 158, 174, 19), ellipse)
         pg.draw.ellipse(overlay, (119, 194, 207, 90), ellipse, 1)
     app.canvas.blit(overlay, map_rect.topleft)
-    speed = 100*SHIP_SPEED*(1+game.bonuses_for(PLAYER).get("ship_speed", 0)/100)
+    speed = 100*SHIP_SPEED*(1+game.ship_speed_bonus()/100)
     text(app.canvas, f"FUEL RANGE {game.fuel_range()} LY  ·  SPEED {speed:g} LY/TURN",
          (map_rect.right-18, map_rect.y+18), 10, CYAN, "mono", right=True)
 

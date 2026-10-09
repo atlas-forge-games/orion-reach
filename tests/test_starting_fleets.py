@@ -15,23 +15,24 @@ from orion.storage import SAVE_VERSION, Storage
 
 
 class StartingFleetTests(unittest.TestCase):
-    def test_every_race_starts_with_two_scouts_and_one_colony_ship_at_home(self):
+    def test_every_race_starts_with_its_exploration_or_raiding_fleet_at_home(self):
         for race in RACES:
             for fog in (True, False):
                 with self.subTest(race=race, fog=fog):
                     game = new_game(seed=2408, race_id=race, fog_of_war=fog)
                     for owner, home in ((PLAYER, 0), (RIVAL, game.opponent.home_system)):
                         ships = game.ships_owned_by(owner)
-                        self.assertEqual(Counter(s.kind for s in ships), {"scout": 2, "colony_ship": 1})
+                        expected = {"scout": 2, "frigate": 1, "troop_transport": 2} if game._empire(owner).race_id == "varkesh" else {"scout": 2, "colony_ship": 1}
+                        self.assertEqual(Counter(s.kind for s in ships), expected)
                         self.assertTrue(all(s.system_id == home and not s.has_course and s.hull == s.max_hull for s in ships))
                         self.assertEqual(game.treasury_for(owner), 120)
-                    self.assertEqual([s.id for s in game.ships], list(range(1, 7)))
-                    self.assertEqual(game.next_ship_id, 7)
+                    self.assertEqual([s.id for s in game.ships], list(range(1, len(game.ships)+1)))
+                    self.assertEqual(game.next_ship_id, len(game.ships)+1)
                     self.assertTrue(all(not p.construction_queue for s in game.systems for p in s.worlds))
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)
                     if fog:
                         self.assertEqual([s.id for s in game.systems if game.system_visible(s.id)], [0])
-                        self.assertEqual([s.owner for s in game.visible_ships()], [PLAYER]*3)
+                        self.assertEqual([s.owner for s in game.visible_ships()], [PLAYER]*len(game.ships_owned_by(PLAYER)))
 
     def test_solo_start_and_adding_a_rival_create_each_fleet_only_once(self):
         game = new_game(seed=2408, with_ai=False)
@@ -176,7 +177,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 22)
+        self.assertEqual(SAVE_VERSION, 23)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

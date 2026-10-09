@@ -29,15 +29,27 @@ def assembly_work(planet, industry, bonuses):
 
 
 def farmers_needed(planet, bonuses, surplus=2):
-    if not food_required(planet.population, bonuses):
+    if not food_required(planet.workforce, bonuses):
         return 0
     food = report(planet, bonuses)
     passive = food.produced-planet.farmers*FARMER_OUTPUT[planet.biome]
     # Fractional consumption can equal the final limit a billion early (Lithar).
     # Keep a surplus until actually full, while preserving ordinary allocations.
-    room = max(1, food_required(food.capacity, bonuses)-food.consumed)
+    room = max(1, food_required(food.capacity+planet.slaves, bonuses)-food.consumed)
     target = food.consumed+(min(surplus, room) if planet.population < food.capacity else 0)
-    return min(planet.population, max(0, (target-passive+FARMER_OUTPUT[planet.biome]-1)//FARMER_OUTPUT[planet.biome]))
+    return min(planet.workforce, max(0, (target-passive+FARMER_OUTPUT[planet.biome]-1)//FARMER_OUTPUT[planet.biome]))
+
+
+def clamp_workforce(planet):
+    """Remove unavailable workers while preserving food production where possible."""
+    planet.farmers = min(planet.farmers, planet.workforce)
+    planet.scientists = min(planet.scientists, planet.workforce-planet.farmers)
+
+
+def liberate(planet):
+    """A conquered stronghold's captives become ordinary, non-decaying citizens."""
+    planet.population += planet.slaves
+    planet.slaves = 0
 
 
 @dataclass(frozen=True)
@@ -124,7 +136,7 @@ def report(planet, bonuses=None):
         reserved = assembly_work(planet, gross_colony_yields(planet, bonuses)[0], bonuses)
     return PopulationReport(planet.population, population_capacity(planet, bonuses), produced,
                             planet.growth_progress, planet.colonized, 35 if planet.biome == "Gaia" else 25,
-                            food_required(planet.population, bonuses), growth,
+                            food_required(planet.workforce, bonuses), growth,
                             bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0))
 
 

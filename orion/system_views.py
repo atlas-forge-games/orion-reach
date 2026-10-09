@@ -114,7 +114,7 @@ def draw_system(app):
 
     colonies = sum(p.colonized for p in system.worlds)
     habitable = sum(p.habitability >= 35 for p in system.worlds)
-    population = sum(p.population for p in system.worlds)
+    population = sum(p.workforce for p in system.worlds)
     summaries = [("WORLDS", str(len(system.worlds)), "Surveyed planets"),
                  ("HABITABLE", str(habitable), "At least 35% suitability"),
                  ("COLONIES", str(colonies), "Established settlements"),

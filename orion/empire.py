@@ -12,6 +12,7 @@ COLONIES_PER_PAGE = 5
 class EmpireSummary:
     colonies: int = 0
     population: int = 0
+    slaves: int = 0
     industry: int = 0
     income: int = 0
     research: int = 0
@@ -42,7 +43,7 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
     rows.sort(key=lambda row: (row[1].name.casefold(), row[0].name.casefold(), row[0].id, row[1].id))
     keys = {
         "name": lambda row: row[1].name.casefold(),
-        "population": lambda row: row[1].population,
+        "population": lambda row: row[1].workforce,
         "food": lambda row: game.population_report(row[1]).balance,
         "industry": lambda row: game.planet_yields(row[1])[0],
         "income": lambda row: game.planet_yields(row[1])[1],
@@ -59,7 +60,8 @@ def summarize_empire(game, *, owner=PLAYER):
     food = [game.population_report(planet) for planet in colonies]
     return EmpireSummary(
         colonies=len(colonies),
-        population=sum(p.population for p in colonies),
+        population=sum(p.workforce for p in colonies),
+        slaves=sum(p.slaves for p in colonies),
         industry=sum(output[0] for output in outputs),
         income=sum(output[1] for output in outputs)+trade,
         research=sum(output[2] for output in outputs)+research,

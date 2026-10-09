@@ -186,7 +186,11 @@ class RaceRulesTests(unittest.TestCase):
                 restored.advance_turn()
                 self.assertEqual(restored, game)
                 colonies = [p for s in game.systems for p in s.worlds if p.owner == RIVAL]
-                self.assertGreater(len(colonies), 1)
+                if race == "varkesh":
+                    self.assertEqual(len(colonies), 1)
+                    self.assertFalse(any(s.kind == "colony_ship" for s in game.ships_owned_by(RIVAL)))
+                else:
+                    self.assertGreater(len(colonies), 1)
                 if race in ("nexus", "aetheri"):
                     self.assertTrue(all(p.farmers == 0 and "hydroponic_farm" not in p.buildings for p in colonies))
 

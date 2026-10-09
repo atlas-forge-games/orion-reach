@@ -17,6 +17,7 @@ from . import population as population_rules
 from . import monsters as monster_rules
 from . import ground_combat as ground_rules
 from . import tomb_worlds as tomb_rules
+from . import raiding as raid_rules
 from .races import RACES, default_rival_race
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
 from .research import ResearchState, building_yields, colony_yields
@@ -105,7 +106,7 @@ class Ship:
     turns_remaining: int = 0
     travel_total: int = 0
     owner: str = PLAYER
-    speed_bonus: int = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
+    speed_bonus: int | float = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
     hull: int | None = None
     departure_pending: bool = False
     cruise_speed: float = SHIP_SPEED  # Snapshot so balance updates do not change saved flights.
@@ -136,7 +137,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=18):
+    def from_dict(cls, data, systems, *, version=23):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -158,7 +159,8 @@ class Ship:
             raise ValueError
         if type(pending) is not bool:
             raise ValueError
-        if type(speed_bonus) is not int or speed_bonus not in (0, 25, 50, 75):
+        speeds = (0, 25, 50, 75, 87.5, 125, 162.5) if version >= 23 else (0, 25, 50, 75)
+        if type(speed_bonus) not in (int, float) or speed_bonus not in speeds:
             raise ValueError
         if destination is None:
             if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != SHIP_SPEED:
@@ -267,10 +269,15 @@ class Planet:
     scientists: int = 0
     garrison: int = 0
     militia_losses: int = 0
+    slaves: int = 0  # Population units; work and consume food exactly like citizens.
+
+    @property
+    def workforce(self):
+        return self.population+self.slaves
 
     @property
     def workers(self):
-        return self.population-self.farmers-self.scientists
+        return self.workforce-self.farmers-self.scientists
 
     @property
     def population_capacity(self):
@@ -301,7 +308,7 @@ class Planet:
     def yields_per_turn(self):
         if not self.colonized:
             return (0, 0, 0)
-        industry, income, research = max(1, self.workers), self.population, 2*self.scientists
+        industry, income, research = max(1, self.workers), self.workforce, 2*self.scientists
         for building_id in self.buildings:
             extra = BUILDINGS[building_id].yields(self.richness)
             industry += extra[0]
@@ -334,7 +341,7 @@ class Planet:
             self.ascension_gate, self.gate_charge = True, 0
         return completed if project else completed.item_id
 
-    def queue_estimates(self, additional=None, *, bonuses=None):
+    def queue_estimates(self, additional=None, *, bonuses=None, mortality=None):
         """Exact turns until completion, assuming no future player changes."""
         if not self.colonized:
             return []
@@ -348,10 +355,13 @@ class Planet:
             food = population_rules.report(forecast, bonuses)
             estimates.extend([turns]*len(forecast.advance_construction(bonuses)))
             population_rules.advance(forecast, food)
+            if mortality and forecast.slaves:
+                forecast.slaves -= mortality(forecast.slaves, turns)
+                population_rules.clamp_workforce(forecast)
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=21):
+    def from_dict(cls, data, expected_id, *, version=23):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -363,26 +373,33 @@ class Planet:
         orbit = data["orbit_au"]
         if type(orbit) not in (int, float) or not math.isfinite(orbit) or not 0 < orbit <= 500:
             raise ValueError
-        if type(data["colonized"]) is not bool or not _integer(data["population"], 0, 100):
+        if type(data["colonized"]) is not bool or not _integer(data["population"], 0, 200 if version >= 23 else 100):
             raise ValueError
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 23:
+            record["slaves"] = 0
+        if (not _integer(record["slaves"], 0, raid_rules.SLAVE_CAPACITY)
+                or record["slaves"]+data["population"] > 200
+                or (not data["colonized"] and record["slaves"])):
+            raise ValueError("Invalid slave population")
         if version < 21:
             record["garrison"] = 0
             record["militia_losses"] = 0
         if (not _integer(record["garrison"], 0, ground_rules.MAX_GARRISON)
                 or (not data["colonized"] and record["garrison"] != 0)):
             raise ValueError("Invalid planetary garrison")
-        if (not _integer(record["militia_losses"], 0, 104)
+        if (not _integer(record["militia_losses"], 0, max(104, 4+data["population"]) if version >= 23 else 104)
                 or (not data["colonized"] and record["militia_losses"] != 0)):
             raise ValueError("Invalid militia casualties")
         if version < 12:
             record["farmers"] = min(2, data["population"])
             record["scientists"] = 0
-        if (not _integer(record["farmers"], 0, data["population"])
-                or not _integer(record["scientists"], 0, data["population"])
-                or record["farmers"]+record["scientists"] > data["population"]):
+        workforce = data["population"]+record["slaves"]
+        if (not _integer(record["farmers"], 0, workforce)
+                or not _integer(record["scientists"], 0, workforce)
+                or record["farmers"]+record["scientists"] > workforce):
             raise ValueError("Invalid worker allocation")
         if version < 11:
             record["growth_progress"] = 0
@@ -521,6 +538,9 @@ class GameState:
     other_diplomacy: dict[str, DiplomacyState] = field(default_factory=dict)
     tomb_worlds: list[tomb_rules.TombWorld] = field(default_factory=list)
     news_read_turn: int = 0
+    raid_events: list[raid_rules.RaidEvent] = field(default_factory=list)
+    next_raid_id: int = 1
+    raid_news_read: int = 0
 
     @property
     def opponents(self):
@@ -720,10 +740,10 @@ class GameState:
         self._require_strategy()
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
-        if (not _integer(farmers, 0, planet.population)
-                or not _integer(scientists, 0, planet.population)
-                or farmers+scientists > planet.population):
-            raise RuleError("Assign exactly one job to each billion inhabitants.")
+        if (not _integer(farmers, 0, planet.workforce)
+                or not _integer(scientists, 0, planet.workforce)
+                or farmers+scientists > planet.workforce):
+            raise RuleError("Each population unit can have only one job.")
         planet.farmers, planet.scientists = farmers, scientists
 
     def move_worker(self, system_id, planet_id, source, destination, *, owner=PLAYER):
@@ -745,7 +765,11 @@ class GameState:
     def queue_estimates(self, planet, additional=None):
         if self.design_for(additional):
             additional = ConstructionProject(additional, design=self.design_for(additional))
-        return planet.queue_estimates(additional, bonuses=self.bonuses_for(planet.owner))
+        mortality = None
+        if planet.slaves:
+            sid = next(s.id for s in self.systems if any(p is planet for p in s.worlds))
+            mortality = lambda count, elapsed: raid_rules.deaths(self, sid, planet.id, planet.owner, count, turn=self.turn+elapsed)
+        return planet.queue_estimates(additional, bonuses=self.bonuses_for(planet.owner), mortality=mortality)
 
     def project_price(self, item_id, owner=PLAYER):
         if item_id == ASCENSION_GATE.id:
@@ -755,10 +779,17 @@ class GameState:
         return max(1, math.ceil(self.project_spec(item_id).credit_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER):
-        return travel_turns(origin, destination, self.bonuses_for(owner).get("ship_speed", 0))
+        return travel_turns(origin, destination, self.ship_speed_bonus(owner))
+
+    def ship_speed_bonus(self, owner=PLAYER):
+        bonuses = self.bonuses_for(owner)
+        value = (100+bonuses.get("ship_speed", 0))*(100+bonuses.get("ship_speed_percent", 0))/100-100
+        return int(value) if value.is_integer() else value
 
     def fuel_range(self, owner=PLAYER):
-        return BASE_FUEL_RANGE+self.bonuses_for(owner).get("fuel_range", 0)
+        bonuses = self.bonuses_for(owner)
+        value = (BASE_FUEL_RANGE+bonuses.get("fuel_range", 0))*(100+bonuses.get("fuel_range_percent", 0))/100
+        return int(value) if value.is_integer() else value
 
     def colony_systems(self, owner=PLAYER):
         return [s for s in self.systems if any(p.owner == owner for p in s.worlds)]
@@ -773,12 +804,15 @@ class GameState:
 
     def fuel_range_error(self, destination, owner=PLAYER):
         if not self.within_fuel_range(destination, owner):
+            advice = "Research fuel tanks to extend your raiding range." if raid_rules.is_varkesh(self, owner) else "Colonize closer worlds or research fuel tanks."
             return (f"Out of fuel range: {self.systems[destination].name} is "
                     f"{self.supply_distance(destination, owner):.1f} ly from your nearest colony "
-                    f"(range {self.fuel_range(owner)} ly). Colonize closer worlds or research fuel tanks.")
+                    f"(range {self.fuel_range(owner)} ly). {advice}")
         return None
 
     def can_settle(self, planet, owner=PLAYER):
+        if raid_rules.is_varkesh(self, owner):
+            return False
         return planet.habitability > 0 or bool(self.bonuses_for(owner).get(planet.biome.lower(), 0))
 
     def starting_colonists(self, owner=PLAYER):
@@ -884,7 +918,9 @@ class GameState:
 
     def _starting_fleet(self, owner, system_id):
         """One initial exploration and settlement fleet, created with the empire."""
-        for kind in ("scout", "scout", "colony_ship"):
+        kinds = (("scout", "scout", "frigate", "troop_transport", "troop_transport")
+                 if raid_rules.is_varkesh(self, owner) else ("scout", "scout", "colony_ship"))
+        for kind in kinds:
             self.ships.append(Ship(self.next_ship_id, kind, system_id, owner=owner))
             self.next_ship_id += 1
 
@@ -1006,6 +1042,8 @@ class GameState:
             return "This colony belongs to another empire."
         if kind == "troop_transport" and "barracks" not in planet.buildings:
             return "Build barracks on this colony to train transport troops."
+        if kind == "colony_ship" and raid_rules.is_varkesh(self, owner):
+            return "The Varkesh cannot colonize. Build a raiding fleet instead."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
         if self.treasury_for(owner) < self.project_price(kind, owner):
@@ -1086,7 +1124,7 @@ class GameState:
         """Route an order; battle retreats are already committed and cannot be cancelled."""
         exploration_rules.refresh(self)
         duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], ship.owner)
-        ship.speed_bonus = self.bonuses_for(ship.owner).get("ship_speed", 0)
+        ship.speed_bonus = self.ship_speed_bonus(ship.owner)
         ship.cruise_speed = SHIP_SPEED
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
@@ -1100,6 +1138,8 @@ class GameState:
     def colonize_error(self, system_id, planet_id, *, owner=PLAYER):
         if self.strategy_error():
             return self.strategy_error()
+        if raid_rules.is_varkesh(self, owner):
+            return "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits."
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
@@ -1180,6 +1220,7 @@ class GameState:
         repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
         gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate]
         alerts, ground_battles = [], []
+        slave_start = {(s.id, p.id): (p.owner, p.slaves) for s in self.systems for p in s.worlds if p.slaves}
         from .ai import run_ai
         for owner in self.opponents:
             if not self.colony_systems(owner):
@@ -1234,6 +1275,7 @@ class GameState:
                     population.append(message)
                 else:
                     self.rival_event(message+".", turn=self.turn, owner=planet.owner)
+        population.extend(raid_rules.advance_mortality(self, slave_start))
         exploration = exploration_rules.refresh(self, recover=True)
         discovered = self.advance_research()
         for owner, empire in self.opponents.items():
@@ -1262,7 +1304,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=22):
+    def from_dict(cls, data, *, version=23):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1364,6 +1406,8 @@ class GameState:
             if (any(p.owner is not None and p.owner not in game.owners for s in systems for p in s.worlds)
                     or any(s.owner not in game.owners for s in ships)):
                 raise ValueError("Unknown empire owns a colony or ship")
+            if version >= 23:
+                raid_rules.load_state(game, data)
             if version >= 18:
                 if not isinstance(data["designs"], list) or len(data["designs"]) > MAX_DESIGNS:
                     raise ValueError("Invalid design library")

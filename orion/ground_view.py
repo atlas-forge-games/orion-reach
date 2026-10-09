@@ -8,6 +8,7 @@ from .ground_combat import GroundForces, forces, resolve
 from .production import TROOP_STRENGTH
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 from .victory import troop_transports
+from . import raiding
 
 
 def force_card(surface, x, title, empire, initial, survivors, detail, color):
@@ -40,6 +41,7 @@ def draw_ground(app):
     game, surface = app.game, app.canvas
     report = app.ground_reports[0] if app.ground_reports else None
     tomb = bool(report and report.cause == "tomb")
+    raid = report.cause == "raid" if report else raiding.is_varkesh(game)
     sid, pid = (report.system_id, report.planet_id) if report else app.ground_target
     planet, system = game.planet_at(sid, pid), game.systems[sid]
     if report:
@@ -59,11 +61,11 @@ def draw_ground(app):
     defence_color = CYAN if defender == "player" else RED
     success_color = attack_color if captured else defence_color
     app.chrome("GROUND OPERATIONS")
-    title = f"Awakening on {planet.name}" if tomb else f"Invasion of {planet.name}"
+    title = f"Awakening on {planet.name}" if tomb else f"Raid on {planet.name}" if raid else f"Invasion of {planet.name}"
     text(surface, shorten(title, 1050, 38, "title"), (64, 130), 38, INK, "title")
     text(surface, f"{system.name.upper()}  /  {planet.biome.upper()}  /  {planet.population} B CIVILIANS", (66, 185), 12, MUTED, "mono")
-    text(surface, "BATTLE REPORT" if report else "LANDING PLAN", (1376, 146), 12, GOLD, "mono", right=True)
-    force_card(surface, 64, "AWAKENED REMNANT" if tomb else "INVADING FORCE",
+    text(surface, "BATTLE REPORT" if report else "RAID PLAN" if raid else "LANDING PLAN", (1376, 146), 12, GOLD, "mono", right=True)
+    force_card(surface, 64, "AWAKENED REMNANT" if tomb else "RAIDING FORCE" if raid else "INVADING FORCE",
                game.empire_name_for(attacker) if attacker else "The Remnant", attack, attack_left,
                f"{attack} troops emerged from buried vaults" if tomb else f"{count} transports × {TROOP_STRENGTH} troops", attack_color)
     force_card(surface, 776, "PLANETARY DEFENCE", game.empire_name_for(defender), defence.troops, defence_left,
@@ -107,13 +109,23 @@ def draw_ground(app):
     else:
         paragraph(surface, "Troops exchange fire simultaneously. Every four troops inflict one casualty per round, rounded up. Fortifications increase defending firepower.",
                   (85, 637), 766, 15, INK, 25)
-        paragraph(surface, "All landing transports are consumed. Surviving invaders hold a captured colony. Civilian population and ordinary buildings survive.",
+        rules = ("Raid transports are consumed. Captives and surviving troops return home immediately. Empty colonies are abandoned; inhabited colonies keep their owner." if raid else
+                 "All landing transports are consumed. Surviving invaders hold a captured colony. Civilian population and ordinary buildings survive.")
+        paragraph(surface, rules,
                   (85, 715), 766, 14, MUTED, 23)
 
     panel(surface, (907, 588, 469, 212))
     title = ("Colony captured" if captured else "Invasion repelled") if report else ("Capture predicted" if captured else "Defeat predicted")
+    if raid:
+        title = ("Raid succeeded" if captured else "Raid repelled") if report else ("Raid success predicted" if captured else "Defeat predicted")
     text(surface, title, (929, 611), 28, success_color)
-    if report:
+    if raid and report:
+        detail = (f"{report.slaves_taken} slave units and {report.credits_stolen} CR taken. {attack_left} troops returned home. "
+                  +( "The empty colony was abandoned." if report.colony_razed else "The colony keeps its owner.")) if captured else "No captives or credits taken. Surviving defenders retain the colony."
+    elif raid:
+        slaves, credits = raiding.expected_loot(game, planet)
+        detail = f"On victory: up to {slaves} slave units and {credits} CR, limited by the victim's treasury. {outcome.attackers} surviving troops return home."
+    elif report:
         detail = (f"{attack_left} invaders remain as the new garrison. Militia will remuster gradually."
                   if captured else f"{defence_left} defenders remain. Garrison losses need barracks; militia recover one troop per turn.")
     else:
@@ -128,6 +140,8 @@ def draw_ground(app):
         text(surface, "The battle is resolved. Continue to return to the campaign.", (65, 845), 13, MUTED)
     else:
         app.button("ground_cancel", "←  Back to colony", (64, 828, 249, 50), app.close_ground)
-        app.button("ground_launch", "Launch invasion", (1056, 828, 320, 50), app.launch_ground_assault, "primary",
+        app.button("ground_launch", "Launch raid" if raid else "Launch invasion", (1056, 828, 320, 50), app.launch_ground_assault, "primary",
                    enabled=game.invasion_error(sid, pid) is None)
-        paragraph(surface, "Invasion ends treaties and sets relations to −100.\nCapture destroys any Ascension Gate.", (342, 832), 670, 12, MUTED, 21)
+        warning = ("Raids end treaties and set relations to −100.\nHomeworld slave limit: 100; 5% mortality per unit each turn." if raid else
+                   "Invasion ends treaties and sets relations to −100.\nCapture destroys any Ascension Gate.")
+        paragraph(surface, warning, (342, 832), 670, 12, MUTED, 21)

@@ -276,7 +276,8 @@ class CombatState:
                 expected = original.travel_total
                 if (original.departure_pending or original.destination != state.retreat_destination or original.turns_remaining != expected
                         or original.travel_total != expected
-                        or original.speed_bonus != game.bonuses_for(ship.owner).get("ship_speed", 0)):
+                        or original.speed_bonus not in (game.bonuses_for(ship.owner).get("ship_speed", 0),
+                                                        game.ship_speed_bonus(ship.owner))):
                     raise ValueError("Invalid retreat voyage")
             elif original.in_transit or original.departure_pending:
                 raise ValueError("Travelling ship in battle")

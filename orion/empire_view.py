@@ -22,7 +22,7 @@ def draw_empire(app):
     app.chrome("EMPIRE OVERVIEW")
     back_name = {"galaxy": "Galaxy map", "system": "System overview", "shipyard": "Shipyard", "fleets": "Fleets",
                  "planet": "Planet overview", "colony": "Colony", "rival": "Rival report", "diplomacy": "Diplomacy", "research": "Research", "objectives": "Objectives",
-                 "fleet": "Fleet overview", "exploration": "Exploration"}[app.empire_return]
+                 "fleet": "Fleet overview", "exploration": "Exploration", "news": "Turn news"}.get(app.empire_return, "Galaxy map")
     app.button("empire_back", f"←  {back_name} · I", (64, 124, 282, 46),
                app.close_empire, "ghost")
     if app.empire_return != "galaxy":
@@ -36,7 +36,7 @@ def draw_empire(app):
     text(surface, f"{summary.idle} idle {'colonies' if summary.idle != 1 else 'colony'}", (1376, 248), 13, MUTED, right=True)
 
     stats = [
-        ("COLONIES", str(summary.colonies), f"{summary.population:,} B inhabitants", INK),
+        ("COLONIES", str(summary.colonies), f"{summary.population:,} B · {summary.slaves} enslaved" if summary.slaves else f"{summary.population:,} B inhabitants", INK),
         ("TREASURY", f"{game.credits:,} CR", f"+{summary.income:,} CR / turn", GOLD),
         ("TOTAL INDUSTRY", f"{summary.industry:,} IND", "Per turn · used locally", CYAN),
         ("RESEARCH STORED", f"{game.research:,} RP", f"+{summary.research:,} RP / turn", CYAN),
@@ -90,7 +90,8 @@ def draw_empire(app):
         text(surface, shorten(f"{system.name} · {planet.size}", 202, 11), (125, y+31), 11, MUTED)
         industry, income, research = game.planet_yields(planet)
         food = game.population_report(planet)
-        text(surface, f"{planet.population}/{food.capacity} B", (440, y+7), 15, INK, right=True)
+        pop = f"{planet.population}+{planet.slaves} S" if planet.slaves else f"{planet.population}/{food.capacity} B"
+        text(surface, pop, (440, y+7), 15, INK, right=True)
         growth = f"Growth {food.progress}%" if food.growth_rate else "Limit reached" if planet.population>=food.capacity else "Growth paused"
         text(surface, growth, (440, y+31), 9, MUTED, right=True)
         text(surface, f"{food.balance:+}", (545, y+7), 16, RED if food.balance<0 else CYAN, right=True)

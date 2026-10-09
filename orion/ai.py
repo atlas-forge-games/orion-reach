@@ -8,6 +8,7 @@ from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
 from . import monsters
+from . import raiding
 from .ground_combat import forces, resolve, transports_needed
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
@@ -29,6 +30,10 @@ def known_enemy_colonies(game, owner=RIVAL):
 
 
 def enemies(game, owner):
+    if raiding.is_varkesh(game, owner):
+        return {other for other in game.owners if other != owner and game.colony_systems(other)
+                and not game.diplomacy_between(owner, other).trade_active
+                and not game.diplomacy_between(owner, other).research_active}
     return {other for other in game.owners if other != owner
             and game.diplomacy_between(owner, other).relations < HOSTILE_BELOW}
 
@@ -60,7 +65,9 @@ def research_choice(game, owner=RIVAL):
         return
     # Extend an exhausted frontier using the same exclusive tank upgrades as the player.
     unknown = [s for s in game.systems if not game.system_explored(s.id, owner)]
-    if unknown and not any(game.within_fuel_range(s.id, owner) for s in unknown):
+    raid_targets = known_enemy_colonies(game, owner) if raiding.is_varkesh(game, owner) else []
+    if ((unknown and not any(game.within_fuel_range(s.id, owner) for s in unknown))
+            or (raid_targets and not any(game.within_fuel_range(s.id, owner) for s, _ in raid_targets))):
         for identifier in ("lightweight_alloys", "composite_structures"):
             if game.research_error(identifier, owner=owner) is None:
                 game.choose_research(identifier, owner=owner)
@@ -97,6 +104,15 @@ def development_choice(planet, race_id="kharuun"):
     return ("factory", "trade_center", "research_lab")[(len(planet.buildings)-4) % 3]
 
 
+def announce_raid(game, owner, defender, system):
+    """A committed raid is hostile, so orbiting defenders can intercept it."""
+    state = game.diplomacy_between(owner, defender)
+    if state.relations >= HOSTILE_BELOW:
+        state.relations = -100
+        state.offer_ready_turn = game.turn+3
+        state.record(game.turn, f"{game.empire_name_for(owner)} sent a raid against {system.name}. Relations are now -100.")
+
+
 def military_orders(game, reserved=(), owner=RIVAL):
     """Assemble escorted invasion groups when hostile; otherwise guard colonies."""
     ships = sorted((s for s in game.ships_owned_by(owner) if s.kind == "frigate" and s.id not in reserved), key=lambda s: s.id)
@@ -115,17 +131,29 @@ def military_orders(game, reserved=(), owner=RIVAL):
     for system in game.systems:
         troops = [s for s in troop_transports(game, system.id, owner) if not s.has_course]
         escorts = [s for s in ships if not s.has_course and s.system_id == system.id]
-        if not troops or game.foreign_fleet(system.id, owner):
+        if not troops:
             continue
         candidates = [(s, p) for s, p in worlds if resolve(len(troops)*TROOP_STRENGTH, forces(p)).captured]
+        if game.foreign_fleet(system.id, owner):
+            if raiding.is_varkesh(game, owner) and escorts:
+                for destination, planet in candidates:
+                    if destination.id == system.id:
+                        announce_raid(game, owner, planet.owner, destination)
+            continue
         if candidates and escorts:
-            destination, _ = min(candidates, key=lambda row: (
-                not row[1].ascension_gate, game.travel_turns(system, row[0], owner), row[1].population, row[0].id, row[1].id))
+            if raiding.is_varkesh(game, owner):
+                destination, planet = min(candidates, key=lambda row: (game.travel_turns(system, row[0], owner),
+                                                                      -row[1].workforce, row[0].id, row[1].id))
+                announce_raid(game, owner, planet.owner, destination)
+            else:
+                destination, _ = min(candidates, key=lambda row: (
+                    not row[1].ascension_gate, game.travel_turns(system, row[0], owner), row[1].population, row[0].id, row[1].id))
             for ship in troops+escorts:
                 ordered.add(ship.id)
                 if ship.system_id != destination.id:
                     game.send_ship(ship.id, destination.id, owner=owner)
-            event(game, owner, f"Sent an invasion group toward {destination.name}.")
+            action = "raiding" if raiding.is_varkesh(game, owner) else "invasion"
+            event(game, owner, f"Sent a {action} group toward {destination.name}.")
         elif system.id != staging.id:
             for ship in troops:
                 game.send_ship(ship.id, staging.id, owner=owner)
@@ -163,12 +191,16 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
                       and resolve(invasion_strength(game, system.id, p.id, owner)[0], forces(p)).captured]
         if not candidates:
             continue
-        planet = min(candidates, key=lambda p: (not p.ascension_gate, p.population, p.id))
+        planet = (max(candidates, key=lambda p: (p.workforce, -p.id)) if raiding.is_varkesh(game, owner) else
+                  min(candidates, key=lambda p: (not p.ascension_gate, p.population, p.id)))
         report = game.invade(system.id, planet.id, owner=owner)
         if ground_reports is not None and "player" in (report.attacker, report.defender):
             ground_reports.append(report)
         if "player" in (report.attacker, report.defender) or game.system_visible(system.id):
-            messages.append(f"{game.empire_name_for(owner)} captured {planet.name}")
+            if report.cause == "raid":
+                messages.append(f"{game.empire_name_for(owner)} raided {planet.name}: {report.slaves_taken} slaves, {report.credits_stolen} CR")
+            else:
+                messages.append(f"{game.empire_name_for(owner)} captured {planet.name}")
         if game.result is not None:
             break
     return messages
@@ -183,7 +215,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     scouting_orders(game, owner)
     military_orders(game, monsters.ai_orders(game, owner), owner)
     for ship in sorted(game.ships_owned_by(owner), key=lambda s: s.id):
-        if ship.has_course or ship.kind != "colony_ship":
+        if ship.has_course or ship.kind != "colony_ship" or raiding.is_varkesh(game, owner):
             continue
         local = available_worlds(game, game.systems[ship.system_id], owner)
         if local:
@@ -215,7 +247,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     colonies = [(s, p) for s in game.systems for p in s.worlds if p.owner == owner]
     for system, planet in colonies:
         farmers = farmers_needed(planet, game.bonuses_for(owner))
-        remaining = planet.population-farmers
+        remaining = planet.workforce-farmers
         scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
         game.set_workforce(system.id, planet.id, farmers, scientists, owner=owner)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
@@ -247,6 +279,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                        if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
     unknown = sum(not game.system_explored(s.id, owner) for s in game.systems)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
+    if raiding.is_varkesh(game, owner):
+        fleet_limit = 0
     scouts = sum(s.kind == "scout" for s in game.ships_owned_by(owner)) + sum(
         q.item_id == "scout" for _, p in colonies for q in p.construction_queue)
     for index, (system, planet) in enumerate(colonies):
@@ -254,7 +288,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
             continue
         food = game.population_report(planet)
         farm_food = PROJECTS["hydroponic_farm"].food
-        full_consumption = food_required(food.capacity, game.bonuses_for(owner))
+        full_consumption = food_required(food.capacity+planet.slaves, game.bonuses_for(owner))
         farms_needed = max(0, (full_consumption-food.produced+farm_food-1)//farm_food)
         needs_food = food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
                       or planet.farmers > 2

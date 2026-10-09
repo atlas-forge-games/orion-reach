@@ -66,11 +66,14 @@ RACES = {
         research_priority=("materials", "construction", "biology")),
     "varkesh": RaceSpec(
         "varkesh", "Varkesh", "Raiding clans",
-        "Fiercely independent clans whose crowded strongholds supply inexpensive war fleets.",
+        "Fast raiding fleets bring plunder and captive labor back to a single crowded stronghold.",
         "Varkesh Clans", (216, 127, 89), 40, 50,
-        effects=(("ship_discount", 20), ("capacity_percent", 50), ("research_percent", -20)),
-        abilities=("All ships cost 20% fewer credits.", "Population limits are 50% higher.",
-                   "Colony research output is 20% lower."),
+        effects=(("ship_discount", 20), ("capacity_percent", 50), ("research_percent", -20),
+                 ("ship_speed_percent", 50), ("fuel_range_percent", 50)),
+        abilities=("Cannot colonize; ship speed and range +50%.",
+                   "Raids steal credits and slaves; home limit 100.",
+                   "Slaves: normal output, 5% mortality each turn.",
+                   "Ships −20% cost; native capacity +50%; research −20%."),
         development=("factory", "research_lab", "mine", "trade_center"),
         research_priority=("physics", "construction", "power")),
     "wanderers": RaceSpec(

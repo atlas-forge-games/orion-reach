@@ -172,7 +172,11 @@ class DiplomacyRulesTests(unittest.TestCase):
             game = new_game(seed=2408, rival_race_id=race_id)
             for _ in range(70):
                 game.advance_turn()
-            self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4, race_id)
+            if race_id == "varkesh":
+                self.assertEqual(summarize_empire(game, owner=RIVAL).colonies, 1)
+                self.assertFalse(any(s.kind == "colony_ship" for s in game.ships_owned_by(RIVAL)))
+            else:
+                self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4, race_id)
             self.assertTrue(game.opponent.technology.completed, race_id)
             # Earth earns 8/turn for 10 turns, 9 for 20, then 10 for 40.
             self.assertEqual(game.credits, 120+8*10+9*20+10*40)

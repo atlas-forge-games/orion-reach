@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.27.0
+# Orion Reach — Python prototype 0.28.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,66 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.27: Remnant tomb worlds
+## New in v0.28: Varkesh raiding clans
+
+The Varkesh now raid for captives and credits instead of colonizing worlds.
+
+- **Movement:** ships travel **50% faster** and have **50% more fuel range**:
+  initially **3 ly/turn** and **10.5 ly**. These are multipliers on researched
+  speed and range, so fuel-tank and drive improvements also receive the bonus.
+- **No colonization:** the Varkesh cannot settle any biome or order new colony
+  ships. Their new-campaign fleet is **two scouts, one frigate and two troop
+  transports**. Other civilizations retain their normal starting fleets.
+- **Raiding:** clear hostile ships from orbit, open an enemy colony and choose
+  **Plan colony raid**. Review the ground-combat preview, then **Launch raid**.
+  Garrisons, militia and fortifications use the existing combat rules. Failed
+  raids take nothing. All participating transports are consumed.
+- **Captives:** a successful raid transfers population to the original Varkesh
+  homeworld, up to **100 slave population units in addition to native citizens**.
+  One slave unit represents the same 1 B population unit used by the workforce.
+  People who do not fit remain on the target colony. Existing slaves on another
+  Varkesh homeworld transfer before its native population.
+- **Plunder:** a successful raid steals up to **10 CR per population unit on
+  the target before the raid**, capped by the victim's treasury. Credits are
+  transferred, not generated. Credit raids still work when the slave limit is full.
+- **After the raid:** captives and surviving raiders return home immediately;
+  surviving raiders reinforce the home garrison. Inhabited colonies keep their
+  owner, buildings and paid projects. A completely emptied colony is abandoned,
+  losing its buildings, queued projects and Ascension Gate. Raids end treaties
+  and set relations to −100. Emptying an empire's final colony eliminates it.
+- **Slave economy:** slaves share farmer, worker and scientist assignments with
+  native citizens. Their output, credit income and food consumption match native
+  workers under the current racial and research bonuses. Slaves do not reproduce
+  or contribute militia. Native population retains its normal growth and limit.
+- **Mortality:** each slave unit present at turn start has an independent **5%
+  chance of dying at turn end**, after that turn's production and income. Native
+  citizens are unaffected. Save/reload preserves the rolls; construction forecasts
+  include future mortality. AI raids' newly acquired captives first face mortality
+  in the next complete turn. Deaths appear in the turn notification.
+- **Liberation:** ordinary conquest or a successful Remnant awakening frees a
+  captured stronghold's slaves into normal population. They stop suffering slave
+  mortality and keep their workforce assignments. Liberated population may exceed
+  its new owner's normal growth limit; it does not grow further while above it.
+- **AI and news:** Varkesh rivals build and dispatch raiding forces, prefer larger
+  vulnerable colonies and respect their active trade/research treaties when
+  choosing victims. Dispatching a raid makes relations hostile so the raiders
+  engage orbiting defenders before landing. Battle results and the last 100 raid events are saved.
+  Private raid dispatches appear in **Turn news · N** alongside tomb awakenings.
+
+The Varkesh retain their existing 20% ship discount, +50% native population
+capacity and −20% colony research output. Balance constants are in
+`orion/raiding.py` and `orion/races.py`.
+
+**Existing saves work immediately:** Varkesh empires start with zero slaves and
+gain the new rules. Existing colonies, ships, paid construction and journeys
+are preserved. Previously built colony ships can explore but cannot colonize;
+queued ones can finish or be cancelled normally. The special starting fleet
+requires a new campaign.
+
+![Varkesh raid preview](screenshots/varkesh_raid.png)
+![Varkesh homeworld workforce](screenshots/varkesh_home.png)
+
+## Remnant tomb worlds
 
 Ancient Remnant vaults can sleep beneath any planet, including starting colonies,
 harsh worlds and guardian prizes. Tomb status is hidden and separate from biome.
@@ -120,7 +179,7 @@ are also chosen randomly, with a preference for at least 20 light-years between
 starting empires. When a crowded map has no suitable separated system, the next
 home uses the most distant available system. Every empire starts in a different
 system with a standard Terran homeworld, 8 billion inhabitants, 120 credits,
-two scouts and one colony ship. Racial traits apply normally. Reusing the same
+two scouts and one colony ship, or the Varkesh raiding fleet. Racial traits apply normally. Reusing the same
 seed and settings reproduces the galaxy, races and starting locations.
 
 Every rival has its own economy, research, colonies, fleets, diplomatic
@@ -153,7 +212,7 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | Race | Initial gameplay traits |
 | --- | --- |
 | Lithar | Settle every biome; double population capacity; half food consumption, rounded up; one-quarter normal growth rate. |
-| Varkesh | Ships cost 20% fewer credits; population capacity +50%; colony research −20%. |
+| Varkesh | Cannot colonize; ships travel 50% faster and farther; raids take credits and up to 100 slaves at home; 5% slave mortality each turn. Ships cost −20%; native capacity +50%; research −20%. |
 | Wanderers | +3 ly fuel range from colonies; ships cost 15% fewer credits; colony industry −15%. |
 | Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
@@ -179,8 +238,8 @@ Racial capacity and output follow the current owner; mixed-species populations
 are not simulated yet. Population limits in the colony UI include racial traits.
 
 This is the **first playable trait version**. All races still use planet-based
-colonies and start with two scouts and one colony ship. Varkesh may colonize;
-single-world raiding, captives and tribute are future systems. Wanderers do not
+colonies. The Varkesh use one homeworld, a starting raiding fleet and captive labor;
+other races start with two scouts and one colony ship. Tribute remains future work. Wanderers do not
 yet live on mobile arks or move shipyards. Biological ship modules, energy-ship
 combat abilities, migration and Remnant relic recovery also remain future work.
 The original three races retain their existing rules. Start a new campaign to
@@ -329,7 +388,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - Two-step New Game setup: choose one of eleven illustrated races, then set
   empire name, galaxy size (24/48/72 systems), optional seed, **Fog of war ON/OFF** and rival count.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
-- Every new empire begins with **two scouts and one colony ship** in its home system.
+- New empires begin with **two scouts and one colony ship**, or the **Varkesh raiding fleet**, in their home system.
 - Click a **fleet badge** to open a small popup on the galaxy map. Select ships,
   then click a destination star. Click their departure star to cancel before End Turn.
 - Early ships travel at **2 light-years per turn** and can reach destinations
@@ -664,7 +723,8 @@ drive technologies increase speed separately. The AI uses the same rules.
 
 New games include your chosen number of rivals, with randomly selected races
 and starting systems. Every empire starts with one colony, 8 billion inhabitants,
-120 credits, no buildings, **two scouts and one colony ship** in their home system.
+120 credits, no buildings, **two scouts and one colony ship** in their home system
+(Varkesh instead start with two scouts, one frigate and two troop transports).
 These ships are free starting assets, independent of race and the fog setting.
 New rival homeworlds use a medium Terran planet with average minerals and normal
 gravity. Existing campaigns retain their original homeworlds.
@@ -1332,7 +1392,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.27 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.28 loads all earlier prototype saves without rewriting the
 source file during loading. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
 require a new campaign. Saved courses retain their original destinations and durations;
@@ -1373,8 +1433,10 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 22**, adding hidden tomb worlds, once-only awakening outcomes,
-private turn-news records and an optional emergent Remnant enclave, while retaining
+**format version 23**, adding slave population to worlds and surveys, private
+raid records and fractional Varkesh voyage speeds, while retaining hidden tomb
+worlds, once-only awakening outcomes, private turn-news records and an optional
+emergent Remnant enclave, plus
 garrisons and persistent militia casualties in planets and survey snapshots,
 multiple rival empires, bilateral relations,
 and independent exploration and guardian knowledge for every empire.
@@ -1388,7 +1450,7 @@ the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.26 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.27 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1433,6 +1495,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/ground_combat.py` | Garrison training, militia recovery and simultaneous casualty rounds |
 | `orion/ground_view.py` | Invasion previews and ground battle reports |
 | `orion/tomb_worlds.py` | Hidden Remnant vaults, awakening rolls, ownership, combat and private event records |
+| `orion/raiding.py` | Varkesh raids, credit transfers, homeworld captives, mortality and event validation |
+| `orion/news.py` | Combined private awakening and raid news, including unread tracking |
 | `orion/news_view.py` | Saved turn-news reports and navigation |
 | `orion/victory_view.py` | Objectives, gate controls and final campaign results |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
@@ -1476,6 +1540,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
+| `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. Possible next foundations include food
@@ -1513,6 +1578,11 @@ python main.py --headless --screen ground_defence --screenshot ground_defence.pn
 python main.py --headless --screen news --screenshot tomb_news.png
 python main.py --headless --screen tomb_battle --screenshot tomb_battle.png
 python main.py --headless --screen tomb_colony --screenshot tomb_colony.png
+python main.py --headless --screen varkesh_raid --screenshot varkesh_raid.png
+python main.py --headless --screen varkesh_result --screenshot varkesh_result.png
+python main.py --headless --screen varkesh_home --screenshot varkesh_home.png
+python main.py --headless --screen varkesh_news --screenshot varkesh_news.png
+python main.py --headless --screen varkesh_race --screenshot varkesh_race.png
 python main.py --headless --screen guarded --screenshot guarded.png
 python main.py --headless --screen monster --screenshot monster.png
 python main.py --headless --screen crystal --screenshot crystal.png
@@ -1529,7 +1599,8 @@ python main.py --headless --screen result --screenshot victory.png
 `--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
 `unexplored`, `exploration`, `planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
 `combat`, `ground`, `ground_result`, `ground_defence`, `news`, `tomb_battle`, `tomb_colony`, `guarded`, `monster`, `crystal`, `sentinel`, `leviathan`, `ruins`,
-`leviathan_system`, `guardian_map`, `gaia`, `objectives`, `result`, and `about`.
+`leviathan_system`, `guardian_map`, `gaia`, `varkesh_raid`, `varkesh_result`,
+`varkesh_home`, `varkesh_news`, `varkesh_race`, `objectives`, `result`, and `about`.
 Galaxy and fleet captures use the new starting ships. Exploration, combat and
 result captures use local example states. Screenshot mode does not create
 a campaign save or change your settings.

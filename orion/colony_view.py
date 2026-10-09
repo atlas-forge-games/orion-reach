@@ -53,7 +53,7 @@ def draw_colony(app):
     text(surface, f"YEAR {game.year} · TURN {game.turn} · {game.credits:,} CR", (1376, 141), 12, GOLD, "mono", right=True)
 
     text(surface, shorten(planet.name, 620, 43, "title"), (64, 185), 43, INK, "title")
-    status = f"{planet.population} B · {game.empire_name_for(planet.owner)}" if planet.colonized else "Uncolonized"
+    status = f"{planet.workforce} B · {game.empire_name_for(planet.owner)}" if planet.colonized else "Uncolonized"
     text(surface, f"{planet.biome}  ·  {planet.size} world  ·  {status}", (66, 249), 14, MUTED)
     draw_planet(surface, planet, (756, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
     draw_planet_tabs(app, "colony")
@@ -65,7 +65,8 @@ def draw_colony(app):
              ("INCOME / TURN", f"+{income} CR", "Population and buildings", INK),
              ("RESEARCH / TURN", f"+{science} RP", "Empire research project", CYAN),
              ("FOOD / CONSUMED", f"{food.produced} / {food.consumed}", f"{food.balance:+} food / turn · local", food_color),
-             ("POPULATION / LIMIT", f"{planet.population} / {food.capacity} B", food.growth_caption, CYAN)]
+             ("NATIVE / SLAVES" if planet.slaves else "POPULATION / LIMIT",
+              f"{planet.population} / {planet.slaves if planet.slaves else food.capacity} B", food.growth_caption, CYAN)]
     for i, (label, value, caption, color) in enumerate(stats):
         x = 64+i*267
         panel(surface, (x, 287, 244, 84))

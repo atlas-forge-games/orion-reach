@@ -29,7 +29,7 @@ from .victory import colonies
 from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
 from .news_view import NEWS_PER_PAGE, draw_news
-from . import tomb_worlds
+from . import news as news_rules
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
@@ -173,7 +173,7 @@ class App:
         if screen=="exploration":
             self.focus="exploration_back"
         if screen=="news":
-            self.game.news_read_turn=self.game.turn
+            news_rules.mark_read(self.game)
             self.focus="news_back"
         if screen=="empire":
             self.focus_empire_row()
@@ -556,6 +556,8 @@ class App:
             self.toast(exc,True)
             return
         self.ground_reports.append(report)
+        if report.cause=="raid":
+            self.ground_return="news"
         self.ground_target=None
         self.colony_slot=None
         self.go("ground")
@@ -834,7 +836,7 @@ class App:
         self.go("galaxy" if self.screen=="news" else "news")
 
     def change_news_page(self,delta):
-        last=max(0,(len(tomb_worlds.news(self.game))-1)//NEWS_PER_PAGE)
+        last=max(0,(len(news_rules.entries(self.game))-1)//NEWS_PER_PAGE)
         self.news_page=min(max(0,self.news_page+delta),last)
 
     def close_exploration(self):
@@ -895,7 +897,7 @@ class App:
         # An unissued map order is a UI selection, never an automatic next-turn order.
         self.close_fleet_popup()
         report=self.game.advance_turn()
-        new_news=tomb_worlds.unread_count(self.game)>0
+        new_news=news_rules.unread_count(self.game)>0
         if report.ground_battles:
             self.ground_reports.extend(report.ground_battles)
             self.ground_return="news" if new_news else "galaxy"
@@ -1097,7 +1099,7 @@ class App:
         try:
             system_id=self.game.finish_combat()
             self.reset_combat_view()
-            if tomb_worlds.unread_count(self.game):
+            if news_rules.unread_count(self.game):
                 self.news_page=0
                 self.go("news")
             else:
@@ -1796,7 +1798,7 @@ class App:
             hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony · Range {state.fuel_range()} ly. "
                   +("Colonize closer worlds or research fuel tanks." if blocked else detail))
         text(self.canvas,shorten(hint,544,13),(64,775),13,MUTED)
-        unread=tomb_worlds.unread_count(state)
+        unread=news_rules.unread_count(state)
         self.button("open_news",f"News ({unread}) · N" if unread else "Turn news · N",(619,763,195,38),self.open_news)
         self.button("open_exploration","Exploration · X",(828,763,198,38),self.open_exploration)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)

@@ -131,7 +131,7 @@ def draw_surveyed_rival(app):
         text(surface, f"{planet.name} · {system.name}", (88, y), 18, INK)
         live = game.system_visible(system.id)
         stamp = "Observed now" if live else f"Last observed on turn {game.exploration.survey(system.id).last_seen}"
-        text(surface, f"{stamp} · {planet.population} B · {len(planet.buildings)} buildings", (89, y+27), 12, MUTED)
+        text(surface, f"{stamp} · {planet.workforce} B · {len(planet.buildings)} buildings", (89, y+27), 12, MUTED)
         app.button(f"rival_colony_{system.id}_{planet.id}", "Survey", (1200, y+5, 150, 39),
                    lambda sid=system.id, pid=planet.id: app.survey_rival_colony(sid, pid))
     if not rows:
