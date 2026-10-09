@@ -104,8 +104,15 @@ class Button:
     subtitle: str = ""
     style: str = "normal"
     enabled: bool = True
+    icon: str = ""
+    shortcut: str = ""
+    badge: str = ""
 
-    def draw(self,surface,active=False):
+    def draw(self,surface,active=False,pressed=False):
+        if self.style in ("command", "command_primary"):
+            from .command_buttons import draw_command_button
+            draw_command_button(self,surface,active,pressed)
+            return
         r=self.rect
         color=INK if self.enabled else FAINT
         if self.style=="hotspot":
