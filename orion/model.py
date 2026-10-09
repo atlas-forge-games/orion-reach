@@ -13,6 +13,7 @@ from . import combat as combat_rules
 from . import victory as victory_rules
 from . import exploration as exploration_rules
 from . import population as population_rules
+from . import monsters as monster_rules
 from .races import RACES, default_rival_race
 from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
@@ -20,12 +21,12 @@ from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
 
 GALAXY_SIZES = {"Compact": 24, "Standard": 48, "Expansive": 72}
 STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dwarf")
-BIOMES = ("Terran", "Ocean", "Desert", "Tundra", "Barren", "Volcanic")
-RICHNESSES = ("Poor", "Average", "Rich")
+BIOMES = ("Terran", "Ocean", "Desert", "Tundra", "Barren", "Volcanic", "Gaia")
+RICHNESSES = ("Poor", "Average", "Rich", "Ultra-rich")
 PLANET_SIZES = ("Tiny", "Small", "Medium", "Large", "Huge")
 GRAVITIES = ("Low", "Normal", "High")
 HABITABILITY = {"Terran": 100, "Ocean": 80, "Desert": 40,
-                "Tundra": 35, "Barren": 0, "Volcanic": 0}
+                "Tundra": 35, "Barren": 0, "Volcanic": 0, "Gaia": 100}
 PLAYER, RIVAL = "player", "rival"
 NAMES = (
     "Vega Altair Deneb Sirius Rigel Arcturus Antares Procyon Spica Pollux "
@@ -119,7 +120,7 @@ class Ship:
         return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=15):
+    def from_dict(cls, data, systems, *, version=17):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         if not isinstance(data["kind"], str) or data["kind"] not in SHIP_TYPES:
@@ -251,7 +252,7 @@ class Planet:
 
     @property
     def population_capacity(self):
-        return population_rules.POPULATION_LIMITS[self.size]
+        return population_rules.population_capacity(self)
 
     @property
     def habitability(self):
@@ -444,8 +445,8 @@ def generate_planets(system, galaxy_seed):
             continue
         roman = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")[i]
         # Keep the old system-level primary-world information on the first world.
-        biome = system.biome if i == 0 else rng.choice(BIOMES)
-        richness = system.richness if i == 0 else rng.choice(RICHNESSES)
+        biome = system.biome if i == 0 else rng.choice(BIOMES[:-1])
+        richness = system.richness if i == 0 else rng.choice(RICHNESSES[:-1])
         size = rng.choice(PLANET_SIZES)
         gravity = "Low" if size == "Tiny" else "High" if size == "Huge" else "Normal"
         worlds.append(Planet(i, f"{system.name} {roman}", biome, size,
@@ -477,6 +478,7 @@ class GameState:
     result: victory_rules.CampaignResult | None = None
     fog_of_war: bool = False
     exploration: exploration_rules.ExplorationState = field(default_factory=exploration_rules.ExplorationState)
+    guardians: list[monster_rules.Guardian] = field(default_factory=list)
 
     def system_visible(self, system_id, owner=PLAYER):
         return exploration_rules.is_visible(self, system_id, owner)
@@ -559,7 +561,7 @@ class GameState:
         return combat_rules.retreat(self, owner)
 
     def combat_ai_action(self):
-        return combat_rules.ai_action(self)
+        return combat_rules.ai_action(self, self.combat.active_owner if self.combat else RIVAL)
 
     def finish_combat(self):
         if self.combat is None or self.combat.status == "active":
@@ -695,6 +697,8 @@ class GameState:
     def empire_name_for(self, owner):
         if owner is None:
             return "Unclaimed"
+        if owner == monster_rules.MONSTER:
+            return "System guardian"
         return self.empire_name if owner == PLAYER else self._empire(owner).name
 
     def ships_owned_by(self, owner=PLAYER):
@@ -712,7 +716,7 @@ class GameState:
     def opponent_home(self):
         """Choose a habitable home far from every existing player colony."""
         occupied = [s for s in self.systems if any(p.owner == PLAYER for p in s.worlds)]
-        candidates = [(s, p) for s in self.systems if s not in occupied
+        candidates = [(s, p) for s in self.systems if s not in occupied and monster_rules.at(self, s.id) is None
                       for p in s.worlds if not p.colonized and p.habitability > 0]
         def score(row):
             s, p = row
@@ -956,6 +960,9 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
+        guardian = monster_rules.alive_at(self, system_id)
+        if guardian:
+            return f"Defeat the {guardian.spec.name} guarding this system first."
         if not self.can_settle(planet, owner):
             technology = "Radiation Shields" if planet.biome == "Barren" else "Thermal Barriers"
             return f"Research {technology} to settle this world."
@@ -1020,6 +1027,8 @@ class GameState:
         """AI orders, starting yields, travel and local production, then bank income."""
         self._require_strategy()
         exploration_rules.refresh(self)
+        if monster_rules.intercept(self):
+            return TurnReport(0, 0, [])
         encounter = combat_rules.hostile_encounter(self)
         if encounter is not None:
             self.start_combat(encounter, RIVAL)
@@ -1097,6 +1106,7 @@ class GameState:
             location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
             alerts.append(f"Rival gate at {location} will activate next turn unless blocked")
         exploration_rules.refresh(self)
+        monster_rules.intercept(self)
         self.check_victory()
         encounter = combat_rules.hostile_encounter(self)
         if encounter is not None:
@@ -1108,7 +1118,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=15):
+    def from_dict(cls, data, *, version=17):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1194,6 +1204,8 @@ class GameState:
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
+            if version >= 16:
+                game.guardians = monster_rules.parse_guardians(data["guardians"], game)
             if version >= 8 and data["combat"] is not None:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
@@ -1210,11 +1222,13 @@ class GameState:
 
 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
-             race_id="terran", rival_race_id=None, fog_of_war=True):
+             race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if type(fog_of_war) is not bool:
         raise SaveError("Fog of war must be on or off.")
+    if type(with_guardians) is not bool:
+        raise SaveError("Guardians must be on or off.")
     if not isinstance(race_id, str) or race_id not in RACES:
         raise SaveError("Choose a valid player race.")
     if rival_race_id is not None and (not isinstance(rival_race_id, str) or rival_race_id not in RACES):
@@ -1238,7 +1252,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         else:
             raise SaveError("Could not place this galaxy. Please try a different seed.")
         systems.append(StarSystem(i, names[i-1], x, y, rng.choice(STAR_TYPES),
-                                  rng.randint(0, 7), rng.choice(BIOMES), rng.choice(RICHNESSES)))
+                                  rng.randint(0, 7), rng.choice(BIOMES[:-1]), rng.choice(RICHNESSES[:-1])))
     for system in systems:
         system.worlds = generate_planets(system, seed)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
@@ -1246,5 +1260,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     game._starting_fleet(PLAYER, 0)
     if with_ai and game.opponent_start_error() is None:
         game.add_opponent(rival_race_id)
+    if with_guardians:
+        monster_rules.seed_guardians(game)
     exploration_rules.refresh(game)
     return game

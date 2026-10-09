@@ -4,8 +4,10 @@ import pygame as pg
 
 from .planet_art import draw_planet, draw_star
 from .model import PLAYER, RIVAL
+from . import monsters
+from .fleet_art import ship_icon
 from .exploration_view import draw_unsurveyed_system
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
                "Red dwarf": (221, 124, 108), "White star": (217, 228, 239), "Orange dwarf": (235, 170, 106)}
@@ -48,13 +50,18 @@ def draw_system(app):
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
     ships, rivals = len(game.fleet_at(system.id)), len(game.fleet_at(system.id, RIVAL)) if live else 0
+    guardian_status = monsters.known_status(game, system.id)
+    guardian = monsters.at(game, system.id) if guardian_status else None
     label = f"ORBIT: {ships} YOUR SHIPS · {rivals} RIVAL SHIPS" if ships or rivals else "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY"
     if not live:
         label = f"LAST OBSERVED: TURN {game.exploration.survey(system.id).last_seen} · ACTIVITY UNKNOWN"
-    text(surface, label, (1376, 211), 11, CYAN, "mono", 1, right=True)
-    if ships and rivals:
+    if guardian:
+        label = ("GUARDED" if live else "LAST SEEN GUARDED")+" · "+guardian.spec.name.upper() if guardian_status == "alive" else "GUARDIAN DEFEATED · WORLDS ACCESSIBLE"
+        ship_icon(surface, (997, 240), .9, kind=guardian.kind)
+    text(surface, label, (1376, 211), 11, RED if guardian_status == "alive" else CYAN, "mono", 1, right=True)
+    if ships and (rivals or guardian_status == "alive"):
         reason = game.engagement_error(system.id)
-        app.button("system_engage", "Engage opposing fleet", (1100, 247, 276, 43),
+        app.button("system_engage", "Face guardian" if guardian_status == "alive" else "Engage opposing fleet", (1100, 247, 276, 43),
                    lambda: app.engage_request(system.id), enabled=reason is None)
         if reason:
             text(surface, "Frigate required to engage", (1080, 262), 11, MUTED, right=True)
@@ -86,6 +93,9 @@ def draw_system(app):
         text(surface, shorten(world.name, hit.w-4, label_size), (hit.x+2, y+diameter/2+22), label_size,
              GOLD if active else INK)
         text(surface, world.biome.upper(), (hit.x+2, y+diameter/2+45), 9, MUTED, "mono")
+        if guardian and world.id in monsters.prize_ids(system, guardian):
+            text(surface, "ANCIENT RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE WORLD",
+                 (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")
         if world.colonized:
             pg.draw.circle(surface, CYAN if world.owner == PLAYER else RIVAL_COLOR,
                            (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
@@ -111,7 +121,10 @@ def draw_system(app):
     hint = "Click a planet to survey it. Cyan: your colony · Orange: rival colony" if system.worlds else "Use Previous / Next to survey another system."
     if not live:
         hint = "Stored survey. Send a ship to refresh colony ownership, population and activity."
-    text(surface, hint, (65, 792), 14, MUTED)
+    if guardian:
+        benefit = monsters.prize_details(guardian, defeated=guardian_status == "defeated")
+        hint = f"{monsters.reward_caption(guardian, defeated=guardian_status == 'defeated')} · {benefit}. " + ("Defeat its guardian to colonize." if guardian_status == "alive" else "Guardian defeated.")
+    text(surface, shorten(hint, 1310, 14), (65, 792), 14, MUTED)
     app.button("system_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
     app.button("system_previous", "← Previous system", (846, 832, 249, 46), lambda: app.cycle_system(-1))

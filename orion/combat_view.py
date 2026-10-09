@@ -9,6 +9,7 @@ import pygame as pg
 from .combat import BEAMS, BOARD_COLUMNS, action_error, in_range, reachable, retreat_destination
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
+from .monsters import MONSTER, MONSTERS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 CELL = 56
@@ -77,9 +78,9 @@ def draw_battlefield(app):
         cx, cy = project(position)
         if not BOARD.inflate(CELL, CELL).collidepoint(cx, cy):
             continue
-        color = CYAN if ship.owner == PLAYER else RIVAL_COLOR
+        color = MONSTERS[ship.kind].color if ship.owner == MONSTER else CYAN if ship.owner == PLAYER else RIVAL_COLOR
         is_selected = ship.id == app.combat_ship_id
-        targetable = bool(selected and player_turn and ship.owner == RIVAL
+        targetable = bool(selected and player_turn and ship.owner != PLAYER
                           and battle.can_fire(selected) and in_range(selected, ship))
         box = pg.Rect(cx-CELL//2+3, cy-CELL//2+3, CELL-6, CELL-6)
         if is_selected or targetable or ship.id == app.combat_target_id:
@@ -88,7 +89,7 @@ def draw_battlefield(app):
         hull = ship.hull+(effect.damage if before_impact else 0)
         pg.draw.rect(surface, LINE, (cx-18, cy+19, 36, 3))
         pg.draw.rect(surface, color, (cx-18, cy+19, round(36*hull/ship.max_hull), 3))
-        text(surface, f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+        text(surface, "GUARD" if ship.owner == MONSTER else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.owner == PLAYER and ship.hull > 0:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship))):
                 pg.draw.circle(surface, CYAN if available else LINE, (cx+dx, cy-19), 2)
@@ -104,12 +105,13 @@ def draw_battlefield(app):
 
 def draw_combat(app):
     surface, game, battle = app.canvas, app.game, app.game.combat
+    enemy = battle.enemy(PLAYER)
     busy = app.combat_animation is not None
     active = battle.status == "active" or busy
     player_turn = battle.status == "active" and battle.active_owner == PLAYER and not busy
     app.chrome("TACTICAL COMMAND")
     text(surface, shorten(f"Battle of {game.systems[battle.system_id].name}", 670, 32, "title"), (32, 119), 32, INK, "title")
-    text(surface, f"ROUND {battle.round:02}  ·  "+("YOUR TURN" if battle.active_owner == PLAYER else "ENEMY TURN" if battle.active_owner == RIVAL else "BATTLE ENDED"),
+    text(surface, f"ROUND {battle.round:02}  ·  "+("YOUR TURN" if battle.active_owner == PLAYER else "ENEMY TURN" if battle.active_owner else "BATTLE ENDED"),
          (1038, 128), 12, GOLD, "mono", right=True)
     text(surface, "Select your ship → click a highlighted cell to move → click an enemy to fire.", (34, 162), 13, MUTED)
     draw_battlefield(app)
@@ -118,7 +120,7 @@ def draw_combat(app):
     x = 1080
     text(surface, "FLEET STATUS", (x, 137), 10, GOLD, "mono", 1)
     text(surface, f"YOUR SHIPS  {len(battle.fleet(PLAYER))}", (x, 164), 12, CYAN, "mono")
-    text(surface, f"ENEMY  {len(battle.fleet(RIVAL))}", (1388, 164), 12, RIVAL_COLOR, "mono", right=True)
+    text(surface, f"ENEMY  {len(battle.fleet(enemy))}", (1388, 164), 12, RIVAL_COLOR, "mono", right=True)
     pg.draw.line(surface, LINE, (x, 193), (1388, 193))
     if active:
         ship, target = battle.ship(app.combat_ship_id), battle.ship(app.combat_target_id)
@@ -143,6 +145,8 @@ def draw_combat(app):
         pg.draw.line(surface, LINE, (x, 432), (1388, 432))
         text(surface, "ENEMY TARGET", (x, 449), 10, RIVAL_COLOR, "mono", 1)
         text(surface, target.name if target else "Click an enemy ship", (x, 473), 18, INK)
+        if target and target.owner == MONSTER:
+            ship_icon(surface, (1356, 472), .57, kind=target.kind)
         caption = f"{target.hull}/{target.max_hull} hull" if target else "Targets must be within weapon range."
         if target and ship:
             caption += f"  ·  Distance {math.dist(ship.position, target.position):.1f}"
@@ -158,15 +162,21 @@ def draw_combat(app):
         app.button("combat_retreat", "Retreat fleet", (x, 699, 308, 33), app.retreat_request,
                    enabled=player_turn and retreat_destination(game) is not None)
     else:
-        title = {"player_victory": "Victory", "rival_victory": "Defeat",
+        title = {"player_victory": "Victory", "rival_victory": "Defeat", "monster_victory": "Defeat",
                  "player_retreat": "Fleet withdrawn", "rival_retreat": "Enemy withdrew"}[battle.status]
         text(surface, title, (x, 221), 29, GOLD, "title")
-        lost = {side: sum(s.hull == 0 for s in battle.fleet(side, alive=False)) for side in (PLAYER, RIVAL)}
+        lost = {side: sum(s.hull == 0 for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
         text(surface, f"Your ships lost: {lost[PLAYER]}", (x, 288), 16, CYAN)
-        text(surface, f"Enemy ships lost: {lost[RIVAL]}", (x, 321), 16, RIVAL_COLOR)
+        text(surface, f"{'Guardians' if battle.guardian else 'Enemy ships'} lost: {lost[enemy]}", (x, 321), 16, RIVAL_COLOR)
         caption = "Surviving ships remain in orbit. Hull damage is retained; colonies keep their current owners."
         if battle.retreat_destination is not None:
             caption = f"The withdrawing fleet is travelling to {game.systems[battle.retreat_destination].name}. Surviving ships retain their hull damage."
+        elif battle.guardian:
+            spec = MONSTERS[battle.guardian.kind]
+            caption = (f"{spec.reward}. Protected worlds are now open for colonization. Bring colony ships to settle them."
+                       if battle.status == "player_victory" else "The guardian still controls this system. Assemble a stronger fleet to claim its worlds.")
+            if battle.status == "player_victory" and spec.research_reward:
+                caption = f"Ancient ruins recovered: +{spec.research_reward} RP added to your research. The rich world is now open for colonization."
         paragraph(surface, caption, (x, 377), 302, 15, MUTED, 26)
         app.button("combat_continue", "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
 

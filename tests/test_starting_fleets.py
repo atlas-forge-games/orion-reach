@@ -66,7 +66,7 @@ class StartingFleetTests(unittest.TestCase):
 
 class PendingDepartureTests(unittest.TestCase):
     def setUp(self):
-        self.game = new_game(seed=2408, with_ai=False)
+        self.game = new_game(seed=2408, with_ai=False, with_guardians=False)
         self.target = max((s for s in self.game.systems[1:] if self.game.within_fuel_range(s.id)),
                           key=lambda s: self.game.travel_turns(self.game.systems[0], s)).id
 
@@ -151,7 +151,7 @@ class PendingDepartureTests(unittest.TestCase):
             self.assertTrue(resumed.ship_at(1).in_transit)
 
     def test_v13_saves_keep_existing_fleets_and_committed_journeys_without_gifts(self):
-        game = self.game
+        game = new_game(seed=2408, with_ai=False, with_guardians=False)
         game.ships = [Ship(41, "frigate", 0, hull=13)]
         game.next_ship_id = 42
         game.send_ship(41, self.target)
@@ -173,7 +173,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-            self.assertEqual(SAVE_VERSION, 15)
+            self.assertEqual(SAVE_VERSION, 17)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

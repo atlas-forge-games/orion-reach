@@ -169,10 +169,13 @@ def discovery_at(game, system_id):
 
 def refresh(game, *, recover=False):
     """Snapshot observed worlds; scouts can claim an encounter only once globally."""
+    from .monsters import alive_at, observe
     messages = []
     for owner in OWNERS:
         if owner == "rival" and game.opponent is None:
             continue
+        for sid in observed_systems(game, owner):
+            observe(game, sid, owner)
         if game.fog_of_war:
             for sid in sorted(observed_systems(game, owner)):
                 if record_survey(game, sid, owner) and owner == "player":
@@ -184,6 +187,8 @@ def refresh(game, *, recover=False):
     # Existing ship IDs provide stable resolution for simultaneous arrivals.
     for ship in sorted(game.ships, key=lambda s: s.id):
         if ship.kind != "scout" or ship.in_transit:
+            continue
+        if alive_at(game, ship.system_id):
             continue
         scanned = game.exploration.scanned(ship.owner)
         if ship.system_id in scanned:

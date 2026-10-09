@@ -51,6 +51,7 @@ def scene_buildings(game, system_id, planet):
 # Sky, horizon, distant ridge, ground, foreground. No new gameplay biome rules.
 PALETTES = {
     "Terran": ((31, 64, 87), (143, 179, 181), (58, 90, 92), (63, 85, 64), (29, 47, 42)),
+    "Gaia": ((21, 81, 101), (164, 214, 191), (52, 122, 111), (60, 128, 80), (23, 69, 51)),
     "Ocean": ((27, 66, 102), (139, 190, 206), (49, 103, 130), (35, 91, 123), (17, 47, 72)),
     "Desert": ((72, 71, 83), (211, 174, 125), (126, 104, 83), (155, 123, 79), (87, 72, 52)),
     "Tundra": ((54, 81, 108), (194, 213, 220), (111, 144, 162), (167, 186, 190), (93, 121, 137)),
@@ -124,7 +125,7 @@ def landscape(biome, seed, size, settled):
                 pg.draw.line(image, (136, 151, 146), (x, bottom-4), (x+14, bottom-4), 1)
         pg.draw.line(image, (70, 77, 76), (464, 211), (464, height), 24)
         pg.draw.line(image, (44, 52, 54), (464, 211), (464, height), 16)
-    if biome == "Terran":
+    if biome in ("Terran", "Gaia"):
         for _ in range(36):
             x = rng.choice((rng.randrange(4, 41), rng.randrange(width-38, width-3)))
             y = rng.randrange(skyline+50, height-10)

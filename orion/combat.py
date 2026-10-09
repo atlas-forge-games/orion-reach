@@ -5,13 +5,17 @@ from dataclasses import dataclass, field
 import math
 
 from .production import SHIP_TYPES
+from .monsters import MONSTER, MONSTERS, alive_at, at as guardian_at, observe, known_status, commit_battle_result
+
+COMBAT_TYPES = {**SHIP_TYPES, **MONSTERS}
 
 OWNERS = ("player", "rival")
 HOSTILE_BELOW = -30
-RESULTS = ("active", "player_victory", "rival_victory", "player_retreat", "rival_retreat")
+RESULTS = ("active", "player_victory", "rival_victory", "monster_victory", "player_retreat", "rival_retreat")
 BOARD_COLUMNS = 18
 MIN_ROWS = 10
 MOVEMENT = {"frigate": 3, "scout": 5, "colony_ship": 2, "troop_transport": 2}
+MOVEMENT.update({kind: spec.movement for kind, spec in MONSTERS.items()})
 
 
 @dataclass(frozen=True)
@@ -26,10 +30,16 @@ BEAMS = {
     "none": Beam("Unarmed", 0, 0, (133, 151, 160)),
     "laser": Beam("Laser", 5, 6, (255, 80, 76)),
     "quantum": Beam("Quantum beam", 7, 7, (187, 113, 255)),
+    "plasma_breath": Beam("Plasma breath", 8, 4, (104, 255, 144)),
+    "crystal_ray": Beam("Crystal ray", 10, 7, (102, 220, 255)),
+    "ancient_lance": Beam("Ancient lance", 12, 8, (255, 198, 104)),
+    "void_ray": Beam("Void ray", 15, 5, (196, 143, 255)),
 }
 
 
 def weapon_for(game, kind, owner):
+    if kind in MONSTERS:
+        return MONSTERS[kind].weapon
     if not SHIP_TYPES[kind].damage:
         return "none"
     return "quantum" if game.bonuses_for(owner).get("beam_level", 0) else "laser"
@@ -58,11 +68,11 @@ class CombatShip:
 
     @property
     def name(self):
-        return f"{SHIP_TYPES[self.kind].name} {self.id:03}"
+        return MONSTERS[self.kind].name if self.kind in MONSTERS else f"{SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @property
     def max_hull(self):
-        return SHIP_TYPES[self.kind].hull
+        return COMBAT_TYPES[self.kind].hull
 
     @property
     def damage(self):
@@ -95,9 +105,22 @@ class CombatState:
     moved: list[int] = field(default_factory=list)
 
     @property
+    def guardian(self):
+        return next((s for s in self.ships if s.owner == MONSTER), None)
+
+    @property
+    def sides(self):
+        if self.guardian:
+            return ("player" if any(s.owner == "player" for s in self.ships) else "rival", MONSTER)
+        return OWNERS
+
+    def enemy(self, owner):
+        return next(side for side in self.sides if side != owner)
+
+    @property
     def rows(self):
         # Four deployment columns per side; large fleets extend the map vertically.
-        return max(MIN_ROWS, (max(sum(s.owner == o for s in self.ships) for o in OWNERS)+3)//4)
+        return max(MIN_ROWS, (max(sum(s.owner == o for s in self.ships) for o in self.sides)+3)//4)
 
     def can_move(self, ship):
         return ship.hull > 0 and ship.id not in self.moved
@@ -119,7 +142,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=13):
+    def from_dict(cls, data, game, *, version=17):
         from .model import _integer, _name
         # Migrate copies so reading a save never mutates its source payload.
         if version < 13 and isinstance(data, dict):
@@ -132,15 +155,21 @@ class CombatState:
                 "log", "status", "retreat_destination", "moved"}:
             raise ValueError("Invalid combat state")
         if (not _integer(data["system_id"], 0, len(game.systems)-1) or
-                data["initiator"] not in OWNERS or game.opponent is None or
+                data["initiator"] not in OWNERS or
                 not _integer(data["round"], 1, 1_000_000) or data["status"] not in RESULTS):
             raise ValueError("Invalid combat location or status")
-        if (game.diplomacy.relations != -100 or game.diplomacy.trade_active
-                or game.diplomacy.research_active):
-            raise ValueError("Combat does not match diplomatic state")
         rows = data["ships"]
         if not isinstance(rows, list) or not 2 <= len(rows) <= 10000:
             raise ValueError("Invalid battle fleet")
+        guarded = any(isinstance(row, dict) and row.get("owner") == MONSTER for row in rows)
+        sides = (data["initiator"], MONSTER) if guarded else OWNERS
+        guardian = guardian_at(game, data["system_id"]) if guarded else None
+        if guarded:
+            if guardian is None or (data["initiator"] == "rival" and game.opponent is None):
+                raise ValueError("Missing guardian or empire")
+        elif (game.opponent is None or game.diplomacy.relations != -100
+              or game.diplomacy.trade_active or game.diplomacy.research_active):
+            raise ValueError("Combat does not match diplomatic state")
         ships = []
         for row in rows:
             fields = {"id", "kind", "owner", "hull", "initial_hull"}
@@ -148,9 +177,13 @@ class CombatState:
                 fields |= {"x", "y", "weapon"}
             if not isinstance(row, dict) or set(row) != fields:
                 raise ValueError("Invalid combat ship")
-            if (not _integer(row["id"], 1, game.next_ship_id-1) or row["owner"] not in OWNERS or
-                    not isinstance(row["kind"], str) or row["kind"] not in SHIP_TYPES or
-                    not _integer(row["initial_hull"], 1, SHIP_TYPES[row["kind"]].hull) or
+            monster = row["owner"] == MONSTER
+            if ((not guardian or row["id"] != guardian.combat_id or type(row["id"]) is not int) if monster
+                    else not _integer(row["id"], 1, game.next_ship_id-1)):
+                raise ValueError("Invalid combat identifier")
+            if (row["owner"] not in sides or
+                    not isinstance(row["kind"], str) or row["kind"] not in (MONSTERS if monster else SHIP_TYPES) or
+                    not _integer(row["initial_hull"], 1, COMBAT_TYPES[row["kind"]].hull) or
                     not _integer(row["hull"], 0, row["initial_hull"])):
                 raise ValueError("Invalid combat ship health")
             if version < 13:
@@ -160,9 +193,9 @@ class CombatState:
                 raise ValueError("Invalid combat weapon")
             ships.append(CombatShip(**row))
         identifiers = {s.id for s in ships}
-        if len(identifiers) != len(ships) or {s.owner for s in ships} != set(OWNERS):
+        if len(identifiers) != len(ships) or {s.owner for s in ships} != set(sides):
             raise ValueError("Invalid combat participants")
-        if not any(s.owner == data["initiator"] and s.damage for s in ships):
+        if not guarded and not any(s.owner == data["initiator"] and s.damage for s in ships):
             raise ValueError("An unarmed fleet cannot initiate combat")
         for key in ("acted", "moved"):
             used = data[key]
@@ -185,22 +218,28 @@ class CombatState:
         if retreating:
             if (not _integer(state.retreat_destination, 0, len(game.systems)-1)
                     or state.retreat_destination == state.system_id
-                    or any(not state.fleet(owner) for owner in OWNERS)):
+                    or retreating not in sides or retreating == MONSTER
+                    or any(not state.fleet(owner) for owner in sides)):
                 raise ValueError("Invalid retreat")
         elif state.retreat_destination is not None:
             raise ValueError("Unexpected retreat destination")
         if state.status == "active":
-            if (state.active_owner not in OWNERS
-                    or any(not state.fleet(owner) for owner in OWNERS)):
+            if (state.active_owner not in sides
+                    or any(not state.fleet(owner) for owner in sides)):
                 raise ValueError("Invalid side to act")
         elif state.active_owner is not None:
             raise ValueError("Resolved battle still has an active side")
         if state.status.endswith("_victory"):
             winner = state.status.split("_")[0]
-            if not state.fleet(winner) or state.fleet(other(winner)):
+            if winner not in sides or not state.fleet(winner) or state.fleet(state.enemy(winner)):
                 raise ValueError("Invalid victory")
         campaign = {s.id: s for s in game.ships}
         for ship in ships:
+            if ship.owner == MONSTER:
+                expected_hull = ship.initial_hull if state.status == "active" else ship.hull
+                if ship.kind != guardian.kind or guardian.hull != expected_hull:
+                    raise ValueError("Guardian does not match the battle")
+                continue
             original = campaign.get(ship.id)
             if state.status != "active" and ship.hull == 0:
                 if original is not None:
@@ -219,9 +258,9 @@ class CombatState:
                     raise ValueError("Invalid retreat voyage")
             elif original.in_transit or original.departure_pending:
                 raise ValueError("Travelling ship in battle")
-        orbiting = {s.id for s in game.ships if not s.in_transit and s.system_id == state.system_id}
+        orbiting = {s.id for s in game.ships if s.owner in sides and not s.in_transit and s.system_id == state.system_id}
         expected_orbit = {s.id for s in ships if (state.status == "active" or s.hull > 0)
-                          and s.owner != retreating}
+                          and s.owner != retreating and s.owner != MONSTER}
         if orbiting != expected_orbit:
             raise ValueError("Battle omitted orbiting ships")
         return state
@@ -230,10 +269,10 @@ class CombatState:
 def deploy(state):
     rows = state.rows
     lanes = sorted(range(rows), key=lambda y: (abs(y-(rows-1)/2), y))
-    for owner in OWNERS:
+    for owner in state.sides:
         for index, ship in enumerate(sorted(state.fleet(owner, alive=False), key=lambda s: s.id)):
             depth, lane = divmod(index, rows)
-            ship.x = 4-depth if owner == "player" else 13+depth
+            ship.x = 4-depth if owner == state.sides[0] else 13+depth
             ship.y = lanes[lane]
 
 
@@ -272,6 +311,8 @@ def engagement_error(game, system_id, owner="player"):
         return game.strategy_error()
     if type(system_id) is not int or not 0 <= system_id < len(game.systems):
         return "Unknown solar system."
+    if alive_at(game, system_id) and owner in OWNERS and game.fleet_at(system_id, owner):
+        return None
     if owner not in OWNERS or game.opponent is None:
         return "No opposing empire is available."
     own, enemy = game.fleet_at(system_id, owner), game.fleet_at(system_id, other(owner))
@@ -285,6 +326,8 @@ def engagement_error(game, system_id, owner="player"):
 def begin_combat(game, system_id, owner="player"):
     error = engagement_error(game, system_id, owner)
     require(error is None, error)
+    if alive_at(game, system_id):
+        return begin_guardian_combat(game, system_id, owner)
     fleet = sorted(game.fleet_at(system_id, "player")+game.fleet_at(system_id, "rival"), key=lambda s: s.id)
     # An engagement happens before departure. Orders cannot survive the battle unnoticed.
     for ship in fleet:
@@ -303,11 +346,30 @@ def begin_combat(game, system_id, owner="player"):
     return state
 
 
+def begin_guardian_combat(game, system_id, owner="player"):
+    require(game.strategy_error() is None, game.strategy_error())
+    guardian = alive_at(game, system_id)
+    fleet = game.fleet_at(system_id, owner) if owner in OWNERS else []
+    require(guardian is not None and bool(fleet), "A guardian and an arriving fleet are required.")
+    for ship in fleet:
+        if ship.departure_pending:
+            game._clear_course(ship)
+    ships = [CombatShip(s.id, s.kind, owner, s.hull, s.hull, weapon=weapon_for(game, s.kind, owner)) for s in fleet]
+    ships.append(CombatShip(guardian.combat_id, guardian.kind, MONSTER, guardian.hull, guardian.hull, weapon=guardian.spec.weapon))
+    state = CombatState(system_id, owner, ships, active_owner=owner)
+    deploy(state)
+    state.record(f"{guardian.spec.name} blocks entry to {game.systems[system_id].name}.")
+    state.record(f"Prize: {guardian.spec.reward}. Your fleet has the first turn to fight or retreat.")
+    game.combat = state
+    observe(game, system_id, owner)
+    return state
+
+
 def action_error(game, owner, ship_id=None, target_id=None):
     state = game.combat
     if state is None or state.status != "active":
         return "There is no active battle."
-    if owner not in OWNERS or state.active_owner != owner:
+    if owner not in state.sides or state.active_owner != owner:
         return "Wait for your fleet's turn."
     if ship_id is not None:
         ship = state.ship(ship_id)
@@ -344,20 +406,33 @@ def resolve(game, status, destination=None):
     else:
         message = f"{game.empire_name_for(status.split('_')[0])} won the battle."
     state.record(message)
-    game.rival_event(message, turn=game.turn)
+    if game.opponent and "rival" in state.sides:
+        game.rival_event(message, turn=game.turn)
+    if state.guardian:
+        guardian = guardian_at(game, state.system_id)
+        reward = commit_battle_result(game, guardian, state.guardian.hull, state.sides[0])
+        observe(game, state.system_id, state.sides[0])
+        from .exploration import refresh
+        refresh(game)
+        if not guardian.alive:
+            state.record(f"{guardian.spec.name} destroyed. Protected worlds are open for colonization.")
+        if reward:
+            state.record(reward)
+            if state.sides[0] == "rival":
+                game.rival_event(reward, turn=game.turn)
 
 
 def check_losses(game):
     state = game.combat
-    for side in OWNERS:
+    for side in state.sides:
         if not state.fleet(side):
-            resolve(game, other(side)+"_victory")
+            resolve(game, state.enemy(side)+"_victory")
             return
 def end_turn(game, owner="player"):
     error = action_error(game, owner)
     require(error is None, error)
     state = game.combat
-    state.active_owner = other(owner)
+    state.active_owner = state.enemy(owner)
     if state.active_owner == state.initiator:
         state.round += 1
         state.acted.clear()
@@ -416,6 +491,7 @@ def retreat_destination(game, owner="player"):
     origin = game.systems[game.combat.system_id]
     safe = [s for s in game.systems if s.id != origin.id and
             game.within_fuel_range(s.id, owner) and
+            known_status(game, s.id, owner) != "alive" and
             not (game.system_visible(s.id, owner) and game.fleet_at(s.id, other(owner)))]
     friendly = [s for s in safe if any(p.owner == owner for p in s.worlds)]
     return min(friendly or safe, key=lambda s: (game.travel_turns(origin, s, owner),
@@ -445,7 +521,7 @@ def ai_action(game, owner="rival"):
         end_turn(game, owner)
         return {"kind": "end_turn"}
     ship = min(ready, key=lambda s: (-s.damage, s.hull, s.id))
-    enemies = state.fleet(other(owner))
+    enemies = state.fleet(state.enemy(owner))
     targets = [s for s in enemies if in_range(ship, s)] if state.can_fire(ship) else []
     if targets:
         target = min(targets, key=lambda s: (s.hull > ship.damage, -s.damage, s.hull, s.id))
@@ -475,4 +551,4 @@ def ai_action(game, owner="rival"):
 def hostile_encounter(game):
     if game.opponent is None or game.diplomacy.relations >= HOSTILE_BELOW:
         return None
-    return next((s.id for s in game.systems if engagement_error(game, s.id, "rival") is None), None)
+    return next((s.id for s in game.systems if not alive_at(game, s.id) and engagement_error(game, s.id, "rival") is None), None)

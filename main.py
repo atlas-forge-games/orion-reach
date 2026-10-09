@@ -6,6 +6,18 @@ import argparse
 import os
 from pathlib import Path
 
+GUARDIAN_PREVIEWS = {
+    "guarded": ("space_serpent", "system"),
+    "monster": ("space_serpent", "combat"),
+    "crystal": ("crystal_guardian", "combat"),
+    "sentinel": ("ancient_sentinel", "combat"),
+    "leviathan": ("void_leviathan", "combat"),
+    "ruins": ("ancient_sentinel", "system"),
+    "leviathan_system": ("void_leviathan", "system"),
+    "guardian_map": ("void_leviathan", "galaxy"),
+    "gaia": ("space_serpent", "planet"),
+}
+
 
 def main():
     parser = argparse.ArgumentParser(description="Orion Reach — Python space strategy prototype")
@@ -13,7 +25,7 @@ def main():
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "objectives", "result", "about"), default="menu")
+    parser.add_argument("--screen", choices=("splash", "menu", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", *GUARDIAN_PREVIEWS, "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -27,7 +39,7 @@ def main():
     app = App(args.data_dir, capture=bool(args.screenshot), skip_intro=args.skip_intro)
     try:
         if args.screenshot:
-            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "objectives", "result"):
+            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", *GUARDIAN_PREVIEWS, "objectives", "result"):
                 from orion.model import new_game
                 app.game = new_game(seed=2408)
                 if args.screen in ("planet", "production", "colony", "shipyard"):
@@ -54,6 +66,32 @@ def main():
                     app.game.combat_move(1, 7, 4)
                     app.game.combat_fire(1, 4)
                     app.game.combat_move(2, 7, 5)
+                if args.screen in GUARDIAN_PREVIEWS:
+                    from orion.model import Ship
+                    from orion.exploration import refresh
+                    game = app.game
+                    kind, screen = GUARDIAN_PREVIEWS[args.screen]
+                    guardian = next(g for g in game.guardians if g.kind == kind)
+                    game.selected_system = guardian.system_id
+                    game.fog_of_war = False
+                    if screen == "combat":
+                        count = (guardian.spec.hull*5+79)//80
+                        identifiers = list(range(game.next_ship_id, game.next_ship_id+count))
+                        game.ships.extend(Ship(i, "frigate", guardian.system_id) for i in identifiers)
+                        game.next_ship_id += count
+                        game.start_combat(guardian.system_id)
+                        game.combat_move(identifiers[0], 7, 4)
+                        game.combat_fire(identifiers[0], guardian.combat_id)
+                        game.combat_move(identifiers[1], 7, 5)
+                    elif args.screen == "gaia":
+                        # Preview an established colony after its guardian was defeated.
+                        guardian.hull = 0
+                        planet = game.planet_at(guardian.system_id, guardian.planet_id)
+                        planet.colonized, planet.owner, planet.population = True, "player", 9
+                        planet.scientists = 2
+                        planet.buildings = ["factory", "mine", "research_lab", "hydroponic_farm"]
+                        game.selected_planet = planet.id
+                    refresh(game)
                 if args.screen == "result":
                     from orion.research import BRANCHES, choices
                     # Preview a science result without altering a real campaign.
@@ -66,7 +104,9 @@ def main():
                     earth = game.planet_at(0, 2)
                     earth.ascension_gate, earth.gate_charge = True, 5
                     game.check_victory()
-            app.go("galaxy" if args.screen == "fleet_course" else "system" if args.screen == "unexplored" else args.screen)
+            preview_screen = {"fleet_course": "galaxy", "unexplored": "system",
+                              **{name: screen for name, (_, screen) in GUARDIAN_PREVIEWS.items()}}
+            app.go(preview_screen.get(args.screen, args.screen))
             if args.screen in ("fleet", "fleet_course"):
                 app.open_map_fleet(1)
                 app.toggle_fleet_ship(2)

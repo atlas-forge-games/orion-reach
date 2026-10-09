@@ -33,7 +33,7 @@ from .races import RACES, default_rival_race
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
-from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_order_panel
+from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -306,6 +306,9 @@ class App:
     def fleet_route_target(self):
         if not self.keyboard_mode:
             # Match the click handler's topmost-first hit testing in dense clusters.
+            for guardian, rect, _ in reversed(guardian_markers(self,MAP)):
+                if rect.collidepoint(self.mouse):
+                    return guardian.system_id
             for system in reversed(self.game.systems):
                 x,y=self.star_pos(system)
                 if pg.Rect(int(x)-18,int(y)-18,36,36).collidepoint(self.mouse):
@@ -859,7 +862,7 @@ class App:
         if battle is None:
             return
         ready=battle.ready(PLAYER) if battle.status=="active" else []
-        targets=battle.fleet(RIVAL)
+        targets=battle.fleet(battle.enemy(PLAYER))
         if not any(s.id==self.combat_ship_id for s in ready):
             self.combat_ship_id=ready[0].id if ready else None
         if not any(s.id==self.combat_target_id for s in targets):
@@ -906,6 +909,14 @@ class App:
                 self.save_game(autosave=True)
             except RuleError as exc:
                 self.toast(exc,True)
+        from .monsters import alive_at
+        guardian=alive_at(self.game,system_id)
+        if guardian:
+            self.confirm("Face the system guardian?",
+                         f"Your {own} ships face the {guardian.spec.name}. Prize: {guardian.spec.reward}. "
+                         "Your fleet acts first. Fight or retreat; ship losses are permanent.",
+                         "Face guardian",engage)
+            return
         self.confirm("Engage the opposing fleet?",
                      f"Commit your {own} ships against {rival} rival ships at {self.game.systems[system_id].name}. "
                      "Combat ends trade and research agreements and sets relations to -100. Ship losses are permanent.",
@@ -992,7 +1003,7 @@ class App:
                 self.combat_ai_due=self.time+.35
                 self.focus="combat_continue" if self.game.combat.status!="active" else "combat_end_turn"
             return
-        if (self.game.combat.status=="active" and self.game.combat.active_owner==RIVAL
+        if (self.game.combat.status=="active" and self.game.combat.active_owner!=PLAYER
                 and self.time>=self.combat_ai_due):
             self.after_combat_action(self.game.combat_ai_action())
 
@@ -1581,6 +1592,7 @@ class App:
             self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)
+        draw_map_guardians(self,MAP)
         star=state.systems[preview]
         if not self.fleet_popup:
             draw_system_intelligence(self,star)

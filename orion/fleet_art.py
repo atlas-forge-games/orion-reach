@@ -3,9 +3,14 @@
 import pygame as pg
 
 from .ui import CYAN, INK
+from .monster_art import draw_monster
+from .monsters import MONSTERS
 
 
 def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing=0):
+    if kind in MONSTERS:
+        draw_monster(surface, center, kind, scale, facing)
+        return
     x, y = center
     def points(values):
         if facing:

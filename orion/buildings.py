@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 BUILDING_SLOTS = {"Tiny": 4, "Small": 6, "Medium": 8, "Large": 10, "Huge": 12}
-MINERAL_FACTORS = {"Poor": .5, "Average": 1.0, "Rich": 1.5}
+MINERAL_FACTORS = {"Poor": .5, "Average": 1.0, "Rich": 1.5, "Ultra-rich": 3.0}
 
 
 @dataclass(frozen=True)

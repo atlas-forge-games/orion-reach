@@ -150,7 +150,7 @@ class FuelRulesTests(unittest.TestCase):
 class TravelSaveTests(unittest.TestCase):
     def test_v14_fast_and_pending_voyages_keep_eta_and_can_be_cancelled_or_resumed(self):
         for pending in (False, True):
-            game = new_game(seed=2408, with_ai=False)
+            game = new_game(seed=2408, with_ai=False, with_guardians=False)
             destination = max(game.systems, key=lambda s: game.supply_distance(s.id)).id
             ship = game.ship_at(1)
             ship.destination = destination

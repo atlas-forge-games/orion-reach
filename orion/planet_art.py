@@ -6,6 +6,7 @@ import random
 import pygame as pg
 
 COLORS = {
+    "Gaia": ((18, 106, 133), (78, 171, 107), (137, 240, 210)),
     "Terran": ((25, 87, 125), (80, 128, 98), (117, 192, 226)),
     "Ocean": ((18, 93, 156), (59, 131, 125), (99, 194, 245)),
     "Desert": ((167, 98, 54), (216, 153, 83), (231, 181, 113)),
@@ -42,8 +43,8 @@ def globe(biome, seed):
     base, terrain, atmosphere = COLORS[biome]
     result = pg.Surface((SIZE, SIZE), pg.SRCALPHA)
     result.fill((*base, 255))
-    if biome in ("Terran", "Ocean", "Tundra"):
-        count = 22 if biome == "Terran" else 8 if biome == "Ocean" else 34
+    if biome in ("Terran", "Ocean", "Tundra", "Gaia"):
+        count = 22 if biome in ("Terran", "Gaia") else 8 if biome == "Ocean" else 34
         for _ in range(count):
             x, y = rng.randrange(SIZE), rng.randrange(SIZE)
             radius = rng.uniform(12, 53) if biome != "Ocean" else rng.uniform(4, 17)

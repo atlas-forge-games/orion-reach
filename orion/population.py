@@ -5,10 +5,14 @@ from dataclasses import dataclass
 from .buildings import BUILDINGS
 
 POPULATION_LIMITS = {"Tiny": 8, "Small": 12, "Medium": 16, "Large": 20, "Huge": 24}
-BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Volcanic": 0}
-FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Tundra": 2, "Barren": 1, "Volcanic": 1}
+BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Volcanic": 0, "Gaia": 12}
+FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Tundra": 2, "Barren": 1, "Volcanic": 1, "Gaia": 3}
 WORKER_ROLES = ("farmers", "workers", "scientists")
 GROWTH_THRESHOLD = 100
+
+
+def population_capacity(planet):
+    return POPULATION_LIMITS[planet.size] + (4 if planet.biome == "Gaia" else 0)
 
 
 @dataclass(frozen=True)
@@ -18,6 +22,7 @@ class PopulationReport:
     produced: int
     progress: int
     colonized: bool
+    growth_limit: int = 25
 
     @property
     def consumed(self):
@@ -31,7 +36,7 @@ class PopulationReport:
     def growth_rate(self):
         if not self.colonized or not 0 < self.population < self.capacity:
             return 0
-        return max(0, min(25, 5*self.balance))
+        return max(0, min(self.growth_limit, 5*self.balance))
 
     @property
     def turns_to_growth(self):
@@ -66,8 +71,8 @@ def report(planet, bonuses=None):
         produced = BASE_FOOD[planet.biome] + (bonuses or {}).get("colony_food", 0)
         produced += planet.farmers * FARMER_OUTPUT[planet.biome]
         produced += sum(BUILDINGS[b].food for b in planet.buildings)
-    return PopulationReport(planet.population, POPULATION_LIMITS[planet.size], produced,
-                            planet.growth_progress, planet.colonized)
+    return PopulationReport(planet.population, population_capacity(planet), produced,
+                            planet.growth_progress, planet.colonized, 35 if planet.biome == "Gaia" else 25)
 
 
 def advance(planet, start):

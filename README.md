@@ -1,6 +1,6 @@
-# Orion Reach — Python prototype 0.19.0
+# Orion Reach — Python prototype 0.21.0
 
-A playable colony-building and interstellar expansion prototype with population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
@@ -75,6 +75,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 
 ## Included
 
+- Four neutral guardian types protecting Gaia worlds, ultra-rich worlds, ancient ruins and systems with three prize worlds.
 - Skippable Atlas Forge Games studio splash and main-menu logo credit.
 - Animated title screen: **New Game, Load Game, Settings, Quit**, plus About.
 - **Distant Stars** background music, with a separate music toggle and volume control.
@@ -820,6 +821,75 @@ survive saving and loading.
 
 ![Maneuvering, beam fire and destruction](screenshots/combat_animation.gif)
 
+## System guardians and prize worlds
+
+New campaigns contain **2 guarded systems in Compact galaxies, 4 in Standard,
+and 4 in Expansive**. Standard and Expansive include one of each type; Compact
+chooses two different types using the galaxy seed. They are at least 28 light-years from either starting home,
+remain stationary, and attack fleets belonging to either empire on arrival.
+They are neutral creatures, not a third diplomatic empire.
+
+| Guardian | Combat | Protected world |
+| --- | --- | --- |
+| Space Serpent | 48 hull, movement 4; green plasma breath, 8 damage, range 4 | Huge Gaia world, Rich minerals, Normal gravity, 12 building slots |
+| Crystal Guardian | 80 hull, movement 1; cyan crystal ray, 10 damage, range 7 | Large Terran world, Ultra-rich minerals, Normal gravity, 10 building slots |
+| Ancient Sentinel | 96 hull, movement 2; gold ancient lance, 12 damage, range 8 | Large rich Terran world with ancient ruins; +120 RP to the victorious empire |
+| Void Leviathan | 140 hull, movement 3; violet void ray, 15 damage, range 5 | Three worlds: Huge rich Gaia, Large ultra-rich Terran, Large rich Ocean; all Normal gravity |
+
+**Gaia** has 12 natural food per turn, 3 food per farmer, and an extra 4 B
+population capacity: a Huge Gaia world supports **28 B**. With enough food,
+growth progresses by up to 35 points per turn, reaching another billion in
+three turns from zero progress. Ordinary worlds retain their 25-point growth cap.
+**Ultra-rich** mines provide **6 industry each**, before technology bonuses;
+the bonus applies to mines, using the existing mineral rules.
+
+**Ancient ruins** award 120 research points immediately when the Sentinel is
+destroyed. The reward is paid once to the victor, whether player or rival.
+It uses the normal research bank and preserves your technology choices. Retreat,
+defeat, revisiting, colonizing and reloading cannot collect the reward again.
+The cleared rich world can then be settled. The **Leviathan's three worlds** are
+each marked as prizes in the system overview and need separate colony ships.
+
+Guardians block colonization of **every planet in their system**. Arrivals open
+the tactical combat screen after that strategic turn completes. Your fleet acts
+first, so an unarmed scout can choose **Retreat fleet** before taking damage.
+Fight with the existing move, fire and End turn controls. Guardians have their
+own map icons and beam colours and explode when destroyed. Their damage persists
+after a battle or retreat; a defeated guardian never respawns. Bring a colony
+ship to claim a cleared prize world through the normal colonization controls.
+
+With fog on, guardians remain hidden until observed. Each discovered type has a
+distinct **galaxy-map symbol**: green coil for the Serpent, cyan diamond for the
+Crystal Guardian, gold shield for the Sentinel, and violet horned maw for the
+Leviathan. The legend includes only types you have discovered. Click a symbol
+to open its system, or to send selected ships there; hovering also previews the
+route. Symbols and fleet badges have separate hit regions. Destination popups
+warn about danger, and the system overview names the guardian and its prizes. An old survey continues
+to show its last known warning if the rival clears the system out of sight.
+With fog off, all guardians and prizes are visible from the start. Scouts can
+recover ordinary discoveries there only after the guardian is defeated.
+
+The rival's scouts retreat from guardians and avoid repeating known dangerous
+routes. In peacetime the AI gathers three frigates for a Serpent, five for a
+Crystal Guardian, six for a Sentinel or nine for a Leviathan, using its normal economy. Its battles use the same tactical
+rules and are resolved internally; either empire can settle a cleared world.
+Guardian encounters do not alter diplomatic relations or agreements. Guardians
+do not count toward the conquest victory condition.
+
+**Start a new campaign to find all four guardian types.** Loading an older save
+preserves its existing galaxy without inserting monsters or converting planets.
+v0.20 guardians retain their locations, health and prizes and gain the new map symbols.
+
+![Four guardian symbols and the discovery legend](screenshots/guardian_map.png)
+
+![The Leviathan's three prize worlds](screenshots/leviathan_system.png)
+
+![Space Serpent and its protected Gaia world](screenshots/guarded.png)
+
+![Guardian battle](screenshots/monster.png)
+
+![Established Gaia colony](screenshots/gaia.png)
+
 ## Conquest and scientific victory
 
 Open **Objectives · V** from any strategic screen. Both victory paths are always
@@ -995,7 +1065,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.19 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.21 loads all earlier prototype saves without rewriting the
 source file during loading. Existing research banks, construction payments,
 ships and travel times are preserved. Already issued pre-v0.19 journeys keep
 their original faster speed, destination and remaining turns, even outside the
@@ -1032,14 +1102,16 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 15**, including base cruise-speed snapshots, queued departure flags, tactical coordinates, beam loadouts, movement and
+**format version 17**, supporting all four guardian types and their weapons,
+including guardian locations, persistent health and private
+last-seen status, plus base cruise-speed snapshots, queued departure flags, tactical coordinates, beam loadouts, movement and
 firing flags, worker assignments, paused construction progress,
 growth progress, hydroponic farms,
 the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.18 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.20 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1073,6 +1145,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
 | `orion/research_view.py` | Branches, tiers, project progress and research controls |
 | `orion/combat.py` | Tactical positions, movement paths, weapons, side turns, AI, retreat and validation |
+| `orion/monsters.py` | Guardian generation, prize worlds, encounter knowledge and AI expeditions |
+| `orion/monster_art.py` | Procedural guardian illustrations and distinct galaxy-map symbols |
 | `orion/combat_view.py` | Clickable battlefield, movement/range overlays, health bars, logs and results |
 | `orion/combat_effects.py` | Presentation-only movement, beams, impact flashes and destruction explosions |
 | `orion/branding.py` | Supplied studio logo, proportional scaling, splash and menu credit |
@@ -1113,6 +1187,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
 | `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
+| `tests/test_monsters.py` | Guardians, prize economies, interception, retreat, fog, AI, save validation and tactical UI |
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
@@ -1145,13 +1220,23 @@ python main.py --headless --screen rival --screenshot rival.png
 python main.py --headless --screen diplomacy --screenshot diplomacy.png
 python main.py --headless --screen research --screenshot research.png
 python main.py --headless --screen combat --screenshot combat.png
+python main.py --headless --screen guarded --screenshot guarded.png
+python main.py --headless --screen monster --screenshot monster.png
+python main.py --headless --screen crystal --screenshot crystal.png
+python main.py --headless --screen sentinel --screenshot sentinel.png
+python main.py --headless --screen leviathan --screenshot leviathan.png
+python main.py --headless --screen ruins --screenshot ruins.png
+python main.py --headless --screen leviathan_system --screenshot leviathan_system.png
+python main.py --headless --screen guardian_map --screenshot guardian_map.png
+python main.py --headless --screen gaia --screenshot gaia.png
 python main.py --headless --screen objectives --screenshot objectives.png
 python main.py --headless --screen result --screenshot victory.png
 ```
 
 `--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
 `unexplored`, `exploration`, `planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
-`combat`, `objectives`, `result`, and `about`.
+`combat`, `guarded`, `monster`, `crystal`, `sentinel`, `leviathan`, `ruins`,
+`leviathan_system`, `guardian_map`, `gaia`, `objectives`, `result`, and `about`.
 Galaxy and fleet captures use the new starting ships. Exploration, combat and
 result captures use local example states. Screenshot mode does not create
 a campaign save or change your settings.

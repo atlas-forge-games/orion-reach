@@ -9,6 +9,8 @@ from orion.model import new_game
 
 
 def empty_fleet_game(*args, **kwargs):
+    # Legacy and isolated economic scenarios predate system guardians.
+    kwargs.setdefault("with_guardians", False)
     game = new_game(*args, **kwargs)
     game.ships.clear()
     game.next_ship_id = 1

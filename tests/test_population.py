@@ -34,8 +34,9 @@ class PopulationRulesTests(unittest.TestCase):
                 self.earth.size, self.earth.biome = size, biome
                 before = self.game.to_dict()
                 info = self.game.population_report(self.earth)
-                self.assertEqual((info.capacity, info.produced, info.consumed), (capacity, food+2*FARMER_OUTPUT[biome], 8))
-                self.assertEqual(self.earth.population_capacity, capacity)
+                expected_capacity = capacity+(4 if biome == "Gaia" else 0)
+                self.assertEqual((info.capacity, info.produced, info.consumed), (expected_capacity, food+2*FARMER_OUTPUT[biome], 8))
+                self.assertEqual(self.earth.population_capacity, expected_capacity)
                 summarize_empire(self.game)
                 colony_rows(self.game, sort_by="food")
                 self.assertEqual(self.game.to_dict(), before)
@@ -257,7 +258,7 @@ class PopulationSaveTests(unittest.TestCase):
                     planet["farmers"], planet["scientists"] = min(2, planet["population"]), 0
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-            self.assertEqual(SAVE_VERSION, 15)
+            self.assertEqual(SAVE_VERSION, 17)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

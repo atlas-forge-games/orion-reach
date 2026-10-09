@@ -7,10 +7,13 @@ from .research import BRANCHES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import FARMER_OUTPUT
+from . import monsters
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
 
 def available_worlds(game, system):
+    if monsters.known_status(game, system.id, RIVAL) == "alive":
+        return []
     known = game.known_system(system.id, RIVAL)
     return [p for p in known.worlds if not p.colonized and game.can_settle(p, RIVAL)] if known else []
 
@@ -28,6 +31,7 @@ def scouting_orders(game):
         if ship.kind != "scout" or ship.has_course:
             continue
         candidates = [s for s in game.systems if s.id != ship.system_id and s.id not in incoming
+                      and monsters.known_status(game, s.id, RIVAL) != "alive"
                       and s.id not in game.exploration.scanned_rival and game.within_fuel_range(s.id, RIVAL)]
         if not candidates:
             continue
@@ -87,9 +91,9 @@ def development_choice(planet, race_id="kharuun"):
     return ("factory", "trade_center", "research_lab")[(len(planet.buildings)-4) % 3]
 
 
-def military_orders(game):
+def military_orders(game, reserved=()):
     """Assemble escorted invasion groups when hostile; otherwise guard colonies."""
-    ships = sorted((s for s in game.ships_owned_by(RIVAL) if s.kind == "frigate"), key=lambda s: s.id)
+    ships = sorted((s for s in game.ships_owned_by(RIVAL) if s.kind == "frigate" and s.id not in reserved), key=lambda s: s.id)
     colonies = [s for s in game.systems if any(p.owner == RIVAL for p in s.worlds)]
     colonies.sort(key=lambda s: (s.id != game.opponent.home_system, s.id))
     if not colonies:
@@ -165,7 +169,7 @@ def run_ai(game):
         return invasions
     research_choice(game)
     scouting_orders(game)
-    military_orders(game)
+    military_orders(game, monsters.ai_orders(game))
     for ship in sorted(game.ships_owned_by(RIVAL), key=lambda s: s.id):
         if ship.has_course or ship.kind != "colony_ship":
             continue
@@ -183,6 +187,7 @@ def run_ai(game):
                    and len(available_worlds(game, s)) > incoming.get(s.id, 0)]
         if not targets:
             unknown = [s for s in game.systems if not game.system_explored(s.id, RIVAL) and not incoming.get(s.id)
+                       and monsters.known_status(game, s.id, RIVAL) != "alive"
                        and game.within_fuel_range(s.id, RIVAL)]
             if unknown:
                 target = min(unknown, key=lambda s: (game.travel_turns(game.systems[ship.system_id], s, RIVAL), s.id))
@@ -221,6 +226,11 @@ def run_ai(game):
     warships = sum(s.kind == "frigate" for s in game.ships_owned_by(RIVAL)) + sum(
         project.item_id == "frigate" for _, p in colonies for project in p.construction_queue)
     military_limit = min(3, max(1, len(colonies)//2))
+    guarded = [g for g in game.guardians if monsters.known_status(game, g.system_id, RIVAL) == "alive"
+               and game.within_fuel_range(g.system_id, RIVAL)]
+    if guarded:
+        # Reserve enough hull for the strongest known guardian (up to 9 frigates).
+        military_limit = max(military_limit, max((g.spec.hull*5+79)//80 for g in guarded))
     transports = sum(s.kind == "troop_transport" for s in game.ships_owned_by(RIVAL)) + sum(
         project.item_id == "troop_transport" for _, p in colonies for project in p.construction_queue)
     troop_limit = max(((4+p.population)//TROOP_STRENGTH+1 for _, p in known_enemy_colonies(game)), default=0)

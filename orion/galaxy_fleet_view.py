@@ -5,8 +5,10 @@ import pygame as pg
 
 from .colony_view import turn_label
 from .fleet_art import ship_icon
+from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
+from . import monsters
 from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
@@ -57,13 +59,62 @@ def marker_layout(bounds, star_obstacles, preferred_rects):
     return tuple(result)
 
 
-def fleet_markers(app, map_rect):
-    """Return visible, non-overlapping hit regions, clear of stars and their labels."""
+def star_obstacles(app):
     obstacles = []
     for system in app.game.systems:
         x, y = app.star_pos(system)
         obstacles.append(pg.Rect(int(x)-21, int(y)-21, 42, 42))
         obstacles.append(pg.Rect(int(x)+10, int(y)-11, font(11, "mono").size(system.name.upper())[0]+4, 18))
+    return obstacles
+
+
+def known_guardian_kinds(game):
+    seen = {g.kind for g in game.guardians if monsters.known_status(game, g.system_id) is not None}
+    return [kind for kind in monsters.MONSTERS if kind in seen]
+
+
+def guardian_legend_rect(map_rect):
+    return pg.Rect(map_rect.x+12, map_rect.bottom-34, map_rect.w-24, 24)
+
+
+def guardian_markers(app, map_rect):
+    """Known threats have their own symbol and hit target; hidden deaths stay private."""
+    guardians = [g for g in app.game.guardians if monsters.known_status(app.game, g.system_id) == "alive"]
+    obstacles = star_obstacles(app)+[guardian_legend_rect(map_rect).inflate(4, 4)]
+    anchors = [app.star_pos(app.game.systems[g.system_id]) for g in guardians]
+    preferred = [(round(x)-34, round(y)-33, 24, 24) for x, y in anchors]
+    rectangles = marker_layout(tuple(map_rect.inflate(-8, -8)), tuple(tuple(r) for r in obstacles), tuple(preferred))
+    return [(g, pg.Rect(rect), anchor) for g, rect, anchor in zip(guardians, rectangles, anchors)]
+
+
+def draw_map_guardians(app, map_rect):
+    old_clip = app.canvas.get_clip()
+    app.canvas.set_clip(map_rect)
+    for guardian, rect, anchor in guardian_markers(app, map_rect):
+        color = guardian.spec.color
+        pg.draw.line(app.canvas, tuple(c//3 for c in color), anchor, rect.center, 1)
+        panel(app.canvas, rect, (9, 17, 28), color)
+        draw_guardian_symbol(app.canvas, rect.center, guardian.kind, 18)
+        app.button(f"guardian_{guardian.system_id}", "", rect,
+                   lambda sid=guardian.system_id: app.select_star(sid), "hotspot")
+    kinds = known_guardian_kinds(app.game)
+    if kinds:
+        rect = guardian_legend_rect(map_rect)
+        panel(app.canvas, rect, (9, 17, 28))
+        text(app.canvas, "GUARDIANS", (rect.x+10, rect.y+7), 9, MUTED, "mono")
+        for index, kind in enumerate(kinds):
+            x = rect.x+119+index*199
+            draw_guardian_symbol(app.canvas, (x, rect.centery), kind, 15)
+            text(app.canvas, monsters.MONSTERS[kind].name, (x+17, rect.y+6), 11, monsters.MONSTERS[kind].color)
+    app.canvas.set_clip(old_clip)
+
+
+def fleet_markers(app, map_rect):
+    """Visible fleet badges avoid stars, guardian symbols and their legend."""
+    obstacles = star_obstacles(app)
+    obstacles.extend(rect.inflate(4, 4) for _, rect, _ in guardian_markers(app, map_rect))
+    if known_guardian_kinds(app.game):
+        obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
     groups = sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id))
@@ -178,6 +229,7 @@ def draw_fleet_popup(app):
     app.button("fleet_page_next", "→", (x+262, bottom+4, 47, 27), lambda: app.change_manifest_page(1), enabled=app.manifest_page<pages-1)
     text(surface, f"{len(app.fleet_selected_ids)} / {len(ships)} selected" if editable else f"{len(ships)} ships · Read only",
          (x+18, bottom+43), 12, CYAN if own else RIVAL_COLOR)
+    danger = False
     if editable:
         target = game.systems[app.fleet_route_target()]
         keeping = first.departure_pending and target.id == first.destination
@@ -196,10 +248,13 @@ def draw_fleet_popup(app):
                 else "Select at least one ship to give orders." if not app.fleet_selected_ids
                 else "Planets unknown until arrival." if not game.system_explored(target.id)
                 else "Click a star to set the selected ships' course.")
+        danger = not blocked and monsters.known_status(game, target.id) == "alive"
+        if danger:
+            hint = f"Danger: {monsters.at(game, target.id).spec.name} · combat on arrival"
     else:
         text(surface, "Orders are locked during flight." if own else "Only your empire's ships accept orders.", (x+18, bottom+66), 12, MUTED)
         hint = "Escape or × closes this popup."
-    text(surface, shorten(hint, 290, 11), (x+18, bottom+116), 11, GOLD if first.departure_pending else MUTED)
+    text(surface, shorten(hint, 290, 11), (x+18, bottom+116), 11, RED if danger else GOLD if first.departure_pending else MUTED)
 
 
 def draw_fleet(app):
