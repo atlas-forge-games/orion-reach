@@ -81,23 +81,25 @@ def make_contact(turn, name, race_id):
 
 
 def agreement_yields(game, owner):
-    state = game.diplomacy
-    if state is None or owner not in ("player", "rival"):
+    if owner not in game.owners:
         return 0, 0
-    race = RACES[game.race_id if owner == "player" else game.opponent.race_id]
+    race = RACES[game._empire(owner).race_id]
     bonuses = game.bonuses_for(owner)
-    return (TRADE_INCOME+race.trade_bonus+bonuses.get("pact_income", 0) if state.trade_active else 0,
-            RESEARCH_INCOME+race.research_bonus+bonuses.get("pact_research", 0) if state.research_active else 0)
+    states = [game.diplomacy_between(owner, other) for other in game.owners if other != owner]
+    return (sum(TRADE_INCOME+race.trade_bonus+bonuses.get("pact_income", 0) for state in states if state.trade_active),
+            sum(RESEARCH_INCOME+race.research_bonus+bonuses.get("pact_research", 0) for state in states if state.research_active))
 
 
-def action_error(game, action):
+def action_error(game, action, target="rival"):
     if game.strategy_error():
         return game.strategy_error()
     if action not in ACTIONS:
         return "Unknown diplomatic action."
-    state = game.diplomacy
-    if game.opponent is None or state is None:
+    if target not in game.opponents:
         return "Add a rival empire to establish diplomatic contact."
+    state = game.diplomacy_between("player", target)
+    if not game.colony_systems(target):
+        return "This empire has been eliminated."
     if action in ("trade", "research") and getattr(state, f"{action}_active"):
         return "This agreement is already active."
     if action in ("end_trade", "end_research"):
@@ -116,12 +118,12 @@ def action_error(game, action):
     return None
 
 
-def take_action(game, action):
+def take_action(game, action, target="rival"):
     from .model import RuleError
-    error = action_error(game, action)
+    error = action_error(game, action, target)
     if error:
         raise RuleError(error)
-    state, rival = game.diplomacy, game.opponent
+    state, rival = game.diplomacy_between("player", target), game._empire(target)
     if action == "envoy":
         game.credits -= ENVOY_COST
         gain = ENVOY_RELATIONS+RACES[game.race_id].envoy_bonus
@@ -158,10 +160,10 @@ def take_action(game, action):
 
 def advance_diplomacy(game):
     """Resolve distrust before collecting yields, then build trust through treaties."""
-    state = game.diplomacy
-    if state is None:
-        return
-    if state.relations < 0 and (state.trade_active or state.research_active):
-        state.trade_active = state.research_active = False
-        state.record(game.turn+1, f"{game.opponent.name} ended remaining agreements because relations fell below 0.")
-    state.improve(int(state.trade_active)+int(state.research_active))
+    for i, first in enumerate(game.owners):
+        for second in game.owners[i+1:]:
+            state = game.diplomacy_between(first, second)
+            if state.relations < 0 and (state.trade_active or state.research_active):
+                state.trade_active = state.research_active = False
+                state.record(game.turn+1, f"{game.empire_name_for(second)} ended remaining agreements because relations fell below 0.")
+            state.improve(int(state.trade_active)+int(state.research_active))

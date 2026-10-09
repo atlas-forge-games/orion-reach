@@ -38,7 +38,7 @@ def draw_system_intelligence(app, star):
     else:
         owners = {p.owner for p in known.worlds if p.colonized}
         allegiance = ("Shared system" if len(owners)>1 else "Your empire" if "player" in owners else
-                      "Helios" if "rival" in owners else "Unclaimed")
+                      " / ".join(game.empire_name_for(o) for o in game.opponents if o in owners) or "Unclaimed")
         survey = game.exploration.survey(star.id)
         label = "LIVE INTELLIGENCE" if live else f"OBSERVED ON TURN {survey.last_seen}"
         text(surface, label, (1075, 462), 10, CYAN if live else GOLD, "mono", 1)

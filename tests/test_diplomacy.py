@@ -290,7 +290,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.app.go("galaxy")
         self.app.render()
 
-    def test_setup_selects_both_races_with_letterboxed_mouse_coordinates(self):
+    def test_setup_selects_player_race_and_rival_count_with_letterboxed_mouse_coordinates(self):
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.click("new")
@@ -300,10 +300,12 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.click("race_aelari")
         self.assertEqual(self.app.empire, "Custom civilization")
         self.click("setup_next")
-        self.click("rival_race_terran")
+        self.click("rival_count_3")
         self.app.seed = "2408"
         self.click("launch")
-        self.assertEqual((self.app.game.race_id, self.app.game.opponent.race_id), ("aelari", "terran"))
+        self.assertEqual(self.app.game.race_id, "aelari")
+        self.assertEqual(len(self.app.game.opponents), 3)
+        self.assertNotIn("aelari", [r.race_id for r in self.app.game.opponents.values()])
         restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(restored, self.app.game)
 

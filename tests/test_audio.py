@@ -14,7 +14,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.audio import Audio, MUSIC_PATH
-from orion.model import new_game
+from scenarios import fixed_start_game as new_game
 from orion.storage import Storage
 
 

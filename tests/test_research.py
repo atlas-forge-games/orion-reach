@@ -15,7 +15,7 @@ import pygame as pg
 from orion.buildings import BUILDINGS
 from orion.empire import summarize_empire
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
-from scenarios import empty_fleet_game as new_game
+from scenarios import empty_fleet_game as new_game, place_near
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -156,7 +156,7 @@ class ResearchRulesTests(unittest.TestCase):
     def test_speed_applies_to_new_voyages_and_in_flight_save_keeps_departure_speed(self):
         game = new_game(seed=2408, with_ai=False)
         origin = game.systems[0]
-        destination = max((s for s in game.systems if game.within_fuel_range(s.id)), key=lambda s: travel_turns(origin, s))
+        destination = place_near(game, 1, distance=7)
         game.ships = [Ship(1, "colony_ship", 0), Ship(2, "colony_ship", 0)]
         game.next_ship_id = 3
         original = game.send_ship(1, destination.id)
@@ -213,6 +213,7 @@ class ResearchSaveTests(unittest.TestCase):
         game.planet_at(0, 2).advance_construction()
         game.ships = [Ship(1, "colony_ship", 0)]
         game.next_ship_id = 2
+        place_near(game, 1)
         game.send_ship(1, 1)
         with tempfile.TemporaryDirectory() as folder:
             game.ship_at(1).departure_pending = False  # Legacy course snapshot.
@@ -264,6 +265,7 @@ class ResearchSaveTests(unittest.TestCase):
                 GameState.from_dict(data)
         game.ships = [Ship(1, "colony_ship", 0)]
         game.next_ship_id = 2
+        place_near(game, 1)
         game.send_ship(1, 1)
         for speed in (True, -1, 100, "25"):
             data = game.to_dict()

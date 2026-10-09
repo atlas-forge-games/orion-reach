@@ -14,7 +14,7 @@ import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
 from orion.model import ConstructionProject, GameState, RuleError, SaveError, Ship
-from scenarios import empty_fleet_game as new_game
+from scenarios import empty_fleet_game as new_game, place_near, use_nearby_system
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.
@@ -24,9 +24,11 @@ from orion.storage import SAVE_VERSION, Storage
 
 
 def remote_world(game):
-    return min(((s, p) for s in game.systems[1:] for p in s.worlds
-                if p.habitability > 0 and game.within_fuel_range(s.id)),
-               key=lambda row: (travel_turns(game.systems[0], row[0]), row[0].id, row[1].id))
+    system, planet = min(((s, p) for s in game.systems[1:] for p in s.worlds
+                          if p.habitability > 0),
+                         key=lambda row: (travel_turns(game.systems[0], row[0]), row[0].id, row[1].id))
+    use_nearby_system(game, system.id)
+    return system, planet
 
 
 class ColonizationRulesTests(unittest.TestCase):
@@ -86,6 +88,7 @@ class ColonizationRulesTests(unittest.TestCase):
     def test_distance_travel_arrival_and_no_early_or_duplicate_arrival(self):
         source, target = self.game.systems[:2]
         source.x, source.y, target.x, target.y = .1, .1, .1+10/140, .1
+        self.game.technology.completed.append("lightweight_alloys")  # A 10 ly voyage needs improved tanks.
         self.game.ships = [Ship(1, "colony_ship", 0)]
         self.game.next_ship_id = 2
         self.assertEqual(self.game.send_ship(1, 1), 5)
@@ -107,6 +110,7 @@ class ColonizationRulesTests(unittest.TestCase):
             with self.assertRaises(RuleError):
                 self.game.send_ship(ship_id, destination)
             self.assertEqual(self.game.to_dict(), before)
+        place_near(self.game, 1)
         self.game.send_ship(1, 1)
         self.game.ship_at(1).departure_pending = False  # Lock an actual flight, not a pending course.
         before = self.game.to_dict()

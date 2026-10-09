@@ -1,18 +1,81 @@
-# Orion Reach — Python prototype 0.23.0
+# Orion Reach — Python prototype 0.25.1
 
-A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and an AI rival for a
+A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.23: eleven races and two-step setup
+## New in v0.25.1: fully random surroundings
+
+Starting neighborhoods are now left as generated. No stars are moved closer to
+an empire and no nearby planets are made colonizable. You may start with several
+reachable neighbors, an isolated home system, or no habitable world in range.
+This applies to both the player and AI empires; the same seed and options still
+reproduce the same galaxy. Start a **new campaign** to use this change.
+
+## Rectangular galaxies and shorter fuel range
+
+New galaxies use the full rectangular map, including the corners. Player and
+rival starting locations are random within that area. Star names move around
+nearby stars to remain readable and stay inside the map.
+
+The **base fuel range is now 7 ly instead of 35 ly**: one-fifth of the previous
+radius. This applies to new travel orders for every empire. Speed remains
+**2 ly per turn**. The Wanderers' starting bonus is also divided by five,
+from +15 to +3 ly, giving them 10 ly initially instead of 50. Fuel research
+still adds +10 and +15 ly, on top of each race's starting range.
+
+The number of reachable neighboring systems and their planets are random.
+Further expansion depends on new colonies and fuel-tank research; an isolated
+start may need better fuel tanks before exploring another system. Guardians
+remain at least 28 ly from starting home systems.
+
+Start a **new campaign** for the rectangular layout. Existing saves keep their
+system positions and already-issued journeys, including their remaining travel
+times. New or redirected orders use the reduced range; returning to your own
+colonies is always possible.
+
+![Rectangular galaxy and the smaller starting fuel circle](screenshots/fleet.png)
+
+## Random rivals and starting positions
+
+On the second **New Game** screen, choose **0–5 rivals**. Their races are drawn
+randomly without duplicates, excluding your own race. Empire name, galaxy size,
+seed and fog of war remain on this screen; your race is still selected first.
+
+Your home system, **Sol**, now appears at a random location. Rival home systems
+are also chosen randomly, with a preference for at least 20 light-years between
+starting empires. When a crowded map has no suitable separated system, the next
+home uses the most distant available system. Every empire starts in a different
+system with a standard Terran homeworld, 8 billion inhabitants, 120 credits,
+two scouts and one colony ship. Racial traits apply normally. Reusing the same
+seed and settings reproduces the galaxy, races and starting locations.
+
+Every rival has its own economy, research, colonies, fleets, diplomatic
+relationships and exploration knowledge. Use the arrows at the top of
+**Diplomacy** and **Rival report** to switch contacts. Map colors identify each
+empire. If several rival fleets share your system, use the target selector
+beside **Engage opposing fleet** to choose whom to fight. Battles between AI
+empires resolve automatically using the same tactical rules.
+
+Conquest requires eliminating **all** rivals; losing your own last colony ends
+the campaign. Any empire can pursue the scientific victory. Guardian systems
+stay away from every starting home, so crowded maps may contain fewer guardians.
+Choosing zero rivals allows a solo exploration campaign.
+
+Existing saves keep their original opponents, positions and progress. Start a
+**new campaign** to use the new rival count and randomized starts.
+
+![Random empire starting locations with fog disabled](screenshots/multiple_empires.png)
+
+## Races and two-step setup
 
 **New Game** first opens a portrait gallery of all eleven races. Select a race
 to see its identity and implemented abilities, then choose **Continue → Galaxy
 options**. The second screen contains your empire name, seed, galaxy size,
-fog-of-war toggle and rival race. **Change race**, Back and Escape return to the
+fog-of-war toggle and rival count. **Change race**, Back and Escape return to the
 first screen without losing your settings. Custom empire names are preserved.
 
 Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same traits:
@@ -21,7 +84,7 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | --- | --- |
 | Lithar | Settle every biome; double population capacity; half food consumption, rounded up; one-quarter normal growth rate. |
 | Varkesh | Ships cost 20% fewer credits; population capacity +50%; colony research −20%. |
-| Wanderers | +15 ly fuel range from colonies; ships cost 15% fewer credits; colony industry −15%. |
+| Wanderers | +3 ly fuel range from colonies; ships cost 15% fewer credits; colony industry −15%. |
 | Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
 | Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
@@ -194,13 +257,13 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Distant Stars** background music, with a separate music toggle and volume control.
 - **Continue** appears when a campaign is already open in the current session.
 - Two-step New Game setup: choose one of eleven illustrated races, then set
-  empire name, galaxy size (24/48/72 systems), optional seed, **Fog of war ON/OFF** and rival race.
+  empire name, galaxy size (24/48/72 systems), optional seed, **Fog of war ON/OFF** and rival count.
 - Click a star on the galaxy map to open a dedicated **solar-system screen**.
 - Every new empire begins with **two scouts and one colony ship** in its home system.
 - Click a **fleet badge** to open a small popup on the galaxy map. Select ships,
   then click a destination star. Click their departure star to cancel before End Turn.
 - Early ships travel at **2 light-years per turn** and can reach destinations
-  within **35 light-years of any owned colony**. Range circles and route feedback
+  within **7 light-years of any owned colony**, plus racial and research bonuses. Range circles and route feedback
   help choose destinations; colony expansion and fuel-tank research extend supply.
 - Build cheap **scouts** to reveal worlds and recover one-time discoveries.
   **Exploration · X** records recovered caches, archives and derelict probes.
@@ -238,7 +301,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - The **Helios Directorate** develops its economy, builds colony ships, travels
   between systems and settles unclaimed worlds on each End Turn. Open
   **Empire → Rival report** to inspect its economy, colonies and recent activity.
-- Cyan marks your colonies and ships; orange marks the rival's. Rival worlds
+- Cyan marks your colonies and ships; each rival has a distinct map color. Rival worlds
   can be surveyed, with construction controls disabled.
 - **Diplomacy · D** opens race portraits and profiles, relations, envoys, gifts, trade pacts,
   research agreements and the rival's recent responses. Treaty income is
@@ -520,21 +583,21 @@ colonies. These habitats do not change the world's natural habitability.
 
 **Fuel tanks:** in Materials & Chemistry, **Lightweight Alloys** adds 10 ly of
 fuel range and **Composite Structures** adds another 15 ly. Choosing both takes
-your range from **35 → 45 → 60 ly**, while retaining their existing discounts.
+your base range from **7 → 17 → 32 ly**, while retaining their existing discounts.
 They follow the normal exclusive choices: selecting the other option in a tier
 forgoes that tank upgrade. Range upgrades apply to all of that empire's ships;
 drive technologies increase speed separately. The AI uses the same rules.
 
 ![Research screen](screenshots/research.png)
 
-## Basic AI opponent
+## Basic AI opponents
 
-New games include the **Helios Directorate**, starting on a habitable world
-far from your colonies. Both empires start with one colony, 8 billion inhabitants,
+New games include your chosen number of rivals, with randomly selected races
+and starting systems. Every empire starts with one colony, 8 billion inhabitants,
 120 credits, no buildings, **two scouts and one colony ship** in their home system.
 These ships are free starting assets, independent of race and the fog setting.
-The rival's starting world retains its
-generated size, biome and minerals, so its building capacity can differ from Earth's.
+New rival homeworlds use a medium Terran planet with average minerals and normal
+gravity. Existing campaigns retain their original homeworlds.
 
 **Continuing a v0.5 or earlier campaign:** load your save, open **Empire → Rival
 report**, then click **Add rival**. This uses an unclaimed habitable world in a
@@ -561,7 +624,7 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
   building slots, ship costs, travel and settlement use the same rules.
   The AI receives no extra income or production. It can have up to three colony
   ships active or queued, depending on its colony count and remaining worlds.
-- **End Turn** issues the AI's orders, records starting yields, advances both
+- **End Turn** issues each AI's orders, records starting yields, advances all
   empires' travel and construction, then deposits income in their respective
   treasuries, then grows populations using starting food balances. Newly
   completed farms and food research affect the next turn's growth.
@@ -572,7 +635,7 @@ remains, Add rival is disabled. Adding a rival autosaves the campaign.
   activity are not shown. With fog off it shows finances, output, all ships, colonies
   and the latest six activity entries. Click **Survey** to inspect a colony.
 - Your Empire Overview and Fleets list only your assets. A system can contain
-  colonies from both empires, shown with cyan and orange rings. Hostile rivals
+  colonies from several empires, shown with their respective colored rings. Hostile rivals
   build escorted invasion groups to capture colonies. In peacetime, the AI
   develops its economy and research toward an Ascension Gate.
 
@@ -612,8 +675,8 @@ this first architectural style. Colony graphics work with existing saves.
 
 ## Races and diplomacy
 
-Choose your own race and the rival's race in **New Game**. There is still one
-rival empire, the Helios Directorate. These are original prototype identities:
+Choose your own race in **New Game**, then the number of rivals. Their races are
+selected randomly. These are the three original prototype identities:
 
 | Race | Identity | Diplomatic trait | AI preferences |
 | --- | --- | --- | --- |
@@ -623,10 +686,11 @@ rival empire, the Helios Directorate. These are original prototype identities:
 
 These original three races retain their diplomatic traits and standard colony
 rules. The eight additional races and their economic, growth and exploration
-traits are listed in **New in v0.23** above. Traits apply to the player and AI.
-For this version, every player race starts on Earth; the rival starts on a
-distant generated world. A race and an empire are separate: two empires may
-belong to the same race. Changing races does not overwrite a custom empire name.
+traits are listed in **Races and two-step setup** above. Traits apply to the player and AI.
+Every player race starts on Earth, in a randomly placed Sol system; rivals start
+on separate generated worlds. New expeditions use a different race for every
+empire. Existing saves can retain two empires of the same race. Changing races
+does not overwrite a custom empire name.
 
 Each race has an illustrated portrait on its New Game card. Diplomacy shows
 the rival's portrait and a smaller portrait of your own race. The PNG files live
@@ -637,14 +701,15 @@ instead. Portraits also work with existing saves.
 
 ![Race selection with portraits](screenshots/setup.png)
 
-Open **Diplomacy** from the top bar or press **D**. The screen shows the rival's
+Open **Diplomacy** from the top bar or press **D**. Use its contact arrows to
+select a rival. The screen shows that rival's
 identity, a relations score from -100 to +100, agreement benefits and acceptance
 thresholds. An offer is accepted immediately when relations meet that rival
 race's threshold; otherwise it is declined with a reason. This is deterministic,
 with no hidden dice roll. The rival responds to your offers; unsolicited AI
 diplomatic proposals are not implemented yet.
 
-![Diplomacy with race portraits](screenshots/diplomacy.png)
+![Diplomacy with rival contact selector](screenshots/multiple_diplomacy.png)
 
 | Action | Effect | Cooldown |
 | --- | --- | --- |
@@ -774,7 +839,7 @@ order is needed between planets in the same system.
 | Cancellation | Shipyard lists every queued project; refunds follow the same unspent-work rule as buildings |
 | Travel time | `ceil(distance in ly / (2 * (1 + speed bonus / 100)))`, minimum one turn between distinct systems |
 | Distance | `100 * hypot(1.4 * dx, dy)` using galaxy coordinates |
-| Fuel range | Destination must be within 35 ly of any owned colony; fuel-tank research adds 10 and 15 ly |
+| Fuel range | Destination must be within 7 ly of any owned colony, plus racial bonuses; fuel-tank research adds 10 and 15 ly |
 | Travel restrictions | Orders can be changed or cancelled before End Turn; no mid-flight rerouting or consumable fuel resource |
 | Settlement | Requires an arrived colony ship in the target system; consumes exactly one ship |
 | Population | 1 B starting colonists plus Biology bonuses; included in ship cost, with no homeworld deduction |
@@ -784,10 +849,10 @@ finishes in orbit and receives no automatic travel order. The colony economy
 starts on the next End Turn after settlement. Ship costs, initial colonists,
 queue capacity and travel speed are defined in `orion/production.py`.
 
-The nearest systems usually take roughly **five turns** at the initial speed;
-more distant neighbours take longer. In the example galaxy (seed 2408), Sol to
-Bellatrix takes 5 turns and Sol to Procyon takes 13. Galaxy size and the generated
-distances determine the exact time. Researching both drive technologies raises
+Systems within the base **7 ly** range take roughly **3–4 turns** at the initial
+speed, when any are present. More distant neighbors take longer. Galaxy size,
+randomized starting positions and the generated distances determine the exact
+time. Researching both drive technologies raises
 speed to 3.5 ly per turn.
 
 Range is measured from **colonized planets**, represented by their system's
@@ -803,8 +868,8 @@ Issued journeys retain their orders if supply changes before they arrive.
 
 ![Fleet selection](screenshots/fleet.png)
 
-- **Cyan badges** are your fleets; **orange badges** belong to the rival. Click
-  either to open a compact popup beside the map. Badges are placed clear of star click targets;
+- **Cyan badges** are your fleets; each rival has a distinct badge color. Click
+  any badge to open a compact popup beside the map. Badges are placed clear of star click targets;
   a short line connects each badge to its orbit or position along a flight path.
 - Ships of one empire sharing an orbit and course form a fleet automatically. **All**,
   **Clear**, and individual checkboxes let you send all or part of it. Selections
@@ -940,7 +1005,7 @@ survive saving and loading.
 New campaigns contain **2 guarded systems in Compact galaxies, 4 in Standard,
 and 4 in Expansive**. Standard and Expansive include one of each type; Compact
 chooses two different types using the galaxy seed. They are at least 28 light-years from either starting home,
-remain stationary, and attack fleets belonging to either empire on arrival.
+remain stationary, and attack fleets belonging to any empire on arrival.
 They are neutral creatures, not a third diplomatic empire.
 
 | Guardian | Combat | Protected world |
@@ -986,7 +1051,7 @@ recover ordinary discoveries there only after the guardian is defeated.
 The rival's scouts retreat from guardians and avoid repeating known dangerous
 routes. In peacetime the AI gathers three frigates for a Serpent, five for a
 Crystal Guardian, six for a Sentinel or nine for a Leviathan, using its normal economy. Its battles use the same tactical
-rules and are resolved internally; either empire can settle a cleared world.
+rules and are resolved internally; any empire can settle a cleared world.
 Guardian encounters do not alter diplomatic relations or agreements. Guardians
 do not count toward the conquest victory condition.
 
@@ -1134,7 +1199,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Open / close Fleets | F, or the Fleets button while playing |
 | Open / close the exploration log | X, or Exploration on the galaxy map |
 | Choose fog of war | Fog of war ON/OFF in New Game setup |
-| Inspect a fleet | Click its cyan or orange badge on the galaxy map |
+| Inspect a fleet | Click its colored badge on the galaxy map |
 | Send selected ships together | Fleet badge → select ships in the popup → click a star |
 | Preview a group journey | Hover a star while choosing the destination |
 | Cancel a queued departure | Select its fleet/ships and click the origin star before End Turn |
@@ -1161,7 +1226,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Pause / resume combat | Escape or Menu; Resume returns to the same battle |
 | Mute music / adjust its volume | Settings → Background music / Music volume |
 | Choose your race | New Game → first screen |
-| Set galaxy options and rival race | Continue → Galaxy options |
+| Set galaxy options and rival count | Continue → Galaxy options |
 
 ## Save locations
 
@@ -1180,8 +1245,12 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.23 loads all earlier prototype saves without rewriting the
-source file during loading. Existing research banks, construction payments,
+**Compatibility:** v0.25.1 loads all earlier prototype saves without rewriting the
+source file during loading. Existing empire identities, home positions and rival
+counts are retained; the rectangular map and fully random starting neighborhoods
+require a new campaign. Saved courses retain their original destinations and durations;
+new courses use the smaller base fuel range.
+Existing research banks, construction payments,
 ships and travel times are preserved. Already issued pre-v0.19 journeys keep
 their original faster speed, destination and remaining turns, even outside the
 new supply radius. New or redirected orders use the slower speed and range rules.
@@ -1217,7 +1286,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 19**, identifying the expanded race catalogue and racial rules.
+**format version 20**, identifying multiple rival empires, bilateral relations,
+and independent exploration and guardian knowledge for every empire.
 The existing schema retains saved blueprints, immutable ship and construction
 loadouts, and remaining tactical shields. It also supports all four guardian types and their weapons,
 including guardian locations, persistent health and private
@@ -1251,6 +1321,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
 | `orion/ai.py` | Deterministic rival construction, travel and settlement policy |
+| `orion/empires.py` | Stable empire identifiers and distinct map colors |
+| `orion/rival_selector.py` | Shared diplomatic contact and intelligence selector |
 | `orion/rival_view.py` | Rival economy, activity and colony survey report |
 | `orion/races.py` | Eleven race identities, racial traits and AI preferences |
 | `orion/race_art.py` | Cached race portraits and procedural fallback seals |
@@ -1295,10 +1367,12 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
 | `tests/test_starting_fleets.py` | Starting ships, AI exploration, revocable departures, fog, battle timing and save compatibility |
 | `tests/test_fuel_range.py` | Travel speed, colony supply, tank research, AI, old voyages and map range feedback |
+| `tests/test_galaxy_layout.py` | Rectangular coverage, random and isolated starting neighborhoods, seed reproducibility and readable map labels |
 | `tests/scenarios.py` | Explicit empty-fleet scenarios for production and legacy regression tests |
 | `tests/test_exploration.py` | Fog boundaries, discoveries, scouts, private AI knowledge, saves and UI flows |
 | `tests/test_audio.py` | MP3 playback, mute/resume, independent controls, settings migration and device failures |
 | `tests/test_ai.py` | Ownership, independent economies, AI expansion, save continuity and rival controls |
+| `tests/test_multiple_empires.py` | Random homes and races, multiple AIs, bilateral actions, combat targets, fog, victory and saves |
 | `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |

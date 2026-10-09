@@ -1,7 +1,8 @@
 """A read-only view of the rival economy, colonies and recent decisions."""
 
 from .empire import colony_rows, summarize_empire
-from .model import RIVAL
+from .rival_selector import draw_rival_selector
+from .empires import empire_color
 from .production import PROJECTS
 from .races import RACES
 from .research import TECHNOLOGIES
@@ -11,7 +12,10 @@ from .ui import FAINT, GOLD, INK, MUTED, RIVAL_COLOR, panel, paragraph, shorten,
 
 def draw_rival(app):
     surface, game = app.canvas, app.game
-    if game.fog_of_war and game.opponent:
+    owner = app.selected_rival_id()
+    rival = game.opponents.get(owner)
+    color = empire_color(owner)
+    if game.fog_of_war and rival:
         draw_surveyed_rival(app)
         return
     app.chrome("RIVAL INTELLIGENCE")
@@ -19,11 +23,11 @@ def draw_rival(app):
     app.button("rival_back", f"←  {back_name}", (64, 124, 269, 46), lambda: app.go(app.rival_return), "ghost")
     app.button("rival_galaxy", "Galaxy map", (349, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("rival_diplomacy", "Diplomacy · D", (537, 124, 226, 46), app.open_diplomacy)
-    text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
-    rival = game.opponent
+    draw_rival_selector(app)
+    rival = game.opponents.get(owner)
     text(surface, rival.name if rival else "A rival on the horizon", (64, 190), 43, INK, "title")
     race_name = RACES[rival.race_id].name.upper() if rival else "AI EMPIRE"
-    text(surface, f"{race_name}  /  EXPANSION & DEVELOPMENT", (66, 255), 11, RIVAL_COLOR, "mono", 1)
+    text(surface, f"{race_name}  /  EXPANSION & DEVELOPMENT", (66, 255), 11, color, "mono", 1)
     if rival is None:
         panel(surface, (64, 309, 1312, 439))
         text(surface, "This campaign has no rival yet.", (94, 343), 29, INK, "title")
@@ -38,10 +42,10 @@ def draw_rival(app):
         home = game.opponent_home()
         caption = reason or ("Its homeworld must be located through exploration." if game.fog_of_war else
                              f"Starting world: {home[1].name} · {home[0].name} system")
-        text(surface, shorten(caption, 928, 14), (405, 683), 14, RIVAL_COLOR)
+        text(surface, shorten(caption, 928, 14), (405, 683), 14, color)
     else:
-        summary = summarize_empire(game, owner=RIVAL)
-        ships = game.ships_owned_by(RIVAL)
+        summary = summarize_empire(game, owner=owner)
+        ships = game.ships_owned_by(owner)
         stats = [
             ("COLONIES", str(summary.colonies), f"{summary.population} B inhabitants"),
             ("TREASURY", f"{rival.credits:,} CR", f"+{summary.income} CR / turn"),
@@ -53,25 +57,25 @@ def draw_rival(app):
             x = 64+i*267
             panel(surface, (x, 291, 244, 92))
             text(surface, label, (x+17, 304), 9, MUTED, "mono", 1)
-            text(surface, value, (x+17, 325), 24, RIVAL_COLOR)
+            text(surface, value, (x+17, 325), 24, color)
             text(surface, caption, (x+17, 360), 11, MUTED)
 
         panel(surface, (64, 407, 739, 371))
         text(surface, "RECENT ACTIVITY", (87, 427), 11, GOLD, "mono", 2)
         for i, event in enumerate(reversed(rival.events[-6:])):
             y = 472+i*47
-            text(surface, f"T{event.turn:03}", (88, y), 11, RIVAL_COLOR, "mono")
+            text(surface, f"T{event.turn:03}", (88, y), 11, color, "mono")
             text(surface, shorten(event.message, 616, 13), (157, y-1), 13, INK)
         text(surface, "Acts on End Turn · Same costs, industry and travel rules", (88, 751), 11, MUTED)
 
         panel(surface, (827, 407, 549, 371))
-        rows = colony_rows(game, owner=RIVAL)
+        rows = colony_rows(game, owner=owner)
         last = max(0, (len(rows)-1)//5)
         app.rival_page = min(max(0, app.rival_page), last)
         text(surface, "RIVAL COLONIES", (849, 427), 11, GOLD, "mono", 2)
         for i, (system, planet) in enumerate(rows[app.rival_page*5:app.rival_page*5+5]):
             y = 464+i*50
-            name = planet.name + (" · HQ" if game.headquarters(RIVAL) == (system, planet) else "")
+            name = planet.name + (" · HQ" if game.headquarters(owner) == (system, planet) else "")
             text(surface, shorten(name, 349, 15), (849, y), 15, INK)
             project = planet.construction_queue[0].spec.name if planet.construction_queue else "Idle"
             text(surface, f"{len(planet.buildings)} buildings · {project}", (850, y+24), 11, MUTED)
@@ -80,7 +84,7 @@ def draw_rival(app):
         text(surface, f"{app.rival_page+1} / {last+1}", (850, 750), 11, FAINT, "mono")
         app.button("rival_previous", "← Prev", (1090, 730, 126, 34), lambda: app.change_rival_page(-1), enabled=app.rival_page>0)
         app.button("rival_next", "Next →", (1228, 730, 126, 34), lambda: app.change_rival_page(1), enabled=app.rival_page<last)
-        text(surface, "Survey rival colonies to plan invasions. Objectives · V tracks both empires' progress toward victory.",
+        text(surface, "Survey rival colonies to plan invasions. Objectives · V tracks progress toward victory.",
              (65, 798), 13, MUTED)
     app.button("rival_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)
@@ -97,14 +101,18 @@ def draw_rival(app):
 
 def draw_surveyed_rival(app):
     surface, game = app.canvas, app.game
+    owner = app.selected_rival_id()
+    rival = game.opponents.get(owner)
+    color = empire_color(owner)
     app.chrome("RIVAL INTELLIGENCE")
     app.button("rival_back", "←  Back", (64, 124, 225, 46), lambda: app.go(app.rival_return), "ghost")
     app.button("rival_galaxy", "Galaxy map", (307, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
     app.button("rival_diplomacy", "Diplomacy · D", (498, 124, 226, 46), app.open_diplomacy)
-    text(surface, game.opponent.name, (64, 190), 43, INK, "title")
+    draw_rival_selector(app)
+    text(surface, rival.name, (64, 190), 43, INK, "title")
     text(surface, "Only surveyed colonies and currently visible fleets appear here.", (66, 251), 15, MUTED)
-    rows = known_rival_colonies(game)
-    ships = [s for s in game.visible_ships() if s.owner == RIVAL]
+    rows = known_rival_colonies(game, owner)
+    ships = [s for s in game.visible_ships() if s.owner == owner]
     stats = [("KNOWN COLONIES", str(len(rows)), "Last-known ownership"),
              ("VISIBLE SHIPS", str(len(ships)), "Observed systems only"),
              ("TREASURY & RESEARCH", "Unknown", "Exploration does not reveal these totals")]
@@ -112,7 +120,7 @@ def draw_surveyed_rival(app):
         x = 64+index*446
         panel(surface, (x, 289, 420, 99))
         text(surface, label, (x+19, 303), 10, MUTED, "mono", 1)
-        text(surface, value, (x+18, 327), 25, RIVAL_COLOR)
+        text(surface, value, (x+18, 327), 25, color)
         text(surface, caption, (x+19, 368), 11, MUTED)
     panel(surface, (64, 411, 1312, 382))
     text(surface, "SURVEYED RIVAL COLONIES", (88, 434), 11, GOLD, "mono", 1)

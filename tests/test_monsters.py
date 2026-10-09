@@ -16,7 +16,8 @@ import pygame as pg
 
 from orion import ai, combat, exploration, monsters
 from orion.buildings import BUILDINGS
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import fixed_start_game as new_game
 from orion.production import distance_ly
 from orion.storage import Storage
 from scenarios import place_near
@@ -99,7 +100,7 @@ class GuardianRulesTests(unittest.TestCase):
     def test_arrival_starts_battle_and_scout_can_retreat_before_being_hit(self):
         game = new_game(seed=2408, with_ai=False)
         guardian = game.guardians[0]
-        place_near(game, guardian.system_id, distance=30)
+        place_near(game, guardian.system_id, distance=6)
         duration = game.send_ship(1, guardian.system_id)
         for _ in range(duration-1):
             game.advance_turn()
@@ -231,7 +232,7 @@ class GuardianRulesTests(unittest.TestCase):
         guardian = next(g for g in game.guardians if g.kind == "crystal_guardian")
         guardian.known_rival = "alive"
         home = game.opponent.home_system
-        place_near(game, guardian.system_id, anchor=home, distance=30)
+        place_near(game, guardian.system_id, anchor=home, distance=6)
         game.ships.clear()
         ships = fleet(game, home, ("frigate",)*4, RIVAL)
         reserved = monsters.ai_orders(game)
@@ -331,7 +332,7 @@ class GuardianExpansionTests(unittest.TestCase):
             guardian = next(g for g in game.guardians if g.kind == kind)
             guardian.known_rival = "alive"
             home = game.opponent.home_system
-            place_near(game, guardian.system_id, anchor=home, distance=30)
+            place_near(game, guardian.system_id, anchor=home, distance=6)
             game.ships.clear()
             ships = fleet(game, home, ("frigate",)*(count-1), RIVAL)
             ai.military_orders(game, monsters.ai_orders(game))
@@ -388,6 +389,7 @@ class GuardianSaveTests(unittest.TestCase):
 
     def test_v15_load_does_not_add_guardians_or_change_worlds_and_orders(self):
         game = new_game(seed=2408, with_guardians=False)
+        place_near(game, 1)
         game.send_ship(1, 1)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
@@ -477,7 +479,7 @@ class GuardianUITests(unittest.TestCase):
         app = self.app
         app.game = new_game(seed=2408, fog_of_war=False)
         guardian = next(g for g in app.game.guardians if g.kind == "ancient_sentinel")
-        place_near(app.game, guardian.system_id, distance=30)
+        place_near(app.game, guardian.system_id, distance=6)
         app.go("galaxy")
         app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.click(f"guardian_{guardian.system_id}")

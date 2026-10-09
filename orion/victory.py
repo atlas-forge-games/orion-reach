@@ -4,9 +4,6 @@ from dataclasses import dataclass
 
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, TROOP_STRENGTH
 
-OWNERS = ("player", "rival")
-
-
 @dataclass(frozen=True)
 class CampaignResult:
     winner: str | None
@@ -41,12 +38,12 @@ def invasion_strength(game, system_id, planet_id, owner="player"):
 def invasion_error(game, system_id, planet_id, owner="player"):
     if game.strategy_error():
         return game.strategy_error()
-    if owner not in OWNERS or game.opponent is None:
+    if owner not in game.owners or not game.opponents:
         return "No opposing empire is available."
     planet = game.planet_at(system_id, planet_id)
     if planet.owner is None or planet.owner == owner:
         return "Choose a colony belonging to the opposing empire."
-    if game.fleet_at(system_id, planet.owner):
+    if game.foreign_fleet(system_id, owner):
         return "Clear all opposing ships from this system before invading."
     if not troop_transports(game, system_id, owner):
         return "Bring troop transports into orbit first."
@@ -59,6 +56,7 @@ def invade(game, system_id, planet_id, owner="player"):
     if error:
         raise RuleError(error)
     planet = game.planet_at(system_id, planet_id)
+    defender = planet.owner
     transports = troop_transports(game, system_id, owner)
     attack, defence = invasion_strength(game, system_id, planet_id, owner)
     captured = attack > defence  # A tie favours the defending colony.
@@ -70,13 +68,16 @@ def invade(game, system_id, planet_id, owner="player"):
         # The gate is bound to its original empire and cannot be inherited.
         planet.ascension_gate, planet.gate_charge = False, 0
         planet.construction_queue[:] = [p for p in planet.construction_queue if p.item_id != ASCENSION_GATE.id]
-    state = game.diplomacy
+    state = game.diplomacy_between(owner, defender)
     state.trade_active = state.research_active = False
     state.relations, state.offer_ready_turn = -100, game.turn+3
     message = (f"{game.empire_name_for(owner)} {'captured' if captured else 'failed to capture'} {planet.name}: "
                f"{attack} attack vs {defence} defence. {len(transports)} transports consumed.")
     state.record(game.turn, message)
-    game.rival_event(message, turn=game.turn)
+    for participant in (owner, defender):
+        if participant != "player":
+            game.rival_event(message, turn=game.turn, owner=participant)
+    game.eliminate_defeated()
     game.check_victory()
     return InvasionReport(owner, system_id, planet_id, attack, defence, len(transports), captured)
 
@@ -87,8 +88,7 @@ def gate_site(game, owner="player"):
 
 
 def gate_blocked(game, system_id, owner):
-    other = "rival" if owner == "player" else "player"
-    return bool(game.fleet_at(system_id, other))
+    return bool(game.foreign_fleet(system_id, owner))
 
 
 def gate_error(game, system_id, planet_id, owner="player"):
@@ -118,10 +118,12 @@ def advance_gates(game, eligible):
 
 
 def current_result(game):
-    if game.opponent is not None:
-        alive = [owner for owner in OWNERS if colonies(game, owner)]
+    if game.opponents:
+        alive = [owner for owner in game.owners if colonies(game, owner)]
         if len(alive) < 2:
             return CampaignResult(alive[0] if alive else None, "conquest", game.turn)
+        if "player" not in alive:
+            return CampaignResult(None, "elimination", game.turn)
     ascended = {p.owner for s in game.systems for p in s.worlds
                 if p.ascension_gate and p.gate_charge == GATE_CHARGE_TURNS}
     if ascended:
@@ -133,7 +135,7 @@ def current_result(game):
 def validate(game, data):
     """Validate terminal outcomes and projects against actual campaign state."""
     from .model import _integer
-    for owner in OWNERS:
+    for owner in game.owners:
         sites = []
         for system, planet in colonies(game, owner):
             queued = [p for p in planet.construction_queue if p.item_id == ASCENSION_GATE.id]
@@ -149,8 +151,8 @@ def validate(game, data):
             raise ValueError("Missing campaign result")
         return None
     if (not isinstance(data, dict) or set(data) != {"winner", "condition", "turn"}
-            or data["winner"] not in (*OWNERS, None)
-            or data["condition"] not in ("conquest", "science")
+            or data["winner"] not in (*game.owners, None)
+            or data["condition"] not in ("conquest", "science", "elimination")
             or not _integer(data["turn"], game.turn, game.turn)):
         raise ValueError("Invalid campaign result")
     result = CampaignResult(**data)

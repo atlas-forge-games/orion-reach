@@ -9,6 +9,7 @@ from .colony_scene import draw_colony_scene
 from .colony_view import compact_yields
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
+from .empires import empire_color
 from .planet_art import draw_planet
 from .population import BASE_FOOD, FARMER_OUTPUT, WORKER_ROLES
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
@@ -77,7 +78,7 @@ def system_panel(app, game, system, planet, live):
         if selected or app.is_active(button):
             pg.draw.rect(app.canvas, (24, 43, 50), button.rect)
         draw_planet(app.canvas, world, (46, y+(14 if row_height>=30 else 8)), 23 if row_height>=30 else 17, f"{game.seed}:{system.id}:{world.id}")
-        color = CYAN if world.owner == PLAYER else RIVAL_COLOR if world.owner == RIVAL else MUTED
+        color = empire_color(world.owner) if world.owner else MUTED
         label = world.name if row_height>=30 else f"{world.name} · {world.biome}"
         text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
         if row_height>=30:
@@ -85,7 +86,7 @@ def system_panel(app, game, system, planet, live):
         basic = f"{world.population} B" if world.colonized else world.size[:1]
         text(app.canvas, basic, (255, y+1), 10, color, right=True)
     if len(system.worlds) <= 4:
-        text(app.canvas, "CYAN: YOURS   ORANGE: RIVAL", (38, 272), 9, MUTED, "mono")
+        text(app.canvas, "COLORS IDENTIFY EACH EMPIRE", (38, 272), 9, MUTED, "mono")
 
 
 def workforce_panel(app, game, planet, live):
@@ -173,7 +174,7 @@ def construction_panel(app, game, system, planet, live):
                    enabled=game.buy_construction_error(system.id, planet.id) is None)
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
-    elif planet.owner == RIVAL:
+    elif planet.owner in game.opponents:
         attack, defence = invasion_strength(game, system.id, planet.id)
         app.button("invade_planet", f"Invade · {attack} vs {defence}", (1090, 257, 310, 29), app.invade_request,
                    enabled=game.invasion_error(system.id, planet.id) is None)

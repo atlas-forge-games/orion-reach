@@ -23,6 +23,7 @@ from orion.storage import Storage, SAVE_VERSION
 
 def encounter(own=("frigate",), enemy=("frigate",), start=True):
     game = new_game(seed=2408)
+    place_near(game, 1)  # This battle fixture includes a safe retreat destination.
     rows = [(kind, PLAYER) for kind in own]+[(kind, RIVAL) for kind in enemy]
     game.ships = [Ship(i, kind, 0, owner=owner) for i, (kind, owner) in enumerate(rows, 1)]
     game.next_ship_id = len(rows)+1
@@ -101,6 +102,7 @@ class CombatRulesTests(unittest.TestCase):
         self.assertIn("unarmed", unarmed.engagement_error(0))
         with self.assertRaises(RuleError):
             unarmed.start_combat(0)
+        place_near(unarmed, 1)
         unarmed.send_ship(1, 1)
         self.assertIsNone(unarmed.engagement_error(0, RIVAL))  # It has not departed yet.
         unarmed.ship_at(1).departure_pending = False

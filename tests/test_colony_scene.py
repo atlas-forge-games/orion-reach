@@ -15,7 +15,8 @@ import pygame as pg
 from orion import building_art
 from orion.buildings import BUILDINGS
 from orion.colony_scene import PALETTES, is_headquarters, scene_buildings
-from orion.model import PLAYER, RIVAL, new_game
+from orion.model import PLAYER, RIVAL
+from scenarios import fixed_start_game as new_game
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.

@@ -496,7 +496,7 @@ class VictoryScreenTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "result")
         self.assertEqual(self.app.game, game)
         self.click("result_new")
-        self.assertEqual(self.app.screen, "setup")
+        self.assertEqual(self.app.screen, "race_select")
 
     def test_rival_science_victory_opens_defeat_screen_and_charge_survives_reload(self):
         game = self.app.game

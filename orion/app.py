@@ -31,11 +31,12 @@ from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
 from .setup_view import draw_race_select, draw_setup
-from .races import RACES, default_rival_race
+from .races import RACES
+from .empires import empire_color
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
-from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers
+from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -83,7 +84,8 @@ class App:
         self.seed=""
         self.size="Standard"
         self.race_id="terran"
-        self.rival_race_id="kharuun"
+        self.rival_count=1
+        self.rival_id=RIVAL
         self.fog_of_war=True
         self.field=None
         self.select_all=False
@@ -626,10 +628,26 @@ class App:
         self.focus_empire_row()
 
     def change_rival_page(self,delta):
-        last=max(0,(len(known_rival_colonies(self.game))-1)//5)
+        last=max(0,(len(known_rival_colonies(self.game,self.selected_rival_id()))-1)//5)
         self.rival_page=min(max(0,self.rival_page+delta),last)
 
+    def selected_rival_id(self):
+        if self.rival_id not in self.game.opponents:
+            self.rival_id=next(iter(self.game.opponents),None)
+        return self.rival_id
+
+    def change_rival(self,delta,system_id=None):
+        owners=self.game.opponents_at(system_id) if system_id is not None else list(self.game.opponents)
+        if owners:
+            index=owners.index(self.rival_id) if self.rival_id in owners else 0
+            self.rival_id=owners[(index+delta)%len(owners)]
+            self.rival_page=0
+
     def open_rival(self):
+        if self.screen=="planet" and self.game.selected_planet is not None:
+            planet=self.game.known_system(self.game.selected_system).worlds[self.game.selected_planet]
+            if planet.owner in self.game.opponents:
+                self.rival_id=planet.owner
         self.rival_return=self.screen if self.screen in ("diplomacy","planet") else "empire"
         self.go("rival")
 
@@ -646,9 +664,10 @@ class App:
         self.go(self.diplomacy_return)
 
     def diplomatic_action(self,action):
+        target=self.selected_rival_id()
         def perform():
             try:
-                response=self.game.diplomacy_action(action)
+                response=self.game.diplomacy_action(action,target)
                 if self.save_game(autosave=True):
                     self.toast(response)
                     self.notice_until=self.time+7
@@ -759,7 +778,7 @@ class App:
     def start_game(self):
         try:
             self.game=new_game(self.empire,self.size,int(self.seed) if self.seed else None,
-                               race_id=self.race_id,rival_race_id=self.rival_race_id,fog_of_war=self.fog_of_war)
+                               race_id=self.race_id,rival_count=self.rival_count,fog_of_war=self.fog_of_war)
         except (ValueError,SaveError) as exc:
             self.toast(str(exc),True)
             return
@@ -907,16 +926,18 @@ class App:
             self.combat_ship_id=identifiers[(index+1)%len(identifiers)]
             self.reveal_combat_row(self.game.combat.ship(self.combat_ship_id).y)
 
-    def engage_request(self,system_id):
-        error=self.game.engagement_error(system_id)
+    def engage_request(self,system_id,target=None):
+        opponents=self.game.opponents_at(system_id)
+        target=target or (self.rival_id if self.rival_id in opponents else opponents[0] if opponents else None)
+        error=self.game.engagement_error(system_id,target=target)
         if error:
             self.toast(error,True)
             return
         own=len(self.game.fleet_at(system_id))
-        rival=len(self.game.fleet_at(system_id,RIVAL))
+        rival=len(self.game.fleet_at(system_id,target))
         def engage():
             try:
-                self.game.start_combat(system_id)
+                self.game.start_combat(system_id,target=target)
                 self.reset_combat_view()
                 self.go("combat")
                 self.save_game(autosave=True)
@@ -931,7 +952,7 @@ class App:
                          "Face guardian",engage)
             return
         self.confirm("Engage the opposing fleet?",
-                     f"Commit your {own} ships against {rival} rival ships at {self.game.systems[system_id].name}. "
+                     f"Commit your {own} ships against {rival} ships of {self.game.empire_name_for(target)} at {self.game.systems[system_id].name}. "
                      "Combat ends trade and research agreements and sets relations to -100. Ship losses are permanent.",
                      "Engage fleet",engage)
 
@@ -1557,13 +1578,11 @@ class App:
         if self.empire==RACES[self.race_id].default_empire:
             self.empire=RACES[race_id].default_empire
         self.race_id=race_id
-        if self.rival_race_id==race_id:
-            self.rival_race_id=default_rival_race(race_id)
         self.field=None
         pg.key.stop_text_input()
 
-    def choose_rival_race(self,race_id):
-        self.rival_race_id=race_id
+    def choose_rival_count(self,count):
+        self.rival_count=count
         self.field=None
         pg.key.stop_text_input()
 
@@ -1657,6 +1676,7 @@ class App:
             pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,y),(MAP.right-1,y))
         text(self.canvas,"SECTOR 01 / LOCAL CLUSTER",(MAP.x+22,MAP.y+18),10,FAINT,"mono",1)
         draw_fuel_range(self,MAP)
+        labels=star_label_rects(self,MAP)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
         for star in state.systems:
             x,y=self.star_pos(star)
@@ -1677,9 +1697,13 @@ class App:
             owners={p.owner for p in known.worlds if p.colonized} if known else set()
             if PLAYER in owners:
                 pg.draw.circle(self.canvas,CYAN,(int(x),int(y)),11,1)
-            if RIVAL in owners:
-                pg.draw.circle(self.canvas,RIVAL_COLOR,(int(x),int(y)),15 if PLAYER in owners else 11,1)
-            text(self.canvas,star.name.upper(),(x+11,y-10),11,INK if selected else MUTED if known else FAINT,"mono")
+            for index,owner in enumerate(o for o in state.opponents if o in owners):
+                pg.draw.circle(self.canvas,empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,1)
+            label=labels[star.id]
+            if abs(label.x-(x+17))+abs(label.y-(y-9))>12:
+                tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
+                pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
+            text(self.canvas,star.name.upper(),label.topleft,11,INK if selected else MUTED if known else FAINT,"mono")
             self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)

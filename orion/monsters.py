@@ -1,6 +1,6 @@
 """Neutral system guardians, valuable worlds, and private encounter knowledge."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import random
 
 from .production import distance_ly
@@ -44,6 +44,7 @@ class Guardian:
     hull: int
     known_player: str = "unknown"
     known_rival: str = "unknown"
+    known_others: dict[str, str] = field(default_factory=dict)
 
     @property
     def alive(self):
@@ -73,14 +74,18 @@ def known_status(game, system_id, owner="player"):
         return None
     if game.system_visible(system_id, owner):
         return "alive" if guardian.alive else "defeated"
-    status = getattr(guardian, "known_"+owner)
+    status = getattr(guardian, "known_"+owner) if owner in EMPIRES else guardian.known_others.get(owner, "unknown")
     return status if status != "unknown" else None
 
 
 def observe(game, system_id, owner):
     guardian = at(game, system_id)
     if guardian:
-        setattr(guardian, "known_"+owner, "alive" if guardian.alive else "defeated")
+        status = "alive" if guardian.alive else "defeated"
+        if owner in EMPIRES:
+            setattr(guardian, "known_"+owner, status)
+        else:
+            guardian.known_others[owner] = status
 
 
 def prize_ids(system, guardian):
@@ -118,8 +123,7 @@ def commit_battle_result(game, guardian, hull, owner):
 def seed_guardians(game):
     """A separate RNG preserves ordinary generation and keeps both homes safe."""
     homes = [game.systems[0]]
-    if game.opponent:
-        homes.append(game.systems[game.opponent.home_system])
+    homes.extend(game.systems[r.home_system] for r in game.opponents.values())
     candidates = [s for s in game.systems if s.worlds and not any(p.colonized for p in s.worlds)
                   and all(distance_ly(s, home) >= 28 for home in homes)]
     rng = random.Random(f"orion-guardians-v2:{game.seed}")
@@ -144,13 +148,18 @@ def seed_guardians(game):
         game.guardians.append(guardian)
 
 
-def parse_guardians(data, game):
+def parse_guardians(data, game, *, version=20):
     from .model import _integer
     if not isinstance(data, list) or len(data) > len(game.systems):
         raise ValueError("Invalid guardians")
     parsed, occupied = [], set()
     for row in data:
-        if not isinstance(row, dict) or set(row) != {"system_id", "planet_id", "kind", "hull", "known_player", "known_rival"}:
+        if version < 20 and isinstance(row, dict):
+            row = {k: v for k, v in row.items() if k != "known_others"}
+        fields = {"system_id", "planet_id", "kind", "hull", "known_player", "known_rival"}
+        if version >= 20:
+            fields.add("known_others")
+        if not isinstance(row, dict) or set(row) != fields:
             raise ValueError("Invalid guardian record")
         sid, pid, kind = row["system_id"], row["planet_id"], row["kind"]
         if (not _integer(sid, 1, len(game.systems)-1) or sid in occupied
@@ -158,7 +167,7 @@ def parse_guardians(data, game):
                 or not _integer(pid, 0, len(game.systems[sid].worlds)-1)
                 or not _integer(row["hull"], 0, MONSTERS[kind].hull)):
             raise ValueError("Invalid guardian location or health")
-        if game.opponent and sid == game.opponent.home_system:
+        if sid in {r.home_system for r in game.opponents.values()}:
             raise ValueError("Homeworld cannot be guarded")
         for owner in EMPIRES:
             status = row["known_"+owner]
@@ -166,6 +175,11 @@ def parse_guardians(data, game):
                 raise ValueError("Invalid guardian knowledge")
             if owner == "rival" and not game.opponent and status != "unknown":
                 raise ValueError("Unknown observer")
+        extras = row.get("known_others", {})
+        if (not isinstance(extras, dict) or not set(extras) <= set(game.other_opponents)
+                or any(status not in ("unknown", "alive", "defeated")
+                       or (status == "defeated" and row["hull"] > 0) for status in extras.values())):
+            raise ValueError("Invalid guardian observers")
         system = game.systems[sid]
         if row["hull"] and any(p.colonized for p in system.worlds):
             raise ValueError("Living guardian cannot share a colony system")
@@ -192,31 +206,25 @@ def intercept(game):
             combat.begin_guardian_combat(game, guardian.system_id, "player")
             return True
     for guardian in game.guardians:
-        if not guardian.alive or not game.fleet_at(guardian.system_id, "rival"):
-            continue
-        combat.begin_guardian_combat(game, guardian.system_id, "rival")
-        # A round is finite: one move and one shot/hold per participant.
-        for _ in range(20000):
-            if game.combat.status != "active":
-                break
-            combat.ai_action(game, game.combat.active_owner)
-        else:
-            # Deterministic retreat fallback for a pathological blocked formation.
-            if game.combat.active_owner != "rival":
-                combat.end_turn(game, MONSTER)
-            combat.retreat(game, "rival")
-        game.finish_combat()
+        for owner in game.opponents:
+            if not guardian.alive or not game.fleet_at(guardian.system_id, owner):
+                continue
+            combat.begin_guardian_combat(game, guardian.system_id, owner)
+            combat.autoresolve(game)
+            if game.combat:
+                game.finish_combat()
     return False
 
 
-def ai_orders(game):
+def ai_orders(game, owner="rival"):
     """Gather a sufficient escort at a colony before attacking a known guardian."""
-    if not game.opponent or game.diplomacy.relations < -30:
+    if owner not in game.opponents or any(game.diplomacy_between(owner, other).relations < -30
+                                         for other in game.owners if other != owner):
         return set()
-    targets = [g for g in game.guardians if known_status(game, g.system_id, "rival") == "alive"
-               and game.within_fuel_range(g.system_id, "rival")]
-    ships = [s for s in game.ships_owned_by("rival") if s.kind == "frigate" and not s.has_course]
-    colonies = game.colony_systems("rival")
+    targets = [g for g in game.guardians if known_status(game, g.system_id, owner) == "alive"
+               and game.within_fuel_range(g.system_id, owner)]
+    ships = [s for s in game.ships_owned_by(owner) if s.kind == "frigate" and not s.has_course]
+    colonies = game.colony_systems(owner)
     if not targets or not ships or not colonies:
         return set()
     staging = max(colonies, key=lambda s: (sum(ship.system_id == s.id for ship in ships), -s.id))
@@ -226,5 +234,5 @@ def ai_orders(game):
     for ship in ships:
         destination = target.system_id if attack and ship in ready else staging.id
         if ship.system_id != destination:
-            game.send_ship(ship.id, destination, owner="rival")
+            game.send_ship(ship.id, destination, owner=owner)
     return {s.id for s in ships}

@@ -36,11 +36,11 @@ def draw_objectives(app):
     app.button("objectives_galaxy", "Galaxy map", (274, 124, 182, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Two paths to victory", (64, 190), 43, INK, "title")
-    text(surface, "Conquer your rival's colonies or lead your civilization through the Ascension Gate.", (66, 251), 14, MUTED)
+    text(surface, "Conquer every rival's colonies or lead your civilization through the Ascension Gate.", (66, 251), 14, MUTED)
 
     panel(surface, (64, 286, 623, 284))
     text(surface, "01 / CONQUEST", (88, 309), 11, GOLD, "mono", 2)
-    own, rival = len(colonies(game, "player")), len(colonies(game, "rival"))
+    own, rival = len(colonies(game, "player")), sum(len(colonies(game, owner)) for owner in game.opponents)
     conquest = (f"{len(known_rival_colonies(game))} known rival colonies" if game.fog_of_war else
                 f"{rival} rival {'colony remains' if rival == 1 else 'colonies remain'}")
     text(surface, conquest if game.opponent else "No rival in this campaign",
@@ -110,9 +110,10 @@ def draw_objectives(app):
     app.button("objectives_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("objectives_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     if game.opponent:
-        enemy_gate = gate_site(game, "rival")
-        enemy = game.opponent.technology
-        caption = f"Rival: {enemy.finished_branches}/8 branches · "
+        selected = app.selected_rival_id()
+        enemy_gate = gate_site(game, selected)
+        enemy = game._empire(selected).technology
+        caption = f"{game.empire_name_for(selected)}: {enemy.finished_branches}/8 branches · "
         if enemy_gate:
             caption += f"Gate at {enemy_gate[1].name}: " + (f"charging {enemy_gate[1].gate_charge}/5" if enemy_gate[1].ascension_gate else "under construction")
         else:
@@ -122,27 +123,29 @@ def draw_objectives(app):
                      any(q.item_id == ASCENSION_GATE.id for q in p.construction_queue)]
             caption = f"Last-known rival gate: {sites[0][1].name}" if sites else "Rival research and gate location are unknown. Explore to locate its worlds."
         text(surface, shorten(caption, 652, 12), (400, 835), 12, RIVAL_COLOR)
-        text(surface, "The AI can win by either path. Both gates activating together is a draw.", (400, 857), 11, FAINT)
+        text(surface, "Every rival can win. Gates activating together share a scientific victory.", (400, 857), 11, FAINT)
     app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
 
 def draw_result(app):
     surface, game = app.canvas, app.game
     result = game.result
-    won, draw = result.winner == "player", result.winner is None
+    won, draw = result.winner == "player", result.winner is None and result.condition != "elimination"
     color = GOLD if won else CYAN if draw else RIVAL_COLOR
     app.chrome("CAMPAIGN COMPLETE")
     title = "A shared ascension" if draw and result.condition == "science" else "Draw" if draw else "Victory" if won else "Defeat"
     text(surface, title, (92, 187), 66, color, "title")
-    subtitle = "Scientific victory" if result.condition == "science" else "Conquest victory"
+    subtitle = "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
     text(surface, f"{subtitle.upper()}  /  YEAR {game.year}  /  TURN {result.turn}", (96, 280), 12, MUTED, "mono", 2)
     panel(surface, (92, 331, 1256, 225))
-    if draw:
-        message = "Both empires activated their Ascension Gates in the same turn. The campaign ends in a draw."
+    if result.condition == "elimination":
+        message = "Your final colony has fallen. Your empire has been eliminated; other civilizations still remain in the galaxy."
+    elif draw:
+        message = "Multiple empires completed the victory conditions together. The campaign ends in a draw."
     elif result.condition == "science":
         message = f"{game.empire_name_for(result.winner)} completed the Ascension Gate and charged it for five clear-orbit turns. A new age begins."
     else:
-        message = f"{game.empire_name_for(result.winner)} captured every opposing colony. The rival empire has fallen, and the campaign is complete."
+        message = f"{game.empire_name_for(result.winner)} is the last empire with colonies. The campaign is complete."
     paragraph(surface, message, (122, 370), 870, 24, INK, 38)
     if result.condition == "science":
         gate_icon(surface, (1200, 441), 65, color)
@@ -151,7 +154,7 @@ def draw_result(app):
             pg.draw.circle(surface, color, (1200, 441), radius, 2)
         pg.draw.line(surface, color, (1109, 441), (1291, 441), 2)
         pg.draw.line(surface, color, (1200, 350), (1200, 532), 2)
-    for i, owner in enumerate(("player", "rival")):
+    for i, owner in enumerate(("player", result.winner if result.winner in game.opponents else next(iter(game.opponents), "rival"))):
         if owner == "rival" and game.opponent is None:
             continue
         x = 92+i*641
@@ -164,4 +167,4 @@ def draw_result(app):
     text(surface, "This campaign is complete. Save a final snapshot or start a new campaign.", (95, 739), 15, MUTED)
     app.button("result_save", "Save final snapshot", (92, 802, 291, 57), app.save_game)
     app.button("result_menu", "Main menu", (404, 802, 249, 57), app.to_menu)
-    app.button("result_new", "New campaign →", (1016, 802, 332, 57), lambda: app.go("setup"), "primary")
+    app.button("result_new", "New campaign →", (1016, 802, 332, 57), lambda: app.go("race_select"), "primary")

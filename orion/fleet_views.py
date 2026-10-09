@@ -122,7 +122,7 @@ def draw_fleets(app):
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.has_course else f"{origin.name} orbit"
         text(surface, shorten(location, 467, 18), (473, y+12), 18, CYAN)
-        encounter = not ship.in_transit and bool(game.fleet_at(ship.system_id, RIVAL))
+        encounter = not ship.in_transit and bool(game.foreign_fleet(ship.system_id))
         caption = ("Departure queued · editable until End Turn" if ship.departure_pending else
                    f"Arrives in {turn_label(ship.turns_remaining)}" if ship.in_transit else
                    "Opposing fleet here · Engage to begin combat" if encounter else
@@ -149,7 +149,7 @@ def draw_fleets(app):
             s, p = home
             app.button("fleet_build_first", "Open colony shipyard", (250, 596, 327, 48),
                        lambda sid=s.id, pid=p.id: app.open_shipyard(sid, pid))
-    text(surface, "Frigates fight. Colony ships settle worlds. Engage commits every ship in that system.", (64, 798), 12, MUTED)
+    text(surface, "Frigates fight. Colony ships settle worlds. Engage commits both selected empires' fleets.", (64, 798), 12, MUTED)
     text(surface, f"PAGE {app.fleet_page+1} / {last+1}", (1069, 798), 10, FAINT, "mono", right=True)
     app.button("fleets_previous", "← Prev", (1100, 785, 129, 37), lambda: app.change_fleet_page(-1), enabled=app.fleet_page>0)
     app.button("fleets_next", "Next →", (1243, 785, 133, 37), lambda: app.change_fleet_page(1), enabled=app.fleet_page<last)

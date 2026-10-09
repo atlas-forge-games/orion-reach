@@ -17,10 +17,11 @@ import pygame as pg
 from orion.ai import military_orders, research_choice, scouting_orders
 from orion.combat import retreat_destination
 from orion.exploration import refresh
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import fixed_start_game as new_game
 from orion.production import BASE_FUEL_RANGE, LEGACY_SHIP_SPEED, SHIP_SPEED, distance_ly, travel_turns
 from orion.storage import Storage
-from scenarios import place_near
+from scenarios import place_near, use_nearby_system
 
 
 class FuelRulesTests(unittest.TestCase):
@@ -33,8 +34,9 @@ class FuelRulesTests(unittest.TestCase):
         self.assertEqual(travel_turns(origin, target, 75), 3)
         self.assertEqual(travel_turns(origin, origin), 0)
         game = new_game(seed=2408)
-        nearest = min(game.systems[1:], key=lambda s: distance_ly(game.systems[0], s))
-        self.assertEqual(game.travel_turns(game.systems[0], nearest), 5)
+        nearby = place_near(game, 1, distance=7)
+        self.assertEqual(game.travel_turns(game.systems[0], nearby), 4)
+        self.assertEqual(BASE_FUEL_RANGE, 7)
         game.research = 40
         game.choose_research("ion_drives")
         self.assertEqual(game.fuel_range(), BASE_FUEL_RANGE)
@@ -42,11 +44,11 @@ class FuelRulesTests(unittest.TestCase):
     def test_radius_boundary_and_fog_setting_never_bypass_range(self):
         for fog in (True, False):
             game = new_game(seed=2408, fog_of_war=fog)
-            target = place_near(game, 1, distance=35)
+            target = place_near(game, 1, distance=7)
             self.assertTrue(game.within_fuel_range(target.id))
-            self.assertEqual(game.send_ships([1, 2, 3], target.id), 18)
+            self.assertEqual(game.send_ships([1, 2, 3], target.id), 4)
             game.cancel_departures([1, 2, 3])
-            place_near(game, 1, distance=35.001)
+            place_near(game, 1, distance=7.001)
             before = game.to_dict()
             with self.assertRaisesRegex(RuleError, "fuel range"):
                 game.send_ships([1, 2, 3], target.id)
@@ -56,42 +58,43 @@ class FuelRulesTests(unittest.TestCase):
         game = new_game(seed=2408)
         frontier = next(s for s in game.systems[1:] if s.id != game.opponent.home_system
                         and any(not p.colonized and game.can_settle(p) for p in s.worlds))
-        place_near(game, frontier.id, distance=30)
+        place_near(game, frontier.id, distance=6)
         remote = next(s for s in game.systems[1:] if s.id not in (frontier.id, game.opponent.home_system))
-        place_near(game, remote.id, distance=50)
+        place_near(game, remote.id, distance=10)
         game.ship_at(1).system_id = frontier.id
         refresh(game)
         self.assertLess(distance_ly(frontier, remote), game.fuel_range())
         self.assertFalse(game.within_fuel_range(remote.id))
         with self.assertRaisesRegex(RuleError, "fuel range"):
             game.send_ship(1, remote.id)
-        place_near(game, game.opponent.home_system, distance=50)
+        place_near(game, game.opponent.home_system, distance=10)
         self.assertFalse(game.within_fuel_range(remote.id))
         game.ship_at(3).system_id = frontier.id
         world = next(p for p in frontier.worlds if not p.colonized and game.can_settle(p))
         game.colonize(3, frontier.id, world.id)
         self.assertTrue(game.within_fuel_range(remote.id))
-        self.assertAlmostEqual(game.supply_distance(remote.id), 20)
+        self.assertAlmostEqual(game.supply_distance(remote.id), 4)
         game.send_ship(1, remote.id)
         self.assertTrue(game.ship_at(1).departure_pending)
 
     def test_tank_upgrades_are_exclusive_additive_and_empire_specific(self):
         game = new_game(seed=2408)
-        place_near(game, 1, distance=44)
+        place_near(game, 1, distance=16)
         self.assertFalse(game.within_fuel_range(1))
         game.research = 140
         game.choose_research("lightweight_alloys")
-        self.assertEqual(game.fuel_range(), 45)
+        self.assertEqual(game.fuel_range(), 17)
         self.assertTrue(game.within_fuel_range(1))
         self.assertEqual(game.technology.status("deep_core_drills"), "excluded")
         game.choose_research("composite_structures")
-        self.assertEqual(game.fuel_range(), 60)
-        self.assertEqual(game.fuel_range(RIVAL), 35)
+        self.assertEqual(game.fuel_range(), 32)
+        self.assertEqual(game.fuel_range(RIVAL), 7)
         self.assertEqual(game.bonuses_for(PLAYER).get("ship_speed", 0), 0)
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_rejected_redirection_preserves_existing_order_and_cancel_still_works(self):
         game = new_game(seed=2408, with_ai=False)
+        place_near(game, 1)
         game.send_ships([1, 3], 1)
         far = next(s.id for s in game.systems if not game.within_fuel_range(s.id))
         before = game.to_dict()
@@ -112,7 +115,7 @@ class FuelRulesTests(unittest.TestCase):
         self.assertEqual(game.ship_at(1).destination, 0)
 
     def test_ai_scans_only_reachable_stars_and_researches_tanks_at_a_closed_frontier(self):
-        game = new_game(seed=2408)
+        game = new_game(seed=172)  # Naturally has two reachable rival destinations.
         scouting_orders(game)
         destinations = [s.destination for s in game.ships_owned_by(RIVAL) if s.kind == "scout"]
         self.assertEqual(len(set(destinations)), 2)
@@ -127,10 +130,11 @@ class FuelRulesTests(unittest.TestCase):
         game.opponent.research = 40
         research_choice(game)
         self.assertIn("lightweight_alloys", game.opponent.technology.completed)
-        self.assertEqual(game.fuel_range(RIVAL), 45)
+        self.assertEqual(game.fuel_range(RIVAL), 17)
 
     def test_hostile_ai_and_retreat_destinations_respect_colony_range(self):
         game = new_game(seed=2408, fog_of_war=False)
+        place_near(game, 1)
         home = game.opponent.home_system
         game.diplomacy.relations = -100
         game.ships = [Ship(1, "frigate", home, owner=RIVAL), Ship(2, "troop_transport", home, owner=RIVAL),
@@ -184,6 +188,7 @@ class TravelSaveTests(unittest.TestCase):
 
     def test_new_speed_snapshot_round_trips_and_rejects_invalid_values(self):
         game = new_game(seed=2408, with_ai=False)
+        place_near(game, 1)
         game.send_ships([1, 3], 1)
         game.advance_turn()
         resumed = GameState.from_dict(game.to_dict())
@@ -208,6 +213,7 @@ class FuelInterfaceTests(unittest.TestCase):
         self.app = App(Path(self.tmp.name), capture=True)
         self.addCleanup(self.app.audio.close)
         self.app.game = new_game(seed=2408, with_ai=False)
+        use_nearby_system(self.app.game, 11)
         self.app.go("galaxy")
         self.app.render()
         self.app.present()
@@ -240,9 +246,9 @@ class FuelInterfaceTests(unittest.TestCase):
             app.render()
         labels = " ".join(str(call.args[1]) for call in drawn.call_args_list)
         self.assertIn("Out of range", labels)
-        self.assertIn("35 ly", labels)
+        self.assertIn("7 ly", labels)
         self.click("star_11")
-        self.assertEqual(game.ship_at(1).turns_remaining, 5)
+        self.assertEqual(game.ship_at(1).turns_remaining, 4)
         self.click("star_0")
         self.click("end_turn")
         self.assertFalse(game.ship_at(1).has_course)
@@ -264,7 +270,7 @@ class FuelInterfaceTests(unittest.TestCase):
         app.render()
         button = next(b for b in app.buttons if b.key == "send_course")
         self.assertTrue(button.enabled)
-        self.assertIn("5 turns", button.label)
+        self.assertIn("4 turns", button.label)
 
     def test_reclicking_an_old_queued_course_keeps_its_actual_eta_until_redirected(self):
         game = self.app.game
@@ -285,7 +291,7 @@ class FuelInterfaceTests(unittest.TestCase):
         self.assertIn(f"{ship.turns_remaining} turns", labels)
         self.assertIn("Saved course kept", labels)
         self.click("star_11")
-        self.assertEqual(ship.turns_remaining, 5)
+        self.assertEqual(ship.turns_remaining, 4)
         self.assertEqual(ship.cruise_speed, SHIP_SPEED)
 
 

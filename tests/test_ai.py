@@ -15,7 +15,7 @@ import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
-from scenarios import empty_fleet_game as new_game
+from scenarios import empty_fleet_game as new_game, place_near
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -35,6 +35,7 @@ class AIRulesTests(unittest.TestCase):
         self.assertEqual(game.systems[0], peaceful.systems[0])
         self.assertEqual(game.empire_rates, (8, 0))
         peaceful.add_opponent()
+        # Adding an empire preserves the surrounding random systems.
         self.assertEqual(game.systems, peaceful.systems)
         self.assertEqual(game.opponent, peaceful.opponent)
         before = game.to_dict()
@@ -98,6 +99,10 @@ class AIRulesTests(unittest.TestCase):
         for seed, size in ((1, "Compact"), (42, "Standard"), (2408, "Expansive")):
             with self.subTest(seed=seed, size=size):
                 game = new_game(seed=seed, galaxy_size=size)
+                home = game.opponent.home_system
+                frontier = next(s for s in game.systems if s.id not in (0, home)
+                                and any(p.habitability > 0 for p in s.worlds))
+                place_near(game, frontier.id, anchor=home)
                 expected_credits = game.credits
                 # Farms also use construction time before the scientific endgame.
                 for _ in range(180):  # Slower expansion delays the scientific endgame.
@@ -152,8 +157,9 @@ class AIRulesTests(unittest.TestCase):
     def test_player_claim_during_flight_is_preserved_and_rival_reroutes(self):
         game = new_game(seed=2408)
         home = game.opponent.home_system
-        target, planet = next((s, p) for s in game.systems if s.id not in (0, home) and game.within_fuel_range(s.id, RIVAL)
+        target, planet = next((s, p) for s in game.systems if s.id not in (0, home)
                               for p in s.worlds if p.habitability > 0)
+        place_near(game, target.id, anchor=home)
         for other in target.worlds:
             if other is not planet:
                 other.biome = "Barren"
@@ -177,8 +183,9 @@ class AIRulesTests(unittest.TestCase):
             for p in s.worlds:
                 if not p.colonized:
                     p.biome = "Barren"
-        targets = [s for s in game.systems if s.id not in (0, home) and s.worlds and game.within_fuel_range(s.id, RIVAL)][:2]
-        for s in targets:
+        targets = [s for s in game.systems if s.id not in (0, home) and s.worlds][:2]
+        for index, s in enumerate(targets):
+            place_near(game, s.id, anchor=home, distance=6+index)
             s.worlds[0].biome = "Terran"
         game.ships = [Ship(i, "colony_ship", home, owner=RIVAL) for i in (1, 2)]
         game.next_ship_id = 3
@@ -188,6 +195,7 @@ class AIRulesTests(unittest.TestCase):
 
     def test_exhausted_galaxy_keeps_colony_ship_idle_and_builds_a_defensive_frigate(self):
         game = new_game(seed=2408)
+        game.opponent.technology.completed.append("habitat_shields")  # Barren colonization is excluded.
         for s in game.systems:
             for p in s.worlds:
                 if not p.colonized:
@@ -219,6 +227,7 @@ class AIRulesTests(unittest.TestCase):
         game.queue_ship(0, 2)
         for _ in range(7):
             game.advance_turn()
+        place_near(game, 1)
         game.send_ship(1, 1)
         game.queue_building(0, 2, "mine")
         game.advance_turn()

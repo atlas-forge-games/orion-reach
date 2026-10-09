@@ -13,7 +13,8 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame as pg
 
 from orion.app import App
-from orion.model import BIOMES, GameState, PLAYER, RIVAL, new_game
+from orion.model import BIOMES, GameState, PLAYER, RIVAL
+from scenarios import fixed_start_game as new_game, place_near
 from orion.population import farmers_needed, report
 from orion.exploration import refresh
 from orion.races import RACES
@@ -84,15 +85,17 @@ class RaceRulesTests(unittest.TestCase):
 
     def test_wanderer_range_extends_routes_and_survives_a_saved_voyage(self):
         game = solo("wanderers")
-        target = next(s for s in game.systems if 35 < game.supply_distance(s.id) <= 50)
+        target = place_near(game, 1, distance=9)
         self.assertTrue(game.within_fuel_range(target.id))
-        self.assertFalse(solo("terran").within_fuel_range(target.id))
+        ordinary = solo("terran")
+        place_near(ordinary, target.id, distance=9)
+        self.assertFalse(ordinary.within_fuel_range(target.id))
         duration = game.send_ship(1, target.id)
         game.advance_turn()
         restored = GameState.from_dict(game.to_dict())
         self.assertEqual(restored.ship_at(1).turns_remaining, duration-1)
         game.technology.completed.append("lightweight_alloys")
-        self.assertEqual(game.fuel_range(), 60)
+        self.assertEqual(game.fuel_range(), 20)
         self.assertLess(game.planet_yields(game.planet_at(0, 2))[0], 6)
 
     def test_xenonflora_lush_world_growth_has_a_real_harsh_world_tradeoff(self):
@@ -209,7 +212,7 @@ class RaceSetupTests(unittest.TestCase):
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(event, button=1, pos=pos))
 
-    def test_two_screen_setup_preserves_options_and_autosaves_the_selected_races(self):
+    def test_two_screen_setup_preserves_options_and_autosaves_random_rivals(self):
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.click("new")
@@ -223,9 +226,9 @@ class RaceSetupTests(unittest.TestCase):
         self.click("setup_next")
         self.click("size_Compact")
         self.click("fog_of_war")
-        for race in RACES:
-            self.click("rival_race_"+race)
-            self.assertEqual(self.app.rival_race_id, race)
+        for count in range(6):
+            self.click("rival_count_"+str(count))
+            self.assertEqual(self.app.rival_count, count)
         self.app.seed, self.app.empire = "2408", "Last Horizon"
         self.click("setup_back")
         self.click("race_lithar")
@@ -233,7 +236,9 @@ class RaceSetupTests(unittest.TestCase):
         self.assertEqual((self.app.seed, self.app.empire, self.app.size, self.app.fog_of_war), ("2408", "Last Horizon", "Compact", False))
         self.click("launch")
         game = self.app.game
-        self.assertEqual((game.race_id, game.opponent.race_id), ("lithar", "remnant"))
+        self.assertEqual(game.race_id, "lithar")
+        self.assertEqual(len(game.opponents), 5)
+        self.assertEqual(len({r.race_id for r in game.opponents.values()} | {game.race_id}), 6)
         self.assertEqual((len(game.systems), game.fog_of_war), (24, False))
         restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(restored, game)

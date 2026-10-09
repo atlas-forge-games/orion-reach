@@ -210,7 +210,7 @@ class ExplorationRulesTests(unittest.TestCase):
 
     def test_ai_uses_scouts_and_known_targets_and_resumes_deterministically(self):
         from orion.ai import available_worlds
-        game = new_game(seed=2408)
+        game = new_game(seed=172)  # Naturally has two stars within the rival's initial range.
         hidden = next(s for s in game.systems if s.id != game.opponent.home_system)
         self.assertEqual(available_worlds(game, hidden), [])
         for _ in range(30):  # The rival now establishes farms and reallocates labour first.
@@ -230,6 +230,7 @@ class ExplorationRulesTests(unittest.TestCase):
         game = new_game(seed=2408, fog_of_war=False)
         game.ships = [Ship(1, "frigate", 0, hull=13), Ship(2, "colony_ship", 0)]
         game.next_ship_id = 3
+        place_near(game, 1)
         game.send_ship(2, 1)
         game.ship_at(2).departure_pending = False  # Legacy journeys were committed immediately.
         game.queue_building(0, 2, "factory")

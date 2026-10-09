@@ -4,6 +4,7 @@ import pygame as pg
 
 from .planet_art import draw_planet, draw_star
 from .model import PLAYER, RIVAL
+from .empires import empire_color
 from . import monsters
 from .fleet_art import ship_icon
 from .exploration_view import draw_unsurveyed_system
@@ -49,7 +50,7 @@ def draw_system(app):
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
-    ships, rivals = len(game.fleet_at(system.id)), len(game.fleet_at(system.id, RIVAL)) if live else 0
+    ships, rivals = len(game.fleet_at(system.id)), len(game.foreign_fleet(system.id)) if live else 0
     guardian_status = monsters.known_status(game, system.id)
     guardian = monsters.at(game, system.id) if guardian_status else None
     label = f"ORBIT: {ships} YOUR SHIPS · {rivals} RIVAL SHIPS" if ships or rivals else "YOUR HOME SYSTEM" if system.id == 0 else "SYSTEM SURVEY"
@@ -60,6 +61,12 @@ def draw_system(app):
         ship_icon(surface, (997, 240), .9, kind=guardian.kind)
     text(surface, label, (1376, 211), 11, RED if guardian_status == "alive" else CYAN, "mono", 1, right=True)
     if ships and (rivals or guardian_status == "alive"):
+        opponents = game.opponents_at(system.id)
+        if len(opponents) > 1 and guardian_status != "alive":
+            if app.rival_id not in opponents:
+                app.rival_id = opponents[0]
+            text(surface, shorten("Target: "+game.empire_name_for(app.rival_id), 268, 12), (765, 263), 12, empire_color(app.rival_id))
+            app.button("system_target_next", "→", (1046, 247, 42, 43), lambda: app.change_rival(1, system.id))
         reason = game.engagement_error(system.id)
         app.button("system_engage", "Face guardian" if guardian_status == "alive" else "Engage opposing fleet", (1100, 247, 276, 43),
                    lambda: app.engage_request(system.id), enabled=reason is None)
@@ -97,7 +104,7 @@ def draw_system(app):
             text(surface, "ANCIENT RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE WORLD",
                  (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")
         if world.colonized:
-            pg.draw.circle(surface, CYAN if world.owner == PLAYER else RIVAL_COLOR,
+            pg.draw.circle(surface, empire_color(world.owner),
                            (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
 
     if not system.worlds:
@@ -118,7 +125,7 @@ def draw_system(app):
         text(surface, label, (x+21, 663), 10, MUTED, "mono", 1)
         text(surface, value, (x+20, 688), 29, CYAN if i==2 else INK)
         text(surface, caption, (x+21, 735), 11, MUTED)
-    hint = "Click a planet to survey it. Cyan: your colony · Orange: rival colony" if system.worlds else "Use Previous / Next to survey another system."
+    hint = "Click a planet to survey it. Colony and fleet colors identify each empire." if system.worlds else "Use Previous / Next to survey another system."
     if not live:
         hint = "Stored survey. Send a ship to refresh colony ownership, population and activity."
     if guardian:

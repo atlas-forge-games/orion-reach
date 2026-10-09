@@ -7,6 +7,7 @@ from .diplomacy import (BREAK_PENALTY, ENVOY_COOLDOWN, ENVOY_COST, ENVOY_RELATIO
                         RESEARCH_INCOME, TRADE_INCOME)
 from .race_art import draw_race_portrait
 from .races import RACES
+from .rival_selector import draw_rival_selector
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
 
@@ -22,11 +23,13 @@ def draw_contact_profile(surface, race, empire_name):
 def draw_diplomacy(app):
     surface, game = app.canvas, app.game
     own_race = RACES[game.race_id]
+    owner = app.selected_rival_id()
+    selected = game.opponents.get(owner)
     app.chrome("DIPLOMATIC CHANNEL")
     app.button("diplomacy_back", "← Back · D", (64, 124, 205, 46), app.close_diplomacy, "ghost")
     app.button("diplomacy_galaxy", "Galaxy map", (284, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("diplomacy_intelligence", "Rival report", (472, 124, 209, 46), app.open_rival)
-    text(surface, f"YEAR {game.year} · TURN {game.turn} · {game.credits:,} CR", (1376, 141), 12, GOLD, "mono", right=True)
+    draw_rival_selector(app)
     text(surface, "Diplomacy", (64, 190), 43, INK, "title")
     text(surface, "Build trust. Exchange knowledge. Find common ground.", (66, 252), 14, MUTED)
 
@@ -38,7 +41,7 @@ def draw_diplomacy(app):
     text(surface, own_race.name, (155, 738), 11, own_race.color)
     text(surface, own_race.trait, (155, 755), 10, MUTED)
 
-    if game.opponent is None:
+    if selected is None:
         draw_contact_profile(surface, own_race, game.empire_name)
         panel(surface, (427, 289, 949, 489))
         text(surface, "No foreign contact yet.", (456, 331), 30, INK, "title")
@@ -47,7 +50,7 @@ def draw_diplomacy(app):
                   (458, 394), 836, 18, MUTED, 31)
         app.button("diplomacy_add_rival", "Open Rival report", (457, 592, 318, 51), app.open_rival, "primary")
     else:
-        rival, state = game.opponent, game.diplomacy
+        rival, state = selected, game.diplomacy_between("player", owner)
         race = RACES[rival.race_id]
         draw_contact_profile(surface, race, rival.name)
 
@@ -72,7 +75,7 @@ def draw_diplomacy(app):
             text(surface, "ACTIVE" if active else "AVAILABLE", (x+441, 422), 9, CYAN if active else FAINT, "mono", right=True)
             effect = "pact_income" if action == "trade" else "pact_research"
             own_yield = base+getattr(own_race, bonus)+game.bonuses_for().get(effect, 0)
-            rival_yield = base+getattr(race, bonus)+game.bonuses_for("rival").get(effect, 0)
+            rival_yield = base+getattr(race, bonus)+game.bonuses_for(owner).get(effect, 0)
             returns = (f"Your empire: +{own_yield} {unit}/turn" if game.fog_of_war else
                        f"You: +{own_yield} {unit}/turn · Rival: +{rival_yield} {unit}/turn")
             text(surface, returns,
@@ -80,7 +83,7 @@ def draw_diplomacy(app):
             caption = "+1 relations each End Turn while active" if active else f"Accepted at {threshold:+} relations · Current: {state.relations:+}"
             text(surface, caption, (x+23, 474), 12, MUTED)
             command = f"end_{action}" if active else action
-            reason = game.diplomacy_error(command)
+            reason = game.diplomacy_error(command, owner)
             hint = f"End: -{BREAK_PENALTY} relations" if active else (reason or ("Will accept" if state.relations >= threshold else "Will decline"))
             text(surface, shorten(hint, 238, 11), (x+23, 520), 11, GOLD if active else MUTED)
             app.button(f"diplomacy_{command}", "End agreement" if active else "Propose", (x+275, 505, 168, 35),
@@ -92,7 +95,7 @@ def draw_diplomacy(app):
             ("gift", f"Gift {GIFT_COST} CR", 721,
              f"+{GIFT_RELATIONS} relations · Every {GIFT_COOLDOWN} turns"),
         ):
-            reason = game.diplomacy_error(action)
+            reason = game.diplomacy_error(action, owner)
             app.button(f"diplomacy_{action}", title, (x, 574, 278, 43),
                        lambda a=action: app.diplomatic_action(a), enabled=reason is None)
             text(surface, reason or caption, (x+1, 625), 11, GOLD if reason else MUTED)

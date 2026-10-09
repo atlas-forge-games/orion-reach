@@ -12,7 +12,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.empire import EmpireSummary, colony_rows, summarize_empire
-from orion.model import ConstructionProject, new_game
+from orion.model import ConstructionProject
+from scenarios import fixed_start_game as new_game
 from functools import partial
 
 # Keep the original single-empire regression fixtures isolated from AI turns.

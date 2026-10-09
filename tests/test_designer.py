@@ -15,7 +15,8 @@ from orion.app import App
 from orion.combat import ai_action
 from orion.combat_effects import CombatAnimation
 from orion.exploration import known_system, record_survey
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import fixed_start_game as new_game, place_near
 from orion.storage import Storage
 
 
@@ -128,7 +129,7 @@ class DesignerRulesTests(unittest.TestCase):
         design = game.save_design("Voyager", "battleship", ["laser", "armor"])
         game.queue_ship(0, 2, design.id)
         game.buy_construction(0, 2)
-        target = min((s for s in game.systems[1:] if game.within_fuel_range(s.id)), key=lambda s: game.travel_turns(game.systems[0], s))
+        target = place_near(game, 1)
         game.send_ships([1], target.id)
         copy_game = GameState.from_dict(game.to_dict())
         self.assertEqual(copy_game, game)

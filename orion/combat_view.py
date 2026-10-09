@@ -168,8 +168,8 @@ def draw_combat(app):
         app.button("combat_retreat", "Retreat fleet", (x, 699, 308, 33), app.retreat_request,
                    enabled=player_turn and retreat_destination(game) is not None)
     else:
-        title = {"player_victory": "Victory", "rival_victory": "Defeat", "monster_victory": "Defeat",
-                 "player_retreat": "Fleet withdrawn", "rival_retreat": "Enemy withdrew"}[battle.status]
+        title = ("Victory" if battle.status == "player_victory" else "Fleet withdrawn" if battle.status == "player_retreat"
+                 else "Enemy withdrew" if battle.status.endswith("_retreat") else "Defeat")
         text(surface, title, (x, 221), 29, GOLD, "title")
         lost = {side: sum(s.hull == 0 for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
         text(surface, f"Your ships lost: {lost[PLAYER]}", (x, 288), 16, CYAN)

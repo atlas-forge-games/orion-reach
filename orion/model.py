@@ -16,11 +16,14 @@ from . import exploration as exploration_rules
 from . import population as population_rules
 from . import monsters as monster_rules
 from .races import RACES, default_rival_race
+from .empires import EMPIRE_IDS, RIVAL_IDS, MAX_RIVALS, relation_key
 from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
                         agreement_yields, make_contact, take_action)
 
 GALAXY_SIZES = {"Compact": 24, "Standard": 48, "Expansive": 72}
+GALAXY_BOUNDS = (.02, .98, .04, .96)
+MIN_STAR_DISTANCE = 6  # ly; keeps stars distinct and clickable.
 STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dwarf")
 BIOMES = ("Terran", "Ocean", "Desert", "Tundra", "Barren", "Volcanic", "Gaia")
 RICHNESSES = ("Poor", "Average", "Rich", "Ultra-rich")
@@ -174,7 +177,7 @@ class Ship:
         record["cruise_speed"] = cruise_speed
         if version < 5:
             record["owner"] = PLAYER
-        if record["owner"] not in (PLAYER, RIVAL):
+        if record["owner"] not in EMPIRE_IDS:
             raise ValueError
         return cls(**record)
 
@@ -374,7 +377,7 @@ class Planet:
             raise ValueError
         if version < 5:
             record["owner"] = PLAYER if data["colonized"] else None
-        if record["owner"] not in (None, PLAYER, RIVAL):
+        if record["owner"] not in (None, *EMPIRE_IDS):
             raise ValueError
         if data["colonized"] != (record["owner"] is not None):
             raise ValueError
@@ -497,6 +500,39 @@ class GameState:
     exploration: exploration_rules.ExplorationState = field(default_factory=exploration_rules.ExplorationState)
     guardians: list[monster_rules.Guardian] = field(default_factory=list)
     designs: list[ShipDesign] = field(default_factory=list)
+    other_opponents: dict[str, Opponent] = field(default_factory=dict)
+    other_diplomacy: dict[str, DiplomacyState] = field(default_factory=dict)
+
+    @property
+    def opponents(self):
+        return ({RIVAL: self.opponent} if self.opponent is not None else {}) | self.other_opponents
+
+    @property
+    def owners(self):
+        return (PLAYER, *self.opponents)
+
+    def diplomacy_between(self, first=PLAYER, second=RIVAL):
+        if first == second or first not in self.owners or second not in self.owners:
+            raise RuleError("Choose two different existing empires.")
+        if {first, second} == {PLAYER, RIVAL}:
+            return self.diplomacy
+        return self.other_diplomacy[relation_key(first, second)]
+
+    def foreign_fleet(self, system_id, owner=PLAYER):
+        return [s for s in self.ships if s.owner != owner and not s.in_transit and s.system_id == system_id]
+
+    def opponents_at(self, system_id, owner=PLAYER):
+        return [enemy for enemy in self.owners if enemy != owner and self.fleet_at(system_id, enemy)]
+
+    def eliminate_defeated(self):
+        defeated = {owner for owner in self.owners if not self.colony_systems(owner)}
+        if len(self.owners)-len(defeated) > 1:
+            self.ships[:] = [ship for ship in self.ships if ship.owner not in defeated]
+        for i, owner in enumerate(self.owners):
+            for enemy in self.owners[i+1:]:
+                if owner in defeated or enemy in defeated:
+                    state = self.diplomacy_between(owner, enemy)
+                    state.trade_active = state.research_active = False
 
     def design_for(self, identifier):
         return next((d for d in self.designs if d.id == identifier), None)
@@ -556,7 +592,8 @@ class GameState:
         return self.result
 
     def headquarters(self, owner=PLAYER):
-        preferred = (0, 2) if owner == PLAYER else (self.opponent.home_system, self.opponent.home_planet)
+        empire = self._empire(owner)
+        preferred = (0, 2) if owner == PLAYER else (empire.home_system, empire.home_planet)
         rows = victory_rules.colonies(self, owner)
         return next((row for row in rows if (row[0].id, row[1].id) == preferred), rows[0] if rows else None)
 
@@ -564,9 +601,10 @@ class GameState:
         return victory_rules.invasion_error(self, system_id, planet_id, owner)
 
     def invade(self, system_id, planet_id, *, owner=PLAYER):
+        defender = self.planet_at(system_id, planet_id).owner
         result = victory_rules.invade(self, system_id, planet_id, owner)
         # Both sides know the outcome even if their last observing unit was lost.
-        for empire in (PLAYER, RIVAL):
+        for empire in (owner, defender):
             exploration_rules.record_survey(self, system_id, empire)
         return result
 
@@ -583,14 +621,14 @@ class GameState:
     def fleet_at(self, system_id, owner=PLAYER):
         return [s for s in self.ships if s.owner == owner and not s.in_transit and s.system_id == system_id]
 
-    def engagement_error(self, system_id, owner=PLAYER):
-        return combat_rules.engagement_error(self, system_id, owner)
+    def engagement_error(self, system_id, owner=PLAYER, target=None):
+        return combat_rules.engagement_error(self, system_id, owner, target)
 
     def beam_for(self, kind, owner=PLAYER):
         return combat_rules.BEAMS[combat_rules.weapon_for(self, kind, owner)]
 
-    def start_combat(self, system_id, owner=PLAYER):
-        return combat_rules.begin_combat(self, system_id, owner)
+    def start_combat(self, system_id, owner=PLAYER, target=None):
+        return combat_rules.begin_combat(self, system_id, owner, target)
 
     def combat_fire(self, ship_id, target_id, owner=PLAYER):
         return combat_rules.fire(self, ship_id, target_id, owner)
@@ -619,7 +657,7 @@ class GameState:
 
     def can_repair(self, ship):
         return (not ship.has_course and any(p.owner == ship.owner for p in self.systems[ship.system_id].worlds)
-                and not self.fleet_at(ship.system_id, combat_rules.other(ship.owner)))
+                and not self.foreign_fleet(ship.system_id, ship.owner))
 
     def research_state(self, owner=PLAYER):
         return self._empire(owner).technology
@@ -649,8 +687,8 @@ class GameState:
         self._require_strategy()
         empire = self._empire(owner)
         empire.research, discovered = empire.technology.spend(empire.research)
-        if discovered and owner == RIVAL:
-            self.rival_event(f"Discovered {discovered.name}.", turn=self.turn)
+        if discovered and owner != PLAYER:
+            self.rival_event(f"Discovered {discovered.name}.", turn=self.turn, owner=owner)
         return discovered
 
     def planet_yields(self, planet):
@@ -727,11 +765,11 @@ class GameState:
     def starting_colonists(self, owner=PLAYER):
         return STARTING_COLONISTS+self.bonuses_for(owner).get("colonists", 0)
 
-    def diplomacy_error(self, action):
-        return action_error(self, action)
+    def diplomacy_error(self, action, target=RIVAL):
+        return action_error(self, action, target)
 
-    def diplomacy_action(self, action):
-        return take_action(self, action)
+    def diplomacy_action(self, action, target=RIVAL):
+        return take_action(self, action, target)
 
     def diplomatic_yields(self, owner=PLAYER):
         return agreement_yields(self, owner)
@@ -739,8 +777,8 @@ class GameState:
     def _empire(self, owner):
         if owner == PLAYER:
             return self
-        if owner == RIVAL and self.opponent is not None:
-            return self.opponent
+        if owner in self.opponents:
+            return self.opponents[owner]
         raise RuleError("Unknown empire.")
 
     def treasury_for(self, owner=PLAYER):
@@ -764,9 +802,10 @@ class GameState:
         if planet.owner != owner:
             raise RuleError("You can only manage colonies belonging to your empire.")
 
-    def rival_event(self, message, *, turn=None):
-        self.opponent.events.append(AIEvent(self.turn+1 if turn is None else turn, message))
-        self.opponent.events = self.opponent.events[-12:]
+    def rival_event(self, message, *, turn=None, owner=RIVAL):
+        empire = self._empire(owner)
+        empire.events.append(AIEvent(self.turn+1 if turn is None else turn, message))
+        empire.events = empire.events[-12:]
 
     def opponent_home(self):
         """Choose a habitable home far from every existing player colony."""
@@ -797,17 +836,28 @@ class GameState:
         if error:
             raise RuleError(error)
         system, planet = self.opponent_home()
-        self.opponent = Opponent("Helios Directorate", system.id, planet.id, race_id=race_id)
-        self.opponent.research = RACES[race_id].starting_research
-        self.diplomacy = make_contact(self.turn, self.opponent.name, race_id)
-        planet.colonized, planet.owner, planet.population = True, RIVAL, 8
-        planet.farmers, planet.scientists = 2, 0
-        if not population_rules.food_required(8, self.bonuses_for(RIVAL)):
-            planet.farmers = 0
-        self._starting_fleet(RIVAL, system.id)
-        self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn)
+        self._place_opponent(RIVAL, race_id, system, planet, "Helios Directorate")
         exploration_rules.refresh(self)
         return planet
+
+    def _place_opponent(self, owner, race_id, system, planet, name):
+        previous = self.owners
+        empire = Opponent(name, system.id, planet.id, race_id=race_id,
+                          research=RACES[race_id].starting_research)
+        if owner == RIVAL:
+            self.opponent = empire
+            self.diplomacy = make_contact(self.turn, name, race_id)
+        else:
+            self.other_opponents[owner] = empire
+            self.exploration.scanned_others[owner] = []
+            for first in previous:
+                self.other_diplomacy[relation_key(first, owner)] = make_contact(self.turn, name, race_id)
+        planet.colonized, planet.owner, planet.population = True, owner, 8
+        planet.farmers, planet.scientists = 2, 0
+        if not population_rules.food_required(8, self.bonuses_for(owner)):
+            planet.farmers = 0
+        self._starting_fleet(owner, system.id)
+        self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn, owner=owner)
 
     def _starting_fleet(self, owner, system_id):
         """One initial exploration and settlement fleet, created with the empire."""
@@ -1093,9 +1143,7 @@ class GameState:
         exploration_rules.refresh(self)
         if monster_rules.intercept(self):
             return TurnReport(0, 0, [])
-        encounter = combat_rules.hostile_encounter(self)
-        if encounter is not None:
-            self.start_combat(encounter, RIVAL)
+        if combat_rules.intercept(self):
             return TurnReport(0, 0, [])
         # End Turn commits existing orders before the AI plans against current positions.
         for ship in self.ships:
@@ -1104,14 +1152,16 @@ class GameState:
         repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
         gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate]
         alerts = []
-        if self.opponent is not None:
-            from .ai import run_ai
-            alerts = run_ai(self)
+        from .ai import run_ai
+        for owner in self.opponents:
+            if not self.colony_systems(owner):
+                continue
+            alerts.extend(run_ai(self, owner))
             if self.result is not None:
                 return TurnReport(0, 0, [], alerts=alerts)
         advance_diplomacy(self)
         income, research = self.empire_rates
-        rival_income, rival_research = self.empire_rates_for(RIVAL)
+        rival_rates = {owner: self.empire_rates_for(owner) for owner in self.opponents}
         population_start = [(p, self.population_report(p)) for s in self.systems
                             for p in s.worlds if p.colonized]
         arrivals = []
@@ -1126,7 +1176,7 @@ class GameState:
                     if ship.owner == PLAYER:
                         arrivals.append(message)
                     else:
-                        self.rival_event(f"Arrived: {message}.")
+                        self.rival_event(f"Arrived: {message}.", owner=ship.owner)
         completed = []
         for system in self.systems:
             for planet in system.worlds:
@@ -1137,7 +1187,7 @@ class GameState:
                     if planet.owner == PLAYER:
                         completed.append(message)
                     else:
-                        self.rival_event(f"Completed: {message}.")
+                        self.rival_event(f"Completed: {message}.", owner=planet.owner)
                         if item_id == ASCENSION_GATE.id:
                             location = exploration_rules.gate_location(self, system.id, planet)
                             alerts.append(f"Rival gate completed at {location}: five charging turns remain")
@@ -1152,28 +1202,27 @@ class GameState:
                 if planet.owner == PLAYER:
                     population.append(message)
                 else:
-                    self.rival_event(message+".", turn=self.turn)
+                    self.rival_event(message+".", turn=self.turn, owner=planet.owner)
         exploration = exploration_rules.refresh(self, recover=True)
         discovered = self.advance_research()
-        if self.opponent is not None:
-            self.opponent.credits += rival_income
-            self.opponent.research += rival_research
-            self.advance_research(RIVAL)
+        for owner, empire in self.opponents.items():
+            empire.credits += rival_rates[owner][0]
+            empire.research += rival_rates[owner][1]
+            self.advance_research(owner)
         for ship in self.ships:
             if ship.id in repairable and self.can_repair(ship):
                 ship.hull = min(ship.max_hull, ship.hull+REPAIR_PER_TURN)
         victory_rules.advance_gates(self, gates)
-        rival_gate = victory_rules.gate_site(self, RIVAL)
-        if (rival_gate and rival_gate[1].gate_charge == GATE_CHARGE_TURNS-1
-                and not victory_rules.gate_blocked(self, rival_gate[0].id, RIVAL)):
-            location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
-            alerts.append(f"Rival gate at {location} will activate next turn unless blocked")
+        for owner in self.opponents:
+            rival_gate = victory_rules.gate_site(self, owner)
+            if (rival_gate and rival_gate[1].gate_charge == GATE_CHARGE_TURNS-1
+                    and not victory_rules.gate_blocked(self, rival_gate[0].id, owner)):
+                location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
+                alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
         exploration_rules.refresh(self)
         monster_rules.intercept(self)
         self.check_victory()
-        encounter = combat_rules.hostile_encounter(self)
-        if encounter is not None:
-            self.start_combat(encounter, RIVAL)
+        combat_rules.intercept(self)
         return TurnReport(income, research, completed, arrivals,
                           [discovered.name] if discovered else [], alerts, exploration, population)
 
@@ -1181,7 +1230,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=19):
+    def from_dict(cls, data, *, version=20):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1267,6 +1316,21 @@ class GameState:
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
+            if version >= 20:
+                extras, relations = data["other_opponents"], data["other_diplomacy"]
+                if (not isinstance(extras, dict) or len(extras) >= MAX_RIVALS
+                        or set(extras) != set(RIVAL_IDS[1:len(extras)+1]) or (extras and opponent is None)):
+                    raise ValueError("Invalid rival roster")
+                game.other_opponents = {owner: Opponent.from_dict(extras[owner], systems, game.turn, version=version)
+                                        for owner in RIVAL_IDS[1:len(extras)+1]}
+                keys = {relation_key(a, b) for i, a in enumerate(game.owners) for b in game.owners[i+1:]
+                        if {a, b} != {PLAYER, RIVAL}}
+                if not isinstance(relations, dict) or set(relations) != keys:
+                    raise ValueError("Invalid diplomatic relationships")
+                game.other_diplomacy = {key: DiplomacyState.from_dict(row, game.turn) for key, row in relations.items()}
+            if (any(p.owner is not None and p.owner not in game.owners for s in systems for p in s.worlds)
+                    or any(s.owner not in game.owners for s in ships)):
+                raise ValueError("Unknown empire owns a colony or ship")
             if version >= 18:
                 if not isinstance(data["designs"], list) or len(data["designs"]) > MAX_DESIGNS:
                     raise ValueError("Invalid design library")
@@ -1279,7 +1343,7 @@ class GameState:
                 if any(loadout_error(d.kind, d.modules, technology.completed) for d in snapshots):
                     raise ValueError("Undiscovered ship equipment")
             if version >= 16:
-                game.guardians = monster_rules.parse_guardians(data["guardians"], game)
+                game.guardians = monster_rules.parse_guardians(data["guardians"], game, version=version)
             if version >= 8 and data["combat"] is not None:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
@@ -1296,7 +1360,8 @@ class GameState:
 
 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
-             race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True):
+             race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
+             rival_count=None, random_starts=True):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if type(fog_of_war) is not bool:
@@ -1307,6 +1372,11 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         raise SaveError("Choose a valid player race.")
     if rival_race_id is not None and (not isinstance(rival_race_id, str) or rival_race_id not in RACES):
         raise SaveError("Choose a valid rival race.")
+    count_rivals = (1 if with_ai else 0) if rival_count is None else rival_count
+    if not _integer(count_rivals, 0, MAX_RIVALS):
+        raise SaveError(f"Choose between 0 and {MAX_RIVALS} rivals.")
+    if type(random_starts) is not bool:
+        raise SaveError("Random starts must be on or off.")
     if seed is None:
         seed = random.SystemRandom().randrange(1_000_000_000)
     if not _integer(seed, 0, 999_999_999):
@@ -1315,13 +1385,16 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     names = NAMES.copy()
     rng.shuffle(names)
     systems = [StarSystem(0, "Sol", .35, .55, "Yellow dwarf", 4, "Terran", "Average")]
+    starts = random.Random(f"orion-starts-v1:{seed}")
+    left, right, top, bottom = GALAXY_BOUNDS
+    if random_starts:
+        # Keep the familiar homeworld, but place its system anywhere in the galaxy.
+        systems[0].x, systems[0].y = starts.uniform(left, right), starts.uniform(top, bottom)
     count = GALAXY_SIZES[galaxy_size]
     for i in range(1, count):
         for _ in range(2000):
-            x, y = rng.uniform(.06, .94), rng.uniform(.08, .92)
-            if ((x - .5) / .48) ** 2 + ((y - .5) / .47) ** 2 > 1:
-                continue
-            if all(math.hypot((x-s.x)*1.4, y-s.y) > .085 for s in systems):
+            x, y = rng.uniform(left, right), rng.uniform(top, bottom)
+            if all(100*math.hypot((x-s.x)*1.4, y-s.y) >= MIN_STAR_DISTANCE for s in systems):
                 break
         else:
             raise SaveError("Could not place this galaxy. Please try a different seed.")
@@ -1335,8 +1408,26 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     if not population_rules.food_required(8, game.bonuses_for()):
         game.planet_at(0, 2).farmers = 0
     game._starting_fleet(PLAYER, 0)
-    if with_ai and game.opponent_start_error() is None:
-        game.add_opponent(rival_race_id)
+    if not random_starts and count_rivals <= 1:
+        if count_rivals and game.opponent_start_error() is None:
+            game.add_opponent(rival_race_id)
+    else:
+        races = [rid for rid in RACES if rid != race_id and rid != rival_race_id]
+        starts.shuffle(races)
+        if rival_race_id:
+            races.insert(0, rival_race_id)
+        homes = [systems[0]]
+        for owner, rid in zip(RIVAL_IDS[:count_rivals], races):
+            candidates = [s for s in systems if s not in homes and s.worlds]
+            separated = [s for s in candidates if all(distance_ly(s, h) >= 20 for h in homes)]
+            system = starts.choice(separated) if separated else max(candidates, key=lambda s: min(distance_ly(s, h) for h in homes))
+            # Equal foundations: race traits, rather than a lucky starting biome, set the opening economy.
+            planet = starts.choice(system.worlds)
+            planet.biome, planet.size, planet.richness, planet.gravity = "Terran", "Medium", "Average", "Normal"
+            if planet.id == 0:
+                system.biome, system.richness = planet.biome, planet.richness
+            game._place_opponent(owner, rid, system, planet, RACES[rid].default_empire)
+            homes.append(system)
     if with_guardians:
         monster_rules.seed_guardians(game)
     exploration_rules.refresh(game)

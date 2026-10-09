@@ -12,7 +12,8 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.fleets import fleet_containing, group_fleets
-from orion.model import PLAYER, RIVAL, GameState, RuleError, Ship, new_game
+from orion.model import PLAYER, RIVAL, GameState, RuleError, Ship
+from scenarios import fixed_start_game as new_game, use_nearby_system
 from functools import partial
 
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
@@ -22,7 +23,9 @@ from orion.storage import Storage
 
 
 def fixture(*, ai=False):
-    game = new_game(seed=2408, with_ai=ai)
+    game = new_game(seed=2408, with_ai=ai, with_guardians=False)
+    use_nearby_system(game, 1)
+    use_nearby_system(game, 11, excluding=(1,))
     game.ships = [Ship(1, "frigate", 0, hull=15), Ship(2, "frigate", 0),
                   Ship(3, "colony_ship", 0), Ship(4, "troop_transport", 0)]
     game.next_ship_id = 5

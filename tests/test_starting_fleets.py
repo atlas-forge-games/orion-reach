@@ -8,7 +8,8 @@ import unittest
 
 from orion.exploration import refresh
 from orion.fleets import fleet_containing
-from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship, new_game
+from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
+from scenarios import fixed_start_game as new_game, use_nearby_system
 from orion.races import RACES
 from orion.storage import SAVE_VERSION, Storage
 
@@ -48,7 +49,7 @@ class StartingFleetTests(unittest.TestCase):
                 self.assertEqual(game.to_dict(), before)
 
     def test_starting_colony_ship_can_settle_immediately_and_ai_uses_its_scouts(self):
-        game = new_game(seed=2408)
+        game = new_game(seed=172)  # Naturally has two reachable rival destinations.
         game.colonize(3, 0, 3)
         self.assertEqual(game.planet_at(0, 3).owner, PLAYER)
         self.assertEqual([s.kind for s in game.ships_owned_by()], ["scout", "scout"])
@@ -67,6 +68,7 @@ class StartingFleetTests(unittest.TestCase):
 class PendingDepartureTests(unittest.TestCase):
     def setUp(self):
         self.game = new_game(seed=2408, with_ai=False, with_guardians=False)
+        use_nearby_system(self.game, 1)
         self.target = max((s for s in self.game.systems[1:] if self.game.within_fuel_range(s.id)),
                           key=lambda s: self.game.travel_turns(self.game.systems[0], s)).id
 
@@ -152,6 +154,7 @@ class PendingDepartureTests(unittest.TestCase):
 
     def test_v13_saves_keep_existing_fleets_and_committed_journeys_without_gifts(self):
         game = new_game(seed=2408, with_ai=False, with_guardians=False)
+        use_nearby_system(game, self.target)
         game.ships = [Ship(41, "frigate", 0, hull=13)]
         game.next_ship_id = 42
         game.send_ship(41, self.target)
@@ -173,7 +176,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-            self.assertEqual(SAVE_VERSION, 19)
+            self.assertEqual(SAVE_VERSION, 20)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game
@@ -207,6 +210,7 @@ class PendingDepartureTests(unittest.TestCase):
 
     def test_hostile_encounter_cancels_pending_orders_and_retreat_cannot_be_revoked(self):
         game = new_game(seed=2408)
+        use_nearby_system(game, self.target)
         game.ships.append(Ship(7, "frigate", 0, owner=RIVAL))
         game.next_ship_id = 8
         game.diplomacy.relations = -100

@@ -41,7 +41,9 @@ def main():
         if args.screenshot:
             if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, "objectives", "result"):
                 from orion.model import new_game
-                app.game = new_game(seed=2408)
+                # Seed 5 naturally has a reachable neighbor for the course preview.
+                preview_seed = 5 if args.screen in ("fleet", "fleet_course") else 2408
+                app.game = new_game(seed=preview_seed, random_starts=False)
                 if args.screen in ("planet", "production", "colony", "shipyard"):
                     app.game.selected_planet = 2
                 if args.screen == "unexplored":

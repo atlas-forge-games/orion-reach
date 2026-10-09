@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .model import GALAXY_SIZES
+from .empires import MAX_RIVALS
 from .race_art import draw_race_portrait
 from .races import RACES
 from .ui import GOLD, INK, MUTED, panel, paragraph, text
@@ -33,7 +34,7 @@ def draw_race_select(app):
     y = paragraph(surface, race.description, (914, 631), 436, 13, MUTED, 19)+12
     for trait in race.traits:
         y = paragraph(surface, "• "+trait, (914, y), 436, 12, race.color, 18)+5
-    text(surface, "Next: empire name, galaxy size, exploration and rival.", (66, 835), 14, MUTED)
+    text(surface, "Next: empire name, galaxy size, exploration and rival count.", (66, 835), 14, MUTED)
     app.button("setup_next", "Continue → Galaxy options", (966, 815, 410, 57),
                lambda: app.go("setup"), "primary")
 
@@ -53,7 +54,7 @@ def draw_setup(app):
     app.button("setup_back", "← Change race", (86, 733, 294, 42), lambda: app.go("race_select"))
     app.input_box("empire", "EMPIRE NAME", app.empire, (430, 325, 586, 55), "Your civilization")
     app.input_box("seed", "GALAXY SEED · OPTIONAL", app.seed, (1034, 325, 342, 55), "Random")
-    text(surface, "The same seed and size create the same stars.", (431, 400), 13, MUTED)
+    text(surface, "Reuse a seed and the same settings to repeat this galaxy and its starting positions.", (431, 400), 13, MUTED)
     text(surface, "GALAXY SIZE", (430, 443), 11, GOLD, "mono", 1)
     for i, (size, count) in enumerate(GALAXY_SIZES.items()):
         x = 430+i*320
@@ -64,12 +65,15 @@ def draw_setup(app):
                (430, 546, 306, 47), app.toggle_fog_of_war)
     paragraph(surface, "Explore to reveal planets and fleets." if app.fog_of_war else "All systems and fleets are visible from the start.",
               (761, 561), 595, 14, MUTED, 20)
-    text(surface, "RIVAL CIVILIZATION", (430, 623), 11, GOLD, "mono", 1)
-    for i, rival in enumerate(RACES.values()):
-        x, y = 430+(i % 4)*240, 649+(i // 4)*48
-        app.button("rival_race_"+rival.id, rival.name, (x, y, 226, 39), lambda rid=rival.id: app.choose_rival_race(rid))
-        if app.rival_race_id == rival.id:
-            pg.draw.line(surface, rival.color, (x, y+39), (x+226, y+39), 2)
-    text(surface, "One AI rival · Helios Directorate", (431, 804), 12, MUTED)
-    text(surface, "All races start with two scouts and one colony ship.", (65, 842), 13, MUTED)
+    text(surface, "NUMBER OF RIVALS", (430, 623), 11, GOLD, "mono", 1)
+    for count in range(MAX_RIVALS+1):
+        x = 430+count*160
+        app.button(f"rival_count_{count}", "0 · Solo" if count == 0 else str(count),
+                   (x, 650, 146, 47), lambda n=count: app.choose_rival_count(n))
+        if app.rival_count == count:
+            pg.draw.line(surface, GOLD, (x, 697), (x+146, 697), 2)
+    paragraph(surface, "Rival races are drawn randomly, without duplicates. Every empire starts in a different system, with its own fleet and economy.",
+              (431, 720), 912, 14, MUTED, 22)
+    text(surface, "Random starting locations across a rectangular galaxy.", (431, 781), 14, GOLD)
+    text(surface, "Start: two scouts and one colony ship · Base fuel range: 7 ly", (65, 842), 13, MUTED)
     app.button("launch", "Begin expedition", (966, 831, 410, 48), app.start_game, "primary")

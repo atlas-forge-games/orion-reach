@@ -11,7 +11,7 @@ import tempfile
 
 from .model import GameState, SaveError
 
-SAVE_VERSION = 19
+SAVE_VERSION = 20
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30}
 
@@ -91,7 +91,7 @@ class Storage:
     def load(self, path):
         try:
             path = Path(path)
-            if path.stat().st_size > 2_000_000:
+            if path.stat().st_size > 12_000_000:
                 raise SaveError("This save is too large for this prototype.")
             data = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict) or data.get("format") != "orion-reach":

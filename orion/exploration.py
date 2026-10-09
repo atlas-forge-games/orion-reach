@@ -3,9 +3,6 @@
 from dataclasses import asdict, dataclass, field, replace
 import random
 
-OWNERS = ("player", "rival")
-
-
 @dataclass(frozen=True)
 class DiscoverySpec:
     name: str
@@ -49,27 +46,37 @@ class ExplorationState:
     scanned_player: list[int] = field(default_factory=list)
     scanned_rival: list[int] = field(default_factory=list)
     discoveries: list[Discovery] = field(default_factory=list)
+    scanned_others: dict[str, list[int]] = field(default_factory=dict)
 
     def survey(self, system_id, owner="player"):
         return next((s for s in self.surveys if s.system_id == system_id and s.owner == owner), None)
 
     def scanned(self, owner="player"):
-        return self.scanned_player if owner == "player" else self.scanned_rival
+        if owner == "player":
+            return self.scanned_player
+        if owner == "rival":
+            return self.scanned_rival
+        return self.scanned_others.setdefault(owner, [])
 
     @classmethod
-    def from_dict(cls, data, game, *, version=18):
+    def from_dict(cls, data, game, *, version=20):
         from .model import Planet, _integer
-        if not isinstance(data, dict) or set(data) != {"surveys", "scanned_player", "scanned_rival", "discoveries"}:
+        if version < 20 and isinstance(data, dict):
+            data = {k: v for k, v in data.items() if k != "scanned_others"}
+        fields = {"surveys", "scanned_player", "scanned_rival", "discoveries"}
+        if version >= 20:
+            fields.add("scanned_others")
+        if not isinstance(data, dict) or set(data) != fields:
             raise ValueError("Invalid exploration data")
         count = len(game.systems)
-        if not isinstance(data["surveys"], list) or len(data["surveys"]) > count*2:
+        if not isinstance(data["surveys"], list) or len(data["surveys"]) > count*len(game.owners):
             raise ValueError
         surveys, keys = [], set()
         for row in data["surveys"]:
             if not isinstance(row, dict) or set(row) != {"owner", "system_id", "first_visit", "last_seen", "worlds"}:
                 raise ValueError
             owner, sid = row["owner"], row["system_id"]
-            if owner not in OWNERS or (owner == "rival" and game.opponent is None) or not _integer(sid, 0, count-1):
+            if owner not in game.owners or not _integer(sid, 0, count-1):
                 raise ValueError
             if (owner, sid) in keys or not _integer(row["first_visit"], 1, game.turn) or not _integer(row["last_seen"], row["first_visit"], game.turn):
                 raise ValueError
@@ -83,20 +90,21 @@ class ExplorationState:
                 if any(getattr(parsed, key) != getattr(actual, key) for key in
                        ("name", "biome", "size", "richness", "gravity", "orbit_au")):
                     raise ValueError("Survey does not match this world")
-                if parsed.owner == "rival" and game.opponent is None:
+                if parsed.owner is not None and parsed.owner not in game.owners:
                     raise ValueError
                 normalized_worlds.append(asdict(parsed))
             surveys.append(Survey(**{**row, "worlds": normalized_worlds}))
             keys.add((owner, sid))
-        scanned = []
-        for owner in OWNERS:
-            ids = data[f"scanned_{owner}"]
+        extras = data["scanned_others"] if version >= 20 else {}
+        if not isinstance(extras, dict) or set(extras) != set(game.other_opponents):
+            raise ValueError("Invalid scout observers")
+        scanned = {"player": data["scanned_player"], "rival": data["scanned_rival"], **extras}
+        for owner, ids in scanned.items():
             if (not isinstance(ids, list) or len(ids) > count or any(not _integer(i, 0, count-1) for i in ids)
-                    or len(set(ids)) != len(ids) or (owner == "rival" and game.opponent is None and ids)):
+                    or len(set(ids)) != len(ids) or (owner not in game.owners and ids)):
                 raise ValueError
             if game.fog_of_war and any((owner, sid) not in keys for sid in ids):
                 raise ValueError("Scout scan has no survey")
-            scanned.append(ids.copy())
         if not isinstance(data["discoveries"], list) or len(data["discoveries"]) > count:
             raise ValueError
         discoveries, claimed = [], set()
@@ -104,14 +112,15 @@ class ExplorationState:
             if not isinstance(row, dict) or set(row) != {"system_id", "owner", "kind", "turn"}:
                 raise ValueError
             sid, owner = row["system_id"], row["owner"]
-            if (not _integer(sid, 0, count-1) or owner not in OWNERS or sid in claimed
+            if (not _integer(sid, 0, count-1) or owner not in game.owners or sid in claimed
                     or not isinstance(row["kind"], str) or row["kind"] not in DISCOVERIES
                     or not _integer(row["turn"], 1, game.turn)
-                    or sid not in scanned[OWNERS.index(owner)] or row["kind"] != discovery_at(game, sid)):
+                    or sid not in scanned[owner] or row["kind"] != discovery_at(game, sid)):
                 raise ValueError("Invalid discovery claim")
             discoveries.append(Discovery(**row))
             claimed.add(sid)
-        return cls(surveys, *scanned, discoveries)
+        return cls(surveys, scanned["player"].copy(), scanned["rival"].copy(), discoveries,
+                   {owner: ids.copy() for owner, ids in extras.items()})
 
 
 def observed_systems(game, owner="player"):
@@ -171,9 +180,7 @@ def refresh(game, *, recover=False):
     """Snapshot observed worlds; scouts can claim an encounter only once globally."""
     from .monsters import alive_at, observe
     messages = []
-    for owner in OWNERS:
-        if owner == "rival" and game.opponent is None:
-            continue
+    for owner in game.owners:
         for sid in observed_systems(game, owner):
             observe(game, sid, owner)
         if game.fog_of_war:
@@ -194,7 +201,7 @@ def refresh(game, *, recover=False):
         if ship.system_id in scanned:
             continue
         scanned.append(ship.system_id)
-        if game.opponent and ship.system_id == game.opponent.home_system:
+        if ship.system_id in {0, *(r.home_system for r in game.opponents.values())}:
             continue  # Starting homeworlds have already been searched.
         kind = discovery_at(game, ship.system_id)
         if kind is None or ship.system_id in claimed:
@@ -209,14 +216,14 @@ def refresh(game, *, recover=False):
         if ship.owner == "player":
             messages.append(message)
         else:
-            game.rival_event(f"Recovered {message}", turn=game.turn)
+            game.rival_event(f"Recovered {message}", turn=game.turn, owner=ship.owner)
     return messages
 
 
-def known_rival_colonies(game):
+def known_rival_colonies(game, owner=None):
     return [(known, planet) for system in game.systems
             if (known := known_system(game, system.id)) is not None
-            for planet in known.worlds if planet.owner == "rival"]
+            for planet in known.worlds if planet.owner in game.opponents and (owner is None or planet.owner == owner)]
 
 
 def gate_location(game, system_id, planet):
