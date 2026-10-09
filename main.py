@@ -18,6 +18,7 @@ GUARDIAN_PREVIEWS = {
     "gaia": ("space_serpent", "planet"),
 }
 GROUND_PREVIEWS = ("ground", "ground_result", "ground_defence")
+TOMB_PREVIEWS = ("news", "tomb_battle", "tomb_colony")
 
 
 def main():
@@ -26,7 +27,7 @@ def main():
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
-    parser.add_argument("--screen", choices=("splash", "menu", "race_select", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, *GROUND_PREVIEWS, "objectives", "result", "about"), default="menu")
+    parser.add_argument("--screen", choices=("splash", "menu", "race_select", "setup", "load", "settings", "galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, *GROUND_PREVIEWS, *TOMB_PREVIEWS, "objectives", "result", "about"), default="menu")
     args = parser.parse_args()
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     if args.headless:
@@ -40,11 +41,30 @@ def main():
     app = App(args.data_dir, capture=bool(args.screenshot), skip_intro=args.skip_intro)
     try:
         if args.screenshot:
-            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, *GROUND_PREVIEWS, "objectives", "result"):
+            if args.screen in ("galaxy", "system", "unexplored", "exploration", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "fleet_course", "rival", "diplomacy", "research", "combat", "designer", "design_combat", *GUARDIAN_PREVIEWS, *GROUND_PREVIEWS, *TOMB_PREVIEWS, "objectives", "result"):
                 from orion.model import new_game
                 # Seed 5 naturally has a reachable neighbor for the course preview.
                 preview_seed = 5 if args.screen in ("fleet", "fleet_course") else 2408
                 app.game = new_game(seed=preview_seed, random_starts=False)
+                if args.screen in TOMB_PREVIEWS:
+                    from orion import tomb_worlds
+                    from orion.exploration import refresh
+                    game = app.game
+                    game.turn, game.year = 28, 2327
+                    game.fog_of_war = False
+                    if args.screen == "tomb_battle":
+                        tomb = tomb_worlds.TombWorld(0, 2)
+                        game.tomb_worlds = [tomb]
+                        earth = game.planet_at(0, 2)
+                        earth.buildings, earth.garrison = ["barracks", "fortifications"], 8
+                        app.ground_reports = [tomb_worlds.awaken(game, tomb)]
+                        app.ground_return = "news"
+                    else:
+                        tomb = tomb_worlds.TombWorld(0, 3)
+                        game.tomb_worlds = [tomb]
+                        tomb_worlds.awaken(game, tomb)
+                        game.selected_system, game.selected_planet = 0, 3
+                    refresh(game)
                 if args.screen in ("planet", "production", "colony", "shipyard"):
                     app.game.selected_planet = 2
                 if args.screen == "unexplored":
@@ -141,6 +161,7 @@ def main():
                     earth.ascension_gate, earth.gate_charge = True, 5
                     game.check_victory()
             preview_screen = {"fleet_course": "galaxy", "unexplored": "system", "design_combat": "combat",
+                              "tomb_battle": "ground", "tomb_colony": "planet",
                               **{name: "ground" for name in GROUND_PREVIEWS},
                               **{name: screen for name, (_, screen) in GUARDIAN_PREVIEWS.items()}}
             app.go(preview_screen.get(args.screen, args.screen))

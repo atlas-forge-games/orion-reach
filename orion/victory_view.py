@@ -167,4 +167,5 @@ def draw_result(app):
     text(surface, "This campaign is complete. Save a final snapshot or start a new campaign.", (95, 739), 15, MUTED)
     app.button("result_save", "Save final snapshot", (92, 802, 291, 57), app.save_game)
     app.button("result_menu", "Main menu", (404, 802, 249, 57), app.to_menu)
+    app.button("result_news", "Turn news · N", (674, 802, 291, 57), app.open_news)
     app.button("result_new", "New campaign →", (1016, 802, 332, 57), lambda: app.go("race_select"), "primary")

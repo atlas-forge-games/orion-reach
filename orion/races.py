@@ -125,8 +125,8 @@ RACES = {
         "Proud, patient survivors of a magnificent civilization, carrying fragments of knowledge and a quiet sense of loss.",
         "Remnant Enclave", (179, 185, 208), 35, 20,
         effects=(("research_percent", 25), ("industry_percent", -20)), starting_research=80,
-        abilities=("Begin with 80 research points to spend.", "Colony research output is 25% higher.",
-                   "Colony industry output is 20% lower."),
+        abilities=("Begin with 80 research points to spend.", "Research +25%; industry −20%.",
+                   "Awakened tomb worlds join your empire."),
         development=("research_lab", "factory", "mine", "trade_center"),
         research_priority=("physics", "computers", "society")),
 }

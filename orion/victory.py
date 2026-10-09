@@ -14,7 +14,7 @@ class CampaignResult:
 
 @dataclass(frozen=True)
 class InvasionReport:
-    attacker: str
+    attacker: str | None
     system_id: int
     planet_id: int
     attack: int
@@ -28,6 +28,7 @@ class InvasionReport:
     attacker_survivors: int
     defender_survivors: int
     rounds: tuple[GroundRound, ...]
+    cause: str = "invasion"
 
 
 def colonies(game, owner):
@@ -72,7 +73,21 @@ def invade(game, system_id, planet_id, owner="player"):
     captured = outcome.captured
     for ship in transports:
         game.ships.remove(ship)
-    if captured:
+    apply_ground_outcome(planet, owner, defending, outcome)
+    record_ground_hostility(game, owner, defender,
+                           f"{game.empire_name_for(owner)} {'captured' if captured else 'failed to capture'} {planet.name}: "
+                           f"{attack-outcome.attackers} attacking and {defending.troops-outcome.defenders} defending troops lost. "
+                           f"{len(transports)} transports consumed.")
+    game.eliminate_defeated()
+    game.check_victory()
+    return InvasionReport(owner, system_id, planet_id, attack, defence, len(transports), captured,
+                          defender, defending.militia, defending.garrison, defending.defence_bonus,
+                          outcome.attackers, outcome.defenders, outcome.rounds)
+
+
+def apply_ground_outcome(planet, owner, defending, outcome):
+    """Transport invasions and buried armies have identical occupation rules."""
+    if outcome.captured:
         planet.owner = owner
         planet.garrison = outcome.attackers
         planet.militia_losses = 4+planet.population
@@ -86,21 +101,16 @@ def invade(game, system_id, planet_id, owner="player"):
         casualties = defending.troops-outcome.defenders
         planet.militia_losses += max(0, casualties-planet.garrison)
         planet.garrison = max(0, planet.garrison-casualties)
+
+
+def record_ground_hostility(game, owner, defender, message):
     state = game.diplomacy_between(owner, defender)
     state.trade_active = state.research_active = False
     state.relations, state.offer_ready_turn = -100, game.turn+3
-    message = (f"{game.empire_name_for(owner)} {'captured' if captured else 'failed to capture'} {planet.name}: "
-               f"{attack-outcome.attackers} attacking and {defending.troops-outcome.defenders} defending troops lost. "
-               f"{len(transports)} transports consumed.")
     state.record(game.turn, message)
     for participant in (owner, defender):
         if participant != "player":
             game.rival_event(message, turn=game.turn, owner=participant)
-    game.eliminate_defeated()
-    game.check_victory()
-    return InvasionReport(owner, system_id, planet_id, attack, defence, len(transports), captured,
-                          defender, defending.militia, defending.garrison, defending.defence_bonus,
-                          outcome.attackers, outcome.defenders, outcome.rounds)
 
 
 def gate_site(game, owner="player"):

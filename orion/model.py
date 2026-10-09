@@ -16,8 +16,9 @@ from . import exploration as exploration_rules
 from . import population as population_rules
 from . import monsters as monster_rules
 from . import ground_combat as ground_rules
+from . import tomb_worlds as tomb_rules
 from .races import RACES, default_rival_race
-from .empires import EMPIRE_IDS, RIVAL_IDS, MAX_RIVALS, relation_key
+from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
 from .research import ResearchState, building_yields, colony_yields
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
                         agreement_yields, make_contact, take_action)
@@ -518,6 +519,8 @@ class GameState:
     designs: list[ShipDesign] = field(default_factory=list)
     other_opponents: dict[str, Opponent] = field(default_factory=dict)
     other_diplomacy: dict[str, DiplomacyState] = field(default_factory=dict)
+    tomb_worlds: list[tomb_rules.TombWorld] = field(default_factory=list)
+    news_read_turn: int = 0
 
     @property
     def opponents(self):
@@ -857,6 +860,16 @@ class GameState:
         return planet
 
     def _place_opponent(self, owner, race_id, system, planet, name):
+        self._register_opponent(owner, race_id, system, planet, name)
+        planet.colonized, planet.owner, planet.population = True, owner, 8
+        planet.farmers, planet.scientists = 2, 0
+        if not population_rules.food_required(8, self.bonuses_for(owner)):
+            planet.farmers = 0
+        self._starting_fleet(owner, system.id)
+        self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn, owner=owner)
+
+    def _register_opponent(self, owner, race_id, system, planet, name):
+        """Register an empire without granting starting ships or changing its world."""
         previous = self.owners
         empire = Opponent(name, system.id, planet.id, race_id=race_id,
                           research=RACES[race_id].starting_research)
@@ -868,12 +881,6 @@ class GameState:
             self.exploration.scanned_others[owner] = []
             for first in previous:
                 self.other_diplomacy[relation_key(first, owner)] = make_contact(self.turn, name, race_id)
-        planet.colonized, planet.owner, planet.population = True, owner, 8
-        planet.farmers, planet.scientists = 2, 0
-        if not population_rules.food_required(8, self.bonuses_for(owner)):
-            planet.farmers = 0
-        self._starting_fleet(owner, system.id)
-        self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn, owner=owner)
 
     def _starting_fleet(self, owner, system_id):
         """One initial exploration and settlement fleet, created with the empire."""
@@ -1243,6 +1250,7 @@ class GameState:
                     and not victory_rules.gate_blocked(self, rival_gate[0].id, owner)):
                 location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
                 alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
+        tomb_rules.advance(self, alerts, ground_battles)
         exploration_rules.refresh(self)
         monster_rules.intercept(self)
         self.check_victory()
@@ -1254,7 +1262,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=21):
+    def from_dict(cls, data, *, version=22):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1342,11 +1350,12 @@ class GameState:
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
             if version >= 20:
                 extras, relations = data["other_opponents"], data["other_diplomacy"]
-                if (not isinstance(extras, dict) or len(extras) >= MAX_RIVALS
-                        or set(extras) != set(RIVAL_IDS[1:len(extras)+1]) or (extras and opponent is None)):
+                roster = CAMPAIGN_RIVAL_IDS if version >= 22 else RIVAL_IDS
+                if (not isinstance(extras, dict) or len(extras) >= len(roster)
+                        or set(extras) != set(roster[1:len(extras)+1]) or (extras and opponent is None)):
                     raise ValueError("Invalid rival roster")
                 game.other_opponents = {owner: Opponent.from_dict(extras[owner], systems, game.turn, version=version)
-                                        for owner in RIVAL_IDS[1:len(extras)+1]}
+                                        for owner in roster[1:len(extras)+1]}
                 keys = {relation_key(a, b) for i, a in enumerate(game.owners) for b in game.owners[i+1:]
                         if {a, b} != {PLAYER, RIVAL}}
                 if not isinstance(relations, dict) or set(relations) != keys:
@@ -1366,6 +1375,15 @@ class GameState:
                 snapshots += [p.design for s in systems for w in s.worlds if w.owner == PLAYER for p in w.construction_queue if p.design]
                 if any(loadout_error(d.kind, d.modules, technology.completed) for d in snapshots):
                     raise ValueError("Undiscovered ship equipment")
+            if version >= 22:
+                game.tomb_worlds = tomb_rules.parse(data["tomb_worlds"], game)
+                if not _integer(data["news_read_turn"], 0, game.turn):
+                    raise ValueError("Invalid news read turn")
+                game.news_read_turn = data["news_read_turn"]
+                if "rival_6" in game.opponents and (
+                        game.opponents["rival_6"].race_id != "remnant"
+                        or not any(t.remnant_owner == "rival_6" for t in game.tomb_worlds)):
+                    raise ValueError("The extra rival must be an awakened Remnant enclave")
             if version >= 16:
                 game.guardians = monster_rules.parse_guardians(data["guardians"], game, version=version)
             if version >= 8 and data["combat"] is not None:
@@ -1385,7 +1403,7 @@ class GameState:
 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
              race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
-             rival_count=None, random_starts=True):
+             rival_count=None, random_starts=True, with_tombs=True):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if type(fog_of_war) is not bool:
@@ -1454,5 +1472,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
             homes.append(system)
     if with_guardians:
         monster_rules.seed_guardians(game)
+    if with_tombs:
+        tomb_rules.seed_worlds(game)
     exploration_rules.refresh(game)
     return game

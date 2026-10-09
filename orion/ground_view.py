@@ -39,6 +39,7 @@ def units(surface, x, count, color, facing):
 def draw_ground(app):
     game, surface = app.game, app.canvas
     report = app.ground_reports[0] if app.ground_reports else None
+    tomb = bool(report and report.cause == "tomb")
     sid, pid = (report.system_id, report.planet_id) if report else app.ground_target
     planet, system = game.planet_at(sid, pid), game.systems[sid]
     if report:
@@ -58,11 +59,13 @@ def draw_ground(app):
     defence_color = CYAN if defender == "player" else RED
     success_color = attack_color if captured else defence_color
     app.chrome("GROUND OPERATIONS")
-    text(surface, shorten(f"Invasion of {planet.name}", 1050, 38, "title"), (64, 130), 38, INK, "title")
+    title = f"Awakening on {planet.name}" if tomb else f"Invasion of {planet.name}"
+    text(surface, shorten(title, 1050, 38, "title"), (64, 130), 38, INK, "title")
     text(surface, f"{system.name.upper()}  /  {planet.biome.upper()}  /  {planet.population} B CIVILIANS", (66, 185), 12, MUTED, "mono")
     text(surface, "BATTLE REPORT" if report else "LANDING PLAN", (1376, 146), 12, GOLD, "mono", right=True)
-    force_card(surface, 64, "INVADING FORCE", game.empire_name_for(attacker), attack, attack_left,
-               f"{count} transports × {TROOP_STRENGTH} troops", attack_color)
+    force_card(surface, 64, "AWAKENED REMNANT" if tomb else "INVADING FORCE",
+               game.empire_name_for(attacker) if attacker else "The Remnant", attack, attack_left,
+               f"{attack} troops emerged from buried vaults" if tomb else f"{count} transports × {TROOP_STRENGTH} troops", attack_color)
     force_card(surface, 776, "PLANETARY DEFENCE", game.empire_name_for(defender), defence.troops, defence_left,
                f"{defence.garrison} garrison + {defence.militia} militia · +{defence.defence_bonus}% firepower", defence_color)
     text(surface, "VS", (693, 287), 23, GOLD)
@@ -71,7 +74,7 @@ def draw_ground(app):
     shade = pg.Surface((1312, 156), pg.SRCALPHA)
     shade.fill((5, 14, 24, 150))
     surface.blit(shade, (64, 410))
-    text(surface, "LANDING ZONE", (84, 424), 10, attack_color, "mono", 2)
+    text(surface, "OPENED VAULTS" if tomb else "LANDING ZONE", (84, 424), 10, attack_color, "mono", 2)
     text(surface, "COLONY PERIMETER", (1000, 424), 10, defence_color, "mono", 2)
     a_scale = units(surface, 118, attack if attack_left is None else attack_left, attack_color, 1)
     d_scale = units(surface, 922, defence.troops if defence_left is None else defence_left, defence_color, -1)
@@ -117,7 +120,8 @@ def draw_ground(app):
         detail = (f"Expected survivors: {outcome.attackers} invaders, {outcome.defenders} defenders. "
                   "Preview uses the actual battle rules.")
     paragraph(surface, detail, (929, 659), 424, 15, INK, 25)
-    text(surface, f"{len(rounds)} rounds · {count} transports {'consumed' if report else 'will be consumed'}", (929, 766), 12, MUTED)
+    footer = f"{len(rounds)} rounds · assault from beneath the surface" if tomb else f"{len(rounds)} rounds · {count} transports {'consumed' if report else 'will be consumed'}"
+    text(surface, footer, (929, 766), 12, MUTED)
     if report:
         app.button("ground_continue", "Next report →" if len(app.ground_reports) > 1 else "Continue →",
                    (1056, 828, 320, 50), app.close_ground, "primary")

@@ -167,7 +167,9 @@ def parse_guardians(data, game, *, version=20):
                 or not _integer(pid, 0, len(game.systems[sid].worlds)-1)
                 or not _integer(row["hull"], 0, MONSTERS[kind].hull)):
             raise ValueError("Invalid guardian location or health")
-        if sid in {r.home_system for r in game.opponents.values()}:
+        awakened = {t.planet_id for t in game.tomb_worlds if t.system_id == sid
+                    and t.outcome in ("founded", "captured", "reinforced")}
+        if any(r.home_system == sid and r.home_planet not in awakened for r in game.opponents.values()):
             raise ValueError("Homeworld cannot be guarded")
         for owner in EMPIRES:
             status = row["known_"+owner]
@@ -181,7 +183,7 @@ def parse_guardians(data, game, *, version=20):
                        or (status == "defeated" and row["hull"] > 0) for status in extras.values())):
             raise ValueError("Invalid guardian observers")
         system = game.systems[sid]
-        if row["hull"] and any(p.colonized for p in system.worlds):
+        if row["hull"] and any(p.colonized and p.id not in awakened for p in system.worlds):
             raise ValueError("Living guardian cannot share a colony system")
         guardian = Guardian(**row)
         ids = prize_ids(system, guardian)

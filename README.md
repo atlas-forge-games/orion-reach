@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.26.0
+# Orion Reach — Python prototype 0.27.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,46 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.26: ground forces and invasions
+## New in v0.27: Remnant tomb worlds
+
+Ancient Remnant vaults can sleep beneath any planet, including starting colonies,
+harsh worlds and guardian prizes. Tomb status is hidden and separate from biome.
+
+- **Generation:** every world has an independent **10%** chance of being a tomb
+  world when a new campaign is created.
+- **Awakening:** each dormant tomb has a **1-in-200 chance per completed turn**.
+  An awakening happens only once, even if its army is defeated. Saving and
+  reloading cannot reroll the next turn.
+- **Uncolonized worlds:** become Remnant colonies with **2 B population**, a
+  hydroponic farm and **16 garrison troops**. Their buried habitats support life
+  on any biome. They begin contributing income on the following turn.
+- **Occupied worlds:** **16 awakened troops** fight the colony's militia and
+  garrison using the normal ground-combat rules. Fortifications apply; ships in
+  orbit cannot prevent an army emerging underground. Survivors occupy captured
+  colonies. Civilian population and ordinary buildings/projects survive; capture
+  destroys an Ascension Gate. Defenders can repel the awakening.
+- **Remnant ownership:** tombs join the player if playing the Remnant, otherwise
+  the existing Remnant AI. A tomb already owned by the Remnant adds its troops
+  to the garrison. If no Remnant empire exists, a successful awakening establishes
+  an enclave, including a possible sixth AI empire after a five-rival start.
+  A defeated Remnant AI can return while the campaign is still in progress.
+- **Turn news:** worlds in systems your empire has already explored produce
+  “Tomb world [name] has awakened as a tomb world of the Remnant.” Open **Turn
+  news** on the galaxy map or press **N** to revisit saved reports. New reports
+  open automatically after any ground battle reports. Remote dispatches do not
+  refresh stale surveys, and unseen awakenings do not reveal unexplored worlds.
+- **Guardians:** continue guarding their systems after vaults awaken; awakening
+  does not defeat a guardian or grant its reward.
+
+Start a **new campaign** for tomb worlds. All earlier saves remain loadable and
+retain their existing galaxy without adding hidden vaults retrospectively.
+Awakening outcomes and private news are saved; detailed ground casualty replays
+remain a session view. The constants in `orion/tomb_worlds.py` control the odds,
+army size and initial population.
+
+![Tomb-world turn news](screenshots/tomb_news.png)
+
+## Ground forces and invasions
 
 Colonies now have standing garrisons, militia and fortifications. Ground battles
 resolve automatically, with a landing preview and a round-by-round casualty report.
@@ -120,7 +159,7 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
 | Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
 | The Concord | Envoys +2 relations; trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
-| The Remnant | Start with 80 unspent research points; colony research +25%, industry −20%. |
+| The Remnant | Start with 80 unspent research points; colony research +25%, industry −20%; awakened tomb worlds join the empire. |
 
 Nexus reserve **20% of gross industry**, rounded up, for assembly until the
 population limit, always leaving at least one industry for construction. Each
@@ -1245,6 +1284,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Browse colony pages | Page Up / Down, Left / Right, mouse wheel, or Previous / Next |
 | Open / close Fleets | F, or the Fleets button while playing |
 | Open / close the exploration log | X, or Exploration on the galaxy map |
+| Read tomb-world turn news | N, or Turn news on the galaxy map; also available after a campaign ends |
 | Choose fog of war | Fog of war ON/OFF in New Game setup |
 | Inspect a fleet | Click its colored badge on the galaxy map |
 | Send selected ships together | Fleet badge → select ships in the popup → click a star |
@@ -1292,7 +1332,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.26 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.27 loads all earlier prototype saves without rewriting the
 source file during loading. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
 require a new campaign. Saved courses retain their original destinations and durations;
@@ -1333,8 +1373,10 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 21**, adding garrisons and persistent militia casualties to
-planets and survey snapshots, while retaining multiple rival empires, bilateral relations,
+**format version 22**, adding hidden tomb worlds, once-only awakening outcomes,
+private turn-news records and an optional emergent Remnant enclave, while retaining
+garrisons and persistent militia casualties in planets and survey snapshots,
+multiple rival empires, bilateral relations,
 and independent exploration and guardian knowledge for every empire.
 The existing schema retains saved blueprints, immutable ship and construction
 loadouts, and remaining tactical shields. It also supports all four guardian types and their weapons,
@@ -1346,7 +1388,7 @@ the fog setting, per-empire surveys,
 scout scans, discovery claims, gates, charging progress, campaign results,
 troop transports, ship hulls, active or resolved battles,
 discoveries, research projects, construction payments, departure speeds, races
-and diplomacy. They cannot be opened by v0.25.1 or earlier. Loading resumes the
+and diplomacy. They cannot be opened by v0.26 or earlier. Loading resumes the
 result screen if the campaign is finished, or the combat screen if a battle is
 unfinished or awaiting acknowledgement; otherwise
 it starts at the galaxy map with system/planet selection retained.
@@ -1390,6 +1432,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/victory.py` | Invasions, Ascension Gates, victory checks and outcome validation |
 | `orion/ground_combat.py` | Garrison training, militia recovery and simultaneous casualty rounds |
 | `orion/ground_view.py` | Invasion previews and ground battle reports |
+| `orion/tomb_worlds.py` | Hidden Remnant vaults, awakening rolls, ownership, combat and private event records |
+| `orion/news_view.py` | Saved turn-news reports and navigation |
 | `orion/victory_view.py` | Objectives, gate controls and final campaign results |
 | `orion/production.py` | Shared project catalogue, ship costs and travel balance |
 | `orion/fleet_views.py` | Shipyard and empire-wide ship operations |
@@ -1430,6 +1474,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
 | `tests/test_monsters.py` | Guardians, prize economies, interception, retreat, fog, AI, save validation and tactical UI |
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
+| `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
+| `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
 to the UI controller as needed. Possible next foundations include food
@@ -1464,6 +1510,9 @@ python main.py --headless --screen combat --screenshot combat.png
 python main.py --headless --screen ground --screenshot ground_invasion.png
 python main.py --headless --screen ground_result --screenshot ground_result.png
 python main.py --headless --screen ground_defence --screenshot ground_defence.png
+python main.py --headless --screen news --screenshot tomb_news.png
+python main.py --headless --screen tomb_battle --screenshot tomb_battle.png
+python main.py --headless --screen tomb_colony --screenshot tomb_colony.png
 python main.py --headless --screen guarded --screenshot guarded.png
 python main.py --headless --screen monster --screenshot monster.png
 python main.py --headless --screen crystal --screenshot crystal.png
@@ -1479,7 +1528,7 @@ python main.py --headless --screen result --screenshot victory.png
 
 `--screen` supports `splash`, `menu`, `setup`, `load`, `settings`, `galaxy`, `system`,
 `unexplored`, `exploration`, `planet`, `colony`, `empire`, `shipyard`, `fleets`, `fleet`, `fleet_course`, `rival`, `diplomacy`, `research`,
-`combat`, `ground`, `ground_result`, `ground_defence`, `guarded`, `monster`, `crystal`, `sentinel`, `leviathan`, `ruins`,
+`combat`, `ground`, `ground_result`, `ground_defence`, `news`, `tomb_battle`, `tomb_colony`, `guarded`, `monster`, `crystal`, `sentinel`, `leviathan`, `ruins`,
 `leviathan_system`, `guardian_map`, `gaia`, `objectives`, `result`, and `about`.
 Galaxy and fleet captures use the new starting ships. Exploration, combat and
 result captures use local example states. Screenshot mode does not create

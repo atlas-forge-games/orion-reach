@@ -28,6 +28,8 @@ from .combat_effects import CombatAnimation
 from .victory import colonies
 from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
+from .news_view import NEWS_PER_PAGE, draw_news
+from . import tomb_worlds
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
@@ -46,7 +48,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news")
 
 
 class App:
@@ -124,7 +126,7 @@ class App:
             screen="menu"
         if self.game and self.ground_reports and screen in GAME_SCREENS:
             screen="ground"
-        elif self.game and self.game.result is not None and screen in GAME_SCREENS:
+        elif self.game and self.game.result is not None and screen in GAME_SCREENS and screen!="news":
             screen="result"
         elif self.game and self.game.combat is not None and screen in GAME_SCREENS:
             screen="combat"
@@ -170,6 +172,9 @@ class App:
             self.change_manifest_page(0)
         if screen=="exploration":
             self.focus="exploration_back"
+        if screen=="news":
+            self.game.news_read_turn=self.game.turn
+            self.focus="news_back"
         if screen=="empire":
             self.focus_empire_row()
         if screen=="rival":
@@ -243,6 +248,7 @@ class App:
         self.exploration_return="galaxy"
         self.exploration_return_selection=(0,None)
         self.exploration_page=0
+        self.news_page=0
 
     def viewed_fleet(self):
         return fleet_containing(self.game.visible_ships(),self.fleet_anchor_id)
@@ -823,6 +829,14 @@ class App:
             self.exploration_return_selection=(self.game.selected_system,self.game.selected_planet)
             self.go("exploration")
 
+    def open_news(self):
+        self.news_page=0
+        self.go("galaxy" if self.screen=="news" else "news")
+
+    def change_news_page(self,delta):
+        last=max(0,(len(tomb_worlds.news(self.game))-1)//NEWS_PER_PAGE)
+        self.news_page=min(max(0,self.news_page+delta),last)
+
     def close_exploration(self):
         self.game.selected_system,self.game.selected_planet=self.exploration_return_selection
         self.go(self.exploration_return)
@@ -881,9 +895,10 @@ class App:
         # An unissued map order is a UI selection, never an automatic next-turn order.
         self.close_fleet_popup()
         report=self.game.advance_turn()
+        new_news=tomb_worlds.unread_count(self.game)>0
         if report.ground_battles:
             self.ground_reports.extend(report.ground_battles)
-            self.ground_return="galaxy"
+            self.ground_return="news" if new_news else "galaxy"
             self.ground_page=0
             self.go("ground")
         elif self.game.result is not None:
@@ -891,6 +906,9 @@ class App:
         elif self.game.combat is not None:
             self.reset_combat_view()
             self.go("combat")
+        elif new_news:
+            self.news_page=0
+            self.go("news")
         if self.screen=="empire":
             self.focus_empire_row()
         if self.save_game(autosave=True):
@@ -1079,7 +1097,11 @@ class App:
         try:
             system_id=self.game.finish_combat()
             self.reset_combat_view()
-            self.open_system(system_id)
+            if tomb_worlds.unread_count(self.game):
+                self.news_page=0
+                self.go("news")
+            else:
+                self.open_system(system_id)
             self.save_game(autosave=True)
         except RuleError as exc:
             self.toast(exc,True)
@@ -1396,6 +1418,8 @@ class App:
                 self.go("race_select")
             elif self.screen=="exploration":
                 self.close_exploration()
+            elif self.screen=="news":
+                self.go("galaxy")
             elif self.screen=="system":
                 self.go("galaxy")
             elif self.screen=="planet":
@@ -1465,6 +1489,8 @@ class App:
         elif self.screen in ("combat","ground","result") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
+            elif self.screen=="result" and event.key==pg.K_n:
+                self.open_news()
             elif self.screen=="combat":
                 if event.key==pg.K_e:
                     self.combat_action("end_turn")
@@ -1491,6 +1517,10 @@ class App:
                 self.open_objectives()
             elif event.key==pg.K_x:
                 self.open_exploration()
+            elif event.key==pg.K_n:
+                self.open_news()
+            elif self.screen=="news" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.change_news_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
@@ -1765,7 +1795,9 @@ class App:
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
             hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony · Range {state.fuel_range()} ly. "
                   +("Colonize closer worlds or research fuel tanks." if blocked else detail))
-        text(self.canvas,shorten(hint,748,13),(64,775),13,MUTED)
+        text(self.canvas,shorten(hint,544,13),(64,775),13,MUTED)
+        unread=tomb_worlds.unread_count(state)
+        self.button("open_news",f"News ({unread}) · N" if unread else "Turn news · N",(619,763,195,38),self.open_news)
         self.button("open_exploration","Exploration · X",(828,763,198,38),self.open_exploration)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
         if self.fleet_popup or self.map_order_ids:
@@ -1833,6 +1865,9 @@ class App:
 
     def draw_exploration(self):
         draw_exploration(self)
+
+    def draw_news(self):
+        draw_news(self)
 
     def draw_combat(self):
         draw_combat(self)
