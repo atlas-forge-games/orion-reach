@@ -225,7 +225,7 @@ def ai_orders(game, owner="rival"):
         return set()
     targets = [g for g in game.guardians if known_status(game, g.system_id, owner) == "alive"
                and game.within_fuel_range(g.system_id, owner)]
-    ships = [s for s in game.ships_owned_by(owner) if s.kind == "frigate" and not s.has_course]
+    ships = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and not s.has_course]
     colonies = game.colony_systems(owner)
     if not targets or not ships or not colonies:
         return set()

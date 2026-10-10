@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from .research import TECHNOLOGIES
+from .production import HULL_TECHNOLOGIES
 
 MAX_DESIGNS = 24
 
@@ -21,8 +22,11 @@ class Hull:
 
 HULLS = {
     "frigate": Hull("Frigate", 20, 4, 3, 2, 1, 4, 30, 18),
+    "destroyer": Hull("Destroyer", 30, 6, 4, 3, 2, 4, 45, 27),
     "cruiser": Hull("Cruiser", 42, 8, 5, 4, 2, 3, 70, 42),
     "battleship": Hull("Battleship", 75, 12, 8, 6, 2, 2, 130, 78),
+    "carrier": Hull("Carrier", 55, 10, 3, 4, 6, 2, 100, 60),
+    "titan": Hull("Titan", 125, 18, 12, 9, 3, 1, 220, 132),
 }
 
 
@@ -47,16 +51,17 @@ MODULES = {
     "siege": Module("Siege cannon", "weapon", 2, 30, 20, "8 damage · range 6 · triple damage to bases and planetary shields", "siege_weapons", "siege", 8, 6),
     "armor": Module("Armor plate", "defense", 1, 10, 6, "+8 hull · -1 tactical movement (minimum 1)"),
     "shield": Module("Shield generator", "defense", 1, 18, 12, "+12 shields · restored at the start of each battle", "radiation_shields"),
-    "point_defense": Module("Point defense", "defense", 1, 12, 8, "-30% incoming torpedo damage (maximum -60%)"),
+    "point_defense": Module("Point defense", "defense", 1, 12, 8, "-30% torpedo and drone damage (maximum -60%)"),
     "engine": Module("Maneuvering thruster", "support", 1, 14, 10, "+1 tactical movement · does not change travel speed", "ion_drives"),
     "scanner": Module("Combat scanner", "support", 1, 16, 10, "+1 weapon range · one scanner per ship", "research_networks"),
+    "drone_bay": Module("Drone bay", "support", 3, 30, 18, "Carrier only · 2 active drones · 4 launches/battle", "drone_carriers"),
 }
 
 
-def loadout_error(kind, modules, completed=None, *, require_weapon=True):
+def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_hulls=False):
     if not isinstance(kind, str) or kind not in HULLS:
         return "Choose a combat hull."
-    if not isinstance(modules, (tuple, list)) or len(modules) > 12 or any(
+    if not isinstance(modules, (tuple, list)) or len(modules) > max(h.capacity for h in HULLS.values()) or any(
             not isinstance(m, str) or m not in MODULES for m in modules):
         return "Unknown or excessive modules."
     specs, hull = [MODULES[m] for m in modules], HULLS[kind]
@@ -67,12 +72,18 @@ def loadout_error(kind, modules, completed=None, *, require_weapon=True):
             return f"This hull has insufficient {category} capacity."
     if modules.count("scanner") > 1:
         return "Only one combat scanner can be fitted."
+    if "drone_bay" in modules and kind != "carrier":
+        return "Drone bays require a carrier hull."
     if completed is not None:
+        technology = HULL_TECHNOLOGIES[kind]
+        if (technology and technology not in completed
+                and not (legacy_hulls and kind in ("cruiser", "battleship"))):
+            return f"Requires {TECHNOLOGIES[technology].name}."
         for m in specs:
             if m.technology and m.technology not in completed:
                 return f"Requires {TECHNOLOGIES[m.technology].name}."
-    if require_weapon and not any(m.damage for m in specs):
-        return "Fit at least one weapon before saving."
+    if require_weapon and not any(m.damage for m in specs) and "drone_bay" not in modules:
+        return "Fit at least one weapon or drone bay before saving."
     return None
 
 
@@ -106,6 +117,10 @@ class ShipDesign:
     @property
     def damage(self):
         return sum(m.damage for m in self.specs)
+
+    @property
+    def drone_bays(self):
+        return self.modules.count("drone_bay")
 
     @property
     def weapon(self):

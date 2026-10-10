@@ -17,10 +17,10 @@ def draw_designer(app):
     game, surface = app.game, app.canvas
     app.chrome("SHIP DESIGNER")
     text(surface, "Ship designer", (64, 124), 36, INK, "title")
-    text(surface, "Choose a hull, fit modules, and save a blueprint for your colonies.", (66, 173), 15, MUTED)
+    text(surface, "Research hulls to unlock them, fit modules, and save a blueprint for your colonies.", (66, 173), 15, MUTED)
     design = draft(app)
     hull = HULLS[design.kind]
-    error = loadout_error(design.kind, design.modules, game.technology.completed)
+    error = loadout_error(design.kind, design.modules, game.technology.completed, legacy_hulls=game.technology.legacy_starships)
     saved = game.design_for(app.design_id)
     unchanged = saved == design
 
@@ -49,14 +49,14 @@ def draw_designer(app):
 
     panel(surface, (352, 214, 610, 589))
     for index, (kind, spec) in enumerate(HULLS.items()):
-        app.button(f"design_hull_{kind}", spec.name, (368+index*193, 231, 181, 40),
+        app.button(f"design_hull_{kind}", spec.name, (368+(index%3)*196, 231+(index//3)*39, 184, 32),
                    lambda k=kind: app.choose_design_hull(k), "primary" if kind == design.kind else "normal")
     used = sum(m.space for m in design.specs)
-    text(surface, f"CAPACITY {used}/{hull.capacity}", (369, 289), 12, CYAN, "mono")
-    text(surface, f"Limits: weapons {hull.weapon} · defense {hull.defense} · support {hull.support}", (946, 290), 11, MUTED, right=True)
-    text(surface, "Category limits share the total capacity. Unused space is allowed.", (369, 314), 11, MUTED)
+    text(surface, f"CAPACITY {used}/{hull.capacity}", (369, 313), 12, CYAN, "mono")
+    text(surface, f"Limits: weapons {hull.weapon} · defense {hull.defense} · support {hull.support}", (946, 314), 11, MUTED, right=True)
+    text(surface, "Category limits share the total capacity. Unused space is allowed.", (369, 337), 11, MUTED)
     for index, (identifier, module) in enumerate(MODULES.items()):
-        y = 340+index*52
+        y = 358+index*44
         locked = module.technology and module.technology not in game.technology.completed
         text(surface, module.name, (369, y), 16, MUTED if locked else INK)
         text(surface, f"{module.space} {module.category} · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
@@ -64,12 +64,12 @@ def draw_designer(app):
         text(surface, shorten(detail, 424, 11), (369, y+26), 11, MUTED if locked else CYAN)
         app.button("design_remove_"+identifier, "−", (802, y, 37, 36), lambda m=identifier: app.change_design_module(m, -1), enabled=identifier in design.modules)
         text(surface, str(design.modules.count(identifier)), (854, y+10), 14, INK)
-        addition = loadout_error(design.kind, [*design.modules, identifier], game.technology.completed, require_weapon=False)
+        addition = loadout_error(design.kind, [*design.modules, identifier], game.technology.completed, require_weapon=False, legacy_hulls=game.technology.legacy_starships)
         app.button("design_add_"+identifier, "+", (895, y, 48, 36), lambda m=identifier: app.change_design_module(m, 1), enabled=addition is None)
 
     panel(surface, (984, 214, 392, 589))
     app.input_box("design_name", "BLUEPRINT NAME", app.design_name, (1002, 255, 356, 55), "Name your ship")
-    ship_icon(surface, (1180, 391), 1.85, kind=design.kind)
+    ship_icon(surface, (1180, 391), 3.0, kind=design.kind, facing=1)
     text(surface, hull.name.upper(), (1003, 329), 10, GOLD, "mono", 1)
     text(surface, "LIVE PREVIEW", (1003, 444), 10, MUTED, "mono", 1)
     discount = game.bonuses_for().get("ship_discount", 0)
@@ -77,14 +77,15 @@ def draw_designer(app):
     values = (("Hull / shields", f"{design.hull} / {design.shields}"),
               ("Volley / max range", f"{design.damage} / {design.weapon_range}"),
               ("Tactical movement", f"{design.movement} cells"),
-              ("Torpedo interception", f"{design.interception}%"),
-              ("Build cost / work", f"{cost} RES / {design.work_cost}"))
+              ("Point defense", f"{design.interception}%"),
+              ("Build cost / work", f"{cost} RES / {design.work_cost}"),
+              ("Drones active / launches", f"{design.drone_bays*2} / {design.drone_bays*4}"))
     for index, (label, value) in enumerate(values):
         y = 471+index*29
         text(surface, label, (1003, y), 13, MUTED)
         text(surface, value, (1357, y), 13, CYAN, right=True)
     caption = " · ".join(f"{count}× {MODULES[m].name}" for m, count in Counter(design.modules).items()) or "No modules fitted."
-    paragraph(surface, caption, (1003, 629), 350, 12, INK, 20)
+    paragraph(surface, caption, (1003, 660), 350, 12, INK, 20)
     reason = error or ("Name this design before saving." if not design.name else "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
     paragraph(surface, reason, (1003, 718), 350, 12, GOLD if not error else RED, 20)
     text(surface, "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)

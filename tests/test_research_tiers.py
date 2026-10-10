@@ -40,8 +40,8 @@ def fund(game, *identifiers):
 
 class TierRulesTests(unittest.TestCase):
     def test_every_path_has_two_choices_per_tier_and_no_dead_ends(self):
-        self.assertEqual(set(TECHNOLOGIES), set(LEGACY_TECHNOLOGIES))
-        self.assertEqual([len(branch_tiers(b)) for b in BRANCHES], [3, 4, 4, 4, 2, 2, 5, 2])
+        self.assertLessEqual(set(LEGACY_TECHNOLOGIES), set(TECHNOLOGIES))
+        self.assertEqual([len(branch_tiers(b)) for b in BRANCHES], [3, 4, 4, 4, 2, 2, 5, 2, 4])
         for branch in BRANCHES:
             tiers = branch_tiers(branch)
             self.assertEqual(tiers, tuple(range(1, len(tiers)+1)))
@@ -107,12 +107,12 @@ class TierRulesTests(unittest.TestCase):
         for race in ("terran", "kharuun", "aelari"):
             game = empty_fleet_game(seed=2408, rival_race_id=race, fog_of_war=False)
             game.opponent.research = 10000
-            for _ in range(27):
+            for _ in range(31):
                 count = len(game.opponent.technology.completed)
                 ai.research_choice(game)
                 self.assertEqual(len(game.opponent.technology.completed), count+1)
             state = game.opponent.technology
-            self.assertEqual(state.finished_branches, 8)
+            self.assertEqual(state.finished_branches, 9)
             self.assertEqual(state.completed[-1], "ascension_theory")
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 

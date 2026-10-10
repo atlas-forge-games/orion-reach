@@ -37,8 +37,8 @@ def discover(game, identifier, owner=PLAYER):
 
 
 class ResearchRulesTests(unittest.TestCase):
-    def test_two_exclusive_choices_and_sequential_unlocks_in_eight_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 53))  # All 52 original branch technologies + Ascension Theory
+    def test_two_exclusive_choices_and_sequential_unlocks_in_nine_branches(self):
+        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (9, 61))  # All 52 original choices, eight starship technologies and Ascension Theory
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology

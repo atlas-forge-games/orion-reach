@@ -330,6 +330,8 @@ def draw_production(app):
         detail = building_effect(game, spec, planet) if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
         if design:
             detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
+        if getattr(spec, "drone_bays", 0):
+            detail = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
         if item_id in BUILDINGS:
             text(surface, shorten(compact_yields(game, spec, planet), 326, 10), (x+85, y+62), 10, CYAN)
             details = [spec.workforce_text(planet.richness)]

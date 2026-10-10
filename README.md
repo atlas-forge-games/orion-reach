@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.38.1
+# Orion Reach — Python prototype 0.39.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,54 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.39: researched ship classes and drone carriers
+
+Frigates remain the starting combat hull. **Destroyers, cruisers, battleships,
+carriers and titans each require their named technology** before you can build
+or design them. Completing a tier opens the next pair of technologies; it does
+not award hulls that you skipped. All existing research remains available.
+
+The new **Starship Engineering** branch keeps two exclusive choices per tier:
+
+| Tier | First choice | Second choice | Research cost |
+| --- | --- | --- | ---: |
+| I | Destroyer Hulls | Modular Spaceframes: ships cost 10% fewer Resources | 40 RP |
+| II | Cruiser Hulls | Deep-Space Logistics: +5 ly fuel range | 100 RP |
+| III | Battleship Hulls | Drone Carriers: carrier hull and drone bays | 120 RP |
+| IV | Titan Hulls | Mass Ship Production: ships cost 20% fewer Resources | 220 RP |
+
+Research unlocks a standard ship in the paginated Shipyard and its hull in the
+custom designer. The production catalogue also includes every standard class.
+AI empires research, build and command the new ships under the same rules.
+
+**Carriers launch separate, controllable drones in tactical combat.** A standard
+carrier has two bays: **four active drones and eight total launches per battle**.
+Each custom bay uses three support spaces, supports two active drones and carries
+four drones. A carrier can move and either fire its guns or **Launch drones**
+once per round. Launch fills free control slots using adjacent empty cells.
+Drones can immediately move five cells and fire a three-damage pulse at range
+three. They have six hull, 25% base evasion, and point defense reduces their damage.
+Destroyed drones can be replaced while reserves remain. Destroying their carrier
+shuts down its drones. Survivors recover after combat or retreat; the next battle
+starts with replenished reserves. Drones are tactical units, never separate
+campaign ships or production orders. Save/load preserves every deployed drone,
+its carrier, actions, health and remaining reserves.
+
+Seven matching transparent illustrations cover all six combat hulls and the
+combat drone, appearing in research, the designer, shipyards, fleets and combat.
+Original images, prompts and hashes are in `assets/ships/`.
+Run `python tools/preview_ship_art.py` for the catalogue and gameplay previews.
+
+New campaigns require all **nine** branches (30 discoveries) for Ascension Theory.
+Existing saves retain their eight-branch goal and access to the cruiser and
+battleship hulls that were previously available, including saved designs,
+construction queues and active battles. New hulls still require research.
+Save format **29** records that compatibility state and tactical drone deployments.
+
+![Ship artwork catalogue](screenshots/ship_art_catalogue.png)
+
+![Carrier launching combat drones](screenshots/carrier_combat.png)
 
 ## New in v0.38.1: complete colony building artwork
 
@@ -753,25 +801,28 @@ choose a new race; existing campaigns keep their identities and progress.
 ![Race selection](screenshots/race_select.png)
 ![Galaxy options](screenshots/setup.png)
 
-## Ship designer (v0.22)
+## Ship designer
 
 Open **Fleets → Ship designer**, **Shipyard → Custom ships / designer**, or
 **Planet → Change → Ship designer**. Choose a hull, enter a name, and add or
 remove modules with the + / − buttons. Save your blueprint, choose an owned
 colony with the arrows, and click **Queue ship**. Designs also appear in the
 planet's **Change production** catalogue; use its page arrows for more projects.
-Queuing pays the credit cost immediately and uses the colony's usual construction
+Ships reserve Resources when work begins and use the colony's usual construction
 queue, industry, buy-production and cancellation rules. Ship discounts apply.
 
 | Hull | Base hull | Shared capacity | Weapon limit | Defense limit | Support limit | Tactical movement |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Frigate | 20 | 4 | 3 | 2 | 1 | 4 |
+| Destroyer | 30 | 6 | 4 | 3 | 2 | 4 |
 | Cruiser | 42 | 8 | 5 | 4 | 2 | 3 |
 | Battleship | 75 | 12 | 8 | 6 | 2 | 2 |
+| Carrier | 55 | 10 | 3 | 4 | 6 | 2 |
+| Titan | 125 | 18 | 12 | 9 | 3 | 1 |
 
 Category limits count **capacity units**, not the number of modules, and share
-the hull's total capacity. All three hulls are available from the start; every
-saved design must contain at least one weapon. Empty capacity is allowed.
+the hull's total capacity. Frigates are available from the start; other hulls require their named Starship Engineering research. Every
+saved design must contain at least one weapon or a carrier drone bay. Empty capacity is allowed.
 
 | Module | Capacity | Effect | Unlock |
 | --- | ---: | --- | --- |
@@ -781,13 +832,14 @@ saved design must contain at least one weapon. Empty capacity is allowed.
 | Siege cannon | 2 weapon | 8 damage, range 6; triple against shields and bases | Siege Weapons |
 | Armor plate | 1 defense | +8 hull, −1 tactical movement, minimum 1 | Starting equipment |
 | Shield generator | 1 defense | +12 shields | Radiation Shields |
-| Point defense | 1 defense | −30% incoming torpedo damage per module, capped at −60% | Starting equipment |
+| Point defense | 1 defense | −30% incoming torpedo and drone damage per module, capped at −60% | Starting equipment |
 | Maneuvering thruster | 1 support | +1 tactical movement | Ion Drives |
 | Combat scanner | 1 support | +1 range for all weapons, maximum one scanner | Research Networks |
+| Drone bay | 3 support | Carrier only; 2 active drones and 4 launches per battle | Drone Carriers |
 
-Each ship still moves once and fires one volley per tactical turn. **Only mounted
+Each ship moves once and fires one volley per tactical turn. A carrier can launch drones instead of firing. **Only mounted
 weapons within range fire**, so a distant target may receive only your torpedoes.
-Each mounted weapon rolls its displayed hit chance. Point defense reduces each successful torpedo or missile hit before shields absorb it; remaining
+Each mounted weapon rolls its displayed hit chance. Point defense reduces each successful torpedo, missile or drone hit before shields absorb it; remaining
 damage hits the hull. Shields do not regenerate during a battle and start full
 at the next battle. Beams retain their technology's color; torpedoes travel as
 projectiles, and destroyed ships retain the explosion effect. Armor adds hull
@@ -932,7 +984,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   repair at friendly colonies.
 - Build **barracks** and **troop transports**, clear opposing ships, then **Plan ground invasion** from a
   rival planet's Overview tab. Capturing its last colony wins by conquest.
-- **Objectives · V** tracks both victory paths. Finish all eight research branches,
+- **Objectives · V** tracks both victory paths. Finish all required research branches,
   research **Ascension Theory**, then construct and charge an **Ascension Gate**
   to win through science. The AI can win by either path too.
 - The galaxy map shows flight paths, ship positions and newly claimed systems.
@@ -944,7 +996,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Diplomacy · D** opens race portraits and profiles, relations, envoys, gifts, trade pacts,
   research agreements and the rival's recent responses. Treaty income is
   included in Empire Overview and Rival report.
-- **Research · R** opens eight branches, each with two tiers and two mutually
+- **Research · R** opens nine branches, each with sequential tiers and two mutually
   exclusive choices per tier. Discover technologies that improve production,
   science, commerce, construction prices, travel and colonization. The rival researches too.
 - Back buttons and Escape follow **Colony → Planet → Galaxy**, or return through
@@ -1220,7 +1272,7 @@ technologies can also provide research income.
 
 - Choose a branch, then one of the two technologies in its first tier.
   Tiers **I / II / III / IV / V** cost **40 / 100 / 120 / 220 / 360 RP**.
-  All eight branches are available from the start and contain two to five tiers.
+  All nine branches are available from the start and contain two to five tiers.
   Completing a tier unlocks both choices at the next tier in that branch.
 - Confirming commits to that technology permanently. Its alternative is
   excluded, and the active project cannot be cancelled or switched. One
@@ -1247,6 +1299,7 @@ technologies can also provide research income.
 | Biology | Colony Biospheres / Symbiotic Farming | Colony Biogenesis / Ecology Networks |
 | Computers | Research Networks / Trade Algorithms | Distributed Computing / Planetary Automation |
 | Society | Colonial Administration / Scientific Institutes | Commerce Guilds / Cultural Exchange |
+| Starship Engineering | Destroyer Hulls / Modular Spaceframes | Cruiser Hulls / Deep-Space Logistics |
 
 The longer branches continue with these pairs. A dash marks a branch's end.
 
@@ -1257,9 +1310,10 @@ The longer branches continue with these pairs. A dash marks a branch's end.
 | Physics | Precision Beam Optics / Electronic Countermeasures | Siege Weapons / Advanced Torpedo Guidance | — |
 | Force Fields | Planetary Shielding / Gravity-Well Generators | Barrier Fields / Subspace Interdiction | — |
 | Computers | Deep-Space Radar / Targeting Computers | Long-Range Sensors / Predictive Fire Control | Subspace Scanners / Quantum Targeting |
+| Starship Engineering | Battleship Hulls / Drone Carriers | Titan Hulls / Mass Ship Production | — |
 
-All 52 branch options have effects on existing game systems, described on their cards.
-A new campaign can discover one technology in each of 26 tiers, then **Ascension
+All 60 branch options have effects on existing game systems, described on their cards.
+A new campaign can discover one technology in each of 30 tiers, then **Ascension
 Theory**, available in Objectives after completing every branch. Either choice
 in each tier qualifies. Higher upgrades work without their earlier version:
 for example, Targeting Computers can be followed by Long-Range Sensors, which
@@ -1616,7 +1670,7 @@ Issued journeys retain their orders if supply changes before they arrive.
    rival ships, or use the individual **Fleets → Course** controls.
    A fleet is all ships of one empire in that system; ships in transit do not participate.
 3. Click **Engage** in Fleets or **Engage opposing fleet** on the system overview.
-   You need at least one frigate and opposing ships in orbit. The confirmation
+   You need an armed ship or a carrier with drone bays and opposing units in orbit. The confirmation
    explains the whole-fleet commitment and diplomatic consequences.
 4. On the battlefield, **click a friendly ship**, then a **highlighted empty cell**
    to move. **Click an enemy ship** to inspect its hit chances, then press **Fire at target**.
@@ -1640,6 +1694,11 @@ Issued journeys retain their orders if supply changes before they arrive.
 | Frigate | 60 | 36 | 20 | 3 cells | 5 |
 | Troop transport | 80 | 42 | 16 | 2 cells | 0 (8 invasion attack) |
 | Scout | 25 | 12 | 8 | 5 cells | 0 (unarmed) |
+| Destroyer | 90 | 54 | 30 | 4 cells | 10 (torpedo, range 8) |
+| Cruiser | 150 | 90 | 42 | 3 cells | 12 (range 7) |
+| Battleship | 260 | 156 | 75 | 2 cells | 18 (range 7) |
+| Drone carrier | 210 | 126 | 55 | 2 cells | 5 (range 6), plus drones |
+| Titan | 420 | 252 | 125 | 1 cell | 26 (range 8) |
 
 | Beam technology | Colour | Damage | Range |
 | --- | --- | ---: | ---: |
@@ -1647,7 +1706,7 @@ Issued journeys retain their orders if supply changes before they arrive.
 | Quantum Optics (Physics II) | Violet | 7 | 7 cells |
 
 Quantum Optics retains its +3 research per laboratory and equips all existing
-and new frigates with quantum beams for subsequent battles. Both empires use
+and new frigates and standard carriers with quantum beams for subsequent battles. Both empires use
 the same weapon colours and rules; researching the alternative Physics II
 technology keeps the standard laser. Fleet and construction screens display the
 current damage. Ship costs and hulls are unchanged.
@@ -1658,7 +1717,7 @@ than all available points, but still uses the ship's one move for this turn.
 Destroyed ships no longer block cells. Weapon range uses straight-line distance
 between cell centres; other ships do not block beams. Weapon accuracy, evasion,
 ECM and targeting research determine hit chances. Ship designs support armour,
-shields and point defense; facing bonuses and ammunition limits are not implemented.
+shields and point defense. Drone bays have finite battle reserves; conventional weapons have no ammunition limit. Facing bonuses are not implemented.
 
 The initiating empire takes the first fleet turn. A round ends after both fleet
 turns, restoring movement and weapons. The AI approaches to weapon range,
@@ -1823,7 +1882,7 @@ or production; its result and consumed transports are saved immediately by the U
 
 ### Science
 
-1. Complete **every tier in all eight branches**: 26 discoveries in total. Every
+1. Complete **every tier in all nine branches**: 30 discoveries in a new campaign. Older campaigns retain their eight-branch goal. Every
    combination of exclusive technology choices can reach this victory path.
 2. In **Objectives**, choose **Ascension Theory** for **500 RP**. It uses the
    existing one-project research system: stored points apply immediately, then
@@ -1967,7 +2026,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.38 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.39 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -2009,7 +2068,7 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 28**, retaining legacy research choices and original active
+**format version 29**, adding carrier drone deployments and old-campaign hull access, while retaining legacy research choices and original active
 project costs, together with Resource banks, miners, building power switches and
 construction Resource reservations alongside first-contact dates, defence health,
 sensor contacts/news, route modifiers,
@@ -2148,6 +2207,16 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.39 passes **624 automated checks**. New coverage exercises named hull
+research, exclusive technology paths, standard and custom carrier construction,
+active drone limits and finite reserves, launch blocking, independent drone
+movement and attacks, point defense, carrier loss, retreat and replenishment,
+deterministic save/resume, guardian combat, battles between AI empires and
+carrier controls. Two authentic v0.38.1 fixtures retain old hull designs,
+construction orders, active combat and the original Ascension goal.
+All seven ship images have validated transparency and manifest hashes; the
+research, designer, shipyard and carrier battlefield previews were inspected.
 
 v0.38.1 verifies all 20 PNGs, alpha bounds and manifest hashes, and passes
 **43 focused checks** for colony scenes, power-plant controls and victory screens.

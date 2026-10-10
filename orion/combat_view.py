@@ -92,9 +92,9 @@ def draw_battlefield(app):
         pg.draw.rect(surface, color, (cx-18, cy+19, round(36*hull/ship.max_hull), 3))
         if ship.design and ship.design.shields:
             pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.design.shields), 2))
-        text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+        text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.owner == PLAYER and ship.hull > 0:
-            for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship))):
+            for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship) or battle.can_launch(ship))):
                 pg.draw.circle(surface, CYAN if available else LINE, (cx+dx, cy-19), 2)
         if BOARD.contains(box):
             app.button(f"combat_ship_{ship.id}", "", box,
@@ -122,7 +122,7 @@ def draw_combat(app):
     panel(surface, (1060, 119, 348, 627), (11, 22, 31), GOLD if player_turn else LINE)
     x = 1080
     text(surface, "FLEET STATUS", (x, 137), 10, GOLD, "mono", 1)
-    text(surface, f"YOUR SHIPS  {len(battle.fleet(PLAYER))}", (x, 164), 12, CYAN, "mono")
+    text(surface, f"YOUR UNITS  {len(battle.fleet(PLAYER))}", (x, 164), 12, CYAN, "mono")
     text(surface, f"ENEMY  {len(battle.fleet(enemy))}", (1388, 164), 12, RIVAL_COLOR, "mono", right=True)
     pg.draw.line(surface, LINE, (x, 193), (1388, 193))
     if active:
@@ -135,17 +135,22 @@ def draw_combat(app):
             if ship.design:
                 text(surface, f"SHIELDS {ship.shields}/{ship.design.shields} · PD {ship.design.interception}%", (x, 286), 10, MUTED, "mono")
             for left, title, available, value in ((x, "MOVEMENT", battle.can_move(ship), f"{ship.movement} cells"),
-                                                   (1239, "WEAPON", battle.can_fire(ship), "Ready" if ship.damage else "Unarmed")):
+                                                   (1239, "LAUNCH / FIRE" if ship.drone_bays else "WEAPON", battle.can_fire(ship) or battle.can_launch(ship),
+                                                    "Ready" if ship.damage or ship.drone_bays else "Unarmed")):
                 panel(surface, (left, 301, 149, 58))
                 text(surface, title, (left+10, 310), 9, MUTED, "mono")
-                text(surface, value if available else "Spent" if ship.damage or title == "MOVEMENT" else "Unarmed",
+                text(surface, value if available else "Spent" if ship.damage or ship.drone_bays or title == "MOVEMENT" else "Unarmed",
                      (left+10, 329), 15, CYAN if available else FAINT)
             beam = BEAMS[ship.weapon]
             pg.draw.line(surface, beam.color, (x, 383), (x+23, 383), 3)
-            text(surface, "Weapon volley" if ship.design else beam.name, (x+34, 371), 17, beam.color)
-            text(surface, f"Up to {ship.damage} damage · Range {ship.weapon_range}" if ship.damage else "Move or withdraw with your fleet.",
+            text(surface, "Drone bays" if ship.drone_bays and not ship.damage else "Weapon volley" if ship.design else beam.name, (x+34, 371), 17, beam.color)
+            text(surface, f"Up to {ship.damage} damage · Range {ship.weapon_range}" if ship.damage else "Launch drones or withdraw with your fleet." if ship.drone_bays else "Move or withdraw with your fleet.",
                  (x, 400), 12, MUTED)
-            if ship.design:
+            if ship.drone_bays:
+                text(surface, f"DRONES {len(battle.drones(ship))}/{ship.drone_bays*2} active · {ship.drone_reserve} reserve", (x, 420), 11, CYAN)
+            elif ship.kind == "combat_drone":
+                text(surface, f"Control link: carrier {ship.carrier_id:03}", (x, 420), 11, CYAN)
+            elif ship.design:
                 text(surface, "Only weapons in range fire; one volley per turn.", (x, 420), 11, MUTED)
         else:
             paragraph(surface, "Your ships have finished their orders. End your turn to let the opponent act.", (x, 239), 308, 16, MUTED, 26)
@@ -169,10 +174,16 @@ def draw_combat(app):
                 text(surface, shot_label, (x, 542+index*14), 10, CYAN)
         else:
             text(surface, "Choose an enemy within weapon range.", (x, 546), 11, MUTED)
-        app.button("combat_fire", label, (x, 601, 308, 35), lambda: app.combat_action("fire"), enabled=can_fire)
+        if ship and ship.drone_bays:
+            text(surface, "Launch instead of firing · Drones act immediately", (x, 579), 10, MUTED)
+            app.button("combat_fire", "Fire guns", (x, 601, 130, 35), lambda: app.combat_action("fire"), enabled=can_fire)
+            app.button("combat_launch", "Launch drones", (1220, 601, 168, 35), lambda: app.combat_action("launch"),
+                       enabled=bool(player_turn and battle.can_launch(ship)))
+        else:
+            app.button("combat_fire", label, (x, 601, 308, 35), lambda: app.combat_action("fire"), enabled=can_fire)
         app.button("combat_next", "Next ship · N", (x, 646, 149, 32), app.next_combat_ship, enabled=player_turn and bool(battle.ready(PLAYER)))
         app.button("combat_hold", "Done ship", (1239, 646, 149, 32), lambda: app.combat_action("hold"),
-                   enabled=bool(player_turn and ship and (battle.can_move(ship) or battle.can_fire(ship))))
+                   enabled=bool(player_turn and ship and (battle.can_move(ship) or battle.can_fire(ship) or battle.can_launch(ship))))
         app.button("combat_end_turn", "End turn · E", (x, 688, 308, 35), lambda: app.combat_action("end_turn"),
                    "primary" if player_turn else "normal", enabled=player_turn)
         app.button("combat_retreat", "Retreat fleet", (x, 730, 308, 23), app.retreat_request,
@@ -181,9 +192,11 @@ def draw_combat(app):
         title = ("Victory" if battle.status == "player_victory" else "Fleet withdrawn" if battle.status == "player_retreat"
                  else "Enemy withdrew" if battle.status.endswith("_retreat") else "Defeat")
         text(surface, title, (x, 221), 29, GOLD, "title")
-        lost = {side: sum(s.hull == 0 for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
+        lost = {side: sum(s.hull == 0 and s.kind != "combat_drone" for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
         text(surface, f"Your ships lost: {lost[PLAYER]}", (x, 288), 16, CYAN)
         text(surface, f"{'Guardians' if battle.guardian else 'Enemy ships'} lost: {lost[enemy]}", (x, 321), 16, RIVAL_COLOR)
+        if any(s.drone_bays for s in battle.ships):
+            text(surface, "Surviving drones return to their carriers.", (x, 350), 11, MUTED)
         caption = "Surviving ships remain in orbit. Hull damage is retained; colonies keep their current owners."
         if battle.retreat_destination is not None:
             caption = f"The withdrawing fleet is travelling to {game.systems[battle.retreat_destination].name}. Surviving ships retain their hull damage."

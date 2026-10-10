@@ -239,7 +239,7 @@ class WorkforceSaveTests(unittest.TestCase):
             expected["diplomacy"]["introduced"] = True  # Old confirmed contacts do not replay introductions.
             for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
                 state = empire["technology"]
-                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None)
+                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True)
             self.assertEqual(restored.to_dict(), expected)
             restored.move_worker(0, 2, "workers", "scientists")
             resumed = store.load(store.save(restored))[0]

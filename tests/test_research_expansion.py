@@ -74,7 +74,7 @@ class ExpansionResearchTests(unittest.TestCase):
 
     def test_every_existing_technology_remains_researchable(self):
         from orion.legacy_research import LEGACY_TECHNOLOGIES
-        self.assertEqual(set(TECHNOLOGIES), set(LEGACY_TECHNOLOGIES))
+        self.assertLessEqual(set(LEGACY_TECHNOLOGIES), set(TECHNOLOGIES))
         for technology in TECHNOLOGIES.values():
             if technology.branch in BRANCHES:
                 with self.subTest(technology=technology.id):

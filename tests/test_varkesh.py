@@ -459,6 +459,8 @@ class RaidNewsAndAITests(unittest.TestCase):
 class SlaveSaveTests(unittest.TestCase):
     def test_old_v22_saves_preserve_fleets_populations_and_paid_orders(self):
         game = scenario()
+        for owner in game.owners:
+            game.research_state(owner).legacy_starships = True
         game.ships = [Ship(1, "colony_ship", 0)]
         game.next_ship_id = 2
         game.planet_at(0, 2).construction_queue = [ConstructionProject("colony_ship", progress=17, paid_credits=64)]
@@ -519,7 +521,7 @@ class SlaveSaveTests(unittest.TestCase):
             original = path.read_bytes()
             self.assertEqual(store.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
-            self.assertEqual(json.loads(original)["version"], 28)
+            self.assertEqual(json.loads(original)["version"], 29)
 
 
 class VarkeshInterfaceTests(unittest.TestCase):

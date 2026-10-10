@@ -58,9 +58,9 @@ def draw_objectives(app):
 
     panel(surface, (709, 286, 667, 284))
     text(surface, "02 / SCIENCE", (733, 309), 11, GOLD, "mono", 2)
-    text(surface, f"{state.finished_branches} / 8 branches completed", (732, 344), 29, INK, "title")
-    text(surface, "Complete every tier in all eight branches. Either choice counts.", (734, 390), 13, MUTED)
-    progress(surface, (734, 418, 616, 4), state.finished_branches/8)
+    text(surface, f"{state.finished_branches} / {len(state.required_branches)} branches completed", (732, 344), 29, INK, "title")
+    text(surface, f"Complete every tier in all {len(state.required_branches)} required branches. Either choice counts.", (734, 390), 13, MUTED)
+    progress(surface, (734, 418, 616, 4), state.finished_branches/len(state.required_branches))
     theory = TECHNOLOGIES["ascension_theory"]
     known = theory.id in state.completed
     active = state.active == theory.id
@@ -124,7 +124,7 @@ def draw_objectives(app):
             selected = app.selected_rival_id()
             enemy_gate = gate_site(game, selected)
             enemy = game._empire(selected).technology
-            caption = f"{game.empire_name_for(selected)}: {enemy.finished_branches}/8 branches · "
+            caption = f"{game.empire_name_for(selected)}: {enemy.finished_branches}/{len(enemy.required_branches)} branches · "
             if enemy_gate:
                 caption += f"Gate at {enemy_gate[1].name}: " + (f"charging {enemy_gate[1].gate_charge}/5" if enemy_gate[1].ascension_gate else "under construction")
             else:

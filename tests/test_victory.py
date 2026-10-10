@@ -197,14 +197,14 @@ class ScienceRulesTests(unittest.TestCase):
     def test_ultimate_research_accepts_either_branch_choice_and_uses_banked_points(self):
         for option in (0, 1):
             game = new_game(seed=2408, with_ai=False)
-            with self.assertRaisesRegex(RuleError, "eight"):
+            with self.assertRaisesRegex(RuleError, "9 required"):
                 game.choose_research("ascension_theory")
             discover_branches(game, option=option)
-            self.assertEqual(game.technology.finished_branches, 8)
+            self.assertEqual(game.technology.finished_branches, 9)
             game.research = 513
             game.choose_research("ascension_theory")
             self.assertEqual(game.research, 13)
-            self.assertEqual(len(game.technology.completed), 27)
+            self.assertEqual(len(game.technology.completed), 31)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_gate_is_a_unique_shared_queue_project_with_fixed_cost_and_no_slot(self):

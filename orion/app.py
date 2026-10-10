@@ -247,6 +247,7 @@ class App:
         self.game.selected_planet=planet_id
         self.colony_slot=None
         self.shipyard_page=0
+        self.shipyard_catalog_page=0
         self.go("planet")
 
     def close_planet(self):
@@ -271,6 +272,7 @@ class App:
         self.fleet_return_selection=(0,None)
         self.fleet_page=0
         self.shipyard_page=0
+        self.shipyard_catalog_page=0
         self.route_ship_id=None
         self.fleet_anchor_id=None
         self.fleet_selected_ids=set()
@@ -475,6 +477,7 @@ class App:
         self.game.selected_system=system_id
         self.game.selected_planet=planet_id
         self.shipyard_page=0
+        self.shipyard_catalog_page=0
         self.go("shipyard")
 
     def change_fleet_page(self,delta):
@@ -905,6 +908,7 @@ class App:
         self.game.selected_planet=(current+delta)%len(worlds)
         self.colony_slot=None
         self.shipyard_page=0
+        self.shipyard_catalog_page=0
         if self.screen in ("planet","colony","shipyard"):
             self.go(self.screen)
         else:
@@ -1225,6 +1229,9 @@ class App:
                 damage=self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
                 event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage,
                              missed=damage==0 and target.shields==shields)
+            elif action=="launch":
+                drones=self.game.combat_launch_drones(self.combat_ship_id)
+                event.update(ship_id=self.combat_ship_id,drone_ids=drones)
             elif action=="hold":
                 self.game.combat_hold(self.combat_ship_id)
             elif action=="retreat":
@@ -1354,7 +1361,7 @@ class App:
         if amount<0:
             if identifier in self.design_modules:
                 self.design_modules.remove(identifier)
-        elif not loadout_error(self.design_kind,[*self.design_modules,identifier],self.game.technology.completed,require_weapon=False):
+        elif not loadout_error(self.design_kind,[*self.design_modules,identifier],self.game.technology.completed,require_weapon=False,legacy_hulls=self.game.technology.legacy_starships):
             self.design_modules.append(identifier)
 
     def design_page_change(self,delta):

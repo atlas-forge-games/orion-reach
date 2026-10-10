@@ -391,6 +391,8 @@ class GuardianSaveTests(unittest.TestCase):
             ship.pop("design")
             ship.pop("shields")
         expected = copy.deepcopy(game)
+        for owner in expected.owners:
+            expected.research_state(owner).legacy_starships = True
         expected.combat.accuracy = False
         expected.combat.shots_fired = 0
         self.assertEqual(GameState.from_dict(legacy_research_payload(legacy), version=16), expected)

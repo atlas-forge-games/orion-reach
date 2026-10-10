@@ -5,7 +5,7 @@ from dataclasses import replace
 from .buildings import BUILDINGS
 from .economy import energy_report
 from .model import RIVAL, RICHNESSES
-from .production import PROJECTS, TROOP_STRENGTH
+from .production import PROJECTS, SHIP_TYPES, TROOP_STRENGTH
 from .races import RACES
 from .research import BRANCHES, TIERS, choices
 from .combat import HOSTILE_BELOW
@@ -49,7 +49,7 @@ def diplomatic_orders(game, owner):
     nature = personality(game, owner)
     if not nature.conquest_ratio or game.turn < 12 or game.turn % 6 or enemies(game, owner):
         return []
-    armed = [s for s in game.ships_owned_by(owner) if game.ship_attack(s) > 0]
+    armed = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0]
     if len(armed) < 2:
         return []
     strength = sum(s.hull for s in armed)
@@ -62,7 +62,7 @@ def diplomatic_orders(game, owner):
                 or state.relations >= (25 if game._empire(owner).race_id == "concord" else 0)):
             continue
         # An unobserved navy is uncertain; never query its hidden strength.
-        observed = sum(s.hull for s in game.visible_ships(owner) if s.owner == target and game.ship_attack(s) > 0)
+        observed = sum(s.hull for s in game.visible_ships(owner) if s.owner == target and game.military_strength(s) > 0)
         resistance = max(40, observed+40*sum("missile_base" in p.buildings for p in system.worlds if p.owner == target))
         if strength*100 >= resistance*nature.conquest_ratio:
             candidates.append((resistance, system.id, target))
@@ -124,6 +124,8 @@ def research_choice(game, owner=RIVAL):
     }.get(race, ((1, 0, 1, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1, 1, 1)))
     military = race in ("kharuun", "varkesh", "remnant")
     preferred = {
+        "destroyer_hulls", "cruiser_hulls", "titan_hulls",
+        "battleship_hulls" if military else "drone_carriers",
         "orbital_defense_systems", "fusion_power", "jump_gates", "planetary_shielding",
         "barrier_fields" if military else "subspace_interdiction",
         "precision_beam_optics" if military else "electronic_countermeasures",
@@ -134,7 +136,7 @@ def research_choice(game, owner=RIVAL):
     for tier in TIERS:
         for branch in branches:
             options = choices(branch, tier)
-            if tier <= 2:
+            if tier <= 2 and branch != "starships":
                 index = tuple(BRANCHES).index(branch)
                 options = sorted(options, key=lambda t: t != options[preferences[tier-1][index]])
             else:
@@ -145,6 +147,19 @@ def research_choice(game, owner=RIVAL):
                     return
     if game.research_error("ascension_theory", owner=owner) is None:
         game.choose_research("ascension_theory", owner=owner)
+
+
+def warship_choice(game, owner):
+    """Build researched hulls when affordable, keeping carriers in a mixed fleet."""
+    state = game.research_state(owner)
+    available = [kind for kind, spec in SHIP_TYPES.items() if (spec.damage or spec.drone_bays)
+                 and state.hull_unlocked(kind) and game.project_price(kind, owner) <= game.resources_for(owner)]
+    if "carrier" in available:
+        fleet = [s for s in game.ships_owned_by(owner) if game.military_strength(s)]
+        if sum(s.drone_bays > 0 for s in fleet)*3 <= len(fleet):
+            return "carrier"
+    return max(available, key=lambda kind: SHIP_TYPES[kind].hull+3*SHIP_TYPES[kind].damage,
+               default="frigate")
 
 
 def world_quality(planet):
@@ -267,7 +282,7 @@ def announce_raid(game, owner, defender, system):
 
 def military_orders(game, reserved=(), owner=RIVAL):
     """Assemble escorted invasion groups when hostile; otherwise guard colonies."""
-    ships = sorted((s for s in game.ships_owned_by(owner) if s.kind == "frigate" and s.id not in reserved), key=lambda s: s.id)
+    ships = sorted((s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and s.id not in reserved), key=lambda s: s.id)
     colonies = [s for s in game.systems if any(p.owner == owner for p in s.worlds)]
     colonies.sort(key=lambda s: (s.id != game._empire(owner).home_system, s.id))
     if not colonies:
@@ -436,8 +451,9 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     unclaimed = sum(len(available_worlds(game, s, owner)) for s in game.systems)
     fleet_size = sum(s.kind == "colony_ship" for s in game.ships_owned_by(owner)) + sum(
         project.item_id == "colony_ship" for _, p in colonies for project in p.construction_queue)
-    warships = sum(s.kind == "frigate" for s in game.ships_owned_by(owner)) + sum(
-        project.item_id == "frigate" for _, p in colonies for project in p.construction_queue)
+    warships = sum(game.military_strength(s) > 0 for s in game.ships_owned_by(owner)) + sum(
+        project.is_ship and (project.spec.damage or project.spec.drone_bays) > 0
+        for _, p in colonies for project in p.construction_queue)
     military_limit = min(6, max(1, len(colonies)//2)+nature.fleet_bonus)
     guarded = [g for g in game.guardians if monsters.known_status(game, g.system_id, owner) == "alive"
                and game.within_fuel_range(g.system_id, owner)]
@@ -514,7 +530,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         # spare credits, especially for slow-growing civilizations.
         research_ready = game.empire_rates_for(owner)[1] > 0 or len(colonies) == 1 or planet.free_slots == 0
         produce_ship = index == 0 and fleet_size < fleet_limit and len(planet.buildings) >= target_buildings and research_ready
-        produce_frigate = (index == 0 and game.turn >= nature.military_turn and len(planet.buildings) >= 2
+        produce_warship = (index == 0 and game.turn >= nature.military_turn and len(planet.buildings) >= 2
                           and warships < military_limit)
         produce_transport = (index == 0 and bool(enemies(game, owner))
                              and warships > 0 and transports < troop_limit)
@@ -525,11 +541,12 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 game.queue_ship(system.id, planet.id, "scout", owner=owner)
                 scouts += 1
                 event(game, owner, f"Queued a scout on {planet.name}.")
-        elif produce_frigate:
-            if game.ship_build_error(system.id, planet.id, "frigate", owner=owner) is None:
-                game.queue_ship(system.id, planet.id, "frigate", owner=owner)
+        elif produce_warship:
+            kind = warship_choice(game, owner)
+            if game.ship_build_error(system.id, planet.id, kind, owner=owner) is None:
+                game.queue_ship(system.id, planet.id, kind, owner=owner)
                 warships += 1
-                event(game, owner, f"Started a frigate on {planet.name}.")
+                event(game, owner, f"Started a {SHIP_TYPES[kind].name.lower()} on {planet.name}.")
         elif produce_transport:
             if game.ship_build_error(system.id, planet.id, "troop_transport", owner=owner) is None:
                 game.queue_ship(system.id, planet.id, "troop_transport", owner=owner)

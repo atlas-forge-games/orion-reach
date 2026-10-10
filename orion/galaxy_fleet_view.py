@@ -330,6 +330,8 @@ def draw_fleet(app):
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.ship_attack(ship)} damage / volley" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
                 if ship.kind == "troop_transport" else f"{game.starting_colonists(first.owner)} B colonists · Unarmed")
+        if ship.drone_bays:
+            role = f"{ship.drone_bays*2} active drones · {ship.drone_bays*4} launches/battle"
         text(surface, role, (191, y+36), 12, MUTED)
         text(surface, f"{ship.hull} / {ship.max_hull} hull", (918, y+11), 13, INK, right=True)
         pg.draw.rect(surface, LINE, (774, y+39, 144, 4), border_radius=2)
@@ -347,9 +349,9 @@ def draw_fleet(app):
     text(surface, f"{len(selected)} {'ship' if len(selected)==1 else 'ships'}", (990, 348), 35, INK, "title")
     for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
         count = sum(s.kind == kind for s in selected)
-        y = 406+index*19
-        text(surface, spec.name, (991, y), 12, MUTED)
-        text(surface, str(count), (1352, y), 12, CYAN, right=True)
+        x, y = 991+(index//5)*190, 406+(index%5)*19
+        text(surface, shorten(spec.name, 142, 11), (x, y), 11, MUTED)
+        text(surface, str(count), (x+171, y), 11, CYAN, right=True)
     pg.draw.line(surface, LINE, (990, 524), (1352, 524))
     text(surface, f"{sum(s.hull for s in selected)} hull · {sum(game.ship_attack(s) for s in selected)} damage / volley", (991, 540), 14, INK)
     description = ("Choose a destination, then click a star on the map to send the selected ships. Unchecked ships stay in orbit."
@@ -382,7 +384,7 @@ def draw_order_panel(app, target):
     text(surface, f"Departing {origin.name}", (1075, 289), 14, CYAN)
     for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
         count = sum(s.kind == kind for s in ships)
-        text(surface, f"{count} × {spec.name}", (1075, 325+index*18), 12, MUTED)
+        text(surface, shorten(f"{count} × {spec.name}", 133, 11), (1075+(index//5)*146, 325+(index%5)*18), 11, MUTED)
     pg.draw.line(surface, LINE, (1075, 431), (1352, 431))
     text(surface, "DESTINATION PREVIEW", (1075, 453), 10, GOLD, "mono")
     text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")

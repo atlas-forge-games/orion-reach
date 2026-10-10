@@ -1,0 +1,107 @@
+[
+  {
+    "id": "frigate",
+    "file": "frigate-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      272,
+      32,
+      982,
+      1174
+    ],
+    "sha256": "78f983d7008227097facc3519d6251a152cf8176257d11c1d3b4f5104e603620"
+  },
+  {
+    "id": "destroyer",
+    "file": "destroyer-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      460,
+      10,
+      794,
+      1237
+    ],
+    "sha256": "48e5a1e01f77fb64a62db0115d2c3a5b8d3916e9d1d335d1f5c023c656dd9cae"
+  },
+  {
+    "id": "cruiser",
+    "file": "cruiser-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      247,
+      10,
+      1007,
+      1227
+    ],
+    "sha256": "3d8c98a5f3f141ed227cf08aa63e979a63da7c799a78440a21e67232cd0d129b"
+  },
+  {
+    "id": "carrier",
+    "file": "carrier-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      298,
+      5,
+      957,
+      1223
+    ],
+    "sha256": "eb4b00094fd76d3abd90b77b86fcfae570be837ecc906194329c27180300b6ce"
+  },
+  {
+    "id": "battleship",
+    "file": "battleship-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      191,
+      18,
+      1064,
+      1228
+    ],
+    "sha256": "9c4481a59f36dc08b7ac8f2b69147166d2c3ebfb75ba8b9c3bd9a28e53ef4e73"
+  },
+  {
+    "id": "titan",
+    "file": "titan-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      177,
+      14,
+      1077,
+      1234
+    ],
+    "sha256": "50d8034d6924451f2c88a5d5d05e2b1851611e9e4836fc8d8b64ffe21c7e3092"
+  },
+  {
+    "id": "combat_drone",
+    "file": "combat_drone-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      122,
+      79,
+      1132,
+      1156
+    ],
+    "sha256": "4954be7b6259a46f18153950d9d7dd90eb59fc08b985f0fe804ad1f32064e279"
+  }
+]

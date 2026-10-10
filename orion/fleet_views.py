@@ -29,15 +29,19 @@ def draw_shipyard(app):
     app.button("shipyard_designer", "Custom ships / designer →", (985, 259, 391, 34), app.open_designer, enabled=planet.owner==PLAYER)
 
     estimates = game.queue_estimates(planet)
-    for index, spec in enumerate(SHIP_TYPES.values()):
+    catalogue_last = (len(SHIP_TYPES)-1)//4
+    app.shipyard_catalog_page = min(max(0, app.shipyard_catalog_page), catalogue_last)
+    for index, spec in enumerate(list(SHIP_TYPES.values())[app.shipyard_catalog_page*4:app.shipyard_catalog_page*4+4]):
         y = 306+index*122
         panel(surface, (64, y, 585, 116))
-        ship_icon(surface, (112, y+44), .65, kind=spec.id)
+        ship_icon(surface, (112, y+44), 1.0, kind=spec.id)
         text(surface, spec.name, (153, y+7), 23, INK, "title")
         description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
                        if spec.id == "colony_ship" else f"{spec.hull} hull · {TROOP_STRENGTH} invasion attack · Unarmed"
                        if spec.id == "troop_transport" else f"{spec.hull} hull · Surveys & discoveries · Unarmed"
                        if spec.id == "scout" else f"{spec.hull} hull · {game.beam_for(spec.id, planet.owner or PLAYER).damage} damage per shot")
+        if spec.drone_bays:
+            description = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
         text(surface, description, (154, y+37), 12, CYAN)
         captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "troop_transport": "Needs barracks. Includes 8 troops; consumed on landing.",
@@ -47,9 +51,13 @@ def draw_shipyard(app):
         text(surface, shorten(f"{game.project_price(spec.id, planet.owner or PLAYER)} RES · {spec.work_cost} work · {eta}", 277, 11),
              (85, y+91), 11, INK)
         reason = game.ship_build_error(system.id, planet.id, spec.id)
-        text(surface, shorten(reason or captions[spec.id], 471, 11), (154, y+61), 11, GOLD if reason else MUTED)
+        text(surface, shorten(reason or captions.get(spec.id, "Research unlocked this hull for construction and design."), 471, 11), (154, y+61), 11, GOLD if reason else MUTED)
         app.button(f"build_{spec.id}", f"Build {spec.name.lower()}", (367, y+80, 258, 31),
                    lambda kind=spec.id: app.queue_ship(kind), enabled=reason is None)
+
+    app.button("ship_catalog_previous", "←", (64, 798, 64, 27), lambda: setattr(app, "shipyard_catalog_page", app.shipyard_catalog_page-1), enabled=app.shipyard_catalog_page > 0)
+    text(surface, f"Ship classes {app.shipyard_catalog_page+1} / {catalogue_last+1}", (144, 804), 11, MUTED)
+    app.button("ship_catalog_next", "→", (585, 798, 64, 27), lambda: setattr(app, "shipyard_catalog_page", app.shipyard_catalog_page+1), enabled=app.shipyard_catalog_page < catalogue_last)
 
     panel(surface, (674, 306, 702, 487))
     text(surface, "SHARED CONSTRUCTION QUEUE", (697, 328), 11, GOLD, "mono", 1)
@@ -121,6 +129,8 @@ def draw_fleets(app):
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
                 f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.ship_attack(ship)} damage / volley")
+        if ship.drone_bays:
+            role = f"{ship.drone_bays*2} active drones · {ship.drone_bays*4} launches/battle"
         text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.has_course else f"{origin.name} orbit"
@@ -152,7 +162,7 @@ def draw_fleets(app):
             s, p = home
             app.button("fleet_build_first", "Open colony shipyard", (250, 596, 327, 48),
                        lambda sid=s.id, pid=p.id: app.open_shipyard(sid, pid))
-    text(surface, "Frigates fight. Colony ships settle worlds. Engage commits both selected empires' fleets.", (64, 798), 12, MUTED)
+    text(surface, "Research new warships and drone carriers. Engage commits both selected empires' fleets.", (64, 798), 12, MUTED)
     text(surface, f"PAGE {app.fleet_page+1} / {last+1}", (1069, 798), 10, FAINT, "mono", right=True)
     app.button("fleets_previous", "← Prev", (1100, 785, 129, 37), lambda: app.change_fleet_page(-1), enabled=app.fleet_page>0)
     app.button("fleets_next", "Next →", (1243, 785, 133, 37), lambda: app.change_fleet_page(1), enabled=app.fleet_page<last)

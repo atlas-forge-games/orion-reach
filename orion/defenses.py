@@ -53,7 +53,7 @@ def advance(game):
             normalize(planet)
             if not planet.owner:
                 continue
-            blocked = any(hostile(game, s.owner, planet.owner) and s.damage and not s.in_transit and s.system_id == system.id
+            blocked = any(hostile(game, s.owner, planet.owner) and (s.damage or s.drone_bays) and not s.in_transit and s.system_id == system.id
                           for s in game.ships)
             if not blocked and planet.bombarded_turn < game.turn-1:
                 if game.building_operational(planet, "planetary_shield"):

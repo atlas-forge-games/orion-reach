@@ -26,12 +26,13 @@ def scenario(ai=False):
     game.ships.clear()
     game.next_ship_id = 1
     game.credits = game.resources = 5000
+    game.technology.completed = ["destroyer_hulls", "cruiser_hulls", "battleship_hulls"]
     return game
 
 
 def duel(weapons=("laser", "torpedo"), defenses=("shield", "point_defense")):
     game = scenario(True)
-    game.technology.completed = ["radiation_shields"]
+    game.technology.completed += ["radiation_shields"]
     attacker = game.save_design("Archer", "cruiser", weapons)
     defender = game.save_design("Bastion", "cruiser", ["laser", *defenses])
     game.ships = [Ship(1, "cruiser", 0, design=attacker), Ship(2, "cruiser", 0, owner=RIVAL, design=defender)]
@@ -58,7 +59,7 @@ class DesignerRulesTests(unittest.TestCase):
         game.save_design("Vanguard", "frigate", ["laser"])
         with self.assertRaises(RuleError):
             game.save_design("vanguard", "cruiser", ["laser"])
-        game.technology.completed = ["radiation_shields", "ion_drives", "research_networks", "research_instruments", "quantum_optics"]
+        game.technology.completed += ["radiation_shields", "ion_drives", "research_networks", "research_instruments", "quantum_optics"]
         design = game.save_design("Advanced", "battleship", ["quantum", "torpedo", "shield", "armor", "scanner", "engine"])
         self.assertEqual((design.hull, design.shields, design.damage, design.weapon_range, design.movement), (83, 12, 24, 9, 2))
 
@@ -202,6 +203,7 @@ class DesignerCombatTests(unittest.TestCase):
 
     def test_guardians_attack_designed_ships_and_destruction_still_explodes(self):
         game = new_game(seed=2408, with_ai=False)
+        game.technology.completed = ["destroyer_hulls", "cruiser_hulls", "battleship_hulls"]
         guard = game.guardians[0]
         design = game.save_design("Hunter", "battleship", ["torpedo"]*4+["armor"]*4)
         game.ships = [Ship(1, "battleship", guard.system_id, design=design)]

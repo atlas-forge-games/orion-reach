@@ -1,15 +1,50 @@
-"""Procedural transports and frigates for cards, battle formations and map markers."""
+"""Cached ship illustrations and procedural civilian craft for every fleet view."""
 
+from functools import lru_cache
 import pygame as pg
 
-from .ui import CYAN, INK
+from .ui import ASSETS, CYAN, INK
 from .monster_art import draw_monster
 from .monsters import MONSTERS
+
+SHIP_ART_IDS = ("frigate", "destroyer", "cruiser", "battleship", "carrier", "titan", "combat_drone")
+
+
+@lru_cache(maxsize=16)
+def load_ship_art(kind):
+    if kind not in SHIP_ART_IDS:
+        return None
+    try:
+        image = pg.image.load(str(ASSETS / "ships" / f"{kind}-v1.png"))
+        bounds = image.get_bounding_rect(min_alpha=32)
+        return image.subsurface(bounds).copy() if bounds.w and bounds.h else None
+    except (OSError, pg.error):
+        return None
+
+
+@lru_cache(maxsize=192)
+def ship_sprite(kind, height, facing=0):
+    image = load_ship_art(kind)
+    if image is None:
+        return None
+    width = max(1, round(image.get_width()*height/image.get_height()))
+    sprite = pg.transform.smoothscale(image, (width, height))
+    return pg.transform.rotate(sprite, -90*facing) if facing else sprite
 
 
 def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing=0):
     if kind in MONSTERS:
         draw_monster(surface, center, kind, scale, facing)
+        return
+    sprite = ship_sprite(kind, max(1, round((43 if kind == "combat_drone" else 68)*scale)), facing)
+    if sprite is not None:
+        surface.blit(sprite, sprite.get_rect(center=center))
+        # Owner-colored running lights remain legible at tactical and map scales.
+        radius = max(1, round(scale*1.5))
+        offset = max(3, round((16 if kind == "combat_drone" else 27)*scale))
+        px, py = center
+        marker = (round(px-offset*facing), round(py)) if facing else (round(px), round(py+offset))
+        pg.draw.circle(surface, color, marker, radius)
         return
     x, y = center
     def points(values):
@@ -23,8 +58,8 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
         for offset in (-17, 0, 17):
             pg.draw.line(surface, INK, points([(offset, -7)])[0], points([(offset, -25)])[0], max(2, round(3*scale)))
         return
-    if kind in ("cruiser", "battleship"):
-        heavy = kind == "battleship"
+    if kind in ("cruiser", "battleship", "carrier", "titan", "destroyer"):
+        heavy = kind in ("battleship", "carrier", "titan")
         width = 17 if heavy else 12
         hull = points([(0, -35), (width, -18), (width, 24), (-width, 24), (-width, -18)])
         pg.draw.polygon(surface, (31, 49, 61), hull)
@@ -59,7 +94,7 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
             pg.draw.line(surface, color, points([(offset, 25)])[0], points([(offset, 33)])[0], max(1, round(3*scale)))
         pg.draw.line(surface, INK, points([(-7, -20)])[0], points([(7, -20)])[0], max(1, round(2*scale)))
         return
-    if kind == "frigate":
+    if kind in ("frigate", "combat_drone"):
         hull = points([(0, -34), (10, -15), (10, 17), (6, 25), (-6, 25), (-10, 17), (-10, -15)])
         pg.draw.polygon(surface, (31, 49, 61), hull)
         pg.draw.polygon(surface, color, hull, max(1, round(scale)))

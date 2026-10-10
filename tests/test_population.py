@@ -266,10 +266,10 @@ class PopulationSaveTests(unittest.TestCase):
             expected["diplomacy"]["introduced"] = True  # Old confirmed contacts do not replay introductions.
             for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
                 state = empire["technology"]
-                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None)
+                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True)
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 28)
+        self.assertEqual(SAVE_VERSION, 29)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

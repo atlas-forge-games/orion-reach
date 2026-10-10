@@ -140,7 +140,7 @@ def main():
                 if args.screen in ("designer", "design_combat"):
                     from orion.model import Ship, RIVAL
                     game = app.game
-                    game.technology.completed = ["ion_drives", "radiation_shields", "research_networks"]
+                    game.technology.completed = ["ion_drives", "radiation_shields", "research_networks", "destroyer_hulls", "cruiser_hulls"]
                     lancer = game.save_design("Lancer", "frigate", ["torpedo", "shield", "scanner"])
                     aegis = game.save_design("Aegis", "cruiser", ["laser", "laser", "torpedo", "armor", "shield", "point_defense", "engine"])
                     game.credits = 750

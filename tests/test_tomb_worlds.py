@@ -332,6 +332,8 @@ class NewsAndTurnTests(unittest.TestCase):
 class SaveTests(unittest.TestCase):
     def test_v21_load_keeps_existing_campaign_without_reseeding_tombs(self):
         game = scenario()
+        for owner in game.owners:
+            game.research_state(owner).legacy_starships = True
         data = game.to_dict()
         data.pop("tomb_worlds")
         data.pop("news_read_turn")

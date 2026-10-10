@@ -14,6 +14,14 @@ class ShipSpec:
     work_cost: int
     hull: int
     damage: int = 0
+    technology: str | None = None
+    drone_bays: int = 0
+
+
+HULL_TECHNOLOGIES = {
+    "frigate": None, "destroyer": "destroyer_hulls", "cruiser": "cruiser_hulls",
+    "battleship": "battleship_hulls", "carrier": "drone_carriers", "titan": "titan_hulls",
+}
 
 
 SHIP_TYPES = {
@@ -21,6 +29,11 @@ SHIP_TYPES = {
     "frigate": ShipSpec("frigate", "Frigate", 60, 36, hull=20, damage=5),
     "troop_transport": ShipSpec("troop_transport", "Troop transport", 80, 42, hull=16),
     "scout": ShipSpec("scout", "Scout", 25, 12, hull=8),
+    "destroyer": ShipSpec("destroyer", "Destroyer", 90, 54, hull=30, damage=10, technology="destroyer_hulls"),
+    "cruiser": ShipSpec("cruiser", "Cruiser", 150, 90, hull=42, damage=12, technology="cruiser_hulls"),
+    "battleship": ShipSpec("battleship", "Battleship", 260, 156, hull=75, damage=18, technology="battleship_hulls"),
+    "carrier": ShipSpec("carrier", "Drone carrier", 210, 126, hull=55, damage=5, technology="drone_carriers", drone_bays=2),
+    "titan": ShipSpec("titan", "Titan", 420, 252, hull=125, damage=26, technology="titan_hulls"),
 }
 
 
