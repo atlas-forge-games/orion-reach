@@ -1,6 +1,7 @@
 """Shared contact selector for diplomacy and intelligence."""
 
 from .empires import empire_color
+from .first_contact import known_opponents
 from .ui import MUTED, panel, shorten, text
 
 
@@ -9,7 +10,7 @@ def draw_rival_selector(app):
     owner = app.selected_rival_id()
     if owner is None:
         return
-    owners = list(game.opponents)
+    owners = known_opponents(game)
     panel(app.canvas, (818, 124, 558, 46), border=empire_color(owner))
     app.button("contact_previous", "←", (824, 129, 44, 36), lambda: app.change_rival(-1), enabled=len(owners)>1)
     app.button("contact_next", "→", (1326, 129, 44, 36), lambda: app.change_rival(1), enabled=len(owners)>1)

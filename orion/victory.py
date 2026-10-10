@@ -89,8 +89,9 @@ def invade(game, system_id, planet_id, owner="player"):
     for ship in transports:
         game.ships.remove(ship)
     apply_ground_outcome(planet, owner, defending, outcome)
+    action = ("assimilated" if game._empire(owner).race_id == "concord" else "captured") if captured else "failed to capture"
     record_ground_hostility(game, owner, defender,
-                           f"{game.empire_name_for(owner)} {'captured' if captured else 'failed to capture'} {planet.name}: "
+                           f"{game.empire_name_for(owner)} {action} {planet.name}: "
                            f"{attack-outcome.attackers} attacking and {defending.troops-outcome.defenders} defending troops lost. "
                            f"{len(transports)} transports consumed.")
     game.eliminate_defeated()
@@ -125,6 +126,8 @@ def apply_ground_casualties(planet, defending, survivors):
 
 
 def record_ground_hostility(game, owner, defender, message):
+    from .first_contact import establish
+    establish(game, owner, defender)
     state = game.diplomacy_between(owner, defender)
     state.trade_active = state.research_active = False
     state.relations, state.offer_ready_turn = -100, game.turn+3

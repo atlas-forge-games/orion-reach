@@ -7,6 +7,7 @@ from .diplomacy import (BREAK_PENALTY, ENVOY_COOLDOWN, ENVOY_COST, ENVOY_RELATIO
                         RESEARCH_INCOME, TRADE_INCOME)
 from .race_art import draw_race_portrait
 from .races import RACES
+from .personalities import PERSONALITIES, envoy_gain, gift_gain, personality
 from .rival_selector import draw_rival_selector
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
@@ -15,9 +16,8 @@ def draw_contact_profile(surface, race, empire_name):
     panel(surface, (64, 289, 338, 388))
     draw_race_portrait(surface, race.id, (129, 305, 208, 208))
     text(surface, shorten(empire_name, 291, 23, "title"), (87, 532), 23, INK, "title")
-    text(surface, f"{race.name} · {race.focus}", (89, 570), 12, race.color)
-    paragraph(surface, race.description, (89, 597), 290, 13, MUTED, 18)
-    text(surface, race.trait, (89, 653), 11, race.color)
+    text(surface, race.focus, (89, 570), 12, race.color)
+    paragraph(surface, PERSONALITIES[race.id].traits, (89, 597), 290, 13, MUTED, 18)
 
 
 def draw_diplomacy(app):
@@ -31,7 +31,7 @@ def draw_diplomacy(app):
     app.button("diplomacy_intelligence", "Rival report", (472, 124, 209, 46), app.open_rival)
     draw_rival_selector(app)
     text(surface, "Diplomacy", (64, 190), 43, INK, "title")
-    text(surface, "Build trust. Exchange knowledge. Find common ground.", (66, 252), 14, MUTED)
+    text(surface, "Learn their character. Establish terms. Shape your relationship.", (66, 252), 14, MUTED)
 
     # Your own identity remains visible while dealing with another empire.
     panel(surface, (64, 688, 338, 90))
@@ -45,14 +45,16 @@ def draw_diplomacy(app):
         draw_contact_profile(surface, own_race, game.empire_name)
         panel(surface, (427, 289, 949, 489))
         text(surface, "No foreign contact yet.", (456, 331), 30, INK, "title")
-        paragraph(surface, "This campaign has no rival empire. Add one from Rival report to open a diplomatic channel. "
-                  "You can send envoys, give gifts, and propose trade or research agreements.",
+        paragraph(surface, ("Explore with your ships or detect a foreign fleet to establish a communications channel. "
+                  "Civilizations will introduce themselves when contact is confirmed." if game.opponents else
+                  "This campaign has no rival empire. Add one from Rival report to open a diplomatic channel."),
                   (458, 394), 836, 18, MUTED, 31)
         app.button("diplomacy_add_rival", "Open Rival report", (457, 592, 318, 51), app.open_rival, "primary")
     else:
         rival, state = selected, game.diplomacy_between("player", owner)
         race = RACES[rival.race_id]
         draw_contact_profile(surface, race, rival.name)
+        app.button("diplomacy_greeting", "Replay first-contact greeting", (87, 632, 292, 31), app.replay_greeting, "ghost")
 
         panel(surface, (427, 289, 949, 89))
         color = CYAN if state.relations >= 25 else RED if state.relations < 0 else GOLD
@@ -84,16 +86,16 @@ def draw_diplomacy(app):
             text(surface, caption, (x+23, 474), 12, MUTED)
             command = f"end_{action}" if active else action
             reason = game.diplomacy_error(command, owner)
-            hint = f"End: -{BREAK_PENALTY} relations" if active else (reason or ("Will accept" if state.relations >= threshold else "Will decline"))
+            hint = f"End: -{personality(game,owner).breach} relations" if active else (reason or ("Will accept" if state.relations >= threshold else "Will decline"))
             text(surface, shorten(hint, 238, 11), (x+23, 520), 11, GOLD if active else MUTED)
             app.button(f"diplomacy_{command}", "End agreement" if active else "Propose", (x+275, 505, 168, 35),
                        lambda a=command: app.diplomatic_action(a), enabled=reason is None)
 
         for action, title, x, caption in (
             ("envoy", f"Send envoy · {ENVOY_COST} CR", 427,
-             f"+{ENVOY_RELATIONS+own_race.envoy_bonus} relations · Every {ENVOY_COOLDOWN} turns"),
+             f"+{envoy_gain(game,'player',owner)} relations · Every {ENVOY_COOLDOWN} turns"),
             ("gift", f"Gift {GIFT_COST} CR", 721,
-             f"+{GIFT_RELATIONS} relations · Every {GIFT_COOLDOWN} turns"),
+             f"+{gift_gain(game,owner)} relations · Every {GIFT_COOLDOWN} turns"),
         ):
             reason = game.diplomacy_error(action, owner)
             app.button(f"diplomacy_{action}", title, (x, 574, 278, 43),

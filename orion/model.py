@@ -21,6 +21,7 @@ from . import raiding as raid_rules
 from . import defenses as defense_rules
 from . import navigation
 from . import sensors
+from . import first_contact
 from .races import RACES, default_rival_race
 from .home_systems import name_home
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
@@ -1370,7 +1371,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=25):
+    def from_dict(cls, data, *, version=26):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1447,7 +1448,7 @@ class GameState:
             if not isinstance(race_id, str) or race_id not in RACES:
                 raise ValueError
             if version >= 6:
-                diplomacy = DiplomacyState.from_dict(data["diplomacy"], data["turn"]) if data["diplomacy"] is not None else None
+                diplomacy = DiplomacyState.from_dict(data["diplomacy"], data["turn"], version=version) if data["diplomacy"] is not None else None
                 if (opponent is None) != (diplomacy is None):
                     raise ValueError
             else:
@@ -1468,7 +1469,7 @@ class GameState:
                         if {a, b} != {PLAYER, RIVAL}}
                 if not isinstance(relations, dict) or set(relations) != keys:
                     raise ValueError("Invalid diplomatic relationships")
-                game.other_diplomacy = {key: DiplomacyState.from_dict(row, game.turn) for key, row in relations.items()}
+                game.other_diplomacy = {key: DiplomacyState.from_dict(row, game.turn, version=version) for key, row in relations.items()}
             if (any(p.owner is not None and p.owner not in game.owners for s in systems for p in s.worlds)
                     or any(s.owner not in game.owners for s in ships)):
                 raise ValueError("Unknown empire owns a colony or ship")
@@ -1511,6 +1512,8 @@ class GameState:
                 if (any(s.bombarded_turn > game.turn for s in game.ships)
                         or any(p.bombarded_turn > game.turn for s in game.systems for p in s.worlds)):
                     raise ValueError("Bombardment timestamp is in the future")
+            if version < 26:
+                first_contact.migrate(game)
             return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc

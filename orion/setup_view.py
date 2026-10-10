@@ -6,6 +6,7 @@ from .model import GALAXY_SIZES
 from .empires import MAX_RIVALS
 from .race_art import draw_race_portrait
 from .races import RACES
+from .personalities import PERSONALITIES
 from .ui import GOLD, INK, MUTED, panel, paragraph, text
 
 
@@ -30,7 +31,7 @@ def draw_race_select(app):
     panel(surface, (890, 290, 486, 496), border=race.color)
     draw_race_portrait(surface, race.id, (1013, 306, 240, 240))
     text(surface, race.name, (912, 560), 32, race.color, "title")
-    text(surface, race.focus, (914, 602), 13, INK)
+    text(surface, PERSONALITIES[race.id].traits, (914, 602), 12, INK)
     y = paragraph(surface, race.description, (914, 631), 436, 13, MUTED, 19)+12
     for trait in race.traits:
         y = paragraph(surface, "• "+trait, (914, y), 436, 12, race.color, 18)+5

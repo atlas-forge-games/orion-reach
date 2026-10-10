@@ -98,8 +98,14 @@ def draw_race_emblem(surface, race_id, center, radius=50):
         for offset in (-.17, .17):
             pg.draw.ellipse(surface, color, (x+radius*(offset-.4), y-radius*.65, radius*.8, radius*1.3), width)
     elif race_id == "concord":
-        for offset in (-.25, .25):
-            pg.draw.circle(surface, color, pt(offset, 0), round(radius*.45), width)
+        # Distinct organisms subordinated to one central collective mind.
+        for a in (-.5, 0, .5):
+            for b in (-.5, 0, .5):
+                pg.draw.line(surface, dim, pt(a, b), pt(0, 0), width)
+                cx, cy = pt(a, b)
+                r = radius*(.16 if (a, b) == (0, 0) else .1)
+                pg.draw.rect(surface, color, (cx-r, cy-r, 2*r, 2*r), width)
+        pg.draw.rect(surface, color, (*pt(-.75, -.75), 1.5*radius, 1.5*radius), width)
     else:  # Remnant: a broken halo and the last light beneath it.
         pg.draw.arc(surface, color, (x-radius*.6, y-radius*.65, radius*1.2, radius*1.2), .25, math.pi*1.8, width)
         pg.draw.polygon(surface, color, [pt(0, -.3), pt(.17, .5), pt(-.17, .5)], width)

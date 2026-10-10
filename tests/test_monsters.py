@@ -188,6 +188,8 @@ class GuardianRulesTests(unittest.TestCase):
         game.diplomacy.relations = 80
         game.diplomacy.trade_active = game.diplomacy.research_active = True
         other = fleet(game, guardian.system_id, ("scout",), RIVAL)[0]
+        from orion.first_contact import establish
+        establish(game, PLAYER, RIVAL)
         original = asdict(game.diplomacy)
         game.start_combat(guardian.system_id)
         self.assertEqual(game.combat.sides, (PLAYER, monsters.MONSTER))

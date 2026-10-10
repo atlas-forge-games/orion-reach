@@ -12,6 +12,8 @@ from .exploration import gate_location
 from .population import farmers_needed, food_required
 from . import monsters, defenses, sensors
 from . import raiding
+from . import first_contact
+from .personalities import personality
 from .ground_combat import forces, resolve, transports_needed
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
 
@@ -39,6 +41,41 @@ def enemies(game, owner):
                 and not game.diplomacy_between(owner, other).research_active}
     return {other for other in game.owners if other != owner
             and game.diplomacy_between(owner, other).relations < HOSTILE_BELOW}
+
+
+def diplomatic_orders(game, owner):
+    """Consider one conquest using confirmed, observable intelligence only."""
+    nature = personality(game, owner)
+    if not nature.conquest_ratio or game.turn < 12 or game.turn % 6 or enemies(game, owner):
+        return []
+    armed = [s for s in game.ships_owned_by(owner) if game.ship_attack(s) > 0]
+    if len(armed) < 2:
+        return []
+    strength = sum(s.hull for s in armed)
+    candidates = []
+    for system, world in known_enemy_colonies(game, owner):
+        target = world.owner
+        state = game.diplomacy_between(owner, target)
+        if (not first_contact.known(game, owner, target) or state.trade_active or state.research_active
+                or not game.within_fuel_range(system.id, owner)
+                or state.relations >= (25 if game._empire(owner).race_id == "concord" else 0)):
+            continue
+        # An unobserved navy is uncertain; never query its hidden strength.
+        observed = sum(s.hull for s in game.visible_ships(owner) if s.owner == target and game.ship_attack(s) > 0)
+        resistance = max(40, observed+40*sum("missile_base" in p.buildings for p in system.worlds if p.owner == target))
+        if strength*100 >= resistance*nature.conquest_ratio:
+            candidates.append((resistance, system.id, target))
+    if not candidates:
+        return []
+    _, _, target = min(candidates)
+    state = game.diplomacy_between(owner, target)
+    state.relations = -60
+    state.offer_ready_turn = game.turn+3
+    goal = "announced an assimilation campaign against" if game._empire(owner).race_id == "concord" else "declared war on"
+    message = f"{game.empire_name_for(owner)} {goal} {game.empire_name_for(target)}."
+    state.record(game.turn, message)
+    event(game, owner, message)
+    return [message] if target == "player" else []
 
 
 def scouting_orders(game, owner=RIVAL):
@@ -302,7 +339,9 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
 
 def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
-    invasions = invasion_orders(game, owner, ground_reports=ground_reports)
+    nature = personality(game, owner)
+    invasions = diplomatic_orders(game, owner)
+    invasions.extend(invasion_orders(game, owner, ground_reports=ground_reports))
     if game.result is not None:
         return invasions
     research_choice(game, owner)
@@ -361,7 +400,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         project.item_id == "colony_ship" for _, p in colonies for project in p.construction_queue)
     warships = sum(s.kind == "frigate" for s in game.ships_owned_by(owner)) + sum(
         project.item_id == "frigate" for _, p in colonies for project in p.construction_queue)
-    military_limit = min(3, max(1, len(colonies)//2))
+    military_limit = min(6, max(1, len(colonies)//2)+nature.fleet_bonus)
     guarded = [g for g in game.guardians if monsters.known_status(game, g.system_id, owner) == "alive"
                and game.within_fuel_range(g.system_id, owner)]
     if guarded:
@@ -399,7 +438,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         military_building = None
         if "barracks" not in planet.buildings and (hostile or len(planet.buildings) >= 2):
             military_building = "barracks"
-        elif hostile and "fortifications" not in planet.buildings and "barracks" in planet.buildings:
+        elif (hostile or (nature.protective and len(colonies) >= 3)) and "fortifications" not in planet.buildings and "barracks" in planet.buildings:
             military_building = "fortifications"
         if (military_building == "barracks" and index == 0 and hostile and transports < troop_limit
                 and planet.free_slots == 0
@@ -414,13 +453,13 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
             queue_building(game, system, planet, military_building, owner)
             continue
         infrastructure = []
-        if hostile:
+        if hostile or nature.protective:
             infrastructure += ["missile_base", "planetary_shield", "interdictor"]
         if len(game.colony_systems(owner)) > 1:
             infrastructure.append("jump_gate")
         infrastructure.append("sensor_array")
         infrastructure_item = None
-        if planet.free_slots > max(0, farms_needed) and len(planet.buildings) >= 2 and (hostile or len(colonies) >= 4):
+        if planet.free_slots > max(0, farms_needed) and len(planet.buildings) >= 2 and (hostile or nature.protective or len(colonies) >= 4):
             infrastructure_item = next((b for b in infrastructure if game.build_error(system.id, planet.id, b, owner=owner) is None), None)
         # The strongest colony supplies ships. Other worlds build their economies.
         # Expansion raises the shipyard's development target, preventing stagnation.
@@ -429,7 +468,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         # spare credits, especially for slow-growing civilizations.
         research_ready = game.empire_rates_for(owner)[1] > 0 or len(colonies) == 1 or planet.free_slots == 0
         produce_ship = index == 0 and fleet_size < fleet_limit and len(planet.buildings) >= target_buildings and research_ready
-        produce_frigate = (index == 0 and game.turn >= 12 and len(planet.buildings) >= 2
+        produce_frigate = (index == 0 and game.turn >= nature.military_turn and len(planet.buildings) >= 2
                           and warships < military_limit)
         produce_transport = (index == 0 and bool(enemies(game, owner))
                              and warships > 0 and transports < troop_limit)

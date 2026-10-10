@@ -30,6 +30,13 @@ def draw_rival(app):
     text(surface, f"{race_name}  /  EXPANSION & DEVELOPMENT", (66, 255), 11, color, "mono", 1)
     if rival is None:
         panel(surface, (64, 309, 1312, 439))
+        if game.opponents:
+            text(surface, "No foreign civilization contacted.", (94, 343), 29, INK, "title")
+            paragraph(surface, "Explore with your ships or research sensors to identify other civilizations. "
+                      "Their identities and diplomatic channels will appear after first contact.",
+                      (96, 407), 1112, 19, MUTED, 32)
+            app.button("rival_explore", "Return to galaxy", (95, 663, 283, 52), lambda: app.go("galaxy"), "primary")
+            return
         text(surface, "This campaign has no rival yet.", (94, 343), 29, INK, "title")
         paragraph(surface, "Add the Helios Directorate to an unclaimed habitable world far from your colonies. "
                   "It starts with one homeworld, 8 B inhabitants and 120 credits, and makes its first decisions when you end the turn.",

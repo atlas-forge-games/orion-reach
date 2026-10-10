@@ -102,7 +102,7 @@ class IndependentEmpireTests(unittest.TestCase):
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_diplomacy_gifts_cooldowns_and_treaties_are_bilateral(self):
-        game = new_game(seed=101, rival_count=3)
+        game = new_game(seed=101, rival_count=3, fog_of_war=False)
         target = "rival_2"
         original = copy.deepcopy(game.diplomacy)
         game.diplomacy_action("gift", target)
@@ -110,7 +110,7 @@ class IndependentEmpireTests(unittest.TestCase):
         self.assertEqual(game.diplomacy, original)
         self.assertEqual(game.diplomacy_between(target, "rival_3").relations, 0)
         game.diplomacy_action("envoy", RIVAL)
-        self.assertEqual(game.diplomacy_between(PLAYER, target).relations, 15)
+        self.assertEqual(game.diplomacy_between(PLAYER, target).relations, 12)  # Lithar response to gifts.
         for owner in (RIVAL, target):
             state = game.diplomacy_between(PLAYER, owner)
             state.relations = 60
@@ -291,6 +291,9 @@ class MultipleEmpireInterfaceTests(unittest.TestCase):
         self.app = App(Path(self.tmp.name), capture=True)
         self.app.present()
         self.app.game = new_game(seed=2408, rival_count=3, fog_of_war=False, with_guardians=False)
+        from orion.first_contact import pending, acknowledge
+        for owner in pending(self.app.game):
+            acknowledge(self.app.game, owner)
 
     def click(self, key):
         self.app.render()

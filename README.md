@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.33.0
+# Orion Reach — Python prototype 0.34.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,80 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.34: first contact and civilization personalities
+
+Every civilization now has its own first-contact transmission: a large original
+portrait, civilization seal, animated communications signal, distinct greeting and
+an explanation of its disposition. **Enter** or **Escape** acknowledges the current
+transmission. Multiple introductions are queued, with **Skip remaining introductions**
+for that batch. Future discoveries still introduce themselves normally.
+
+- With fog **off**, all starting civilizations introduce themselves on turn one.
+- With fog **on**, either side identifying the other's ship or colony establishes
+  a shared channel. Research sensors can identify a fleet without surveying its
+  planets or exposing its homeworld. Third-party contacts remain private.
+- Before contact, foreign identities and diplomatic actions are hidden. The
+  objectives and rival-report screens remain available without a known rival.
+- Awakened Remnant enclaves introduce themselves to empires that receive their
+  tomb-world dispatch or subsequently discover them. Dormant tombs reveal nothing.
+- The introduction pauses gameplay, then returns to the pending screen or battle.
+  Completed campaigns show their result and reports without further introductions.
+- Each acknowledgement is autosaved. **Diplomacy → Replay first-contact greeting**
+  opens a read-only archive, even after the recent diplomatic log has moved on.
+
+Civilization character is separate from its current relationship with you. All
+new contacts begin neutral. Envoys, gifts and treaty endings show their actual
+personality-adjusted effects before you commit the action.
+
+| Civilization | Disposition | Strategic character |
+| --- | --- | --- |
+| Terrans | Open, pragmatic, ambitious | Reconcile readily; may challenge weaker, unfriendly neighbours. |
+| Kharuun | Practical, honourable, reserved | Value reliable trade and remember damaged trust. |
+| Aelari | Curious, cooperative, cautious | Welcome envoys, favour research and planetary protection. |
+| Lithar | Patient, territorial, steadfast | Build defences and forgive very slowly. |
+| Varkesh | Aggressive, opportunistic, intimidating | Build fleets early and raid neighbours without active agreements. |
+| Wanderers | Friendly, independent, adventurous | Welcome exchange and reconcile quickly. |
+| Xenonflora | Protective, communal, watchful | Fortify living communities and react strongly to broken agreements. |
+| Nexus | Calculating, unemotional, methodical | Value material exchange and assess favourable opportunities for conquest. |
+| Aetheri | Mysterious, contemplative, detached | Prefer dialogue to gifts and favour defensive fields. |
+| The Concord | Assimilating, relentless, collective | One will seeks to absorb independent civilizations through conquest. |
+| The Remnant | Proud, secretive, possessive | Guard ancient claims and remember slights. |
+
+**The Concord** is now the **Concord Collective**. Its greeting speaks with one
+voice; its AI builds larger fleets earlier and can launch assimilation campaigns
+against reachable neutral neighbours. Successful invasions retain the conquered
+population and buildings under collective ownership, using the existing ground
+combat rules; they do not automatically copy technologies or convert ships.
+Concord trade/research agreements require **+45/+55 relations**. Envoys receive
+**6 fewer** relations and gifts **10 fewer** than their base effect. Their former
+extra envoy bonus is removed. Networked treaty yields (+3 CR/+1 RP) and the 10%
+local credit penalty remain. Existing custom empire names are retained.
+
+The base envoy gain is 8 plus the sender's racial bonus and the recipient's
+personality modifier; the base gift gain is 15 plus the recipient's modifier.
+Gains cannot fall below one. Ending a treaty costs 10 relations for Varkesh,
+20 for Concord, 25 for Lithar/Xenonflora/Remnant and 15 for the others.
+Wary relations (-30 through -1) recover one point at the slower civilization's
+forgiveness interval (3–20 turns). Concord relationships never recover passively;
+hostile wars require active diplomacy. Active treaties continue to build trust.
+
+Terran, Nexus and Remnant AI can declare war on an unfriendly neighbour when their
+known military position is favourable. Concord can also target neutral neighbours.
+Decisions require two armed ships, a reachable known colony, turn 12 or later,
+and a strength advantage; they are considered every six turns. Active treaties,
+friendly relations and an existing war prevent these opportunistic declarations.
+The AI never reads hidden enemy fleets to make this assessment. Protective races
+reserve fortifications and advanced defences while preserving early expansion.
+Alliances, open-border treaties and unsolicited AI treaty offers remain future work.
+
+**Save continuity:** format **26** persists first-contact dates and acknowledged
+introductions. Older confirmed contacts and active diplomatic channels are marked
+as already introduced. Undiscovered empires remain hidden. Loading never rewrites
+the source save, changes its empire names or grants extra starting assets.
+
+![First contact with the Concord Collective](screenshots/first_contact_concord.png)
+![Personality-aware diplomatic channel](screenshots/civilization_personality.png)
 
 ## New in v0.33: defense, sensors, navigation and targeting
 
@@ -433,7 +507,7 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
 | Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
-| The Concord | Envoys +2 relations; trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
+| The Concord | Assimilating collective; networked trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
 | The Remnant | Start with 80 unspent research points; colony research +25%, industry −20%; awakened tomb worlds join the empire. |
 
 Nexus reserve **20% of gross industry**, rounded up, for assembly until the
@@ -1082,11 +1156,11 @@ diplomatic proposals are not implemented yet.
 
 | Action | Effect | Cooldown |
 | --- | --- | --- |
-| Send envoy | Spend 10 CR; +8 relations, or +12 for Terrans | 3 turns |
-| Gift 50 CR | Transfer 50 CR from your treasury to the rival; +15 relations | 5 turns |
+| Send envoy | Spend 10 CR; base +8 relations, plus sender racial and recipient personality modifiers | 3 turns |
+| Gift 50 CR | Transfer 50 CR to the rival; base +15 relations, modified by their personality | 5 turns |
 | Propose trade pact | If accepted, +5 CR/turn to each empire; Kharuun receive +6 | All treaty offers share 3 turns |
 | Propose research agreement | If accepted, +3 RP/turn to each empire; Aelari receive +4 | All treaty offers share 3 turns |
-| End an agreement | Stop that agreement's benefits for both empires; -15 relations | Treaty offers wait at least 3 turns |
+| End an agreement | Stop its benefits for both empires; lose 10–25 relations depending on the recipient | Treaty offers wait at least 3 turns |
 
 A cooldown of three turns means an action used on turn 1 becomes available
 again on turn 4. Declined proposals also trigger the treaty-offer cooldown.
@@ -1106,7 +1180,8 @@ rival ends any remaining agreements at the beginning of the next End Turn,
 before income is collected. Envoys and gifts can restore relations. Diplomacy
 does not restrict travel or settlement. Starting combat ends both agreements
 and sets relations to -100. Rival frigates can initiate encounters while relations
-are below -30. Alliances, separate war declarations and border treaties are not implemented.
+are below -30. Opportunistic AI can declare war as described in the v0.34 rules.
+Alliances and border treaties are not implemented.
 
 Existing campaigns gain neutral diplomatic contact when loaded if a rival
 already exists. Older player empires are assigned Terrans and existing Helios
@@ -1169,8 +1244,9 @@ With fog enabled, the rival builds up to two scouts and uses its own knowledge
 to explore and claim discoveries. With fog off, its existing expansion policy
 can already see all colony sites.
 
-Diplomacy remains available through the existing communications channel. It
-does not reveal enemy worlds. Science-victory warnings still announce dangerous
+Diplomacy becomes available after confirmed first contact, then remains available
+even when the observed ship moves away. It does not reveal enemy worlds.
+Science-victory warnings still announce dangerous
 gate milestones, but omit locations you cannot currently observe.
 
 ![Exploration log](screenshots/exploration.png)
@@ -1635,7 +1711,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.31 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.34 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -1677,7 +1753,7 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 25**, adding defense health, sensor contacts/news, route modifiers,
+**format version 26**, adding first-contact dates and acknowledgements alongside defense health, sensor contacts/news, route modifiers,
 bombardment use and deterministic combat accuracy. Negative treasuries still support building maintenance debt. They retain slave population in worlds and surveys, private
 raid records and fractional Varkesh voyage speeds, while retaining hidden tomb
 worlds, once-only awakening outcomes, private turn-news records and an optional
@@ -1730,6 +1806,9 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/setup_view.py` | Race gallery and separate galaxy-options screen |
 | `orion/diplomacy.py` | Relations, offers, treaty income, cooldowns and diplomatic history |
 | `orion/diplomacy_view.py` | Diplomatic contact and negotiation screen |
+| `orion/personalities.py` | Civilization attitudes, greetings and diplomatic/AI preferences |
+| `orion/first_contact.py` | Private confirmed contacts, introduction queue and legacy migration |
+| `orion/contact_view.py` | First-contact transmission and replay screen |
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
 | `orion/research_view.py` | Branches, tiers, project progress and research controls |
 | `orion/combat.py` | Tactical positions, movement paths, weapons, side turns, AI, retreat and validation |
@@ -1802,8 +1881,8 @@ migrations when the data schema changes.
 
 ## Development checks
 
-v0.33 passes **516 automated checks**, including 44 new research-expansion checks.
-Upgrade verification created and replayed **58 authentic v0.32 campaigns** across
+v0.34 passes **545 automated checks**, including 29 first-contact and personality checks.
+Upgrade verification created and replayed **58 authentic v0.33 campaigns** across
 all civilizations, fog settings, queues, voyages, active battles, retreats, research
 and tomb awakenings. Six-empire campaigns with the new technologies were also
 validated through their endings, with fog both on and off.

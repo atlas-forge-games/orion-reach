@@ -42,7 +42,7 @@ class DiplomacyRulesTests(unittest.TestCase):
                 new_game(seed=2408, **kwargs)
 
     def test_envoy_costs_and_cooldowns_apply_to_each_race(self):
-        for race_id, expected_gain in (("terran", 12), ("kharuun", 8), ("aelari", 8)):
+        for race_id, expected_gain in (("terran", 12), ("kharuun", 11), ("aelari", 8)):
             game = new_game(seed=2408, race_id=race_id)
             game.diplomacy_action("envoy")
             self.assertEqual(game.credits, 110)
@@ -179,7 +179,11 @@ class DiplomacyRulesTests(unittest.TestCase):
                 self.assertEqual(summarize_empire(game, owner=RIVAL).colonies, 1)
                 self.assertFalse(any(s.kind == "colony_ship" for s in game.ships_owned_by(RIVAL)))
             else:
-                self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, 4, race_id)
+                from orion.personalities import PERSONALITIES
+                # Defensive investment and early collective fleets deliberately
+                # trade some peaceful expansion for military readiness.
+                minimum = 2 if race_id == "concord" else 3 if PERSONALITIES[race_id].protective else 4
+                self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, minimum, race_id)
             self.assertTrue(game.opponent.technology.completed, race_id)
             # Earth earns 8/turn for 10 turns, 9 for 20, then 10 thereafter.
             self.assertEqual(game.credits, 120+8*10+9*20+10*(turns-30))
@@ -374,6 +378,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.click("open_diplomacy")
         self.click("diplomacy_add_rival")
         self.click("add_rival")
+        self.click("contact_continue")
         self.click("rival_back")
         self.assertEqual(self.app.screen, "diplomacy")
         self.assertIsNotNone(self.app.game.diplomacy)

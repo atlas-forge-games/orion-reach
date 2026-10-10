@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 
 from .races import RACES
+from . import first_contact
+from .personalities import envoy_gain, gift_gain, personality
 
 ENVOY_COST, ENVOY_RELATIONS, ENVOY_COOLDOWN = 10, 8, 3
 GIFT_COST, GIFT_RELATIONS, GIFT_COOLDOWN = 50, 15, 5
@@ -27,6 +29,8 @@ class DiplomacyState:
     gift_ready_turn: int = 1
     offer_ready_turn: int = 1
     events: list[DiplomaticEvent] = field(default_factory=list)
+    contact_turn: int = 0
+    introduced: bool = False
 
     @property
     def attitude(self):
@@ -46,11 +50,17 @@ class DiplomacyState:
         self.relations = min(100, max(-100, self.relations+amount))
 
     @classmethod
-    def from_dict(cls, data, turn):
+    def from_dict(cls, data, turn, *, version=26):
         def integer(value, lower, upper):
             return type(value) is int and lower <= value <= upper
         if not isinstance(data, dict) or not integer(data["relations"], -100, 100):
             raise ValueError
+        if version >= 26:
+            if (not integer(data["contact_turn"], 0, turn) or type(data["introduced"]) is not bool
+                    or (data["introduced"] and not data["contact_turn"])):
+                raise ValueError("Invalid first-contact state")
+        else:
+            data = {k: v for k, v in data.items() if k not in ("contact_turn", "introduced")}
         for key in ("trade_active", "research_active"):
             if type(data[key]) is not bool:
                 raise ValueError
@@ -76,7 +86,7 @@ class DiplomacyState:
 
 def make_contact(turn, name, race_id):
     state = DiplomacyState()
-    state.record(turn, f"Contact established with {name} ({RACES[race_id].name}).")
+    state.record(turn, "Diplomatic channel awaiting first contact.")
     return state
 
 
@@ -97,6 +107,8 @@ def action_error(game, action, target="rival"):
         return "Unknown diplomatic action."
     if target not in game.opponents:
         return "Add a rival empire to establish diplomatic contact."
+    if not first_contact.known(game, "player", target):
+        return "Explore or detect a fleet to establish first contact."
     state = game.diplomacy_between("player", target)
     if not game.colony_systems(target):
         return "This empire has been eliminated."
@@ -126,7 +138,7 @@ def take_action(game, action, target="rival"):
     state, rival = game.diplomacy_between("player", target), game._empire(target)
     if action == "envoy":
         game.credits -= ENVOY_COST
-        gain = ENVOY_RELATIONS+RACES[game.race_id].envoy_bonus
+        gain = envoy_gain(game, "player", target)
         before = state.relations
         state.improve(gain)
         state.envoy_ready_turn = game.turn+ENVOY_COOLDOWN
@@ -135,7 +147,7 @@ def take_action(game, action, target="rival"):
         game.credits -= GIFT_COST
         rival.credits += GIFT_COST
         before = state.relations
-        state.improve(GIFT_RELATIONS)
+        state.improve(gift_gain(game, target))
         state.gift_ready_turn = game.turn+GIFT_COOLDOWN
         message = f"Gift of {GIFT_COST} CR delivered. Relations +{state.relations-before}."
     elif action in ("trade", "research"):
@@ -150,7 +162,7 @@ def take_action(game, action, target="rival"):
     else:
         setattr(state, f"{action[4:]}_active", False)
         before = state.relations
-        state.improve(-BREAK_PENALTY)
+        state.improve(-personality(game, target).breach)
         state.offer_ready_turn = max(state.offer_ready_turn, game.turn+OFFER_COOLDOWN)
         title = "Trade pact" if action == "end_trade" else "Research agreement"
         message = f"{title} ended. Relations -{before-state.relations}; its benefits stop immediately."
@@ -163,7 +175,14 @@ def advance_diplomacy(game):
     for i, first in enumerate(game.owners):
         for second in game.owners[i+1:]:
             state = game.diplomacy_between(first, second)
+            if not first_contact.known(game, first, second):
+                continue
             if state.relations < 0 and (state.trade_active or state.research_active):
                 state.trade_active = state.research_active = False
                 state.record(game.turn+1, f"{game.empire_name_for(second)} ended remaining agreements because relations fell below 0.")
             state.improve(int(state.trade_active)+int(state.research_active))
+            # A wary peace can thaw. Wars still require active diplomacy to end.
+            intervals = (personality(game, first).forgiveness, personality(game, second).forgiveness)
+            interval = max(intervals)
+            if (-30 <= state.relations < 0 and all(intervals) and (game.turn+1) % interval == 0):
+                state.improve(1)

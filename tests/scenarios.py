@@ -11,7 +11,13 @@ from orion.model import new_game as make_game
 def fixed_start_game(*args, **kwargs):
     kwargs.setdefault("random_starts", False)
     kwargs.setdefault("with_tombs", False)
-    return make_game(*args, **kwargs)
+    game = make_game(*args, **kwargs)
+    # Established-campaign fixtures predate the new introductory transmissions.
+    # Dedicated first-contact tests use model.new_game directly.
+    from orion.first_contact import pending, acknowledge
+    for owner in pending(game):
+        acknowledge(game, owner)
+    return game
 
 
 new_game = fixed_start_game

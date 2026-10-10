@@ -419,6 +419,8 @@ def begin_combat(game, system_id, owner="player", target=None):
     deploy(state)
     state.record(f"{game.empire_name_for(owner)} initiated combat at {game.systems[system_id].name}.")
     game.combat = state
+    from .first_contact import establish
+    establish(game, owner, target)
     diplomacy = game.diplomacy_between(owner, target)
     diplomacy.trade_active = diplomacy.research_active = False
     diplomacy.relations = -100

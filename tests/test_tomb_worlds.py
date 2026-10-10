@@ -403,6 +403,8 @@ class NewsInterfaceTests(unittest.TestCase):
         game = self.app.game
         vault(game)
         self.advance()
+        self.assertEqual(self.app.screen, "contact")
+        self.click("contact_continue")
         self.assertEqual(self.app.screen, "news")
         self.assertEqual(game.news_read_turn, 2)
         self.click("news_back")
@@ -478,5 +480,7 @@ class NewsInterfaceTests(unittest.TestCase):
         autoresolve(game)
         self.app.finish_combat()
         self.app.render()
+        self.assertEqual(self.app.screen, "contact")
+        self.click("contact_continue")
         self.assertEqual(self.app.screen, "news")
         self.assertEqual(game.news_read_turn, game.turn)

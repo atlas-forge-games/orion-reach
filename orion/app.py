@@ -20,6 +20,9 @@ from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
 from .rival_view import draw_rival
 from .diplomacy_view import draw_diplomacy
+from .contact_view import draw_contact
+from . import first_contact
+from .personalities import personality
 from .research_view import draw_research
 from .research import BRANCHES, TECHNOLOGIES, choices
 from .combat import retreat_destination
@@ -51,7 +54,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact")
 
 
 class App:
@@ -83,6 +86,9 @@ class App:
         self.time=0.0
         self.splash_started=0.0
         self.dialog=None
+        self.contact_owner=None
+        self.contact_return="galaxy"
+        self.contact_replay=False
         self.notice=""
         self.notice_until=0.0
         self.notice_error=False
@@ -128,11 +134,11 @@ class App:
     def go(self,screen):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
-        if self.game and self.ground_reports and screen in GAME_SCREENS:
+        if self.game and self.ground_reports and screen in GAME_SCREENS and screen!="contact":
             screen="ground"
-        elif self.game and self.game.result is not None and screen in GAME_SCREENS and screen!="news":
+        elif self.game and self.game.result is not None and screen in GAME_SCREENS and screen not in ("news","contact"):
             screen="result"
-        elif self.game and self.game.combat is not None and screen in GAME_SCREENS:
+        elif self.game and self.game.combat is not None and screen in GAME_SCREENS and screen!="contact":
             screen="combat"
         elif screen in ("combat","result"):
             screen="galaxy"
@@ -158,8 +164,10 @@ class App:
         self.field=None
         self.select_all=False
         pg.key.stop_text_input()
-        if screen in GAME_SCREENS:
+        if screen in GAME_SCREENS and screen!="contact":
             self.campaign_view=screen
+        if screen=="contact":
+            self.focus="contact_continue"
         if screen=="galaxy":
             self.focus=f"star_{self.game.selected_system}"
         if screen=="race_select":
@@ -658,6 +666,7 @@ class App:
         self.ground_target=None
         self.ground_page=0
         self.go("ground" if self.ground_reports else self.ground_return)
+        self.show_first_contact()
 
     def open_research(self):
         if self.screen=="research":
@@ -770,12 +779,13 @@ class App:
         self.rival_page=min(max(0,self.rival_page+delta),last)
 
     def selected_rival_id(self):
-        if self.rival_id not in self.game.opponents:
-            self.rival_id=next(iter(self.game.opponents),None)
+        owners=first_contact.known_opponents(self.game)
+        if self.rival_id not in owners:
+            self.rival_id=next(iter(owners),None)
         return self.rival_id
 
     def change_rival(self,delta,system_id=None):
-        owners=self.game.opponents_at(system_id) if system_id is not None else list(self.game.opponents)
+        owners=self.game.opponents_at(system_id) if system_id is not None else first_contact.known_opponents(self.game)
         if owners:
             index=owners.index(self.rival_id) if self.rival_id in owners else 0
             self.rival_id=owners[(index+delta)%len(owners)]
@@ -797,6 +807,47 @@ class App:
             self.diplomacy_return_selection=(self.game.selected_system,self.game.selected_planet)
             self.go("diplomacy")
 
+    def show_first_contact(self, return_screen=None):
+        pending=first_contact.pending(self.game)
+        if not pending or self.screen=="contact" or self.game.result is not None:
+            return False
+        self.contact_return=return_screen or self.screen
+        self.contact_owner=pending[0]
+        self.contact_replay=False
+        self.go("contact")
+        return True
+
+    def replay_greeting(self):
+        owner=self.selected_rival_id()
+        if owner is not None:
+            self.contact_owner=owner
+            self.contact_return="diplomacy"
+            self.contact_replay=True
+            self.go("contact")
+
+    def finish_contact(self):
+        if self.contact_replay:
+            self.contact_replay=False
+            self.go(self.contact_return)
+            return
+        first_contact.acknowledge(self.game,self.contact_owner)
+        pending=first_contact.pending(self.game)
+        if pending:
+            self.contact_owner=pending[0]
+            self.go("contact")
+        else:
+            self.go(self.contact_return)
+        self.save_game(autosave=True)
+
+    def skip_contacts(self):
+        for owner in first_contact.pending(self.game):
+            first_contact.acknowledge(self.game,owner)
+        self.go(self.contact_return)
+        self.save_game(autosave=True)
+
+    def draw_contact(self):
+        draw_contact(self)
+
     def close_diplomacy(self):
         self.game.selected_system,self.game.selected_planet=self.diplomacy_return_selection
         self.go(self.diplomacy_return)
@@ -814,7 +865,7 @@ class App:
         if action in ("end_trade","end_research"):
             title="trade pact" if action=="end_trade" else "research agreement"
             self.confirm(f"End the {title}?",
-                         f"Its benefits stop immediately for both empires. Relations fall by {BREAK_PENALTY} and new treaty offers wait {OFFER_COOLDOWN} turns. "
+                         f"Its benefits stop immediately for both empires. Relations fall by {personality(self.game,target).breach} and new treaty offers wait {OFFER_COOLDOWN} turns. "
                          "If relations fall below zero, the rival ends other agreements on the next End Turn.",
                          "End agreement",perform)
         else:
@@ -826,6 +877,7 @@ class App:
             if self.save_game(autosave=True):
                 location="Explore to locate its worlds" if self.game.fog_of_war else f"Established on {planet.name}"
                 self.toast(f"Helios Directorate · {location} · Autosaved")
+            self.show_first_contact()
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -927,6 +979,7 @@ class App:
         self.reset_ground_view()
         self.go("galaxy")
         self.save_game(autosave=True)
+        self.show_first_contact()
 
     def toggle_fog_of_war(self):
         self.fog_of_war=not self.fog_of_war
@@ -990,8 +1043,12 @@ class App:
         self.reset_ground_view()
         self.go("galaxy")
         self.toast(f"Welcome back, {state.empire_name}.")
+        if self.show_first_contact() and self.game.combat is None and news_rules.unread_count(self.game):
+            self.contact_return="news"
 
     def advance_turn(self):
+        if self.screen=="contact":
+            return
         if self.ground_reports or self.screen=="ground":
             self.go("ground")
             return
@@ -1018,9 +1075,11 @@ class App:
             self.go("combat")
         elif new_news:
             self.news_page=0
-            self.go("news")
+            if not self.show_first_contact("news"):
+                self.go("news")
         if self.screen=="empire":
             self.focus_empire_row()
+        self.show_first_contact()
         if self.save_game(autosave=True):
             message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP"
             if self.game.combat is not None:
@@ -1101,6 +1160,7 @@ class App:
                 self.reset_combat_view()
                 self.go("combat")
                 self.save_game(autosave=True)
+                self.show_first_contact()
             except RuleError as exc:
                 self.toast(exc,True)
         from .monsters import alive_at
@@ -1212,10 +1272,12 @@ class App:
             self.reset_combat_view()
             if news_rules.unread_count(self.game):
                 self.news_page=0
-                self.go("news")
+                if not self.show_first_contact("news"):
+                    self.go("news")
             else:
                 self.open_system(system_id)
             self.save_game(autosave=True)
+            self.show_first_contact()
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -1523,6 +1585,8 @@ class App:
             elif self.field:
                 self.field=None
                 pg.key.stop_text_input()
+            elif self.screen=="contact":
+                self.finish_contact()
             elif self.screen=="galaxy":
                 if self.sensor_contact_id is not None:
                     self.close_sensor_contact()
@@ -1606,7 +1670,7 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected:
                 self.activate(selected)
-        elif self.screen in ("combat","ground","result") and not self.dialog:
+        elif self.screen in ("combat","ground","result","contact") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
             elif self.screen=="result" and event.key==pg.K_n:

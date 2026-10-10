@@ -312,6 +312,8 @@ class AIInterfaceTests(unittest.TestCase):
         self.click("empire_rival")
         self.assertEqual(self.app.screen, "rival")
         self.click("add_rival")
+        self.assertEqual(self.app.screen, "contact")
+        self.click("contact_continue")
         self.assertIsNotNone(self.app.game.opponent)
         restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(restored, self.app.game)

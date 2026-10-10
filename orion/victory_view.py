@@ -110,18 +110,19 @@ def draw_objectives(app):
     app.button("objectives_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("objectives_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     if game.opponent:
-        selected = app.selected_rival_id()
-        enemy_gate = gate_site(game, selected)
-        enemy = game._empire(selected).technology
-        caption = f"{game.empire_name_for(selected)}: {enemy.finished_branches}/8 branches · "
-        if enemy_gate:
-            caption += f"Gate at {enemy_gate[1].name}: " + (f"charging {enemy_gate[1].gate_charge}/5" if enemy_gate[1].ascension_gate else "under construction")
-        else:
-            caption += "Ascension Theory discovered" if "ascension_theory" in enemy.completed else "researching Ascension Theory" if enemy.active == "ascension_theory" else "no gate yet"
         if game.fog_of_war:
             sites = [(s, p) for s, p in known_rival_colonies(game) if p.ascension_gate or
                      any(q.item_id == ASCENSION_GATE.id for q in p.construction_queue)]
             caption = f"Last-known rival gate: {sites[0][1].name}" if sites else "Rival research and gate location are unknown. Explore to locate its worlds."
+        else:
+            selected = app.selected_rival_id()
+            enemy_gate = gate_site(game, selected)
+            enemy = game._empire(selected).technology
+            caption = f"{game.empire_name_for(selected)}: {enemy.finished_branches}/8 branches · "
+            if enemy_gate:
+                caption += f"Gate at {enemy_gate[1].name}: " + (f"charging {enemy_gate[1].gate_charge}/5" if enemy_gate[1].ascension_gate else "under construction")
+            else:
+                caption += "Ascension Theory discovered" if "ascension_theory" in enemy.completed else "researching Ascension Theory" if enemy.active == "ascension_theory" else "no gate yet"
         text(surface, shorten(caption, 652, 12), (400, 835), 12, RIVAL_COLOR)
         text(surface, "Every rival can win. Gates activating together share a scientific victory.", (400, 857), 11, FAINT)
     app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
