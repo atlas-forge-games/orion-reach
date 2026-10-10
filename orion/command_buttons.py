@@ -158,6 +158,22 @@ def draw_command_button(button, surface, active=False, pressed=False):
         pg.draw.polygon(surface, GOLD, bevel_points(r.inflate(4, 4)), 1)
 
     offset = 1 if pressed else 0
+    if button.style == "command_dock":
+        color = GOLD if active else INK if enabled else FAINT
+        accent = GOLD if active else CYAN if enabled else FAINT
+        surface.blit(command_icon(button.icon, 23, accent), (r.centerx-11, r.y+7+offset))
+        label = shorten(button.label, r.w-14, 14)
+        text(surface, label, (r.centerx-font(14).size(label)[0]//2, r.y+36+offset), 14, color)
+        if button.shortcut:
+            text(surface, button.shortcut, (r.right-10, r.y+8+offset), 9,
+                 GOLD if active else MUTED if enabled else FAINT, "mono", right=True)
+        if button.badge:
+            width = max(20, font(9, "mono").size(button.badge)[0]+9)
+            badge = pg.Rect(r.x+8, r.y+7+offset, width, 19)
+            pg.draw.rect(surface, GOLD if enabled else FAINT, badge, border_radius=5)
+            text(surface, button.badge, (badge.centerx-font(9, "mono").size(button.badge)[0]//2,
+                                         badge.y+3), 9, (28, 29, 28), "mono")
+        return
     dark_ink = (28, 29, 28)
     label_color = dark_ink if primary and enabled else INK if enabled else FAINT
     accent = dark_ink if primary and enabled else GOLD if active else CYAN if enabled else FAINT

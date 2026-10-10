@@ -9,6 +9,7 @@ from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .empires import empire_color
+from .galaxy_labels import LABEL_SIZE, system_label
 from . import monsters, navigation
 from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
 from .designs import HULLS
@@ -81,7 +82,7 @@ def star_label_rects(app, map_rect):
     preferred = []
     for system in app.game.systems:
         x, y = app.star_pos(system)
-        width, height = font(11, "mono").size(system.name.upper())
+        width, height = font(LABEL_SIZE, "mono").size(system_label(app.game, system))
         preferred.append((round(x)+17, round(y)-9, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))

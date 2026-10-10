@@ -1,0 +1,50 @@
+"""Galaxy name styling based only on the player's current or stored survey."""
+
+import pygame as pg
+
+from .empires import EMPIRE_IDS, empire_color
+from .ui import FAINT, INK, MUTED, font, text_image
+
+LABEL_SIZE = 11
+
+
+def system_label(game, system):
+    name = system.name.upper()
+    return name if game.known_system(system.id) is not None else f"({name})"
+
+
+def known_owners(game, system):
+    survey = game.known_system(system.id)
+    owners = {p.owner for p in survey.worlds if p.colonized} if survey else set()
+    return tuple(owner for owner in EMPIRE_IDS if owner in owners)
+
+
+def label_bands(game, system, selected=False):
+    """Return text and (pixel start, pixel end, colour) runs in stable empire order.
+
+    Share whole letters as evenly as possible. When a very short name has more
+    owners than letters, share its pixels so every known owner still appears.
+    """
+    label = system_label(game, system)
+    owners = known_owners(game, system)
+    face = font(LABEL_SIZE, "mono")
+    width = face.size(label)[0]
+    if not owners:
+        color = INK if selected else FAINT if label.startswith("(") else MUTED
+        return label, ((0, width, color),)
+    count = len(owners)
+    if count <= len(label):
+        length, remainder = divmod(len(label), count)
+        offsets = [i*length+min(i, remainder) for i in range(count+1)]
+        edges = [face.size(label[:offset])[0] for offset in offsets]
+    else:
+        edges = [i*width//count for i in range(count+1)]
+    return label, tuple((edges[i], edges[i+1], empire_color(owner)) for i, owner in enumerate(owners))
+
+
+def draw_system_label(surface, game, system, pos, selected=False):
+    label, bands = label_bands(game, system, selected)
+    x, y = pos
+    for left, right, color in bands:
+        rendered = text_image(label, LABEL_SIZE, color, "mono")
+        surface.blit(rendered, (x+left, y), pg.Rect(left, 0, right-left, rendered.get_height()))

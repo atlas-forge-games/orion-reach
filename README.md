@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.34.0
+# Orion Reach — Python prototype 0.35.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,40 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.35: galaxy command bar and illustrated resources
+
+The galaxy view now keeps its main navigation in one bottom command bar:
+**Empire · Diplomacy · Research | Menu | Fleets · Objectives · Turn news**.
+End Turn retains its original lower-right position. Menu opens the existing
+pause controls for saving, settings, resuming and leaving the campaign; **F5**
+still saves immediately. The standalone Save and Exploration buttons have been
+removed from the galaxy screen. The exploration archive remains available with
+**X**. Fleet-selection close/cancel controls remain beside their course hint.
+
+Three original illustrated panels at the top show treasury and net credits per
+turn (including building upkeep), banked research and RP per turn, and total
+food production minus consumption across your own colonies. **Food is still
+local**: the bar reports colonies with shortages even when the empire total is
+positive. The counters use the same reports as the Empire screen, including
+treaties, racial effects and captive workers.
+
+Unexplored system names have parentheses, such as **(SOL)**. A colonized system's
+name uses its owner's existing map colour. Shared systems split their letters
+as evenly as possible among their distinct owners, in stable empire order:
+for example **OBE** in one colour and **RON** in another. Three owners each
+receive two letters of **OBERON**. Colours reflect the current view or last
+survey, never undiscovered ownership changes; selection preserves these colours.
+No-fog games show all names and ownership immediately.
+
+This update retains **save format 26** and the existing economy and food rules.
+Apply the update ZIP over your current installation, including its new
+`assets/resources` folder. Generated resource art and exact generation prompts
+are included there.
+
+![Galaxy command bar and illustrated resources](screenshots/galaxy_command_bar.png)
+
+![Shared ownership colours and unexplored systems](screenshots/galaxy_shared_system.png)
 
 ## New in v0.34: first contact and civilization personalities
 
@@ -1711,7 +1745,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.34 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.35 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -1800,6 +1834,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/rival_view.py` | Rival economy, activity and colony survey report |
 | `orion/races.py` | Eleven race identities, home names, racial traits and AI preferences |
 | `orion/home_systems.py` | Starting-system and planet names, duplicate handling and survey continuity |
+| `orion/galaxy_hud.py` | Illustrated resource reports and bottom galaxy command bar |
+| `orion/galaxy_labels.py` | Exploration parentheses and shared ownership name colours |
 | `orion/race_art.py` | Cached race portraits and procedural fallback seals |
 | `orion/building_art.py` | Cached transparent building sprites and fallback art |
 | `orion/colony_scene.py` | Seeded landscapes, headquarters markers and clickable colony graphics |
@@ -1881,8 +1917,9 @@ migrations when the data schema changes.
 
 ## Development checks
 
-v0.34 passes **545 automated checks**, including 29 first-contact and personality checks.
-Upgrade verification created and replayed **58 authentic v0.33 campaigns** across
+v0.35 passes **552 automated checks**, including resource-bar reports, bottom-menu
+navigation, menu saves during fleet selection, and fog-safe shared-system names.
+The earlier v0.34 upgrade verification created and replayed **58 authentic v0.33 campaigns** across
 all civilizations, fog settings, queues, voyages, active battles, retreats, research
 and tomb awakenings. Six-empire campaigns with the new technologies were also
 validated through their endings, with fog both on and off.

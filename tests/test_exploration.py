@@ -333,7 +333,7 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.assertEqual(sum(self.app.game.system_explored(s.id) for s in self.app.game.systems), 1)
 
     def test_build_scout_explore_find_and_reload_using_real_controls(self):
-        self.click("open_exploration")
+        self.key(pg.K_x)
         self.click("exploration_build_scout")
         self.click("build_scout")
         self.key(pg.K_e)

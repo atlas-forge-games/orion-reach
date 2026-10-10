@@ -46,6 +46,8 @@ from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_ship
 from .fleets import fleet_containing
 from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects
 from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel
+from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
+from .galaxy_labels import draw_system_label
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -1920,10 +1922,7 @@ class App:
         if state is None:
             self.go("menu")
             return
-        self.chrome("GALAXY OVERVIEW")
-        text(self.canvas,shorten(state.empire_name,490,29),(64,127),29,INK,"title")
-        text(self.canvas,f"YEAR {state.year}   /   TURN {state.turn}",(725,139),13,CYAN,"mono")
-        text(self.canvas,f"{state.credits:,} CR  ·  {state.research:,} RP",(1376,132),19,GOLD,"mono",right=True)
+        draw_galaxy_header(self)
         panel(self.canvas,MAP,(7,17,25))
         # A sparse coordinate grid makes the map legible without implying travel lanes.
         for x in range(MAP.x+44,MAP.right,76):
@@ -1960,7 +1959,7 @@ class App:
             if abs(label.x-(x+17))+abs(label.y-(y-9))>12:
                 tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
                 pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
-            text(self.canvas,star.name.upper(),label.topleft,11,INK if selected else MUTED if known else FAINT,"mono")
+            draw_system_label(self.canvas,state,star,label.topleft,selected)
             self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)
@@ -1994,25 +1993,14 @@ class App:
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
             hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony · Range {state.fuel_range()} ly. "
                   +("Colonize closer worlds or research fuel tanks." if blocked else detail))
-        text(self.canvas,shorten(hint,544,13),(64,775),13,MUTED)
-        unread=news_rules.unread_count(state)
-        self.button("open_news","News" if unread else "Turn news",(619,763,195,38),self.open_news,"command",
-                    icon="news",shortcut="N",badge=str(min(unread,99))+("+" if unread>99 else "") if unread else "")
-        self.button("open_exploration","Exploration",(828,763,198,38),self.open_exploration,"command",icon="exploration",shortcut="X")
+        ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
+        text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,775),13,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
         if self.fleet_popup or self.map_order_ids:
-            self.button("cancel_fleet_course","Close",(64,820,186,54),self.cancel_map_order,"command",icon="close",shortcut="Esc")
-        elif self.route_ship_id is None:
-            self.button("pause","Menu",(64,820,186,54),self.pause,"command",icon="menu",shortcut="Esc")
-        else:
-            self.button("cancel_course","Cancel",(64,820,186,54),lambda:self.go("fleets"),"command",icon="close",shortcut="Esc")
-        self.button("save","Save game",(264,820,229,54),self.save_game,"command",icon="save",shortcut="F5")
-        text(self.canvas,"EMPIRE ECONOMY",(585,821),10,GOLD,"mono",2)
-        income,research=state.empire_rates
-        upkeep=sum(state.planet_maintenance(p) for s in state.systems for p in s.worlds if p.owner == PLAYER)
-        text(self.canvas,f"{income:+} CR net · {upkeep} upkeep · +{research} RP/turn",(585,844),12,RED if income < 0 else MUTED)
-        self.button("end_turn","End turn",(1081,813,295,61),self.advance_turn,"command_primary",
-                    subtitle=f"Turn {state.turn+1} · Year {state.year+1}",icon="turn",shortcut="E")
+            self.button("cancel_fleet_course","Close",(848,763,178,32),self.cancel_map_order,"command",icon="close",shortcut="Esc")
+        elif self.route_ship_id is not None:
+            self.button("cancel_course","Cancel",(848,763,178,32),lambda:self.go("fleets"),"command",icon="close",shortcut="Esc")
+        draw_galaxy_commands(self)
         if self.fleet_popup:
             draw_fleet_popup(self)
 

@@ -1,0 +1,18 @@
+{
+  "generator": "Built-in image generation",
+  "created": "2026-10-10",
+  "assets": [
+    {
+      "id": "credits",
+      "prompt": "Use case: stylized-concept. Asset type: original painted resource illustration for the top HUD of a space strategy PC game, square image. Style: polished retro science-fiction game art, detailed painterly realistic objects with strong readable silhouettes, muted steel and dark navy surroundings, soft dramatic studio light. Composition: a single compact centered still life filling most of the square, generous but minimal outer breathing room; must remain readable at 86 by 86 pixels. Full bleed dark navy background. No text, no lettering, no numbers, no UI, no frame, no watermarks, no logos. Subject: a small stack of thick futuristic golden credit discs and two gold ingots on a dark metal console, one disc leaning upright with a simple geometric inset, amber glints and restrained cool reflections. Warm gold focal colors."
+    },
+    {
+      "id": "research",
+      "prompt": "Use case: stylized-concept. Asset type: original painted resource illustration for the top HUD of a space strategy PC game, square image. Style: polished retro science-fiction game art, detailed painterly realistic objects with strong readable silhouettes, muted steel and dark navy surroundings, soft dramatic studio light. Composition: a single compact centered still life filling most of the square, generous but minimal outer breathing room; must remain readable at 86 by 86 pixels. Full bleed dark navy background. No text, no lettering, no numbers, no UI, no frame, no watermarks, no logos. Subject: compact futuristic scientific research equipment: a silver microscope with a cyan illuminated sample chamber, a small blue glowing glass vial and a holographic atom made of thin cyan light above the bench. Cool turquoise and blue focal colors."
+    },
+    {
+      "id": "food",
+      "prompt": "Use case: stylized-concept. Asset type: original painted resource illustration for the top HUD of a space strategy PC game, square image. Style: polished retro science-fiction game art, detailed painterly realistic objects with strong readable silhouettes, muted steel and dark navy surroundings, soft dramatic studio light. Composition: a single compact centered still life filling most of the square, generous but minimal outer breathing room; must remain readable at 86 by 86 pixels. Full bleed dark navy background. No text, no lettering, no numbers, no UI, no frame, no watermarks, no logos. Subject: an open low futuristic metal supply crate holding amber grain, fresh green leaves and a few orange and red fruits, on a dark colony storage console. Warm earthy amber and fresh green focal colors. Food supplies should be immediately recognizable."
+    }
+  ]
+}
