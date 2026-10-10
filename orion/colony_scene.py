@@ -154,6 +154,9 @@ PLACEMENTS = {
     "interdictor": (859, 299, 85, 94),
     "solar_array": (65, 383, 115, 85),
     "fusion_plant": (880, 398, 105, 111),
+    "geothermal_plant": (350, 405, 105, 100),
+    "thermal_plant": (600, 410, 110, 100),
+    "singularity_plant": (805, 415, 112, 105),
 }
 
 
@@ -172,9 +175,10 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     if framed:
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
-    expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor") for item in items)
+    expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "geothermal_plant", "thermal_plant", "singularity_plant") for item in items)
+    row_height = min(130, 400//max(1, (len(items)+4)//5))
     for index, item in enumerate(items):
-        cx, bottom, width, height = ((88+index%5*188, 163+index//5*130, 128, 90) if expanded else PLACEMENTS[item.asset_id])
+        cx, bottom, width, height = ((88+index%5*188, row_height+33+index//5*row_height, 128, min(90, row_height-34)) if expanded else PLACEMENTS[item.asset_id])
         scale = min(rect.w/928, rect.h/473)
         cx, bottom = round(cx*rect.w/928), round(bottom*rect.h/473)
         width, height = round(width*scale), round(height*scale)

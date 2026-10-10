@@ -177,6 +177,15 @@ def projected_income(game, owner, extra=None):
     return income
 
 
+def steady_power_plant(game, planet, owner):
+    """Choose the largest unlocked steady source the colony can maintain."""
+    candidates = [b for b in BUILDINGS.values() if b.energy_output and not b.energy_per_resource
+                  and (not b.technology or game.research_state(owner).has_unlock(b.technology))]
+    income = game.planet_yields(projected_colony(planet))[1]
+    affordable = [b for b in candidates if b.maintenance < income]
+    return max(affordable or [BUILDINGS["solar_array"]], key=lambda b: b.energy_output).id
+
+
 def queue_building(game, system, planet, item, owner):
     """Cover future upkeep before committing to more expensive infrastructure."""
     if (game.planet_yields(projected_colony(planet, item))[1] < 0
@@ -184,7 +193,7 @@ def queue_building(game, system, planet, item, owner):
         item = "trade_center"
     future = projected_colony(planet, item)
     if energy_report(future, game.bonuses_for(owner)).balance < 0 and not BUILDINGS[item].energy_output:
-        item = "fusion_plant" if "fusion_power" in game.research_state(owner).completed else "solar_array"
+        item = steady_power_plant(game, planet, owner)
     if game.build_error(system.id, planet.id, item, owner=owner) is not None:
         return False
     game.queue_building(system.id, planet.id, item, owner=owner)
@@ -241,7 +250,7 @@ def recover_power(game, owner):
                 continue
             index = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
             game.demolish_building(system.id, planet.id, index, owner=owner)
-        item = "fusion_plant" if "fusion_power" in game.research_state(owner).completed else "solar_array"
+        item = steady_power_plant(game, planet, owner)
         if game.build_error(system.id, planet.id, item, owner=owner) is None:
             game.change_production(system.id, planet.id, item, owner=owner)
             event(game, owner, f"Restoring power on {planet.name} with {BUILDINGS[item].name}.")

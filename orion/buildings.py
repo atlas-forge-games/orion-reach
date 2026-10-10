@@ -30,6 +30,7 @@ class BuildingSpec:
     resources_per_miner: int = 0
     energy_use: int = 0
     energy_output: int = 0
+    energy_per_resource: int = 0
     maintenance: int = 0
     technology: str | None = None
     special_effect: str = ""
@@ -75,7 +76,7 @@ class BuildingSpec:
         if self.resources:
             parts.append(f"+{self.resources*MINERAL_FACTORS[richness]:g} resources")
         if self.energy_output:
-            parts.append(f"+{self.energy_output} energy")
+            parts.append(f"up to {self.energy_output} backup energy · 1 RES/{self.energy_per_resource} energy" if self.energy_per_resource else f"+{self.energy_output} energy")
         return " · ".join(parts) + " / turn"
 
 
@@ -108,7 +109,19 @@ BUILDINGS = {
                                energy_output=12, maintenance=1),
     "fusion_plant": BuildingSpec("fusion_plant", "Fusion plant", "A compact reactor supplies substantial local power. No fuel resource required.", 80, 48,
                                 energy_output=30, maintenance=3, technology="fusion_power"),
+    "geothermal_plant": BuildingSpec("geothermal_plant", "Geothermal plant", "Deep thermal wells provide steady local power without consuming Resources.", 55, 36,
+                                    energy_output=20, maintenance=2, technology="deep_core_drills"),
+    "thermal_plant": BuildingSpec("thermal_plant", "Thermal backup plant", "Burns Resources only when other generators cannot cover working buildings. Last to run; 1 Resource per 4 energy, rounded up per plant.", 35, 24,
+                                 energy_output=24, energy_per_resource=4, maintenance=1, technology="fusion_grids"),
+    "singularity_plant": BuildingSpec("singularity_plant", "Singularity plant", "A stabilized micro-singularity provides high continuous power without consuming Resources.", 140, 84,
+                                     energy_output=50, maintenance=5, technology="field_stabilization"),
 }
+
+BUILDING_GROUPS = (
+    ("factory", "mine", "trade_center", "research_lab", "hydroponic_farm", "barracks", "fortifications"),
+    ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"),
+    ("solar_array", "geothermal_plant", "fusion_plant", "thermal_plant", "singularity_plant"),
+)
 
 
 @dataclass(frozen=True)

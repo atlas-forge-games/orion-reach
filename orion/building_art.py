@@ -4,11 +4,12 @@ from functools import lru_cache
 import pygame as pg
 
 from .ui import ASSETS
+from .buildings import BUILDINGS
 
-BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm", "barracks", "fortifications", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "solar_array", "fusion_plant")
+BUILDING_ART_IDS = ("headquarters", "shipyard", *BUILDINGS)
 
 
-@lru_cache(maxsize=16)
+@lru_cache(maxsize=32)
 def load_building_art(building_id):
     if building_id not in BUILDING_ART_IDS:
         raise ValueError(f"Unknown building artwork: {building_id}")
@@ -26,6 +27,32 @@ def load_building_art(building_id):
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
     image = pg.Surface((120, 110), pg.SRCALPHA)
+    if building_id in ("geothermal_plant", "thermal_plant", "singularity_plant"):
+        pg.draw.polygon(image, (59, 84, 98), [(5, 78), (60, 55), (115, 78), (60, 107)])
+        pg.draw.polygon(image, (33, 51, 66), [(5, 78), (60, 107), (115, 78), (115, 86), (60, 110), (5, 86)])
+        if building_id == "singularity_plant":
+            pg.draw.rect(image, (91, 114, 137), (25, 65, 70, 20), border_radius=5)
+            pg.draw.circle(image, (98, 76, 145), (60, 42), 33, 8)
+            pg.draw.circle(image, (167, 134, 236), (60, 42), 24, 3)
+            pg.draw.circle(image, (9, 15, 30), (60, 42), 16)
+            pg.draw.arc(image, (108, 223, 234), (16, 24, 88, 37), 0, 5.1, 4)
+            for x in (20, 90):
+                pg.draw.rect(image, (147, 165, 176), (x, 37, 10, 43))
+        elif building_id == "geothermal_plant":
+            for x, y in ((19, 45), (52, 27), (83, 43)):
+                pg.draw.rect(image, (79, 113, 121), (x, y, 18, 45), border_radius=5)
+                pg.draw.ellipse(image, (131, 187, 173), (x-3, y-8, 24, 15))
+                pg.draw.line(image, (218, 155, 87), (x+9, y+10), (x+9, y+37), 4)
+            pg.draw.lines(image, (167, 192, 184), False, [(29, 87), (29, 95), (92, 81), (92, 72)], 5)
+        else:
+            pg.draw.rect(image, (73, 91, 105), (23, 49, 72, 39))
+            for x in (33, 70):
+                pg.draw.rect(image, (139, 146, 145), (x, 15, 15, 46))
+                pg.draw.rect(image, (219, 153, 71), (x-2, 13, 19, 7))
+            for x in (32, 55, 78):
+                pg.draw.rect(image, (238, 150, 64), (x, 64, 10, 17))
+                pg.draw.line(image, (255, 220, 134), (x+4, 68), (x+4, 77), 2)
+        return image
     if building_id in ("solar_array", "fusion_plant"):
         pg.draw.polygon(image, (59, 84, 98), [(5, 78), (60, 55), (115, 78), (60, 107)])
         if building_id == "solar_array":

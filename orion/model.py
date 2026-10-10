@@ -795,7 +795,7 @@ class GameState:
         bonuses = empire.technology.bonuses.copy()
         for key, value in RACES[empire.race_id].effects:
             bonuses[key] = bonuses.get(key, 0)+value
-        return bonuses
+        return economy.PowerBonuses(bonuses, lambda planet: self._power_report(planet, bonuses))
 
     def research_error(self, identifier, *, owner=PLAYER):
         if self.strategy_error():
@@ -876,10 +876,37 @@ class GameState:
         return self._empire(owner).resources
 
     def planet_resources(self, planet):
-        return economy.mining_output(planet, self.bonuses_for(planet.owner))
+        bonuses = self.bonuses_for(planet.owner)
+        return economy.mining_output(planet, bonuses)-economy.energy_report(planet, bonuses).fuel_used
 
     def planet_energy(self, planet):
         return economy.energy_report(planet, self.bonuses_for(planet.owner))
+
+    def _power_report(self, planet, bonuses):
+        frozen = getattr(self, "_turn_power", {})
+        if id(planet) in frozen:
+            return frozen[id(planet)]
+        # Most colonies have no fuel-burning plant; their grid stays fully local.
+        if not any(BUILDINGS[b].energy_per_resource for b in planet.buildings):
+            return economy.energy_report(planet, bonuses)
+        worlds = [p for s in self.systems for p in s.worlds if p.colonized and p.owner == planet.owner]
+        if not any(p is planet for p in worlds):
+            # AI projected colonies are evaluated conservatively on steady power.
+            return economy.energy_report(planet, bonuses)
+        bank = self.resources_for(planet.owner)
+        signature = (bank, tuple(sorted(bonuses.items())), tuple(
+            (id(p), tuple(p.buildings), tuple(p.disabled_buildings), p.ascension_gate) for p in worlds))
+        cache = getattr(self, "_power_cache", {})
+        if planet.owner not in cache or cache[planet.owner][0] != signature:
+            cache[planet.owner] = (signature, economy.dispatch_power(worlds, bonuses, bank))
+            self._power_cache = cache
+        return cache[planet.owner][1][id(planet)]
+
+    def _settle_power(self):
+        self._turn_power = {}
+        for owner in self.owners:
+            worlds = [p for s in self.systems for p in s.worlds if p.colonized and p.owner == owner]
+            self._turn_power.update(economy.dispatch_power(worlds, dict(self.bonuses_for(owner)), self.resources_for(owner)))
 
     def building_operational(self, planet, identifier):
         return economy.operational(planet, identifier, self.bonuses_for(planet.owner))
@@ -1358,6 +1385,12 @@ class GameState:
         return income, research
 
     def advance_turn(self):
+        try:
+            return self._advance_turn()
+        finally:
+            self.__dict__.pop("_turn_power", None)
+
+    def _advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
         self._require_strategy()
         exploration_rules.refresh(self)
@@ -1370,7 +1403,6 @@ class GameState:
             ship.departure_pending = False
         exploration_rules.refresh(self)
         repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
-        gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate and self.planet_energy(p).gate_powered]
         alerts, ground_battles = [], []
         slave_start = {(s.id, p.id): (p.owner, p.slaves) for s in self.systems for p in s.worlds if p.slaves}
         from .ai import run_ai
@@ -1381,6 +1413,8 @@ class GameState:
             if self.result is not None:
                 return TurnReport(0, 0, [], alerts=alerts, ground_battles=ground_battles)
         advance_diplomacy(self)
+        self._settle_power()
+        gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate and self.planet_energy(p).gate_powered]
         income, research = self.empire_rates
         rival_rates = {owner: self.empire_rates_for(owner) for owner in self.opponents}
         population_start = [(p, self.population_report(p)) for s in self.systems
@@ -1464,6 +1498,7 @@ class GameState:
                     and not victory_rules.gate_blocked(self, rival_gate[0].id, owner)):
                 location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
                 alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
+        self.__dict__.pop("_turn_power", None)
         tomb_rules.advance(self, alerts, ground_battles)
         exploration_rules.refresh(self)
         monster_rules.intercept(self)

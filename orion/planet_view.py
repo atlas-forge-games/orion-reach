@@ -143,10 +143,10 @@ def workforce_panel(app, game, planet, live):
                 f"{food.assembly_industry} to assembly" if food and food.assembly_industry else "construction", CYAN),
                ("research", "RESEARCH", f"+{research}" if live else "—", "research points", SCIENCE)]
     energy = game.planet_energy(planet) if live else None
-    outputs += [("resources", "RESOURCES", f"+{game.planet_resources(planet)}" if live else "—",
+    outputs += [("resources", "RESOURCES", f"{game.planet_resources(planet):+}" if live else "—",
                  f"{game.resources:,} stored" if owned else "mined / turn", ROLE_COLORS["miners"]),
                 ("energy", "ENERGY", f"{energy.generated}/{energy.demand}" if live else "—",
-                 f"{energy.balance:+} surplus" if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
+                 (f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*124
         panel(surface, (x, 86, 120, 57), (15, 28, 37))

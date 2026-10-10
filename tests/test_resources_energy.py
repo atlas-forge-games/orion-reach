@@ -322,7 +322,7 @@ class EconomyInterfaceTests(unittest.TestCase):
         self.assertEqual(g.planet_energy(p).offline, ())
         restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(restored, g)
-        self.click("colony_infrastructure")
+        self.click("colony_power")
         self.click("build_solar_array")
         self.assertEqual(p.construction_queue[-1].item_id, "solar_array")
         self.assertEqual(g.credits, 120)

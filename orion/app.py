@@ -1084,7 +1084,7 @@ class App:
             self.focus_empire_row()
         self.show_first_contact()
         if self.save_game(autosave=True):
-            message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP · +{report.resources} RES"
+            message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP · {report.resources:+} RES"
             if self.game.combat is not None:
                 message+=" · Enemy fleet engaged at "+self.game.systems[self.game.combat.system_id].name
             if report.discoveries:

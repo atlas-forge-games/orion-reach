@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.37.0
+# Orion Reach — Python prototype 0.38.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,45 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.38: steady generation and flexible backup power
+
+The colony catalogue now has a **Power plants** tab, with steady generators and
+a Resource-burning reserve. Every plant uses one building slot. The existing
+12-energy colony supply and researched empire-wide energy bonuses are retained.
+
+| Plant | Energy per turn | Resource fuel | Credit upkeep | Research unlock |
+| --- | ---: | --- | ---: | --- |
+| Solar array | 12 | None | 1 | Basic technology |
+| Geothermal plant | 20 | None | 2 | Deep Core Drills |
+| Fusion plant | 30 | None | 3 | Fusion Power |
+| Thermal backup plant | 0–24 | 1 Resource per 4 energy, rounded up | 1 | Fusion Grids |
+| Singularity plant | 50 | None | 5 | Field Stabilization |
+
+Steady sources run first. Thermal backup is **last to run** and produces only
+extra energy that can supply working buildings or the Ascension Gate. It burns
+nothing on standby and does not spend fuel on partial power that cannot start
+another load. Multiple backup plants run in building-slot order. Credit upkeep
+continues even on standby or while disabled, as with other buildings.
+
+Fuel comes from **already stored empire Resources**. Colonies share that supply
+in system/planet order, without double spending. An empty reserve causes the
+normal local shutdown of buildings, while farms and mines retain priority.
+Current-turn mining then enters the bank, fuel use is deducted once, and the
+remaining Resources fund construction. Newly mined fuel is available to the grid
+on the following turn. Resource figures show **net mining minus power fuel**;
+construction forecasts include that fuel use and competing colonies.
+
+The Power plants tab shows actual steady and backup generation, demand, fuel
+cost and the shared reserve. Selecting a plant shows its current output versus
+capacity. Backup plants display **Standby**, **Backup on** or **No fuel**.
+The AI builds unlocked steady generation to cover sustained demand.
+
+The existing research pairs and branch lengths stay the same. New plants are
+unlocked by existing technologies; all previous effects remain. Save format
+**28** is unchanged, and existing campaigns retain buildings, research and banks.
+
+![Power plant catalogue and backup dispatch](screenshots/power_plants.png)
 
 ## New in v0.37: one continuous research tree
 
@@ -1042,6 +1081,9 @@ habitability does not change it in this version.
 | Interdiction generator | 110 | 66 | Slows approaching hostile ships | None; one per colony | 3 | 8 |
 | Solar array | 30 | 18 | Generates 12 energy | None | 1 | 0 |
 | Fusion plant | 80 | 48 | Generates 30 energy; requires Fusion Power | None | 3 | 0 |
+| Geothermal plant | 55 | 36 | Generates 20 energy; requires Deep Core Drills | None | 2 | 0 |
+| Thermal backup plant | 35 | 24 | Supplies 0–24 backup energy at 1 RES per 4 energy; requires Fusion Grids | None | 1 | 0 |
+| Singularity plant | 140 | 84 | Generates 50 energy; requires Field Stabilization | None | 5 | 0 |
 
 Mining uses **Poor ×0.5, Average ×1, Rich ×1.5, Ultra-rich ×3**. Fractions
 are summed before rounding down; technology bonuses per mine are added after
@@ -1049,7 +1091,9 @@ that. Mines improve Resources, while factories improve industry. Repeated
 copies of non-unique buildings stack. These are base values: technologies can
 change construction prices, output and upkeep. Work and slot costs stay fixed.
 
-Energy stays on its colony. Basic supply is 12; power plants add generation.
+Energy stays on its colony. Basic supply is 12; steady power plants add generation.
+Thermal backup plants run last and burn stored Resources only for useful extra
+power, up to 24 per plant at 1 RES per 4 energy, rounded up.
 Farms and mines receive power first, then other buildings in slot order. Loads
 that do not fit automatically go offline. Disabled or unpowered buildings
 produce nothing and grant no workforce or military bonus, but still cost their
@@ -1059,7 +1103,7 @@ normal economic output is calculated from each turn's starting buildings.
 
 - One local queue consumes industrial work. Overflow can start the next project
   if its materials are available; unused work is not stored.
-- Each empire collects all starting mining output before construction, then
+- Each empire subtracts backup fuel from starting mining output, then
   funds projects in system/planet order. Resources are reserved once, in full,
   at the start of work. Queueing itself is free.
 - Forecasts include shared material competition, existing queues, completed
@@ -1904,7 +1948,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.37 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.38 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -2071,6 +2115,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
 | `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
+| `tests/test_power_plants.py` | Steady and backup generators, fuel dispatch, shared reserves, forecasts, research unlocks, saves and catalogue controls |
 | `tests/test_research_tiers.py` | Every paired research path, advanced unlocks, legacy discoveries and active costs, AI progression and tier controls |
 | `tests/test_worker_groups.py` | Atomic group transfers, scaled pointer boundaries, keyboard quantities, cancellation, captives and autosaves |
 | `tests/test_resources_energy.py` | Mining, shared supplies, local power, construction payments, authentic save upgrades and UI actions |
@@ -2084,7 +2129,9 @@ migrations when the data schema changes.
 
 ## Development checks
 
-v0.37 passes **588 automated checks**, including all research paths, tier navigation,
+v0.38 passes **604 automated checks**, including fuel-limited backup dispatch,
+shared reserve accounting, power-aware construction forecasts and the new power
+plant controls, plus all research paths and tier navigation,
 independent advanced upgrades, authentic v0.36.1 research migration, and group workforce transfers,
 scaled mouse selection, keyboard quantities, cancellation, captive workers,
 Resources, mining assignments,

@@ -75,7 +75,7 @@ def draw_galaxy_header(app):
                   f"{report.food_produced:,} made / {report.food_consumed:,} used", food_note,
                   RED if shortage else FOOD_GREEN)
     resource_card(surface, RESOURCE_RECTS[3], "resources", "RESOURCES", f"{game.resources:,} RES",
-                  f"+{report.resources:,} RES / turn", "Shared across colonies", (204, 163, 122))
+                  f"{report.resources:+,} RES / turn", "Net after power fuel", (204, 163, 122))
     resource_card(surface, RESOURCE_RECTS[4], "energy", "LOCAL ENERGY",
                   f"{report.energy_generated:,}/{report.energy_demand:,}", "Generated / needed",
                   f"{report.energy_shortages} shortages · View" if report.energy_shortages else "All supplied · View",

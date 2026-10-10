@@ -44,7 +44,7 @@ def draw_empire(app):
          f"{summary.capacity-summary.used_slots} free · queued slots included", INK),
         ("FOOD / CONSUMED", f"{summary.food_produced} / {summary.food_consumed}",
          f"{summary.food_shortages} shortages · supplies local", RED if summary.food_shortages else CYAN),
-        ("RESOURCES", f"{game.resources:,} RES", f"+{summary.resources} / turn · shared", GOLD),
+        ("RESOURCES", f"{game.resources:,} RES", f"{summary.resources:+} / turn · net", GOLD),
         ("LOCAL ENERGY", f"{summary.energy_generated}/{summary.energy_demand}",
          f"{summary.energy_shortages} shortages · local", RED if summary.energy_shortages else CYAN),
     ]

@@ -13,11 +13,11 @@ def queue_estimates(game, planet, additional=None):
                    if p is planet or (p.id == planet.id and p.name == planet.name)), None)
     if target is None:
         return []
-    bonuses = game.bonuses_for(planet.owner)
+    base_bonuses = dict(game.bonuses_for(planet.owner))
     bank = game.resources_for(planet.owner)
     # A cache is runtime-only, excluded from dataclass serialization. It is
     # invalidated by jobs, queues, power switches, research, bank or turn changes.
-    signature = (repr(colonies), repr(bonuses), bank, game.turn, game.seed, repr(game.designs))
+    signature = (repr(colonies), repr(base_bonuses), bank, game.turn, game.seed, repr(game.designs))
     if getattr(game, "_forecast_signature", None) != signature:
         game._forecast_signature, game._forecast_cache = signature, {}
     key = (target, repr(additional))
@@ -45,7 +45,9 @@ def queue_estimates(game, planet, additional=None):
     for elapsed in range(1, 2001):
         if not focus.construction_queue:
             break
-        bank += sum(economy.mining_output(p, bonuses) for _, p in worlds)
+        dispatch = economy.dispatch_power([p for _, p in worlds], base_bonuses, bank)
+        bonuses = economy.PowerBonuses(base_bonuses, lambda p: dispatch[id(p)])
+        bank += sum(economy.mining_output(p, bonuses)-dispatch[id(p)].fuel_used for _, p in worlds)
         starts = [population.report(p, bonuses) for _, p in worlds]
         for (sid, p), food in zip(worlds, starts):
             complete = p.advance_construction(bonuses, fund=fund)

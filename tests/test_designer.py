@@ -276,7 +276,8 @@ class DesignerUITests(unittest.TestCase):
         self.assertEqual(game.planet_at(0, 2).construction_queue[0].design, original)
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], game)
         self.app.open_production()
-        self.click("catalog_next")
+        while "production_build_design_1" not in {b.key for b in self.app.buttons}:
+            self.click("catalog_next")
         self.click("production_build_design_1")
         self.assertEqual(game.planet_at(0, 2).construction_queue[0].design, game.designs[0])
         for screen in ("planet", "production", "shipyard", "empire", "designer"):

@@ -2,12 +2,12 @@
 
 import pygame as pg
 
-from .buildings import BUILDINGS, MINERAL_FACTORS
+from .buildings import BUILDINGS, BUILDING_GROUPS, MINERAL_FACTORS
 from . import economy
 from .building_art import draw_building_art
 from .production import MAX_QUEUE
 from .model import PLAYER
-from .research import building_maintenance
+from .research import TECHNOLOGIES, building_maintenance
 from .planet_art import draw_planet
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, panel, shorten, text
 
@@ -28,6 +28,8 @@ def compact_yields(game, definition, planet):
         return f"{max(100, benefits.get('shield_capacity', 0))} shield points · +25/peaceful turn"
     if definition.id == "interdictor":
         return f"{max(25, benefits.get('interdiction_slow', 0))}% hostile slowdown within {max(5, benefits.get('interdiction_range', 0))} ly"
+    if definition.energy_per_resource:
+        return f"0–{definition.energy_output} ENERGY · 1 RES/{definition.energy_per_resource} energy · backup only"
     if definition.special_effect:
         return definition.special_effect
     if definition.training:
@@ -94,11 +96,12 @@ def draw_colony(app):
     building_projects = planet.building_projects
     text(surface, f"{len(planet.buildings)} built + {len(building_projects)} reserved / {planet.building_capacity}",
          (727, 385), 11, MUTED, "mono", right=True)
-    text(surface, "CATALOGUE", (751, 385), 10, GOLD, "mono", 2)
-    app.button("colony_economy", "Economy & troops", (881, 378, 242, 26),
-               lambda: setattr(app, "colony_build_page", 0), "primary" if app.colony_build_page == 0 else "normal")
-    app.button("colony_infrastructure", "Infrastructure", (1133, 378, 243, 26),
-               lambda: setattr(app, "colony_build_page", 1), "primary" if app.colony_build_page == 1 else "normal")
+    for page_index, key, label in ((0, "colony_economy", "Economy & troops"),
+                                    (1, "colony_infrastructure", "Infrastructure"),
+                                    (2, "colony_power", "Power plants")):
+        app.button(key, label, (751+page_index*211, 378, 203, 26),
+                   lambda i=page_index: setattr(app, "colony_build_page", i),
+                   "primary" if app.colony_build_page == page_index else "normal")
     estimates = game.queue_estimates(planet)
     for index in range(12):
         x, y = 64+(index%4)*168, 414+(index//4)*94
@@ -117,7 +120,8 @@ def draw_colony(app):
             building_id = planet.buildings[index]
             definition = BUILDINGS[building_id]
             draw_building_art(surface, building_id, (x+6, y+5, 44, 34))
-            text(surface, economy.building_status(planet, index, game.bonuses_for(planet.owner)), (x+52, y+20), 8, CYAN if index in game.planet_energy(planet).active else RED, "mono")
+            status = economy.building_status(planet, index, game.bonuses_for(planet.owner))
+            text(surface, status, (x+52, y+20), 8, MUTED if status == "STANDBY" else RED if status in ("NO FUEL", "NO POWER", "DISABLED") else CYAN, "mono")
             text(surface, definition.name, (x+12, y+42), 13, INK)
             text(surface, shorten(compact_yields(game, definition, planet), 136, 9), (x+12, y+63), 9, MUTED)
         elif index < planet.used_slots:
@@ -137,8 +141,7 @@ def draw_colony(app):
             text(surface, "Choose a building" if planet.colonized else "Colony required", (x+12, y+65), 10, FAINT)
         app.button(f"colony_slot_{index}", "", rect, lambda i=index: app.select_colony_slot(i), "hotspot")
 
-    catalogue = list(BUILDINGS.values())
-    page = catalogue[:7] if app.colony_build_page == 0 else catalogue[7:]
+    page = [BUILDINGS[b] for b in BUILDING_GROUPS[app.colony_build_page]]
     for i, definition in enumerate(page):
         x, y = 751, 410+i*57
         panel(surface, (x, y, 625, 53))
@@ -148,8 +151,12 @@ def draw_colony(app):
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
-        text(surface, shorten(f"{price} RES · {definition.work_cost} work · {eta} · {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR + {definition.energy_use} energy/turn", 410, 10),
-             (x+70, y+38), 10, MUTED)
+        upkeep = building_maintenance(definition.id, game.bonuses_for(planet.owner))
+        cost_line = f"{price} RES · {definition.work_cost} work · {eta} · {upkeep} CR + {definition.energy_use} energy/turn"
+        if definition.energy_output:
+            unlock = TECHNOLOGIES[definition.technology].name if definition.technology else "Basic technology"
+            cost_line = f"{price} RES · {definition.work_cost} work · {upkeep} CR/turn · {unlock}"
+        text(surface, shorten(cost_line, 410, 10), (x+70, y+38), 10, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
         hint = "1 slot"
@@ -171,13 +178,25 @@ def draw_colony(app):
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
         text(surface, hint, (x+510, y+36), 9, FAINT, "mono")
 
+    if app.colony_build_page == 2:
+        power = game.planet_energy(planet)
+        panel(surface, (751, 705, 625, 101))
+        text(surface, "LOCAL POWER DISPATCH", (769, 718), 10, GOLD, "mono", 1)
+        text(surface, f"{power.base_generated} steady + {power.backup_generated} backup / {power.demand} demand", (769, 738), 16, INK)
+        text(surface, f"Backup fuel: {power.fuel_used} RES/turn · {game.resources_for(planet.owner):,} stored empire-wide", (769, 763), 11, CYAN)
+        text(surface, "Steady sources first. Backup uses stored Resources; no fuel while on standby.", (769, 785), 10, MUTED)
+
     # Inspect an existing building or queued project, with reversible queue cancellation.
     panel(surface, (64, 711, 662, 82))
     slot = app.colony_slot
     if slot is not None and 0 <= slot < len(planet.buildings):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, definition.name, (82, 724), 18, INK)
-        text(surface, shorten(building_effect(game, definition, planet), 451, 11), (82, 750), 11, CYAN)
+        detail = building_effect(game, definition, planet)
+        if definition.energy_output:
+            output, fuel = next(((output, fuel) for i, output, fuel in game.planet_energy(planet).plants if i == slot), (0, 0))
+            detail = f"{output} energy now / {definition.energy_output} capacity · {fuel} RES fuel/turn"
+        text(surface, shorten(detail, 451, 11), (82, 750), 11, CYAN)
         text(surface, f"Upkeep {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR/turn · Power {definition.energy_use} · {economy.building_status(planet, slot, game.bonuses_for(planet.owner)).lower()}", (82, 774), 10, MUTED)
         app.button("toggle_building", "Enable" if slot in planet.disabled_buildings else "Disable", (549, 719, 156, 31),
                    lambda i=slot: app.toggle_building(i), enabled=planet.owner == PLAYER)
@@ -206,6 +225,6 @@ def draw_colony(app):
 
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
-    text(surface, f"Resources: {game.resources:,} · +{game.planet_resources(planet)}/turn here. Disabled buildings retain credit upkeep.", (399, 828), 11, MUTED)
-    text(surface, f"Local energy: {game.planet_energy(planet).generated} generated / {game.planet_energy(planet).demand} needed. Farms and mines have priority.", (399, 850), 11, FAINT)
+    text(surface, f"Resources: {game.resources:,} · {game.planet_resources(planet):+}/turn here, after {game.planet_energy(planet).fuel_used} RES fuel.", (399, 828), 11, MUTED)
+    text(surface, f"Power: {game.planet_energy(planet).generated}/{game.planet_energy(planet).demand} needed. Farms and mines have priority.", (399, 850), 11, FAINT)
     app.button("colony_end_turn", "End turn · E", (1081, 816, 295, 63), app.advance_turn, "primary")
