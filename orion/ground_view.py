@@ -52,7 +52,7 @@ def draw_ground(app):
         captured, rounds, count = report.captured, report.rounds, report.transports
     else:
         count = len(troop_transports(game, sid))
-        attack, defence = count*TROOP_STRENGTH, forces(planet)
+        attack, defence = count*TROOP_STRENGTH, forces(planet, game.bonuses_for(planet.owner))
         outcome = resolve(attack, defence)
         attacker, defender = "player", planet.owner
         attack_left, defence_left = None, None

@@ -59,7 +59,7 @@ class ExplorationState:
         return self.scanned_others.setdefault(owner, [])
 
     @classmethod
-    def from_dict(cls, data, game, *, version=24):
+    def from_dict(cls, data, game, *, version=25):
         from .model import Planet, _integer
         if version < 20 and isinstance(data, dict):
             data = {k: v for k, v in data.items() if k != "scanned_others"}
@@ -86,6 +86,8 @@ class ExplorationState:
             normalized_worlds = []
             for index, world in enumerate(worlds):
                 parsed = Planet.from_dict(world, index, version=version)
+                if parsed.bombarded_turn > row["last_seen"]:
+                    raise ValueError("Survey contains future bombardment")
                 actual = game.systems[sid].worlds[index]
                 if any(getattr(parsed, key) != getattr(actual, key) for key in
                        ("name", "biome", "size", "richness", "gravity", "orbit_au")):
@@ -179,6 +181,8 @@ def discovery_at(game, system_id):
 def refresh(game, *, recover=False):
     """Snapshot observed worlds; scouts can claim an encounter only once globally."""
     from .monsters import alive_at, observe
+    from . import sensors
+    sensors.refresh(game)
     messages = []
     for owner in game.owners:
         for sid in observed_systems(game, owner):

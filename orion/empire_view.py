@@ -100,7 +100,7 @@ def draw_empire(app):
                                     (f"+{research}", 813, CYAN)):
             text(surface, value, (right, y+17), 16, color, right=True)
         text(surface, f"{income:+}", (721, y+7), 16, RED if income < 0 else INK, right=True)
-        text(surface, f"{planet.maintenance_per_turn} upkeep", (721, y+31), 9, MUTED, right=True)
+        text(surface, f"{game.planet_maintenance(planet)} upkeep", (721, y+31), 9, MUTED, right=True)
         text(surface, f"{planet.used_slots} / {planet.building_capacity}", (918, y+6), 15, INK, right=True)
         text(surface, "Full" if not planet.free_slots else f"{planet.free_slots} free",
              (918, y+31), 10, GOLD if not planet.free_slots else MUTED, right=True)

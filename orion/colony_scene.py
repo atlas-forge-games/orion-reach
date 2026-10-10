@@ -146,6 +146,11 @@ PLACEMENTS = {
     "shipyard": (762, 399, 248, 148),
     "barracks": (314, 305, 140, 58),
     "fortifications": (606, 305, 124, 58),
+    "missile_base": (60, 292, 84, 86),
+    "planetary_shield": (238, 292, 86, 87),
+    "sensor_array": (443, 294, 88, 90),
+    "jump_gate": (706, 297, 82, 94),
+    "interdictor": (859, 299, 85, 94),
 }
 
 
@@ -164,8 +169,9 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     if framed:
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
-    for item in items:
-        cx, bottom, width, height = PLACEMENTS[item.asset_id]
+    expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor") for item in items)
+    for index, item in enumerate(items):
+        cx, bottom, width, height = ((88+index%5*188, 163+index//5*130, 128, 90) if expanded else PLACEMENTS[item.asset_id])
         scale = min(rect.w/928, rect.h/473)
         cx, bottom = round(cx*rect.w/928), round(bottom*rect.h/473)
         width, height = round(width*scale), round(height*scale)

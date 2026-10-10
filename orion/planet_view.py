@@ -14,8 +14,9 @@ from .empires import empire_color
 from .planet_art import draw_planet
 from .population import BASE_FOOD, WORKER_ROLES, farmer_output
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
+from .research import building_maintenance
 from .designs import HULLS
-from . import raiding
+from . import raiding, defenses
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 GREEN = (154, 200, 133)
@@ -101,7 +102,7 @@ def workforce_panel(app, game, planet, live):
               f"{planet.population} WORKERS / {food.capacity if food else '—'} B LIMIT")
     text(surface, counts, (1043, 66), 10, INK, "mono", right=True)
     needs_food = game.bonuses_for(planet.owner or PLAYER).get("food_use_percent", 0) > -100
-    upkeep = planet.maintenance_per_turn
+    upkeep = game.planet_maintenance(planet)
     outputs = [("credits", "NET CREDITS", f"{credits:+}" if live else "—",
                 f"{credits+upkeep} gross · {upkeep} upkeep" if live else "last survey", RED if live and credits < 0 else GOLD),
                ("food", "FOOD / USED", f"{food.produced} / {food.consumed}" if live else "—",
@@ -155,7 +156,7 @@ def construction_panel(app, game, system, planet, live):
     text(surface, "CURRENT PROJECT", (1090, 66), 10, GOLD, "mono", 1)
     owned = live and planet.owner == PLAYER
     queue = planet.construction_queue
-    if queue:
+    if queue and (owned or not live or planet.owner not in game.opponents):
         project = queue[0]
         spec = project.spec
         text(surface, shorten(spec.name, 307, 20), (1090, 91), 20, INK)
@@ -170,7 +171,7 @@ def construction_panel(app, game, system, planet, live):
         text(surface, "No project observed" if not live else "Choose production" if owned else "No active project" if planet.colonized else "Unsettled world", (1090, 97), 22, INK)
         paragraph(surface, "Send a ship to refresh this survey." if not live else
                   "Build a structure or launch a ship from this colony." if owned else
-                  "Production can be changed by this colony's owner." if planet.colonized else
+                  f"Shield: {planet.shield_points} points. Clear orbital defenders, then bombard before landing troops." if planet.colonized else
                   "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
                   f"{planet.biome} · {planet.size} · {planet.richness} minerals. Bring a colony ship to settle here.",
                   (1090, 143), 306, 14, MUTED, 25)
@@ -182,6 +183,8 @@ def construction_panel(app, game, system, planet, live):
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
     elif planet.owner in game.opponents:
+        app.button("bombard_planet", "Bombard defenses", (1090, 220, 310, 29), app.bombard_request,
+                   enabled=game.bombardment_error(system.id, planet.id) is None)
         app.button("invade_planet", "Plan colony raid" if raiding.is_varkesh(game) else "Plan ground invasion", (1090, 257, 310, 29), app.invade_request,
                    enabled=game.invasion_error(system.id, planet.id) is None)
     else:
@@ -213,8 +216,15 @@ def draw_planet_overview(app):
         text(surface, "Normal worker output and food use · 5% death chance per unit each turn", (52, 409), 12, MUTED)
     if planet.ascension_gate and live:
         app.button("planet_objectives", f"Ascension Gate · {planet.gate_charge}/5", (1110, 330, 288, 34), app.open_objectives)
+    if "planetary_shield" in planet.buildings or "missile_base" in planet.buildings:
+        panel(surface, (770, 321, 628, 45), (10, 23, 30))
+        cap = str(defenses.shield_capacity(game, planet)) if live else "?"
+        shield = f"SHIELD {planet.shield_points}/{cap}" if "planetary_shield" in planet.buildings else "NO SHIELD"
+        battery = f"MISSILE BASE {planet.battery_hull or 40}/40" if "missile_base" in planet.buildings else "NO BASE"
+        text(surface, shield+" · "+battery, (784, 327), 12, CYAN)
+        text(surface, "Peaceful recovery: +25 shield, +4 base hull/turn" if live else "Defense status at last survey", (784, 348), 11, MUTED)
     if planet.colonized:
-        defence = forces(planet)
+        defence = forces(planet, game.bonuses_for(planet.owner) if live else {})
         caption = (f"{len(planet.buildings)} buildings · {len(planet.building_projects)} reserved / {planet.building_capacity} slots"
                    f"    GROUND: {defence.garrison} garrison + {defence.militia} militia · +{defence.defence_bonus}% firepower")
         if not live:
@@ -250,7 +260,7 @@ def draw_production(app):
         project_art(surface, item_id, (x+10, y+14, 65, 72), design)
         text(surface, shorten(spec.name, 330, 18), (x+85, y+12), 18, INK)
         price = game.project_price(item_id)
-        upkeep = getattr(spec, "maintenance", 0)
+        upkeep = building_maintenance(item_id, game.bonuses_for()) if item_id in BUILDINGS else getattr(spec, "maintenance", 0)
         cost = f"{price} CR · {spec.work_cost} work"+(f" · Upkeep {upkeep} CR/turn" if upkeep else "")
         text(surface, cost, (x+85, y+42), 10, GOLD)
         reason = game.project_error(sid, pid, item_id)
@@ -258,7 +268,7 @@ def draw_production(app):
         if design:
             detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
         if item_id in BUILDINGS:
-            text(surface, compact_yields(game, spec, planet), (x+85, y+62), 10, CYAN)
+            text(surface, shorten(compact_yields(game, spec, planet), 326, 10), (x+85, y+62), 10, CYAN)
             text(surface, spec.workforce_text(planet.richness), (x+85, y+78), 10, CYAN)
         else:
             text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)

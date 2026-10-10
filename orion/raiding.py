@@ -54,6 +54,7 @@ def abandon(planet):
     planet.population = planet.slaves = planet.garrison = planet.militia_losses = 0
     planet.farmers = planet.scientists = planet.growth_progress = 0
     planet.ascension_gate, planet.gate_charge = False, 0
+    planet.shield_points = planet.battery_hull = planet.bombarded_turn = 0
     planet.buildings.clear()
     planet.construction_queue.clear()
 
@@ -71,7 +72,7 @@ def raid(game, system_id, planet_id, owner="player"):
                  if empire in (owner, defender) or game.system_visible(system_id, empire)]
     transports = victory.troop_transports(game, system_id, owner)
     attack = len(transports)*victory.TROOP_STRENGTH
-    defending = ground_combat.forces(planet)
+    defending = ground_combat.forces(planet, game.bonuses_for(planet.owner))
     outcome = ground_combat.resolve(attack, defending)
     for ship in transports:
         game.ships.remove(ship)

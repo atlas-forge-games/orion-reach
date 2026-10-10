@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.32.0
+# Orion Reach — Python prototype 0.33.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,104 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.33: defense, sensors, navigation and targeting
+
+Open **Research → New projects** for 19 additional technologies. They are
+independent projects: existing tier-I/II choices remain intact, and you can
+research every new project in one campaign. Each requires a tier-I foundation
+in its branch, plus any named prerequisite. Tier III costs **120 RP**, tier IV
+**220 RP**, and tier V **360 RP**. One empire-wide project runs at a time.
+Ascension still requires tier II in all eight foundation branches, not the new projects.
+
+| Technology | Branch / RP | Effect and additional prerequisite |
+| --- | --- | --- |
+| Advanced Fortifications | Construction / 120 | Existing fortifications improve from +50% to +75% defender firepower |
+| Orbital Defense Systems | Physics / 120 | Unlock missile bases: 40 hull, 10 missile damage, range 8; immobile in fleet battles |
+| Planetary Shielding | Force Fields / 120 | Unlock 100-point shields; charged shields block invasions and Varkesh raids |
+| Barrier Fields | Force Fields / 220 | Planetary Shielding → 200 shield capacity; generator upkeep becomes 6 CR |
+| Siege Weapons | Physics / 220 | Orbital Defense Systems → siege cannon module, triple damage against shields/bases; standard warships bombard at double damage |
+| Deep-Space Radar | Computers / 120 | Detect owner and position within 5 ly of colonies; unlock sensor arrays |
+| Long-Range Sensors | Computers / 220 | Radar → 10 ly and fleet counts |
+| Subspace Scanners | Computers / 360 | Long-range sensors → 20 ly, ship classes and heading |
+| Colonial Navigation Network | Computers / 120 | +25% travel speed between your own colonized systems |
+| Jump Gates | Power & Propulsion / 220 | Colonial Navigation Network → build gates at both endpoints for +50% internal speed, replacing +25% |
+| Gravity-Well Generators | Force Fields / 120 | Unlock interdiction generators: 25% hostile slowdown over the final 5 ly |
+| Subspace Interdiction | Force Fields / 220 | Gravity wells → 40% slowdown over the final 8 ly; generator upkeep becomes 5 CR |
+| Field Stabilization | Power & Propulsion / 120 | Halve hostile interdiction slowdown |
+| Targeting Computers | Computers / 120 | +10 percentage points to hit chance |
+| Predictive Fire Control | Computers / 220 | Targeting Computers → +20 points total |
+| Quantum Targeting | Computers / 360 | Predictive Fire Control → +30 points total |
+| Precision Beam Optics | Physics / 120 | Halve the beam range penalty |
+| Advanced Torpedo Guidance | Computers / 220 | Targeting Computers → halve target evasion against torpedoes/missiles |
+| Electronic Countermeasures | Computers / 120 | +10 percentage points of ship evasion |
+
+![Additional research projects](screenshots/research_expansion.png)
+
+**Infrastructure:** the Colony catalogue now has **Economy & troops** and
+**Infrastructure** tabs. New structures also appear in Choose production and
+on the planet surface. All use one building slot and are limited to one of each
+per colony. Shield and interdiction upgrades automatically improve existing
+structures; the higher upkeep is included in every budget display.
+
+| Structure | Credits / work | Maintenance per turn |
+| --- | --- | --- |
+| Missile base | 100 / 60 | 3 CR |
+| Planetary shield | 120 / 70 | 4 CR; 6 with Barrier Fields |
+| Sensor array | 60 / 36 | 2 CR |
+| Jump gate | 140 / 84 | 4 CR |
+| Interdiction generator | 110 / 66 | 3 CR; 5 with Subspace Interdiction |
+
+**Sieges:** clear opposing ships, missile bases and any guardian, then open the
+foreign planet and choose **Bombard defenses**. The confirmation previews exact
+shield and military losses. Each armed ship bombards once per strategic turn;
+shields absorb fire before excess damage removes one defending troop per 5 damage.
+Siege cannons deal triple damage to planetary shields and bases, with ordinary
+damage against unshielded troops. Bombardment does not kill civilian population.
+It ends treaties and sets relations to −100. Landing becomes available when shields
+reach zero and orbit is clear; surviving troop transports still resolve ground combat.
+Shields regenerate **25 points**, and damaged bases **4 hull**, per peaceful turn;
+an armed hostile blockade or bombardment on the previous turn prevents recovery.
+Destroyed bases must be rebuilt. Bases cannot retreat; withdrawing a defending
+fleet abandons its bases. Remnant awakenings begin underground and bypass orbital
+shields, while upgraded fortifications still protect ground defenders.
+
+**Sensors:** press **S** or **Sensor range** on the galaxy map to toggle colony
+coverage. An array adds **5 ly locally**, without stacking in the same system.
+Orbiting and travelling enemy fleets can appear as clickable contacts, with
+intelligence limited by scanner level. Sensors never survey planets or expose
+orders, destinations or blueprints. Direct observation in orbit retains its normal
+fleet detail. Lost contacts retain their dated last-seen position for **20 turns**.
+New hostile contacts generate saved turn news; the AI uses its own coverage and
+limited observations. Friendly and neutral contacts are visible without hostile alerts.
+
+**Movement:** colony and gate bonuses multiply normal drive and racial speed.
+Interdiction affects only a hostile journey's final approach to the defended system;
+only the strongest field applies. Hostile means relations below −30 without an
+active trade or research treaty. Stabilization reduces 25% to 12.5%, or 40% to 20%.
+Orders snapshot speed and field effects, so research, diplomacy or ownership changes
+do not alter journeys already ordered. The route popup shows applied modifiers.
+Travel estimates include navigation field signatures, even before a planet survey.
+
+**Accuracy:** select an enemy to preview the exact chance, then press **Fire at
+target**. Every in-range weapon rolls independently. Beams start at 85%, torpedoes
+and missiles at 75%, siege cannons at 70%. Each cell beyond range 2 costs 3 points
+(rounded up); beam optics halves that penalty. Hull evasion is scout 15, frigate 10,
+cruiser 5, other hulls 0; custom movement changes it by 3 points per cell relative
+to that hull's base movement. ECM adds 10; guidance halves evasion against missiles
+and torpedoes. Bases have no evasion. Final chances are clamped to **10–95%**.
+Point defense and ship shields apply after a hit. Combat logs report hit counts;
+missed volleys visibly miss. Rolls use a saved deterministic sequence, so reloading
+cannot reroll the same action. AI target selection considers expected damage.
+
+![Weapon hit chances and a missile base](screenshots/combat_accuracy.png)
+
+**Save continuity:** format **25** retains research, shield/base health, bombardment
+use, sensor contacts/news, route modifiers and the combat roll counter. Earlier
+campaigns load without changing their files. Existing voyages keep their original
+speed; battles already underway in format 24 or earlier retain guaranteed hits
+until they finish. All newly started battles use accuracy rules. Existing research
+choices remain valid and all new projects can be added to an old campaign.
 
 ## New in v0.32: systems beside the galaxy map
 
@@ -391,6 +489,7 @@ saved design must contain at least one weapon. Empty capacity is allowed.
 | Laser cannon | 1 weapon | 5 damage, range 6 | Starting equipment |
 | Torpedo launcher | 2 weapon | 10 damage, range 8 | Starting equipment |
 | Quantum battery | 2 weapon | 14 damage, range 7 | Quantum Optics |
+| Siege cannon | 2 weapon | 8 damage, range 6; triple against shields and bases | Siege Weapons |
 | Armor plate | 1 defense | +8 hull, −1 tactical movement, minimum 1 | Starting equipment |
 | Shield generator | 1 defense | +12 shields | Radiation Shields |
 | Point defense | 1 defense | −30% incoming torpedo damage per module, capped at −60% | Starting equipment |
@@ -399,7 +498,7 @@ saved design must contain at least one weapon. Empty capacity is allowed.
 
 Each ship still moves once and fires one volley per tactical turn. **Only mounted
 weapons within range fire**, so a distant target may receive only your torpedoes.
-Point defense reduces each torpedo's damage before shields absorb it; remaining
+Each mounted weapon rolls its displayed hit chance. Point defense reduces each successful torpedo or missile hit before shields absorb it; remaining
 damage hits the hull. Shields do not regenerate during a battle and start full
 at the next battle. Beams retain their technology's color; torpedoes travel as
 projectiles, and destroyed ships retain the explosion effect. Armor adds hull
@@ -834,7 +933,7 @@ technologies can also provide research income.
 | Society | Colonial Administration / Scientific Institutes | Commerce Guilds / Cultural Exchange |
 
 All 32 branch options have effects on existing game systems, described on their cards.
-You can discover 16 branch technologies plus the ultimate **Ascension Theory**
+You can discover 16 foundation technologies, all 19 additional projects, and **Ascension Theory**
 project, available in Objectives after completing tier II in every branch.
 Either choice in each tier qualifies. Building bonuses affect existing and
 future copies; flat colony bonuses affect every owned colony. Bonuses add
@@ -1040,14 +1139,14 @@ fixed during play. Old campaigns keep their fully revealed maps.
 | Planets, resources and colonies | Unknown until visited | Visible |
 | Previously visited systems | Retain their last-observed survey | Always current |
 | Live system activity | Requires your colony or a ship in orbit | Visible everywhere |
-| Enemy ships in orbit | Visible only in an observed system | Visible everywhere |
-| Enemy journeys | Hidden | Visible |
+| Enemy ships in orbit | Full detail in observed systems; limited contacts within sensor range | Visible everywhere |
+| Enemy journeys | Limited contacts within sensor range; orders remain hidden | Visible |
 | Scout discoveries | Must be recovered by a scout | Still require a scout |
 
 Stored planet surveys show the buildings, ownership and population seen at the
 time of the visit, with a date. They do not reveal subsequent enemy changes.
 Send another ship to update them. Unobserved colony controls are disabled.
-There is no sensor radius or visibility along interstellar routes in this version.
+Researchable colony sensors now reveal limited fleet contacts within range, including travelling fleets. They do not update planet surveys; see the v0.33 rules above.
 Retreat orders avoid **known** enemy fleets; an unobserved retreat destination
 may contain opposing ships.
 
@@ -1189,7 +1288,7 @@ Issued journeys retain their orders if supply changes before they arrive.
    You need at least one frigate and opposing ships in orbit. The confirmation
    explains the whole-fleet commitment and diplomatic consequences.
 4. On the battlefield, **click a friendly ship**, then a **highlighted empty cell**
-   to move. **Click an enemy ship** within weapon range to fire immediately.
+   to move. **Click an enemy ship** to inspect its hit chances, then press **Fire at target**.
    Cyan cells show reachable destinations; the dim purple area shows weapon range.
    Red target outlines mark enemies the selected ship can shoot. Each ship has
    **one move and one shot per turn**, usable in either order. Movement animates
@@ -1226,8 +1325,9 @@ Movement uses eight directions, one movement point per adjacent cell. Routes
 cannot pass through another ship or cut an occupied corner. A move may use fewer
 than all available points, but still uses the ship's one move for this turn.
 Destroyed ships no longer block cells. Weapon range uses straight-line distance
-between cell centres; shots always hit, and other ships do not block beams.
-There are no shields, armour, facing bonuses or ammunition limits yet.
+between cell centres; other ships do not block beams. Weapon accuracy, evasion,
+ECM and targeting research determine hit chances. Ship designs support armour,
+shields and point defense; facing bonuses and ammunition limits are not implemented.
 
 The initiating empire takes the first fleet turn. A round ends after both fleet
 turns, restoring movement and weapons. The AI approaches to weapon range,
@@ -1507,7 +1607,8 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Browse research branches | Click a branch or use Left / Right on the Research screen |
 | Start a fleet battle | Engage in Fleets or on the system overview |
 | Move in combat | Select your ship → click a highlighted empty cell |
-| Attack in combat | Select your ship → click an enemy within weapon range |
+| Attack in combat | Select your ship → select an enemy → review chance → Fire at target |
+| Sensor coverage | S on the galaxy map |
 | Finish a tactical turn | End turn / E; passes to the opposing fleet |
 | Skip remaining ship orders | Done ship; Next ship / N selects another ship |
 | Scroll a large battlefield | Mouse wheel, Page Up / Page Down, or map arrows |
@@ -1576,8 +1677,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 24**, supporting negative treasuries for building maintenance
-debt. They retain slave population in worlds and surveys, private
+**format version 25**, adding defense health, sensor contacts/news, route modifiers,
+bombardment use and deterministic combat accuracy. Negative treasuries still support building maintenance debt. They retain slave population in worlds and surveys, private
 raid records and fractional Varkesh voyage speeds, while retaining hidden tomb
 worlds, once-only awakening outcomes, private turn-news records and an optional
 emergent Remnant enclave, plus
@@ -1679,6 +1780,10 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_multiple_empires.py` | Random homes and races, multiple AIs, bilateral actions, combat targets, fog, victory and saves |
 | `tests/test_diplomacy.py` | Race selection, diplomatic rules, treaty accounting, save compatibility and UI actions |
 | `tests/test_colony_scene.py` | Surface selection, mixed queues, headquarters, ownership, missing art and save continuity |
+| `orion/defenses.py` | Planetary batteries, shields, bombardment and recovery |
+| `orion/navigation.py` | Colony routes, jump gates and interdiction |
+| `orion/sensors.py` / `orion/sensor_view.py` | Redacted fleet contacts, saved sensor news and map coverage |
+| `tests/test_research_expansion.py` | Additional projects, siege, movement, sensor privacy, accuracy, AI and UI integration |
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
 | `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
@@ -1696,6 +1801,12 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.33 passes **516 automated checks**, including 44 new research-expansion checks.
+Upgrade verification created and replayed **58 authentic v0.32 campaigns** across
+all civilizations, fog settings, queues, voyages, active battles, retreats, research
+and tomb awakenings. Six-empire campaigns with the new technologies were also
+validated through their endings, with fog both on and off.
 
 The automated checks use Python's built-in unittest and SDL's dummy drivers:
 

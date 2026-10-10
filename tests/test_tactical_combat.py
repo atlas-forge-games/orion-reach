@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -175,7 +176,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 24)
+        self.assertEqual(SAVE_VERSION, 25)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()
@@ -225,6 +226,7 @@ class TacticalAnimationTests(unittest.TestCase):
         self.app.update_combat()
         self.app.render()
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_click_move_interpolates_and_blocks_rapid_duplicate_commands(self):
         self.click("combat_cell_7_4")
         effect = self.app.combat_animation
@@ -239,6 +241,7 @@ class TacticalAnimationTests(unittest.TestCase):
         self.tick(effect.duration/2+.01)
         self.assertIsNone(self.app.combat_animation)
         self.click("combat_ship_2")
+        self.click("combat_fire")
         self.assertEqual(self.app.game.combat.ship(2).hull, 15)
         self.assertEqual(self.app.combat_animation.kind, "fire")
         self.tick(.15)
@@ -248,6 +251,7 @@ class TacticalAnimationTests(unittest.TestCase):
         self.assertGreater(red.r, red.b*2)
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], self.app.game)
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_last_ship_explodes_before_result_and_reload_never_repeats_damage(self):
         game = encounter(start=False)
         game.ships[1].hull = 5
@@ -258,6 +262,7 @@ class TacticalAnimationTests(unittest.TestCase):
         self.click("combat_cell_7_4")
         self.tick(1)
         self.click("combat_ship_2")
+        self.click("combat_fire")
         self.assertEqual(game.combat.status, "player_victory")
         self.assertTrue(self.app.combat_animation.destroyed)
         self.assertNotIn("combat_continue", [b.key for b in self.app.buttons])

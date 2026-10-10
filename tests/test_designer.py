@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -154,6 +155,7 @@ class DesignerRulesTests(unittest.TestCase):
 
 
 class DesignerCombatTests(unittest.TestCase):
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_mixed_volley_uses_each_weapon_range_and_one_action(self):
         game = duel(defenses=())
         attacker, target = game.combat.ships
@@ -165,6 +167,7 @@ class DesignerCombatTests(unittest.TestCase):
         effect = CombatAnimation.from_action(game.combat, {"kind": "fire", "ship_id": 1, "target_id": 2, "damage": 10})
         self.assertEqual(effect.weapons, ("torpedo",))
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_shields_absorb_then_hull_takes_damage_and_point_defense_is_a_soft_counter(self):
         game = duel(weapons=("laser", "laser", "torpedo"))
         target = game.combat.ship(2)
@@ -304,6 +307,7 @@ class DesignerUITests(unittest.TestCase):
         self.click("production_build_design_24")
         self.assertEqual(self.app.game.planet_at(0, 2).construction_queue[0].design.id, "design_24")
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_custom_weapons_draw_beams_torpedoes_and_explosions(self):
         self.app.game = duel(weapons=("laser", "laser", "torpedo"), defenses=())
         battle = self.app.game.combat

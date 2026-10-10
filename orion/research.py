@@ -34,14 +34,20 @@ class Technology:
     name: str
     description: str
     effects: tuple[tuple[str, int], ...]
+    exclusive: bool = True
+    requires: tuple[str, ...] = ()
 
     @property
     def cost(self):
-        return (40, 100, 500)[self.tier-1]
+        return 500 if self.id == "ascension_theory" else (40, 100, 120, 220, 360)[self.tier-1]
 
 
 def tech(identifier, branch, tier, name, description, **effects):
     return Technology(identifier, branch, tier, name, description, tuple(effects.items()))
+
+
+def project(identifier, branch, tier, name, description, *, requires=(), **effects):
+    return Technology(identifier, branch, tier, name, description, tuple(effects.items()), False, requires)
 
 
 TECHNOLOGIES = {t.id: t for t in (
@@ -78,6 +84,25 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("commerce_guilds", "society", 2, "Commerce Guilds", "+3 credits per trade center.", trade_income=3),
     tech("cultural_exchange", "society", 2, "Cultural Exchange", "Your active trade pact earns +3 credits; your research pact earns +3 research.", pact_income=3, pact_research=3),
     tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
+    project("advanced_fortifications", "construction", 3, "Advanced Fortifications", "Fortifications grant +75% defending firepower instead of +50%.", fortification_bonus=25),
+    project("orbital_defense_systems", "physics", 3, "Orbital Defense Systems", "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles."),
+    project("planetary_shielding", "fields", 3, "Planetary Shielding", "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.", shield_capacity=100),
+    project("barrier_fields", "fields", 4, "Barrier Fields", "Upgrade planetary generators to 200 shield points; upkeep rises from 4 to 6 CR/turn.", requires=("planetary_shielding",), shield_capacity=100, shield_upkeep=2),
+    project("siege_weapons", "physics", 4, "Siege Weapons", "Unlock siege cannons: triple damage to planetary shields and missile bases. Standard warships gain double bombardment damage.", requires=("orbital_defense_systems",), siege_bonus=100),
+    project("deep_space_radar", "computers", 3, "Deep-Space Radar", "Detect fleet positions and owners within 5 ly of colonies. Unlock sensor arrays (+5 ly locally).", sensor_range=5, sensor_level=1),
+    project("long_range_sensors", "computers", 4, "Long-Range Sensors", "Extend detection to 10 ly and reveal ship counts.", requires=("deep_space_radar",), sensor_range=5, sensor_level=1),
+    project("subspace_scanners", "computers", 5, "Subspace Scanners", "Extend detection to 20 ly; reveal ship classes and movement direction, without destination orders.", requires=("long_range_sensors",), sensor_range=10, sensor_level=1),
+    project("colonial_navigation", "computers", 3, "Colonial Navigation Network", "+25% travel speed between your own colonized systems.", colony_speed=25),
+    project("jump_gates", "power", 4, "Jump Gates", "Unlock jump gates. Gates at both endpoints give +50% internal travel speed, replacing the navigation bonus.", requires=("colonial_navigation",)),
+    project("gravity_wells", "fields", 3, "Gravity-Well Generators", "Unlock interdiction generators: hostile final approaches slow by 25% within 5 ly.", interdiction_slow=25, interdiction_range=5),
+    project("subspace_interdiction", "fields", 4, "Subspace Interdiction", "Improve generators to 40% slowdown within 8 ly; upkeep rises from 3 to 5 CR/turn.", requires=("gravity_wells",), interdiction_slow=15, interdiction_range=3, interdiction_upkeep=2),
+    project("field_stabilization", "power", 3, "Field Stabilization", "Your ships suffer half the slowdown from hostile interdiction fields.", field_stabilization=1),
+    project("targeting_computers", "computers", 3, "Targeting Computers", "+10 percentage points to weapon hit chance.", accuracy=10),
+    project("predictive_fire_control", "computers", 4, "Predictive Fire Control", "Improve the targeting bonus to +20 percentage points.", requires=("targeting_computers",), accuracy=10),
+    project("quantum_targeting", "computers", 5, "Quantum Targeting", "Improve the targeting bonus to +30 percentage points.", requires=("predictive_fire_control",), accuracy=10),
+    project("precision_beam_optics", "physics", 3, "Precision Beam Optics", "Halve the accuracy penalty for firing beam weapons at long range.", beam_precision=1),
+    project("torpedo_guidance", "computers", 4, "Advanced Torpedo Guidance", "Halve target evasion against torpedoes and missiles. Point defense still intercepts successful hits.", requires=("targeting_computers",), torpedo_guidance=1),
+    project("electronic_countermeasures", "computers", 3, "Electronic Countermeasures", "Your ships gain 10 percentage points of evasion.", evasion=10),
 )}
 
 
@@ -112,9 +137,13 @@ class ResearchState:
             return "active"
         if identifier == "ascension_theory":
             return "available" if self.finished_branches == len(BRANCHES) else "locked"
+        if not technology.exclusive:
+            foundation = any(TECHNOLOGIES[t].branch == technology.branch and TECHNOLOGIES[t].tier <= 2
+                             for t in self.completed)
+            return "available" if foundation and all(t in self.completed for t in technology.requires) else "locked"
         committed = self.completed + ([self.active] if self.active else [])
         if any(TECHNOLOGIES[t].branch == technology.branch and
-               TECHNOLOGIES[t].tier == technology.tier for t in committed):
+               TECHNOLOGIES[t].tier == technology.tier and TECHNOLOGIES[t].exclusive for t in committed):
             return "excluded"
         if technology.tier > 1 and not any(
                 TECHNOLOGIES[t].branch == technology.branch and
@@ -137,6 +166,10 @@ class ResearchState:
         if status == "locked":
             if identifier == "ascension_theory":
                 return "Complete tier II in all eight research branches first."
+            technology = TECHNOLOGIES[identifier]
+            if not technology.exclusive:
+                missing = [TECHNOLOGIES[t].name for t in technology.requires if t not in self.completed]
+                return "Requires "+(", ".join(missing) if missing else "a foundation technology in "+BRANCHES[technology.branch].name)+"."
             return "Complete the previous tier in this branch first."
         if self.active:
             return "Finish your current research project first."
@@ -160,7 +193,7 @@ class ResearchState:
         if not isinstance(data, dict) or set(data) != {"completed", "active", "progress"}:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
-        if not isinstance(completed, list) or len(completed) > 17:
+        if not isinstance(completed, list) or len(completed) > len(TECHNOLOGIES):
             raise ValueError("Invalid discoveries")
         state = cls()
         for identifier in completed:
@@ -212,12 +245,18 @@ def gross_colony_yields(planet, bonuses):
             scaled_output(research, bonuses.get("research_percent", 0)))
 
 
-def colony_maintenance(planet):
+def building_maintenance(identifier, bonuses=None):
+    bonuses = bonuses or {}
+    extra = bonuses.get("shield_upkeep", 0) if identifier == "planetary_shield" else bonuses.get("interdiction_upkeep", 0) if identifier == "interdictor" else 0
+    return BUILDINGS[identifier].maintenance+extra
+
+
+def colony_maintenance(planet, bonuses=None):
     if not planet.colonized:
         return 0
-    return sum(BUILDINGS[b].maintenance for b in planet.buildings)+(ASCENSION_GATE.maintenance if planet.ascension_gate else 0)
+    return sum(building_maintenance(b, bonuses) for b in planet.buildings)+(ASCENSION_GATE.maintenance if planet.ascension_gate else 0)
 
 
 def colony_yields(planet, bonuses):
     industry, income, research = gross_colony_yields(planet, bonuses)
-    return industry-assembly_work(planet, industry, bonuses), income-colony_maintenance(planet), research
+    return industry-assembly_work(planet, industry, bonuses), income-colony_maintenance(planet, bonuses), research

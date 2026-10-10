@@ -3,13 +3,16 @@
 from collections import deque
 from dataclasses import dataclass, field
 import math
+import hashlib
 
-from .production import SHIP_TYPES
+from .production import SHIP_TYPES, ShipSpec
+from . import defenses
 from .designs import HULLS, ShipDesign
 from .empires import EMPIRE_IDS
 from .monsters import MONSTER, MONSTERS, alive_at, at as guardian_at, observe, known_status, commit_battle_result
 
-COMBAT_TYPES = {**SHIP_TYPES, **MONSTERS}
+BASE_SPEC = ShipSpec("missile_base", "Missile base", 100, 60, hull=40, damage=10)
+COMBAT_TYPES = {**SHIP_TYPES, **MONSTERS, "missile_base": BASE_SPEC}
 
 OWNERS = EMPIRE_IDS
 HOSTILE_BELOW = -30
@@ -18,6 +21,7 @@ BOARD_COLUMNS = 18
 MIN_ROWS = 10
 MOVEMENT = {"frigate": 3, "scout": 5, "colony_ship": 2, "troop_transport": 2}
 MOVEMENT.update({kind: spec.movement for kind, spec in MONSTERS.items()})
+MOVEMENT["missile_base"] = 0
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,8 @@ BEAMS = {
     "laser": Beam("Laser", 5, 6, (255, 80, 76)),
     "quantum": Beam("Quantum beam", 7, 7, (187, 113, 255)),
     "torpedo": Beam("Torpedo", 10, 8, (255, 188, 79)),
+    "missile": Beam("Defense missile", 10, 8, (255, 188, 79)),
+    "siege": Beam("Siege cannon", 8, 6, (229, 144, 88)),
     "plasma_breath": Beam("Plasma breath", 8, 4, (104, 255, 144)),
     "crystal_ray": Beam("Crystal ray", 10, 7, (102, 220, 255)),
     "ancient_lance": Beam("Ancient lance", 12, 8, (255, 198, 104)),
@@ -41,6 +47,8 @@ BEAMS = {
 
 
 def weapon_for(game, kind, owner):
+    if kind == "missile_base":
+        return "missile"
     if kind in MONSTERS:
         return MONSTERS[kind].weapon
     if not SHIP_TYPES[kind].damage:
@@ -73,6 +81,8 @@ class CombatShip:
 
     @property
     def name(self):
+        if self.kind == "missile_base":
+            return f"Missile base {(-self.id-10_000)%8+1}"
         return MONSTERS[self.kind].name if self.kind in MONSTERS else f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @property
@@ -113,6 +123,8 @@ class CombatState:
     status: str = "active"
     retreat_destination: int | None = None
     moved: list[int] = field(default_factory=list)
+    accuracy: bool = True
+    shots_fired: int = 0
 
     @property
     def guardian(self):
@@ -131,7 +143,7 @@ class CombatState:
         return max(MIN_ROWS, (max(sum(s.owner == o for s in self.ships) for o in self.sides)+3)//4)
 
     def can_move(self, ship):
-        return ship.hull > 0 and ship.id not in self.moved
+        return ship.hull > 0 and ship.movement > 0 and ship.id not in self.moved
 
     def can_fire(self, ship):
         return ship.hull > 0 and ship.damage > 0 and ship.id not in self.acted
@@ -150,8 +162,10 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=18):
+    def from_dict(cls, data, game, *, version=25):
         from .model import _integer, _name
+        if version < 25 and isinstance(data, dict):
+            data = {**data, "accuracy": False, "shots_fired": 0}
         # Migrate copies so reading a save never mutates its source payload.
         if version < 13 and isinstance(data, dict):
             data = {**data, "moved": list(data.get("acted", []))}
@@ -160,8 +174,10 @@ class CombatState:
                                  if isinstance(row, dict) else row for row in data["ships"]]
         if not isinstance(data, dict) or set(data) != {
                 "system_id", "initiator", "ships", "round", "active_owner", "acted",
-                "log", "status", "retreat_destination", "moved"}:
+                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired"}:
             raise ValueError("Invalid combat state")
+        if type(data["accuracy"]) is not bool or not _integer(data["shots_fired"], 0, 100_000_000):
+            raise ValueError("Invalid combat random sequence")
         if (not _integer(data["system_id"], 0, len(game.systems)-1) or
                 data["initiator"] not in game.owners or
                 not _integer(data["round"], 1, 1_000_000) or data["status"] not in RESULTS):
@@ -192,14 +208,17 @@ class CombatState:
             if not isinstance(row, dict) or set(row) != fields:
                 raise ValueError("Invalid combat ship")
             monster = row["owner"] == MONSTER
+            station = row["kind"] == "missile_base"
+            planet = defenses.base_planet(game, row["id"]) if station else None
             design = ShipDesign.from_dict(row["design"]) if version >= 18 and row["design"] is not None else None
-            if design and (monster or design.kind != row["kind"]):
+            if design and (monster or station or design.kind != row["kind"]):
                 raise ValueError("Invalid battle blueprint")
-            if ((not guardian or row["id"] != guardian.combat_id or type(row["id"]) is not int) if monster
+            if ((not planet or (-row["id"]-10_000)//8 != data["system_id"]) if station else
+                    (not guardian or row["id"] != guardian.combat_id or type(row["id"]) is not int) if monster
                     else not _integer(row["id"], 1, game.next_ship_id-1)):
                 raise ValueError("Invalid combat identifier")
             if (row["owner"] not in sides or
-                    not isinstance(row["kind"], str) or row["kind"] not in (MONSTERS if monster else HULLS if design else SHIP_TYPES) or
+                    not isinstance(row["kind"], str) or row["kind"] not in (("missile_base",) if station else MONSTERS if monster else HULLS if design else SHIP_TYPES) or
                     not _integer(row["initial_hull"], 1, design.hull if design else COMBAT_TYPES[row["kind"]].hull) or
                     not _integer(row["hull"], 0, row["initial_hull"])):
                 raise ValueError("Invalid combat ship health")
@@ -256,6 +275,16 @@ class CombatState:
                 raise ValueError("Invalid victory")
         campaign = {s.id: s for s in game.ships}
         for ship in ships:
+            if ship.kind == "missile_base":
+                planet = defenses.base_planet(game, ship.id)
+                expected = ship.initial_hull if state.status == "active" else ship.hull
+                if expected:
+                    if (planet.owner != ship.owner or "missile_base" not in planet.buildings
+                            or (planet.battery_hull or defenses.BASE_HULL) != expected):
+                        raise ValueError("Missile base does not match the colony")
+                elif "missile_base" in planet.buildings:
+                    raise ValueError("Destroyed missile base survived")
+                continue
             if ship.owner == MONSTER:
                 expected_hull = ship.initial_hull if state.status == "active" else ship.hull
                 if ship.kind != guardian.kind or guardian.hull != expected_hull:
@@ -283,9 +312,14 @@ class CombatState:
                 raise ValueError("Travelling ship in battle")
         orbiting = {s.id for s in game.ships if s.owner in sides and not s.in_transit and s.system_id == state.system_id}
         expected_orbit = {s.id for s in ships if (state.status == "active" or s.hull > 0)
-                          and s.owner != retreating and s.owner != MONSTER}
+                          and s.owner != retreating and s.owner != MONSTER and s.kind != "missile_base"}
         if orbiting != expected_orbit:
             raise ValueError("Battle omitted orbiting ships")
+        expected_bases = {defenses.base_id(state.system_id, p.id) for p in defenses.bases(game, state.system_id)
+                          if p.owner in sides} if not guarded else set()
+        battle_bases = {s.id for s in ships if s.kind == "missile_base" and (state.status == "active" or s.hull > 0)}
+        if expected_bases != battle_bases:
+            raise ValueError("Battle omitted planetary defenses")
         return state
 
 
@@ -296,6 +330,8 @@ def deploy(state):
         for index, ship in enumerate(sorted(state.fleet(owner, alive=False), key=lambda s: s.id)):
             depth, lane = divmod(index, rows)
             ship.x = 4-depth if owner == state.sides[0] else 13+depth
+            if ship.kind == "missile_base":
+                ship.x = 5 if owner == state.sides[0] else 12
             ship.y = lanes[lane]
 
 
@@ -347,9 +383,10 @@ def engagement_error(game, system_id, owner="player", target=None):
     if target == owner or target not in game.owners:
         return "Both empires need ships in orbit in this system."
     own, enemy = game.fleet_at(system_id, owner), game.fleet_at(system_id, target)
-    if not own or not enemy:
+    own_bases, enemy_bases = defenses.bases(game, system_id, owner), defenses.bases(game, system_id, target)
+    if not (own or own_bases) or not (enemy or enemy_bases):
         return "Both empires need ships in orbit in this system."
-    if not any(s.damage for s in own):
+    if not own_bases and not any(s.damage for s in own):
         return "Bring a frigate to engage. Scouts and transports are unarmed."
     return None
 
@@ -358,6 +395,12 @@ def battle_ship(game, ship):
     return CombatShip(ship.id, ship.kind, ship.owner, ship.hull, ship.hull,
                       weapon=ship.design.weapon if ship.design else weapon_for(game, ship.kind, ship.owner),
                       design=ship.design, shields=ship.design.shields if ship.design else 0)
+
+
+def battle_bases(game, system_id, owner):
+    return [CombatShip(defenses.base_id(system_id, p.id), "missile_base", owner,
+                       p.battery_hull or defenses.BASE_HULL, p.battery_hull or defenses.BASE_HULL, weapon="missile")
+            for p in defenses.bases(game, system_id, owner)]
 
 
 def begin_combat(game, system_id, owner="player", target=None):
@@ -371,7 +414,8 @@ def begin_combat(game, system_id, owner="player", target=None):
     for ship in fleet:
         if ship.departure_pending:
             game._clear_course(ship)
-    state = CombatState(system_id, owner, [battle_ship(game, s) for s in fleet], active_owner=owner)
+    units = [battle_ship(game, s) for s in fleet]+battle_bases(game, system_id, owner)+battle_bases(game, system_id, target)
+    state = CombatState(system_id, owner, units, active_owner=owner)
     deploy(state)
     state.record(f"{game.empire_name_for(owner)} initiated combat at {game.systems[system_id].name}.")
     game.combat = state
@@ -441,6 +485,14 @@ def resolve(game, status, destination=None):
         ship.hull = rows[ship.id].hull
         if ship.owner == retreating:
             game._dispatch_ship(ship, destination)
+    for unit in state.ships:
+        if unit.kind == "missile_base":
+            planet = defenses.base_planet(game, unit.id)
+            planet.battery_hull = 0 if unit.owner == retreating else unit.hull
+            if not planet.battery_hull:
+                unit.hull = 0
+                if "missile_base" in planet.buildings:
+                    planet.buildings.remove("missile_base")
     if retreating:
         message = f"{game.empire_name_for(retreating)} retreated toward {game.systems[destination].name}."
     else:
@@ -461,6 +513,9 @@ def resolve(game, status, destination=None):
             state.record(reward)
             if state.sides[0] in game.opponents:
                 game.rival_event(reward, turn=game.turn, owner=state.sides[0])
+    if not state.guardian:
+        from .exploration import refresh
+        refresh(game)
 
 
 def check_losses(game):
@@ -498,15 +553,53 @@ def move(game, ship_id, x, y, owner="player"):
     return path
 
 
+def accuracy_breakdown(game, attacker, target, weapon):
+    if game.combat is not None and not game.combat.accuracy:
+        return {"base": 100, "targeting": 0, "range": 0, "evasion": 0, "chance": 100}
+    bonuses = game.bonuses_for(attacker.owner) if attacker.owner in game.owners else {}
+    defense = game.bonuses_for(target.owner) if target.owner in game.owners else {}
+    base = {"torpedo": 75, "missile": 75, "siege": 70}.get(weapon, 85)
+    distance = math.dist(attacker.position, target.position)
+    penalty = max(0, math.ceil(distance-2))*3
+    if bonuses.get("beam_precision") and weapon not in ("torpedo", "missile", "siege"):
+        penalty //= 2
+    evasion = {"scout": 15, "frigate": 10, "cruiser": 5, "colony_ship": 0, "troop_transport": 0}.get(target.kind, 0)
+    if target.kind != "missile_base":
+        evasion += defense.get("evasion", 0)
+        if target.design:
+            evasion = max(0, evasion+3*(target.movement-HULLS[target.kind].movement))
+    if weapon in ("torpedo", "missile") and bonuses.get("torpedo_guidance"):
+        evasion //= 2
+    targeting = bonuses.get("accuracy", 0)
+    return {"base": base, "targeting": targeting, "range": penalty, "evasion": evasion,
+            "chance": max(10, min(95, base+targeting-penalty-evasion))}
+
+
+def expected_volley(game, attacker, target):
+    return sum(strength*(3 if weapon == "siege" and target.kind == "missile_base" else 1)*
+               accuracy_breakdown(game, attacker, target, weapon)["chance"]/100
+               for weapon, strength in attacker.volley(target))
+
+
 def fire(game, ship_id, target_id, owner="player"):
     error = action_error(game, owner, ship_id, target_id)
     require(error is None, error)
     state = game.combat
     attacker, target = state.ship(ship_id), state.ship(target_id)
     require(attacker is not None and target is not None, "Choose an attacker and target.")
-    damage, absorbed = 0, 0
+    damage, absorbed, hits, shots = 0, 0, 0, 0
     for weapon, strength in attacker.volley(target):
-        if weapon == "torpedo" and target.design:
+        chance = accuracy_breakdown(game, attacker, target, weapon)["chance"]
+        token = f"orion-shot-v1:{game.seed}:{game.turn}:{state.system_id}:{state.round}:{ship_id}:{target_id}:{state.shots_fired}"
+        roll = int.from_bytes(hashlib.blake2b(token.encode(), digest_size=8).digest(), "big")%100
+        state.shots_fired += 1
+        shots += 1
+        if roll >= chance:
+            continue
+        hits += 1
+        if weapon == "siege" and target.kind == "missile_base":
+            strength *= 3
+        if weapon in ("torpedo", "missile") and target.design:
             strength = max(1, math.ceil(strength*(100-target.design.interception)/100))
         blocked = min(strength, target.shields)
         target.shields -= blocked
@@ -517,7 +610,7 @@ def fire(game, ship_id, target_id, owner="player"):
     state.acted.append(attacker.id)
     suffix = " Destroyed." if target.hull == 0 else f" {target.hull}/{target.max_hull} hull remains."
     protection = f" Shields absorbed {absorbed}." if absorbed else ""
-    state.record(f"{attacker.name} hit {target.name} for {damage}.{protection}{suffix}")
+    state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{suffix}")
     check_losses(game)
     return damage
 
@@ -537,6 +630,8 @@ def hold(game, ship_id, owner="player"):
 
 def retreat_destination(game, owner="player"):
     if game.combat is None or owner not in OWNERS:
+        return None
+    if not any(s.kind != "missile_base" for s in game.combat.fleet(owner)):
         return None
     origin = game.systems[game.combat.system_id]
     safe = [s for s in game.systems if s.id != origin.id and
@@ -563,7 +658,7 @@ def ai_action(game, owner="rival"):
     require(error is None, error)
     state = game.combat
     fleet = state.fleet(owner)
-    if not any(s.damage for s in fleet) and retreat_destination(game, owner):
+    if not any(s.damage for s in fleet) and retreat_destination(game, owner) is not None:
         retreat(game, owner)
         return {"kind": "retreat"}
     ready = state.ready(owner)
@@ -574,9 +669,12 @@ def ai_action(game, owner="rival"):
     enemies = state.fleet(state.enemy(owner))
     targets = [s for s in enemies if in_range(ship, s)] if state.can_fire(ship) else []
     if targets:
-        target = min(targets, key=lambda s: (s.hull > ship.damage, -s.damage, s.hull, s.id))
+        target = min(targets, key=lambda s: (s.hull > expected_volley(game, ship, s),
+                                            -expected_volley(game, ship, s), -s.damage, s.hull, s.id))
+        shield_before = target.shields
         damage = fire(game, ship.id, target.id, owner)
-        return {"kind": "fire", "ship_id": ship.id, "target_id": target.id, "damage": damage}
+        return {"kind": "fire", "ship_id": ship.id, "target_id": target.id, "damage": damage,
+                "missed": damage == 0 and target.shields == shield_before}
     paths = reachable(state, ship)
     if paths and (not ship.damage or state.can_fire(ship)):
         if ship.damage:
@@ -623,13 +721,18 @@ def autoresolve(game):
     # Avoid blocking strategic turns forever in a pathological formation.
     for _ in range(2):
         owner = game.combat.active_owner
-        if retreat_destination(game, owner):
+        if retreat_destination(game, owner) is not None:
             retreat(game, owner)
             return
         end_turn(game, owner)
     # A trapped, immobile stalemate is disengaged with its current damage.
     for ship in game.combat.ships:
-        if ship.owner != MONSTER and ship.hull > 0:
+        if ship.kind == "missile_base":
+            planet = defenses.base_planet(game, ship.id)
+            planet.battery_hull = ship.hull
+            if not ship.hull and "missile_base" in planet.buildings:
+                planet.buildings.remove("missile_base")
+        elif ship.owner != MONSTER and ship.hull > 0:
             game.ship_at(ship.id, owner=ship.owner).hull = ship.hull
     game.ships[:] = [s for s in game.ships if not game.combat.ship(s.id) or game.combat.ship(s.id).hull > 0]
     if game.combat.guardian:

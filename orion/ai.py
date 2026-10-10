@@ -6,11 +6,11 @@ from .buildings import BUILDINGS
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, TROOP_STRENGTH
 from .races import RACES
-from .research import BRANCHES, choices
+from .research import BRANCHES, TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
-from . import monsters
+from . import monsters, defenses, sensors
 from . import raiding
 from .ground_combat import forces, resolve, transports_needed
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
@@ -84,6 +84,22 @@ def research_choice(game, owner=RIVAL):
         "kharuun": ((0, 0, 0, 0, 0, 1, 1, 0), (1, 0, 1, 0, 1, 0, 1, 0)),
         "aelari": ((1, 1, 0, 0, 0, 0, 0, 1), (0, 0, 1, 0, 0, 1, 0, 1)),
     }.get(race, ((1, 0, 1, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1, 1, 1)))
+    foundations = sum(TECHNOLOGIES[t].tier <= 2 for t in state.completed)
+    advanced = sum(not TECHNOLOGIES[t].exclusive for t in state.completed)
+    # Add useful projects as the economy grows, while still pursuing Ascension.
+    if foundations == 16 and advanced >= 8 and game.research_error("ascension_theory", owner=owner) is None:
+        game.choose_research("ascension_theory", owner=owner)
+        return
+    projects = ("deep_space_radar", "targeting_computers", "planetary_shielding", "colonial_navigation",
+                "orbital_defense_systems", "advanced_fortifications", "long_range_sensors", "gravity_wells",
+                "predictive_fire_control", "siege_weapons", "precision_beam_optics", "jump_gates",
+                "electronic_countermeasures", "barrier_fields", "torpedo_guidance", "subspace_interdiction",
+                "field_stabilization", "subspace_scanners", "quantum_targeting")
+    if foundations >= 4 and (game.empire_rates_for(owner)[0] >= 15 or foundations == 16) and (advanced < foundations//2 or foundations == 16):
+        for identifier in projects:
+            if game.research_error(identifier, owner=owner) is None:
+                game.choose_research(identifier, owner=owner)
+                return
     for tier in (1, 2):
         for branch in branches:
             index = tuple(BRANCHES).index(branch)
@@ -197,7 +213,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
         escorts = [s for s in ships if not s.has_course and s.system_id == system.id]
         if not troops:
             continue
-        candidates = [(s, p) for s, p in worlds if resolve(len(troops)*TROOP_STRENGTH, forces(p)).captured]
+        candidates = [(s, p) for s, p in worlds if resolve(len(troops)*TROOP_STRENGTH, forces(p, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {})).captured]
         if game.foreign_fleet(system.id, owner):
             if raiding.is_varkesh(game, owner) and escorts:
                 for destination, planet in candidates:
@@ -221,6 +237,9 @@ def military_orders(game, reserved=(), owner=RIVAL):
         elif system.id != staging.id:
             for ship in troops:
                 game.send_ship(ship.id, staging.id, owner=owner)
+    threats = [c for c in sensors.contacts(game, owner) if c.active and c.owner in hostile]
+    threatened = sorted({c.near_system for c in threats
+                         if sensors.distance(c.x, c.y, game.systems[c.near_system]) <= 12})
     gate = gate_site(game, owner)
     for index, ship in enumerate(ships):
         if ship.id in ordered or ship.has_course or game.foreign_fleet(ship.system_id, owner):
@@ -230,6 +249,8 @@ def military_orders(game, reserved=(), owner=RIVAL):
         origin = game.systems[ship.system_id]
         if gate and index == 0:
             destination = gate[0]
+        elif threatened:
+            destination = min((game.systems[sid] for sid in threatened), key=lambda s: (game.travel_turns(origin, s, owner), s.id))
         elif hostile and worlds:
             # Keep escorts with newly built transports until the group is ready.
             destination = staging
@@ -251,8 +272,17 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
     for system in game.systems:
         if not game.system_visible(system.id, owner):
             continue
+        for planet in system.worlds:
+            if planet.owner not in hostile or game.bombardment_error(system.id, planet.id, owner) is not None:
+                continue
+            attack = len(troop_transports(game, system.id, owner))*TROOP_STRENGTH
+            defending = forces(planet, game.bonuses_for(planet.owner))
+            if planet.shield_points or (attack and not resolve(attack, defending).captured):
+                report = game.bombard(system.id, planet.id, owner)
+                if planet.owner == "player" or game.system_visible(system.id):
+                    messages.append(report.message)
         candidates = [p for p in system.worlds if p.owner in hostile and game.invasion_error(system.id, p.id, owner=owner) is None
-                      and resolve(invasion_strength(game, system.id, p.id, owner)[0], forces(p)).captured]
+                      and resolve(invasion_strength(game, system.id, p.id, owner)[0], forces(p, game.bonuses_for(p.owner))).captured]
         if not candidates:
             continue
         planet = (max(candidates, key=lambda p: (p.workforce, -p.id)) if raiding.is_varkesh(game, owner) else
@@ -340,7 +370,10 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     transports = sum(s.kind == "troop_transport" for s in game.ships_owned_by(owner)) + sum(
         project.item_id == "troop_transport" for _, p in colonies for project in p.construction_queue)
     hostile = enemies(game, owner)
-    troop_limit = max((transports_needed(p, TROOP_STRENGTH) for s, p in known_enemy_colonies(game, owner)
+    known_bases = max((sum("missile_base" in p.buildings for p in s.worlds if p.owner in hostile)
+                       for s in (game.known_system(s.id, owner) for s in game.systems) if s), default=0)
+    military_limit = max(military_limit, min(12, 3+known_bases*3) if known_bases else 0)
+    troop_limit = max((transports_needed(p, TROOP_STRENGTH, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {}) for s, p in known_enemy_colonies(game, owner)
                        if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
     unknown = sum(not game.system_explored(s.id, owner) for s in game.systems)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
@@ -380,6 +413,15 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         if military_building and planet.free_slots > 0:
             queue_building(game, system, planet, military_building, owner)
             continue
+        infrastructure = []
+        if hostile:
+            infrastructure += ["missile_base", "planetary_shield", "interdictor"]
+        if len(game.colony_systems(owner)) > 1:
+            infrastructure.append("jump_gate")
+        infrastructure.append("sensor_array")
+        infrastructure_item = None
+        if planet.free_slots > max(0, farms_needed) and len(planet.buildings) >= 2 and (hostile or len(colonies) >= 4):
+            infrastructure_item = next((b for b in infrastructure if game.build_error(system.id, planet.id, b, owner=owner) is None), None)
         # The strongest colony supplies ships. Other worlds build their economies.
         # Expansion raises the shipyard's development target, preventing stagnation.
         target_buildings = min(planet.building_capacity, 2+len(colonies)//2)
@@ -413,6 +455,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 game.queue_ship(system.id, planet.id, owner=owner)
                 fleet_size += 1
                 event(game, owner, f"Started a colony ship on {planet.name}.")
+        elif infrastructure_item is not None:
+            queue_building(game, system, planet, infrastructure_item, owner)
         elif planet.free_slots > 0:
             item = development_choice(planet, game._empire(owner).race_id)
             queue_building(game, system, planet, item, owner)

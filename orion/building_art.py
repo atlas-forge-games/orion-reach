@@ -5,10 +5,10 @@ import pygame as pg
 
 from .ui import ASSETS
 
-BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm", "barracks", "fortifications")
+BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm", "barracks", "fortifications", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor")
 
 
-@lru_cache(maxsize=9)
+@lru_cache(maxsize=16)
 def load_building_art(building_id):
     if building_id not in BUILDING_ART_IDS:
         raise ValueError(f"Unknown building artwork: {building_id}")
@@ -26,6 +26,36 @@ def load_building_art(building_id):
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
     image = pg.Surface((120, 110), pg.SRCALPHA)
+    if building_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"):
+        metal, light, dark = (78, 107, 124), (126, 215, 224), (24, 46, 60)
+        pg.draw.polygon(image, metal, [(5, 78), (61, 55), (115, 78), (60, 106)])
+        pg.draw.polygon(image, dark, [(5, 78), (60, 98), (115, 78), (115, 86), (60, 110), (5, 86)])
+        if building_id == "planetary_shield":
+            pg.draw.rect(image, metal, (47, 46, 26, 43))
+            pg.draw.arc(image, (*light, 200), (11, 14, 98, 109), 0, 3.14, 4)
+            pg.draw.arc(image, light, (34, 14, 52, 109), 0, 3.14, 2)
+            pg.draw.ellipse(image, light, (11, 68, 98, 28), 2)
+            pg.draw.circle(image, (228, 211, 151), (60, 46), 9)
+        elif building_id == "sensor_array":
+            pg.draw.line(image, metal, (56, 80), (66, 34), 12)
+            pg.draw.arc(image, light, (26, 8, 75, 65), 3.14, 6.28, 10)
+            pg.draw.line(image, light, (64, 43), (87, 15), 3)
+            pg.draw.circle(image, (233, 208, 147), (87, 15), 4)
+        elif building_id == "jump_gate":
+            pg.draw.ellipse(image, metal, (28, 5, 64, 91), 10)
+            pg.draw.ellipse(image, light, (36, 12, 48, 76), 3)
+            for y in (24, 44, 64):
+                pg.draw.line(image, (55, 118, 143), (46, y), (75, y+8), 2)
+        elif building_id == "interdictor":
+            pg.draw.polygon(image, metal, [(36, 88), (54, 16), (66, 16), (86, 88)])
+            for y in (30, 46, 62):
+                pg.draw.ellipse(image, (195, 143, 225), (17, y, 88, 20), 3)
+            pg.draw.circle(image, light, (60, 14), 7)
+        else:
+            for x, y in ((22, 43), (47, 55), (72, 39)):
+                pg.draw.rect(image, metal, (x, y, 22, 31))
+                pg.draw.polygon(image, light, [(x, y), (x+11, y-25), (x+22, y)])
+        return image
     if building_id in ("barracks", "fortifications"):
         pg.draw.polygon(image, (50, 65, 69), [(4, 74), (57, 41), (117, 68), (65, 109)])
         if building_id == "barracks":

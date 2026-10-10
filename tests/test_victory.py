@@ -366,7 +366,10 @@ class VictorySaveTests(unittest.TestCase):
             path.write_text(json.dumps(payload))
             original = path.read_bytes()
             restored, _ = storage.load(path)
-            self.assertEqual(restored, game)
+            expected = copy.deepcopy(game)
+            expected.combat.accuracy = False
+            expected.combat.shots_fired = 0
+            self.assertEqual(restored, expected)
             self.assertEqual(path.read_bytes(), original)
             restored.combat_ai_action()
             restored.combat_ai_action()

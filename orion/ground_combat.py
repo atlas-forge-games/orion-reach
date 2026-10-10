@@ -42,11 +42,12 @@ class GroundOutcome:
         return self.attackers > 0 and self.defenders == 0
 
 
-def forces(planet):
+def forces(planet, bonuses=None):
     if not planet.colonized:
         return GroundForces(0, 0, 0)
+    bonus = (bonuses or {}).get("fortification_bonus", 0) if "fortifications" in planet.buildings else 0
     return GroundForces(max(0, 4+planet.population-planet.militia_losses), planet.garrison,
-                        sum(BUILDINGS[b].defence_bonus for b in planet.buildings))
+                        sum(BUILDINGS[b].defence_bonus for b in planet.buildings)+bonus)
 
 
 def training_limit(planet):
@@ -82,9 +83,9 @@ def resolve(attackers, defence):
     return GroundOutcome(attackers, defenders, tuple(rounds))
 
 
-def transports_needed(planet, troop_strength):
+def transports_needed(planet, troop_strength, bonuses=None):
     """Smallest winning landing force, using the same rules as actual combat."""
-    defence = forces(planet)
+    defence = forces(planet, bonuses)
     low, high = 1, max(1, (defence.strength*2)//troop_strength+1)
     while not resolve(high*troop_strength, defence).captured:
         high *= 2

@@ -5,7 +5,7 @@ import pygame as pg
 from .planet_art import draw_planet, draw_star
 from .model import PLAYER, RIVAL
 from .empires import empire_color
-from . import monsters
+from . import monsters, defenses
 from .fleet_art import ship_icon
 from .exploration_view import draw_unsurveyed_system
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
@@ -60,7 +60,9 @@ def draw_system(app):
         label = ("GUARDED" if live else "LAST SEEN GUARDED")+" · "+guardian.spec.name.upper() if guardian_status == "alive" else "GUARDIAN DEFEATED · WORLDS ACCESSIBLE"
         ship_icon(surface, (997, 240), .9, kind=guardian.kind)
     text(surface, label, (1376, 211), 11, RED if guardian_status == "alive" else CYAN, "mono", 1, right=True)
-    if ships and (rivals or guardian_status == "alive"):
+    own_bases = len(defenses.bases(game, system.id, "player")) if live else 0
+    enemy_bases = sum(p.owner != "player" for p in defenses.bases(game, system.id)) if live else 0
+    if live and (ships or own_bases) and (rivals or enemy_bases or guardian_status == "alive"):
         opponents = game.opponents_at(system.id)
         if len(opponents) > 1 and guardian_status != "alive":
             if app.rival_id not in opponents:
@@ -68,7 +70,7 @@ def draw_system(app):
             text(surface, shorten("Target: "+game.empire_name_for(app.rival_id), 268, 12), (765, 263), 12, empire_color(app.rival_id))
             app.button("system_target_next", "→", (1046, 247, 42, 43), lambda: app.change_rival(1, system.id))
         reason = game.engagement_error(system.id)
-        app.button("system_engage", "Face guardian" if guardian_status == "alive" else "Engage opposing fleet", (1100, 247, 276, 43),
+        app.button("system_engage", "Face guardian" if guardian_status == "alive" else "Engage orbital defenses" if enemy_bases else "Engage opposing fleet", (1100, 247, 276, 43),
                    lambda: app.engage_request(system.id), enabled=reason is None)
         if reason:
             text(surface, "Frigate required to engage", (1080, 262), 11, MUTED, right=True)

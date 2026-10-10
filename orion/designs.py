@@ -44,6 +44,7 @@ MODULES = {
     "laser": Module("Laser cannon", "weapon", 1, 12, 8, "5 damage · range 6", weapon="laser", damage=5, range=6),
     "torpedo": Module("Torpedo launcher", "weapon", 2, 22, 14, "10 damage · range 8 · countered by point defense", weapon="torpedo", damage=10, range=8),
     "quantum": Module("Quantum battery", "weapon", 2, 32, 20, "14 damage · range 7", "quantum_optics", "quantum", 14, 7),
+    "siege": Module("Siege cannon", "weapon", 2, 30, 20, "8 damage · range 6 · triple damage to bases and planetary shields", "siege_weapons", "siege", 8, 6),
     "armor": Module("Armor plate", "defense", 1, 10, 6, "+8 hull · -1 tactical movement (minimum 1)"),
     "shield": Module("Shield generator", "defense", 1, 18, 12, "+12 shields · restored at the start of each battle", "radiation_shields"),
     "point_defense": Module("Point defense", "defense", 1, 12, 8, "-30% incoming torpedo damage (maximum -60%)"),

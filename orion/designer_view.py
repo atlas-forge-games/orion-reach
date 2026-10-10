@@ -56,7 +56,7 @@ def draw_designer(app):
     text(surface, f"Limits: weapons {hull.weapon} · defense {hull.defense} · support {hull.support}", (946, 290), 11, MUTED, right=True)
     text(surface, "Category limits share the total capacity. Unused space is allowed.", (369, 314), 11, MUTED)
     for index, (identifier, module) in enumerate(MODULES.items()):
-        y = 340+index*56
+        y = 340+index*52
         locked = module.technology and module.technology not in game.technology.completed
         text(surface, module.name, (369, y), 16, MUTED if locked else INK)
         text(surface, f"{module.space} {module.category} · {module.credit_cost} CR", (785, y+3), 10, GOLD, right=True)

@@ -37,7 +37,7 @@ def discover(game, identifier, owner=PLAYER):
 
 class ResearchRulesTests(unittest.TestCase):
     def test_two_exclusive_choices_at_each_of_two_tiers_in_eight_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 33))  # 32 choices + Ascension Theory
+        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 52))  # 32 foundations + Ascension Theory + 19 projects
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology

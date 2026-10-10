@@ -96,7 +96,7 @@ def awaken(game, tomb):
         planet.garrison = min(ground_combat.MAX_GARRISON, planet.garrison+AWAKENED_TROOPS)
         tomb.outcome = "reinforced"
     else:
-        defending = ground_combat.forces(planet)
+        defending = ground_combat.forces(planet, game.bonuses_for(planet.owner))
         outcome = ground_combat.resolve(AWAKENED_TROOPS, defending)
         if outcome.captured:
             owner = establish_empire(game, tomb)

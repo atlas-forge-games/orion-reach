@@ -1,12 +1,13 @@
 """Clickable tactical battlefield, per-ship orders, weapon effects and results."""
 
 from functools import lru_cache
+from collections import Counter
 import math
 import random
 
 import pygame as pg
 
-from .combat import BEAMS, BOARD_COLUMNS, action_error, in_range, reachable, retreat_destination
+from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .monsters import MONSTER, MONSTERS
@@ -91,7 +92,7 @@ def draw_battlefield(app):
         pg.draw.rect(surface, color, (cx-18, cy+19, round(36*hull/ship.max_hull), 3))
         if ship.design and ship.design.shields:
             pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.design.shields), 2))
-        text(surface, "GUARD" if ship.owner == MONSTER else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+        text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.owner == PLAYER and ship.hull > 0:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship))):
                 pg.draw.circle(surface, CYAN if available else LINE, (cx+dx, cy-19), 2)
@@ -115,7 +116,7 @@ def draw_combat(app):
     text(surface, shorten(f"Battle of {game.systems[battle.system_id].name}", 670, 32, "title"), (32, 119), 32, INK, "title")
     text(surface, f"ROUND {battle.round:02}  ·  "+("YOUR TURN" if battle.active_owner == PLAYER else "ENEMY TURN" if battle.active_owner else "BATTLE ENDED"),
          (1038, 128), 12, GOLD, "mono", right=True)
-    text(surface, "Select your ship → click a highlighted cell to move → click an enemy to fire.", (34, 162), 13, MUTED)
+    text(surface, "Select your ship → click a highlighted cell to move → select a target → review hit chances → Fire.", (34, 162), 13, MUTED)
     draw_battlefield(app)
 
     panel(surface, (1060, 119, 348, 627), (11, 22, 31), GOLD if player_turn else LINE)
@@ -159,13 +160,22 @@ def draw_combat(app):
         text(surface, caption, (x, 503), 12, MUTED)
         can_fire = bool(player_turn and ship and target and action_error(game, PLAYER, ship.id, target.id) is None)
         label = "Fire at target" if can_fire else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
-        app.button("combat_fire", label, (x, 532, 308, 43), lambda: app.combat_action("fire"), enabled=can_fire)
-        app.button("combat_next", "Next ship · N", (x, 588, 149, 39), app.next_combat_ship, enabled=player_turn and bool(battle.ready(PLAYER)))
-        app.button("combat_hold", "Done ship", (1239, 588, 149, 39), lambda: app.combat_action("hold"),
+        text(surface, "CHANCE · base + aim − range − evade · cap 95%" if battle.accuracy else "LEGACY BATTLE · Guaranteed hits", (x, 525), 9, GOLD)
+        if ship and target and in_range(ship, target):
+            for index, (weapon, count) in enumerate(Counter(w for w, _ in ship.volley(target)).items()):
+                chance = accuracy_breakdown(game, ship, target, weapon)
+                shot_label = (f"{count}× {BEAMS[weapon].name}: {chance['chance']}%  "
+                         f"({chance['base']}+{chance['targeting']}−{chance['range']}−{chance['evasion']})")
+                text(surface, shot_label, (x, 542+index*14), 10, CYAN)
+        else:
+            text(surface, "Choose an enemy within weapon range.", (x, 546), 11, MUTED)
+        app.button("combat_fire", label, (x, 601, 308, 35), lambda: app.combat_action("fire"), enabled=can_fire)
+        app.button("combat_next", "Next ship · N", (x, 646, 149, 32), app.next_combat_ship, enabled=player_turn and bool(battle.ready(PLAYER)))
+        app.button("combat_hold", "Done ship", (1239, 646, 149, 32), lambda: app.combat_action("hold"),
                    enabled=bool(player_turn and ship and (battle.can_move(ship) or battle.can_fire(ship))))
-        app.button("combat_end_turn", "End turn · E", (x, 640, 308, 48), lambda: app.combat_action("end_turn"),
+        app.button("combat_end_turn", "End turn · E", (x, 688, 308, 35), lambda: app.combat_action("end_turn"),
                    "primary" if player_turn else "normal", enabled=player_turn)
-        app.button("combat_retreat", "Retreat fleet", (x, 699, 308, 33), app.retreat_request,
+        app.button("combat_retreat", "Retreat fleet", (x, 730, 308, 23), app.retreat_request,
                    enabled=player_turn and retreat_destination(game) is not None)
     else:
         title = ("Victory" if battle.status == "player_victory" else "Fleet withdrawn" if battle.status == "player_retreat"

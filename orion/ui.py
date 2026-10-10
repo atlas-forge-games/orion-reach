@@ -121,7 +121,10 @@ class Button:
             return
         if self.style=="primary":
             pg.draw.rect(surface,(233,205,153) if active else GOLD,r,border_radius=2)
-            text(surface,self.label,(r.x+24,r.y+16),20,(17,27,32))
+            if r.h < 48:
+                text(surface,shorten(self.label,r.w-55,14),(r.x+14,r.y+(r.h-21)//2),14,(17,27,32))
+            else:
+                text(surface,self.label,(r.x+24,r.y+16),20,(17,27,32))
             arrow(surface,(r.right-28,r.centery),(17,27,32))
         elif self.style=="menu":
             if active:

@@ -27,6 +27,8 @@ class BuildingSpec:
     food_per_farmer: int = 0
     income_per_population: float = 0
     maintenance: int = 0
+    technology: str | None = None
+    special_effect: str = ""
 
     def worker_bonus(self, richness):
         return self.industry_per_worker*(MINERAL_FACTORS[richness] if self.mineral_scaled else 1)
@@ -48,6 +50,8 @@ class BuildingSpec:
         return (int(self.industry*factor), self.income, self.research)
 
     def effect_text(self, richness):
+        if self.special_effect:
+            return self.special_effect
         if self.training:
             return f"+{self.training} garrison troop / turn · trains up to {self.garrison_limit}"
         if self.defence_bonus:
@@ -80,6 +84,16 @@ BUILDINGS = {
                              50, 30, training=1, garrison_limit=8, unique=True, maintenance=1),
     "fortifications": BuildingSpec("fortifications", "Fortifications", "Bunkers give all defending troops 50% more firepower. One per colony.",
                                    60, 36, defence_bonus=50, unique=True, maintenance=2),
+    "missile_base": BuildingSpec("missile_base", "Missile base", "An immobile orbital defender with 40 hull, range 8 and 10 missile damage. One per colony.",
+                                100, 60, unique=True, maintenance=3, technology="orbital_defense_systems", special_effect="40 hull · 10 missile damage · range 8"),
+    "planetary_shield": BuildingSpec("planetary_shield", "Planetary shield", "Blocks hostile landings while charged. Regenerates 25 points each peaceful turn. Barrier Fields improves capacity and upkeep.",
+                                    120, 70, unique=True, maintenance=4, technology="planetary_shielding", special_effect="100 shield points · 25 recovery/turn"),
+    "sensor_array": BuildingSpec("sensor_array", "Sensor array", "Extends this system's researched detection radius by 5 ly. Multiple arrays in one system do not stack.",
+                                60, 36, unique=True, maintenance=2, technology="deep_space_radar", special_effect="+5 ly local sensor range"),
+    "jump_gate": BuildingSpec("jump_gate", "Jump gate", "Connect two of your colonies for +50% travel speed on new orders. Replaces the navigation network bonus.",
+                             140, 84, unique=True, maintenance=4, technology="jump_gates", special_effect="+50% speed between friendly gates"),
+    "interdictor": BuildingSpec("interdictor", "Interdiction generator", "Slows hostile approaches within 5 ly by 25%. Subspace Interdiction improves the radius and strength.",
+                               110, 66, unique=True, maintenance=3, technology="gravity_wells", special_effect="25% hostile slowdown within 5 ly"),
 }
 
 

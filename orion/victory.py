@@ -45,10 +45,11 @@ def troop_transports(game, system_id, owner="player"):
 
 def invasion_strength(game, system_id, planet_id, owner="player"):
     return (len(troop_transports(game, system_id, owner))*TROOP_STRENGTH,
-            forces(game.planet_at(system_id, planet_id)).strength)
+            forces(game.planet_at(system_id, planet_id), game.bonuses_for(game.planet_at(system_id, planet_id).owner)).strength)
 
 
 def invasion_error(game, system_id, planet_id, owner="player"):
+    from .defenses import bases
     from .raiding import is_varkesh, homeworld
     if game.strategy_error():
         return game.strategy_error()
@@ -59,6 +60,10 @@ def invasion_error(game, system_id, planet_id, owner="player"):
         return "Choose a colony belonging to the opposing empire."
     if game.foreign_fleet(system_id, owner):
         return "Clear all opposing ships from this system before invading."
+    if any(p.owner != owner for p in bases(game, system_id)):
+        return "Destroy the opposing missile bases before landing troops."
+    if planet.shield_points:
+        return f"Suppress the planetary shield by bombardment first ({planet.shield_points} points remain)."
     if not troop_transports(game, system_id, owner):
         return "Bring troop transports into orbit first."
     if is_varkesh(game, owner) and homeworld(game, owner) is None:
@@ -78,7 +83,7 @@ def invade(game, system_id, planet_id, owner="player"):
     defender = planet.owner
     transports = troop_transports(game, system_id, owner)
     attack, defence = invasion_strength(game, system_id, planet_id, owner)
-    defending = forces(planet)
+    defending = forces(planet, game.bonuses_for(planet.owner))
     outcome = resolve(attack, defending)
     captured = outcome.captured
     for ship in transports:
@@ -100,6 +105,7 @@ def apply_ground_outcome(planet, owner, defending, outcome):
     if outcome.captured:
         liberate(planet)
         planet.owner = owner
+        planet.shield_points = 0
         planet.garrison = outcome.attackers
         planet.militia_losses = 4+planet.population
         # Populations, buildings and normal paid projects survive occupation.

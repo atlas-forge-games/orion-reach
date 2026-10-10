@@ -1,0 +1,58 @@
+"""Snapshot colony corridors and local interdiction when a voyage is ordered."""
+
+import math
+from .production import SHIP_SPEED, distance_ly
+
+
+def hostile(game, first, second):
+    if first == second or first not in game.owners or second not in game.owners:
+        return False
+    relation = game.diplomacy_between(first, second)
+    return relation.relations < -30 and not relation.trade_active and not relation.research_active
+
+
+def route_modifiers(game, origin, destination, owner):
+    own_origin = [p for p in origin.worlds if p.owner == owner]
+    own_target = [p for p in destination.worlds if p.owner == owner]
+    bonus = 0
+    if own_origin and own_target:
+        bonus = game.bonuses_for(owner).get("colony_speed", 0)
+        if all(any("jump_gate" in p.buildings for p in group) for group in (own_origin, own_target)):
+            bonus = 50
+    fields = []
+    for p in destination.worlds:
+        if "interdictor" not in p.buildings or not hostile(game, owner, p.owner):
+            continue
+        benefits = game.bonuses_for(p.owner)
+        fields.append((max(25, benefits.get("interdiction_slow", 0)), max(5, benefits.get("interdiction_range", 0))))
+    slow, radius = max(fields, default=(0, 0))
+    if game.bonuses_for(owner).get("field_stabilization"):
+        slow /= 2
+    return bonus, float(min(radius, distance_ly(origin, destination))), slow
+
+
+def duration(origin, destination, speed_bonus=0, *, cruise_speed=SHIP_SPEED,
+             route_bonus=0, approach_range=0, approach_slow=0):
+    if origin.id == destination.id:
+        return 0
+    distance = distance_ly(origin, destination)
+    speed = 100*cruise_speed*(1+speed_bonus/100)*(1+route_bonus/100)
+    protected = min(distance, approach_range)
+    time = (distance-protected)/speed+protected/(speed*(1-approach_slow/100))
+    return max(1, math.ceil(time-1e-10))
+
+
+def position(game, ship):
+    origin = game.systems[ship.system_id]
+    if not ship.in_transit:
+        return origin.x, origin.y
+    destination = game.systems[ship.destination]
+    progress = 1-ship.turns_remaining/ship.travel_total
+    if ship.approach_slow:
+        distance = distance_ly(origin, destination)
+        free = distance-ship.approach_range
+        # Normalize the two physical speed segments to whole game turns.
+        scaled_time = progress*(free+ship.approach_range/(1-ship.approach_slow/100))
+        travelled = min(scaled_time, free)+max(0, scaled_time-free)*(1-ship.approach_slow/100)
+        progress = travelled/distance
+    return origin.x+(destination.x-origin.x)*progress, origin.y+(destination.y-origin.y)*progress

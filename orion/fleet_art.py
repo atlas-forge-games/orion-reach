@@ -16,6 +16,13 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
         if facing:
             values = [(-b*facing, a*facing) for a, b in values]
         return [(round(x+a*scale), round(y+b*scale)) for a, b in values]
+    if kind == "missile_base":
+        pg.draw.polygon(surface, (31, 49, 61), points([(-25, -15), (0, -29), (25, -15), (25, 15), (0, 29), (-25, 15)]))
+        pg.draw.polygon(surface, color, points([(-25, -15), (0, -29), (25, -15), (25, 15), (0, 29), (-25, 15)]), max(1, round(scale)))
+        pg.draw.circle(surface, color, (round(x), round(y)), max(2, round(12*scale)), max(1, round(2*scale)))
+        for offset in (-17, 0, 17):
+            pg.draw.line(surface, INK, points([(offset, -7)])[0], points([(offset, -25)])[0], max(2, round(3*scale)))
+        return
     if kind in ("cruiser", "battleship"):
         heavy = kind == "battleship"
         width = 17 if heavy else 12

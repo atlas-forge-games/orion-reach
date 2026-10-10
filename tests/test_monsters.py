@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -384,7 +385,10 @@ class GuardianSaveTests(unittest.TestCase):
         for ship in legacy["combat"]["ships"]:
             ship.pop("design")
             ship.pop("shields")
-        self.assertEqual(GameState.from_dict(legacy, version=16), game)
+        expected = copy.deepcopy(game)
+        expected.combat.accuracy = False
+        expected.combat.shots_fired = 0
+        self.assertEqual(GameState.from_dict(legacy, version=16), expected)
         self.assertEqual(game.to_dict(), original)
 
     def test_v15_load_does_not_add_guardians_or_change_worlds_and_orders(self):
@@ -537,6 +541,7 @@ class GuardianUITests(unittest.TestCase):
         app.render()
         self.assertFalse(any(b.key.startswith("guardian_") for b in app.buttons))
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_new_guardian_weapons_animate_and_destroy_ships_in_the_ui(self):
         app = self.app
         for kind in ("ancient_sentinel", "void_leviathan"):
@@ -559,6 +564,7 @@ class GuardianUITests(unittest.TestCase):
             app.render()
             self.assertEqual(GameState.from_dict(app.game.to_dict()), app.game)
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_player_can_click_monster_to_fire_and_destruction_animates(self):
         app = self.app
         app.game, guardian, ships = encounter(kinds=("frigate",), solo=True)
@@ -569,6 +575,7 @@ class GuardianUITests(unittest.TestCase):
         app.render()
         target = next(b for b in app.buttons if b.key == f"combat_ship_{guardian.combat_id}")
         target.action()
+        app.combat_action("fire")
         self.assertEqual(app.game.combat.status, "player_victory")
         self.assertTrue(app.combat_animation.destroyed)
         self.assertEqual(app.combat_animation.target_id, guardian.combat_id)

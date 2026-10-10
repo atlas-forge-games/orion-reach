@@ -8,7 +8,7 @@ from . import raiding, tomb_worlds
 class NewsEntry:
     turn: int
     system_id: int
-    planet_id: int
+    planet_id: int | None
     category: str
     headline: str
     detail: str
@@ -22,13 +22,20 @@ def entries(game):
     rows += [NewsEntry(r.turn, r.system_id, r.planet_id, "VARKESH RAID",
                        raiding.headline(game, r), raiding.outcome_text(game, r), r.id)
              for r in raiding.news(game)]
-    return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id, n.planet_id), reverse=True)
+    rows += [NewsEntry(r.turn, r.system_id, None, "HOSTILE SENSOR CONTACT",
+                      f"Hostile fleet detected near {game.systems[r.system_id].name}.",
+                      f"{game.empire_name_for(r.owner)} · "+(f"{r.count} ships" if r.count is not None else "Ship count unknown")+
+                      ". Open the galaxy sensor overlay for the latest contact positions.", r.id)
+             for r in game.sensor_reports if r.observer == "player"]
+    return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id, n.planet_id if n.planet_id is not None else -1), reverse=True)
 
 
 def unread_count(game):
-    return tomb_worlds.unread_count(game)+sum(r.id > game.raid_news_read for r in raiding.news(game))
+    return (tomb_worlds.unread_count(game)+sum(r.id > game.raid_news_read for r in raiding.news(game))+
+            sum(r.observer == "player" and r.id > game.sensor_news_read for r in game.sensor_reports))
 
 
 def mark_read(game):
     game.news_read_turn = game.turn
     game.raid_news_read = game.next_raid_id-1
+    game.sensor_news_read = game.next_sensor_report_id-1

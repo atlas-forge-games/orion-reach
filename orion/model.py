@@ -18,6 +18,9 @@ from . import monsters as monster_rules
 from . import ground_combat as ground_rules
 from . import tomb_worlds as tomb_rules
 from . import raiding as raid_rules
+from . import defenses as defense_rules
+from . import navigation
+from . import sensors
 from .races import RACES, default_rival_race
 from .home_systems import name_home
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
@@ -112,6 +115,10 @@ class Ship:
     departure_pending: bool = False
     cruise_speed: float = SHIP_SPEED  # Snapshot so balance updates do not change saved flights.
     design: ShipDesign | None = None
+    route_bonus: int = 0
+    approach_range: float = 0.0
+    approach_slow: float = 0
+    bombarded_turn: int = 0
 
     def __post_init__(self):
         if self.hull is None:
@@ -138,7 +145,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=24):
+    def from_dict(cls, data, systems, *, version=25):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -163,18 +170,32 @@ class Ship:
         speeds = (0, 25, 50, 75, 87.5, 125, 162.5) if version >= 23 else (0, 25, 50, 75)
         if type(speed_bonus) not in (int, float) or speed_bonus not in speeds:
             raise ValueError
+        route = {key: data[key] if version >= 25 else default for key, default in
+                 (("route_bonus", 0), ("approach_range", 0.0), ("approach_slow", 0), ("bombarded_turn", 0))}
+        if (type(route["route_bonus"]) is not int or route["route_bonus"] not in (0, 25, 50)
+                or type(route["approach_range"]) not in (int, float) or not math.isfinite(route["approach_range"])
+                or not 0 <= route["approach_range"] <= 8
+                or type(route["approach_slow"]) not in (int, float) or route["approach_slow"] not in (0, 12.5, 20, 25, 40)
+                or bool(route["approach_slow"]) != bool(route["approach_range"])
+                or not _integer(route["bombarded_turn"], 0, 1_000_000)):
+            raise ValueError("Invalid voyage modifiers")
         if destination is None:
-            if not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != SHIP_SPEED:
+            if (not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != SHIP_SPEED
+                    or route["route_bonus"] or route["approach_range"] or route["approach_slow"]):
                 raise ValueError
         else:
             if not _integer(destination, 0, len(systems)-1) or destination == data["system_id"]:
                 raise ValueError
-            expected = travel_turns(systems[data["system_id"]], systems[destination], speed_bonus, cruise_speed=cruise_speed)
+            if route["approach_range"] > distance_ly(systems[data["system_id"]], systems[destination])+1e-9:
+                raise ValueError("Interdiction range exceeds the voyage")
+            expected = navigation.duration(systems[data["system_id"]], systems[destination], speed_bonus, cruise_speed=cruise_speed,
+                                           **{k: v for k, v in route.items() if k != "bombarded_turn"})
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
             if pending and remaining != total:
                 raise ValueError
         record = dict(data)
+        record.update(route)
         record["design"] = design
         record["hull"] = hull
         record["speed_bonus"] = speed_bonus
@@ -272,6 +293,9 @@ class Planet:
     garrison: int = 0
     militia_losses: int = 0
     slaves: int = 0  # Population units; work and consume food exactly like citizens.
+    shield_points: int = 0
+    battery_hull: int = 0
+    bombarded_turn: int = 0
 
     @property
     def workforce(self):
@@ -359,7 +383,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=24):
+    def from_dict(cls, data, expected_id, *, version=25):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -376,6 +400,14 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        for key, maximum in (("shield_points", 200), ("battery_hull", 40), ("bombarded_turn", 1_000_000)):
+            if version < 25:
+                record[key] = 0
+            if not _integer(record[key], 0, maximum):
+                raise ValueError("Invalid planetary defenses")
+        if ((record["shield_points"] and "planetary_shield" not in record.get("buildings", []))
+                or (record["battery_hull"] and "missile_base" not in record.get("buildings", []))):
+            raise ValueError("Defense health without a building")
         if version < 23:
             record["slaves"] = 0
         if (not _integer(record["slaves"], 0, raid_rules.SLAVE_CAPACITY)
@@ -539,6 +571,10 @@ class GameState:
     raid_events: list[raid_rules.RaidEvent] = field(default_factory=list)
     next_raid_id: int = 1
     raid_news_read: int = 0
+    sensor_contacts: list[sensors.Contact] = field(default_factory=list)
+    sensor_reports: list[sensors.SensorReport] = field(default_factory=list)
+    next_sensor_report_id: int = 1
+    sensor_news_read: int = 0
 
     @property
     def opponents(self):
@@ -559,7 +595,8 @@ class GameState:
         return [s for s in self.ships if s.owner != owner and not s.in_transit and s.system_id == system_id]
 
     def opponents_at(self, system_id, owner=PLAYER):
-        return [enemy for enemy in self.owners if enemy != owner and self.fleet_at(system_id, enemy)]
+        return [enemy for enemy in self.owners if enemy != owner and
+                (self.fleet_at(system_id, enemy) or defense_rules.bases(self, system_id, enemy))]
 
     def eliminate_defeated(self):
         defeated = {owner for owner in self.owners if not self.colony_systems(owner)}
@@ -726,10 +763,21 @@ class GameState:
         empire.research, discovered = empire.technology.spend(empire.research)
         if discovered and owner != PLAYER:
             self.rival_event(f"Discovered {discovered.name}.", turn=self.turn, owner=owner)
+        if discovered:
+            exploration_rules.refresh(self)
         return discovered
 
     def planet_yields(self, planet):
         return colony_yields(planet, self.bonuses_for(planet.owner))
+
+    def planet_maintenance(self, planet):
+        return colony_maintenance(planet, self.bonuses_for(planet.owner))
+
+    def bombardment_error(self, system_id, planet_id, owner=PLAYER):
+        return defense_rules.bombardment_error(self, system_id, planet_id, owner)
+
+    def bombard(self, system_id, planet_id, owner=PLAYER):
+        return defense_rules.bombard(self, system_id, planet_id, owner)
 
     def population_report(self, planet):
         return population_rules.report(planet, self.bonuses_for(planet.owner or PLAYER))
@@ -777,7 +825,9 @@ class GameState:
         return max(1, math.ceil(self.project_spec(item_id).credit_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER):
-        return travel_turns(origin, destination, self.ship_speed_bonus(owner))
+        bonus, radius, slow = navigation.route_modifiers(self, origin, destination, owner)
+        return navigation.duration(origin, destination, self.ship_speed_bonus(owner),
+                                   route_bonus=bonus, approach_range=radius, approach_slow=slow)
 
     def ship_speed_bonus(self, owner=PLAYER):
         bonuses = self.bonuses_for(owner)
@@ -855,7 +905,8 @@ class GameState:
 
     def rival_event(self, message, *, turn=None, owner=RIVAL):
         empire = self._empire(owner)
-        empire.events.append(AIEvent(self.turn+1 if turn is None else turn, message))
+        # Orders occur now; an invasion can end this turn before the year advances.
+        empire.events.append(AIEvent(self.turn if turn is None else turn, message))
         empire.events = empire.events[-12:]
 
     def opponent_home(self):
@@ -941,6 +992,10 @@ class GameState:
             return "Establish a colony before constructing buildings."
         if planet.owner != owner:
             return "This colony belongs to another empire."
+        technology = BUILDINGS[building_id].technology
+        if technology and technology not in self.research_state(owner).completed:
+            from .research import TECHNOLOGIES
+            return "Requires "+TECHNOLOGIES[technology].name+"."
         if BUILDINGS[building_id].unique and (building_id in planet.buildings or
                 any(p.item_id == building_id for p in planet.construction_queue)):
             return "Only one of this building is allowed per colony."
@@ -1017,6 +1072,7 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         self._empire(owner).credits -= self.buy_construction_cost(system_id, planet_id)
         project = planet.finish_current_project(project=True)
+        defense_rules.commissioned(self, planet, project.item_id)
         self._complete_ship(project, system_id, owner)
         return project.item_id
 
@@ -1100,6 +1156,7 @@ class GameState:
         ship.turns_remaining = ship.travel_total = ship.speed_bonus = 0
         ship.departure_pending = False
         ship.cruise_speed = SHIP_SPEED
+        ship.route_bonus, ship.approach_range, ship.approach_slow = 0, 0.0, 0
 
     def cancel_departures(self, ship_ids, *, owner=PLAYER):
         """Cancel a whole selection atomically, only before its first travel step."""
@@ -1124,6 +1181,8 @@ class GameState:
         exploration_rules.refresh(self)
         duration = self.travel_turns(self.systems[ship.system_id], self.systems[destination], ship.owner)
         ship.speed_bonus = self.ship_speed_bonus(ship.owner)
+        ship.route_bonus, ship.approach_range, ship.approach_slow = navigation.route_modifiers(
+            self, self.systems[ship.system_id], self.systems[destination], ship.owner)
         ship.cruise_speed = SHIP_SPEED
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
@@ -1187,7 +1246,9 @@ class GameState:
         self._require_colony(planet, owner)
         if not _integer(building_index, 0, len(planet.buildings)-1):
             raise RuleError("That building is no longer on this planet.")
-        return planet.buildings.pop(building_index)
+        identifier = planet.buildings.pop(building_index)
+        defense_rules.normalize(planet)
+        return identifier
 
     @property
     def empire_rates(self):
@@ -1252,6 +1313,7 @@ class GameState:
         for system in self.systems:
             for planet in system.worlds:
                 for project in planet.advance_construction(self.bonuses_for(planet.owner), projects=True):
+                    defense_rules.commissioned(self, planet, project.item_id)
                     item_id = project.item_id
                     self._complete_ship(project, system.id, planet.owner)
                     message = f"{project.spec.name} on {planet.name}"
@@ -1264,6 +1326,7 @@ class GameState:
                             alerts.append(f"Rival gate completed at {location}: five charging turns remain")
         self.turn += 1
         self.year += 1
+        defense_rules.advance(self)
         self.credits += income
         if income < 0:
             alerts.append(f"Budget deficit: {income} CR/turn after building maintenance")
@@ -1307,7 +1370,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=24):
+    def from_dict(cls, data, *, version=25):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1443,6 +1506,11 @@ class GameState:
                 game.fog_of_war = data["fog_of_war"]
                 game.exploration = exploration_rules.ExplorationState.from_dict(data["exploration"], game, version=version)
             # Older games retain the completely revealed map they started with.
+            if version >= 25:
+                sensors.load(game, data)
+                if (any(s.bombarded_turn > game.turn for s in game.ships)
+                        or any(p.bombarded_turn > game.turn for s in game.systems for p in s.worlds)):
+                    raise ValueError("Bombardment timestamp is in the future")
             return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc

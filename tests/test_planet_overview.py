@@ -231,6 +231,7 @@ class WorkforceSaveTests(unittest.TestCase):
             for row in expected["systems"]+expected["exploration"]["surveys"]:
                 for world in row["worlds"]:
                     world["farmers"], world["scientists"] = min(2, world["population"]), 0
+            expected.update(sensor_contacts=[], sensor_reports=[], next_sensor_report_id=1, sensor_news_read=0)
             self.assertEqual(restored.to_dict(), expected)
             restored.move_worker(0, 2, "workers", "scientists")
             resumed = store.load(store.save(restored))[0]

@@ -6,6 +6,7 @@ from .buildings import BUILDINGS
 from .building_art import draw_building_art
 from .production import MAX_QUEUE
 from .model import PLAYER
+from .research import building_maintenance
 from .planet_art import draw_planet
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, panel, shorten, text
 
@@ -21,10 +22,17 @@ def draw_planet_tabs(app, active):
 
 
 def compact_yields(game, definition, planet):
+    benefits = game.bonuses_for(planet.owner)
+    if definition.id == "planetary_shield":
+        return f"{max(100, benefits.get('shield_capacity', 0))} shield points · +25/peaceful turn"
+    if definition.id == "interdictor":
+        return f"{max(25, benefits.get('interdiction_slow', 0))}% hostile slowdown within {max(5, benefits.get('interdiction_range', 0))} ly"
+    if definition.special_effect:
+        return definition.special_effect
     if definition.training:
         return f"+{definition.training} TROOP · CAP {definition.garrison_limit}"
     if definition.defence_bonus:
-        return f"+{definition.defence_bonus}% DEFENCE"
+        return f"+{definition.defence_bonus+game.bonuses_for(planet.owner).get('fortification_bonus', 0)}% DEFENCE"
     values = game.building_yields(definition, planet)
     parts = [f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v]
     if definition.food:
@@ -64,7 +72,7 @@ def draw_colony(app):
     food = game.population_report(planet)
     food_color = RED if food.balance < 0 else GOLD if food.balance == 0 else CYAN
     stats = [("INDUSTRY / TURN", f"{industry} IND", "Construction on this world", CYAN),
-             ("NET INCOME / TURN", f"{income:+} CR", f"{income+planet.maintenance_per_turn} gross − {planet.maintenance_per_turn} upkeep", RED if income < 0 else INK),
+             ("NET INCOME / TURN", f"{income:+} CR", f"{income+game.planet_maintenance(planet)} gross − {game.planet_maintenance(planet)} upkeep", RED if income < 0 else INK),
              ("RESEARCH / TURN", f"+{science} RP", "Empire research project", CYAN),
              ("FOOD / CONSUMED", f"{food.produced} / {food.consumed}", f"{food.balance:+} food / turn · local", food_color),
              ("NATIVE / SLAVES" if planet.slaves else "POPULATION / LIMIT",
@@ -80,7 +88,11 @@ def draw_colony(app):
     building_projects = planet.building_projects
     text(surface, f"{len(planet.buildings)} built + {len(building_projects)} reserved / {planet.building_capacity}",
          (727, 385), 11, MUTED, "mono", right=True)
-    text(surface, "CONSTRUCTION CATALOGUE", (751, 385), 11, GOLD, "mono", 2)
+    text(surface, "CATALOGUE", (751, 385), 10, GOLD, "mono", 2)
+    app.button("colony_economy", "Economy & troops", (881, 378, 242, 26),
+               lambda: setattr(app, "colony_build_page", 0), "primary" if app.colony_build_page == 0 else "normal")
+    app.button("colony_infrastructure", "Infrastructure", (1133, 378, 243, 26),
+               lambda: setattr(app, "colony_build_page", 1), "primary" if app.colony_build_page == 1 else "normal")
     estimates = game.queue_estimates(planet)
     for index in range(12):
         x, y = 64+(index%4)*168, 414+(index//4)*94
@@ -101,7 +113,7 @@ def draw_colony(app):
             draw_building_art(surface, building_id, (x+6, y+5, 44, 34))
             text(surface, "OPERATIONAL", (x+52, y+20), 8, CYAN, "mono")
             text(surface, definition.name, (x+12, y+42), 13, INK)
-            text(surface, compact_yields(game, definition, planet), (x+12, y+63), 10, MUTED)
+            text(surface, shorten(compact_yields(game, definition, planet), 136, 9), (x+12, y+63), 9, MUTED)
         elif index < planet.used_slots:
             queue_index, project = building_projects[index-len(planet.buildings)]
             definition = BUILDINGS[project.item_id]
@@ -119,8 +131,9 @@ def draw_colony(app):
             text(surface, "Choose a building" if planet.colonized else "Colony required", (x+12, y+65), 10, FAINT)
         app.button(f"colony_slot_{index}", "", rect, lambda i=index: app.select_colony_slot(i), "hotspot")
 
-    # Fit all seven building choices above the bottom controls.
-    for i, definition in enumerate(BUILDINGS.values()):
+    catalogue = list(BUILDINGS.values())
+    page = catalogue[:7] if app.colony_build_page == 0 else catalogue[7:]
+    for i, definition in enumerate(page):
         x, y = 751, 410+i*57
         panel(surface, (x, y, 625, 53))
         draw_building_art(surface, definition.id, (x+7, y+4, 54, 45))
@@ -129,7 +142,7 @@ def draw_colony(app):
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
-        text(surface, shorten(f"{price} CR · {definition.work_cost} work · {eta} · Upkeep {definition.maintenance} CR/turn", 410, 10),
+        text(surface, shorten(f"{price} CR · {definition.work_cost} work · {eta} · Upkeep {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR/turn", 410, 10),
              (x+70, y+38), 10, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
@@ -138,6 +151,8 @@ def draw_colony(app):
             label, hint = "Locked", "Uncolonized"
         elif planet.owner != PLAYER:
             label, hint = "Rival", "Survey only"
+        elif definition.technology and definition.technology not in game.research_state(planet.owner).completed:
+            label, hint = "Research", "Tech required"
         elif planet.free_slots <= 0:
             label, hint = "Full", "No free slots"
         elif len(planet.construction_queue) >= MAX_QUEUE:
@@ -157,7 +172,7 @@ def draw_colony(app):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, definition.name, (82, 724), 18, INK)
         text(surface, shorten(building_effect(game, definition, planet), 451, 11), (82, 750), 11, CYAN)
-        text(surface, f"Maintenance: {definition.maintenance} CR/turn per building", (82, 774), 10, MUTED)
+        text(surface, f"Maintenance: {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR/turn per building", (82, 774), 10, MUTED)
         app.button("demolish_building", "Demolish", (549, 729, 156, 45),
                    lambda i=slot: app.demolish_request(i), enabled=planet.owner == PLAYER)
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:

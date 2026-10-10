@@ -30,6 +30,8 @@ from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
 from .news_view import NEWS_PER_PAGE, draw_news
 from . import news as news_rules
+from . import defenses, sensors
+from .sensor_view import draw_coverage, draw_contacts, draw_contact_panel
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
@@ -97,6 +99,7 @@ class App:
         self.pause_return="galaxy"
         self.campaign_view="galaxy"
         self.colony_slot=None
+        self.colony_build_page=0
         self.worker_source=None
         self.production_page=0
         self.catalog_page=0
@@ -269,6 +272,54 @@ class App:
         self.exploration_return_selection=(0,None)
         self.exploration_page=0
         self.news_page=0
+        self.show_sensors=False
+        self.sensor_contact_id=None
+
+    def toggle_sensors(self):
+        self.show_sensors=not self.show_sensors
+        if self.show_sensors and not sensors.centers(self.game):
+            self.toast("Research Deep-space Radar to scan around your colonies.")
+
+    def open_sensor_map(self,system_id):
+        self.close_fleet_popup()
+        self.route_ship_id=None
+        self.game.selected_system=system_id
+        self.game.selected_planet=None
+        self.sensor_contact_id=None
+        self.show_sensors=True
+        self.go("galaxy")
+
+    def open_sensor_contact(self,identifier):
+        self.close_fleet_popup()
+        self.route_ship_id=None
+        self.sensor_contact_id=identifier
+        self.focus="sensor_close"
+
+    def close_sensor_contact(self):
+        self.sensor_contact_id=None
+        self.focus="sensor_overlay"
+
+    def bombard_request(self):
+        game=self.game
+        sid,pid=game.selected_system,game.selected_planet
+        reason=game.bombardment_error(sid,pid)
+        if reason:
+            self.toast(reason,True)
+            return
+        planet=game.planet_at(sid,pid)
+        shield_loss,troop_loss=defenses.bombardment_forecast(game,sid,pid)
+        def execute():
+            try:
+                report=game.bombard(sid,pid)
+                self.save_game(autosave=True)
+                self.toast(report.message)
+            except RuleError as exc:
+                self.toast(exc,True)
+        self.confirm("Bombard "+planet.name+"?",
+                     f"Expected losses: {shield_loss} shield points and {troop_loss} defending troops. "
+                     f"The shield currently has {planet.shield_points} points and absorbs fire before troops take damage. "
+                     "Civilian population is unaffected. Each armed ship can bombard once per turn. "
+                     "This ends treaties and sets relations to -100.","Bombard defenses",execute)
 
     def viewed_fleet(self):
         return fleet_containing(self.game.visible_ships(),self.fleet_anchor_id)
@@ -282,6 +333,7 @@ class App:
         return ships
 
     def open_map_fleet(self,ship_id):
+        self.sensor_contact_id=None
         ships=fleet_containing(self.game.visible_ships(),ship_id)
         if not ships:
             self.toast("That fleet is no longer available.",True)
@@ -445,6 +497,7 @@ class App:
             self.toast(exc,True)
 
     def select_star(self,system_id):
+        self.sensor_contact_id=None
         if self.map_order_ids:
             self.send_map_fleet(system_id)
         elif self.fleet_popup:
@@ -531,6 +584,8 @@ class App:
         self.research_return="galaxy"
         self.research_return_selection=(0,None)
         self.research_branch="construction"
+        self.research_mode="foundations"
+        self.research_page=0
         self.objectives_return="galaxy"
         self.gate_colony_index=0
 
@@ -610,11 +665,9 @@ class App:
         elif self.screen in GAME_SCREENS:
             self.research_return=self.screen
             self.research_return_selection=(self.game.selected_system,self.game.selected_planet)
-            if self.game.technology.active:
-                branch=TECHNOLOGIES[self.game.technology.active].branch
-                if branch in BRANCHES:
-                    self.research_branch=branch
             self.go("research")
+            if self.game.technology.active and TECHNOLOGIES[self.game.technology.active].branch in BRANCHES:
+                self.show_research_technology(self.game.technology.active)
 
     def close_research(self):
         self.game.selected_system,self.game.selected_planet=self.research_return_selection
@@ -622,7 +675,27 @@ class App:
 
     def select_research_branch(self,identifier):
         self.research_branch=identifier
+        self.research_page=0
         self.focus=f"research_branch_{identifier}"
+
+    def set_research_mode(self,mode):
+        self.research_mode=mode
+        self.research_page=0
+
+    def change_research_page(self,delta):
+        items=[t for t in TECHNOLOGIES.values() if t.branch==self.research_branch and not t.exclusive]
+        self.research_page=max(0,min(max(0,(len(items)-1)//4),self.research_page+delta))
+
+    def show_research_technology(self,identifier):
+        technology=TECHNOLOGIES[identifier]
+        if technology.branch not in BRANCHES:
+            self.open_objectives()
+            return
+        self.select_research_branch(technology.branch)
+        self.set_research_mode("foundations" if technology.exclusive else "projects")
+        if not technology.exclusive:
+            items=sorted((t for t in TECHNOLOGIES.values() if t.branch==technology.branch and not t.exclusive),key=lambda t:(t.tier,t.name))
+            self.research_page=next(i//4 for i,t in enumerate(items) if t.id==identifier)
 
     def research_request(self,identifier):
         error=self.game.research_error(identifier)
@@ -630,7 +703,7 @@ class App:
             self.toast(error,True)
             return
         technology=TECHNOLOGIES[identifier]
-        alternative=next((t for t in choices(technology.branch,technology.tier) if t.id!=identifier),None)
+        alternative=next((t for t in choices(technology.branch,technology.tier) if t.id!=identifier),None) if technology.exclusive else None
         def choose():
             try:
                 discovered=self.game.choose_research(identifier)
@@ -640,8 +713,8 @@ class App:
                 self.toast(exc,True)
         body=(f"Research {technology.name} for {technology.cost} RP. {alternative.name} becomes unavailable. "
               "This choice is permanent; banked points are applied immediately." if alternative else
-              "Research Ascension Theory for 500 RP to unlock the Ascension Gate. Banked points are applied immediately; "
-              "your normal research output supplies the rest.")
+              f"Research {technology.name} for {technology.cost} RP. {technology.description} "
+              "Banked points are applied immediately; your research output supplies the rest.")
         self.confirm("Commit to this technology?",body,"Start research",choose)
 
     def focus_empire_row(self):
@@ -1020,8 +1093,8 @@ class App:
         if error:
             self.toast(error,True)
             return
-        own=len(self.game.fleet_at(system_id))
-        rival=len(self.game.fleet_at(system_id,target))
+        own=len(self.game.fleet_at(system_id))+len(defenses.bases(self.game,system_id,PLAYER))
+        rival=len(self.game.fleet_at(system_id,target))+len(defenses.bases(self.game,system_id,target))
         def engage():
             try:
                 self.game.start_combat(system_id,target=target)
@@ -1039,7 +1112,7 @@ class App:
                          "Face guardian",engage)
             return
         self.confirm("Engage the opposing fleet?",
-                     f"Commit your {own} ships against {rival} ships of {self.game.empire_name_for(target)} at {self.game.systems[system_id].name}. "
+                     f"Commit your {own} ships and defense units against {rival} units of {self.game.empire_name_for(target)} at {self.game.systems[system_id].name}. "
                      "Combat ends trade and research agreements and sets relations to -100. Ship losses are permanent.",
                      "Engage fleet",engage)
 
@@ -1053,7 +1126,7 @@ class App:
             self.combat_ship_id=ship_id
         else:
             self.combat_target_id=ship_id
-            self.combat_action("fire")
+            self.focus="combat_fire"
 
     def after_combat_action(self,event):
         self.combat_animation=CombatAnimation.from_action(self.game.combat,event)
@@ -1084,8 +1157,11 @@ class App:
         try:
             event={"kind":action}
             if action=="fire":
+                target=self.game.combat.ship(self.combat_target_id)
+                shields=target.shields if target else 0
                 damage=self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
-                event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage)
+                event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage,
+                             missed=damage==0 and target.shields==shields)
             elif action=="hold":
                 self.game.combat_hold(self.combat_ship_id)
             elif action=="retreat":
@@ -1421,7 +1497,7 @@ class App:
         if event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and self.fleet_popup and not self.dialog and event.y:
             self.change_manifest_page(-1 if event.y>0 else 1)
         elif (event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and not self.dialog and event.y
-              and not self.map_order_ids and self.route_ship_id is None and SYSTEM_PANEL.collidepoint(self.mouse)):
+              and not self.map_order_ids and self.sensor_contact_id is None and self.route_ship_id is None and SYSTEM_PANEL.collidepoint(self.mouse)):
             self.change_galaxy_planet_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="exploration" and not self.dialog and event.y:
             self.change_exploration_page(-1 if event.y>0 else 1)
@@ -1448,7 +1524,9 @@ class App:
                 self.field=None
                 pg.key.stop_text_input()
             elif self.screen=="galaxy":
-                if self.fleet_popup or self.map_order_ids:
+                if self.sensor_contact_id is not None:
+                    self.close_sensor_contact()
+                elif self.fleet_popup or self.map_order_ids:
                     self.cancel_map_order()
                 else:
                     self.go("fleets") if self.route_ship_id is not None else self.pause()
@@ -1547,6 +1625,8 @@ class App:
                 self.advance_turn()
             elif event.key==pg.K_p:
                 self.pause()
+            elif event.key==pg.K_s and self.screen=="galaxy":
+                self.toggle_sensors()
             elif event.key==pg.K_i:
                 self.open_empire()
             elif event.key==pg.K_f:
@@ -1579,6 +1659,8 @@ class App:
                 self.change_exploration_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="production" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_production_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen=="research" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.change_research_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):
                 delta=1 if event.key==pg.K_RIGHT else -1
                 if self.screen=="galaxy":
@@ -1785,6 +1867,7 @@ class App:
         for y in range(MAP.y+40,MAP.bottom,70):
             pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,y),(MAP.right-1,y))
         text(self.canvas,"SECTOR 01 / LOCAL CLUSTER",(MAP.x+22,MAP.y+18),10,FAINT,"mono",1)
+        draw_coverage(self,MAP)
         draw_fuel_range(self,MAP)
         labels=star_label_rects(self,MAP)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
@@ -1818,9 +1901,15 @@ class App:
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)
+        if not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
+            draw_contacts(self,MAP)
+            self.button("sensor_overlay", "Sensors on · S" if self.show_sensors else "Sensor range · S",
+                        (824,187,188,28),self.toggle_sensors,"primary" if self.show_sensors else "normal")
         star=state.systems[preview]
         if not self.fleet_popup and not self.map_order_ids:
-            if self.route_ship_id is None:
+            if self.sensor_contact_id is not None:
+                draw_contact_panel(self)
+            elif self.route_ship_id is None:
                 draw_system_panel(self,star)
             else:
                 draw_system_intelligence(self,star)
@@ -1856,7 +1945,7 @@ class App:
         self.button("save","Save game",(264,820,229,54),self.save_game,"command",icon="save",shortcut="F5")
         text(self.canvas,"EMPIRE ECONOMY",(585,821),10,GOLD,"mono",2)
         income,research=state.empire_rates
-        upkeep=sum(p.maintenance_per_turn for s in state.systems for p in s.worlds if p.owner == PLAYER)
+        upkeep=sum(state.planet_maintenance(p) for s in state.systems for p in s.worlds if p.owner == PLAYER)
         text(self.canvas,f"{income:+} CR net · {upkeep} upkeep · +{research} RP/turn",(585,844),12,RED if income < 0 else MUTED)
         self.button("end_turn","End turn",(1081,813,295,61),self.advance_turn,"command_primary",
                     subtitle=f"Turn {state.turn+1} · Year {state.year+1}",icon="turn",shortcut="E")

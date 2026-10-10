@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -108,6 +109,7 @@ class CombatRulesTests(unittest.TestCase):
         unarmed.ship_at(1).departure_pending = False
         self.assertIn("orbit", unarmed.engagement_error(0, RIVAL))
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_fixed_damage_side_turns_prevent_duplicate_or_friendly_attacks(self):
         game = encounter(own=("frigate", "frigate"), enemy=("frigate", "colony_ship"))
         for attacker, target in ((True, 3), (3, 1), (1, 2), (None, 3), (1, None), (1, 99)):
@@ -151,6 +153,7 @@ class CombatRulesTests(unittest.TestCase):
         self.assertEqual(game.ships_owned_by(), [])
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_victory_commits_losses_damage_and_keeps_planet_ownership(self):
         game = encounter()
         colonies = [(p.owner, p.population, p.buildings.copy()) for s in game.systems for p in s.worlds]
@@ -170,6 +173,7 @@ class CombatRulesTests(unittest.TestCase):
             game.finish_combat()
         self.assertEqual(game.next_ship_id, 3)
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_retreat_moves_all_survivors_to_friendly_system_with_damage_and_normal_eta(self):
         game = encounter(own=("frigate", "colony_ship"), start=False)
         friend = next(s for s in game.systems[1:] if s.id != game.opponent.home_system and s.worlds)
@@ -443,6 +447,7 @@ class CombatScreenTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "combat")
         self.assertEqual(self.app.game.diplomacy.relations, -100)
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_battle_controls_pause_save_reload_and_victory_cannot_advance_strategic_time(self):
         self.click("system_engage")
         self.click("dialog_ok")
@@ -452,6 +457,7 @@ class CombatScreenTests(unittest.TestCase):
         self.click("combat_cell_7_4")
         self.finish_animation()
         self.click("combat_ship_2")
+        self.click("combat_fire")
         self.assertEqual(game.combat.active_owner, PLAYER)
         self.assertFalse(next(b for b in self.app.buttons if b.key == "combat_fire").enabled)
         before = game.to_dict()
@@ -504,6 +510,7 @@ class CombatScreenTests(unittest.TestCase):
         self.assertIsNone(self.app.game.combat)
         self.assertEqual(self.app.game.turn, 1)
 
+    @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_all_ships_are_on_the_battlefield_and_clicking_enemy_fires(self):
         self.app.game = encounter(own=("frigate",)*6, enemy=("frigate",)*6)
         self.app.reset_combat_view()
@@ -512,6 +519,7 @@ class CombatScreenTests(unittest.TestCase):
         self.click("combat_cell_7_7")
         self.finish_animation()
         self.click("combat_ship_12")
+        self.click("combat_fire")
         self.assertEqual(self.app.game.combat.ship(12).hull, 15)
         self.finish_animation()
         self.assertEqual(self.app.game.combat.active_owner, PLAYER)

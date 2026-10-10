@@ -20,6 +20,7 @@ class CombatAnimation:
     destroyed: bool = False
     elapsed: float = 0.0
     weapons: tuple[str, ...] = ()
+    missed: bool = False
 
     @classmethod
     def from_action(cls, battle, action):
@@ -29,7 +30,7 @@ class CombatAnimation:
             ship, target = battle.ship(action["ship_id"]), battle.ship(action["target_id"])
             return cls("fire", ship.id, (ship.position, target.position), target.id,
                        ship.weapon, action["damage"], target.hull == 0,
-                       weapons=tuple(dict.fromkeys(w for w, _ in ship.volley(target))))
+                       weapons=tuple(dict.fromkeys(w for w, _ in ship.volley(target))), missed=action.get("missed", False))
         return None
 
     @property
@@ -56,16 +57,18 @@ class CombatAnimation:
                 pg.draw.lines(surface, (51, 91, 112), False, points, 2)
             return
         origin, target = (project(p) for p in self.path)
+        if self.missed:
+            target = (target[0]+18, target[1]-25)
         color = BEAMS[self.weapon].color
         age = self.elapsed
         for index, weapon in enumerate(self.weapons or (self.weapon,)):
             shade = BEAMS[weapon].color
             if age < .34:
-                reach = min(1, age/(.18 if weapon == "torpedo" else .1))
+                reach = min(1, age/(.18 if weapon in ("torpedo", "missile") else .1))
                 start = (origin[0], origin[1]+index*4)
                 tip = (round(start[0]+(target[0]-start[0])*reach),
                        round(start[1]+(target[1]-start[1])*reach))
-                if weapon == "torpedo":
+                if weapon in ("torpedo", "missile"):
                     tail = (round(tip[0]+(start[0]-tip[0])*.08), round(tip[1]+(start[1]-tip[1])*.08))
                     pg.draw.line(surface, shade, tail, tip, 4)
                     pg.draw.circle(surface, INK, tip, 4)
@@ -79,12 +82,12 @@ class CombatAnimation:
             impact = age-.18
             if self.destroyed:
                 self.draw_explosion(surface, target, impact)
-            elif impact < .4:
+            elif not self.missed and impact < .4:
                 radius = max(2, round(5+impact*43))
                 pg.draw.circle(surface, color, target, radius, max(1, round(4*(1-impact/.4))))
                 if impact < .15:
                     pg.draw.circle(surface, (255, 226, 164), target, max(2, round(12*(1-impact/.15))))
-            text(surface, f"−{self.damage}", (target[0]+22, target[1]-22-round(impact*22)), 19, color, "mono")
+            text(surface, "MISS" if self.missed else f"−{self.damage}" if self.damage else "SHIELD", (target[0]+22, target[1]-22-round(impact*22)), 19, color, "mono")
 
     def draw_explosion(self, surface, center, age):
         """Flash, fireball, shock ring and deterministic drifting debris."""

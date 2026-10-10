@@ -2,7 +2,7 @@
 
 import pygame as pg
 
-from . import monsters
+from . import monsters, defenses
 from .empires import empire_color
 from .planet_art import draw_planet, draw_star
 from .system_views import STAR_COLORS, visual_seed
@@ -122,8 +122,12 @@ def draw_system_panel(app, star):
         note = f"Orbit: {ships} yours · {rivals} rival ships" if live else "Stored survey · Enemy activity unknown"
         text(surface, note, (x, 670), 11, CYAN if live else MUTED)
         scan = "Scout survey complete" if star.id in game.exploration.scanned_player else "A scout can search for discoveries"
+    own_bases = len(defenses.bases(game, star.id, "player")) if live else 0
+    enemy_bases = sum(p.owner != "player" for p in defenses.bases(game, star.id)) if live else 0
+    if own_bases or enemy_bases:
+        scan = f"Missile bases: {own_bases} yours · {enemy_bases} opposing"
     opponents = game.opponents_at(star.id) if live else []
-    can_face = live and ships and (rivals or guardian_status == "alive")
+    can_face = live and (ships or own_bases) and (rivals or enemy_bases or guardian_status == "alive")
     target = app.rival_id if app.rival_id in opponents else opponents[0] if opponents else None
     reason = game.engagement_error(star.id, target=target) if can_face else None
     if can_face and len(opponents) > 1 and guardian_status != "alive":
@@ -137,5 +141,5 @@ def draw_system_panel(app, star):
     app.button("open_system", "System view" if can_face else "Full system view", (x, 707, full_width, 30),
                lambda: app.open_system(star.id), "command")
     if can_face:
-        app.button("galaxy_engage", "Face guardian" if guardian_status == "alive" else "Engage fleet",
+        app.button("galaxy_engage", "Face guardian" if guardian_status == "alive" else "Engage defenses" if enemy_bases else "Engage fleet",
                    (x+136, 707, width-136, 30), lambda: app.engage_request(star.id, target), "command", enabled=reason is None)

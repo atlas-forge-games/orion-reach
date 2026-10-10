@@ -9,7 +9,7 @@ from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .empires import empire_color
-from . import monsters
+from . import monsters, navigation
 from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
 from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
@@ -149,14 +149,9 @@ def fleet_markers(app, map_rect):
     groups = sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id))
     for ships in groups:
         ship = ships[0]
-        x, y = app.star_pos(app.game.systems[ship.system_id])
-        if ship.has_course:
-            end = app.star_pos(app.game.systems[ship.destination])
-            progress = 1-ship.turns_remaining/ship.travel_total
-            x, y = x+(end[0]-x)*progress, y+(end[1]-y)*progress
-            preferred = (x+12, y+12)
-        else:
-            preferred = (x+18, y+23)
+        nx, ny = navigation.position(app.game, ship)
+        x, y = map_rect.x+40+nx*(map_rect.w-80), map_rect.y+32+ny*(map_rect.h-64)
+        preferred = (x+12, y+12) if ship.has_course else (x+18, y+23)
         width = max(44, 32+font(11, "mono").size(str(len(ships)))[0])
         anchors.append((x, y))
         preferred_rects.append(tuple(pg.Rect(*preferred, width, 23)))
@@ -271,6 +266,10 @@ def draw_fleet_popup(app):
         distance = game.supply_distance(target.id)
         fuel = ("Saved course kept · outside current range" if keeping and outside else
                 f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range()} ly from colony")
+        route, radius, slow = ((first.route_bonus, first.approach_range, first.approach_slow) if keeping else
+                               navigation.route_modifiers(game, origin, target, PLAYER))
+        if not blocked and not outside and (route or slow):
+            fuel = f"Route speed +{route}%"+(f" · Final {radius:g} ly: −{slow:g}%" if slow else " · In fuel range")
         text(surface, shorten(fuel, 290, 11), (x+18, bottom+90), 11, RED if blocked else CYAN)
         hint = ("Colonize closer worlds or research fuel tanks." if blocked else
                 f"Click {origin.name} to cancel before End Turn." if first.departure_pending
@@ -281,6 +280,9 @@ def draw_fleet_popup(app):
         if danger:
             hint = f"Danger: {monsters.at(game, target.id).spec.name} · combat on arrival"
     else:
+        if own and (first.route_bonus or first.approach_slow):
+            details = f"Route +{first.route_bonus}% · Approach −{first.approach_slow:g}%"
+            text(surface, details, (x+18, bottom+90), 11, CYAN)
         text(surface, "Orders are locked during flight." if own else "Only your empire's ships accept orders.", (x+18, bottom+66), 12, MUTED)
         hint = "Escape or × closes this popup."
     text(surface, shorten(hint, 290, 11), (x+18, bottom+116), 11, RED if danger else GOLD if first.departure_pending else MUTED)

@@ -257,9 +257,10 @@ class PopulationSaveTests(unittest.TestCase):
                 for planet in record["worlds"]:
                     planet["growth_progress"] = 0
                     planet["farmers"], planet["scientists"] = min(2, planet["population"]), 0
+            expected.update(sensor_contacts=[], sensor_reports=[], next_sensor_report_id=1, sensor_news_read=0)
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 24)
+        self.assertEqual(SAVE_VERSION, 25)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)
