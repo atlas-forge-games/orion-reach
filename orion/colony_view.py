@@ -157,7 +157,7 @@ def draw_colony(app):
             label, hint = "Locked", "Uncolonized"
         elif planet.owner != PLAYER:
             label, hint = "Rival", "Survey only"
-        elif definition.technology and definition.technology not in game.research_state(planet.owner).completed:
+        elif definition.technology and not game.research_state(planet.owner).has_unlock(definition.technology):
             label, hint = "Research", "Tech required"
         elif planet.free_slots <= 0:
             label, hint = "Full", "No free slots"

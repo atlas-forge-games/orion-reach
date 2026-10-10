@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Local food, deterministic growth, production timing, AI and save continuity."""
 
@@ -247,6 +248,7 @@ class PopulationSaveTests(unittest.TestCase):
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 10
+            legacy_research_payload(payload)
             records = payload["game"]["systems"] + payload["game"]["exploration"]["surveys"]
             for record in records:
                 for planet in record["worlds"]:
@@ -262,9 +264,12 @@ class PopulationSaveTests(unittest.TestCase):
                     planet["farmers"], planet["scientists"] = min(2, planet["population"]), 0
             expected.update(sensor_contacts=[], sensor_reports=[], next_sensor_report_id=1, sensor_news_read=0)
             expected["diplomacy"]["introduced"] = True  # Old confirmed contacts do not replay introductions.
+            for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
+                state = empire["technology"]
+                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None)
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 27)
+        self.assertEqual(SAVE_VERSION, 28)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

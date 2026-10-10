@@ -54,7 +54,7 @@ def draw_objectives(app):
     panel(surface, (709, 286, 667, 284))
     text(surface, "02 / SCIENCE", (733, 309), 11, GOLD, "mono", 2)
     text(surface, f"{state.finished_branches} / 8 branches completed", (732, 344), 29, INK, "title")
-    text(surface, "Complete tier II in every branch. Either technology choice counts.", (734, 390), 13, MUTED)
+    text(surface, "Complete every tier in all eight branches. Either choice counts.", (734, 390), 13, MUTED)
     progress(surface, (734, 418, 616, 4), state.finished_branches/8)
     theory = TECHNOLOGIES["ascension_theory"]
     known = theory.id in state.completed

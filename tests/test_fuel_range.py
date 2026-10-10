@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Colony-based supply, slower travel, AI boundaries and real map controls."""
 
@@ -169,6 +170,7 @@ class TravelSaveTests(unittest.TestCase):
                 path = storage.save(game)
                 payload = json.loads(path.read_text())
                 payload["version"] = 14
+                legacy_research_payload(payload)
                 for record in payload["game"]["ships"]:
                     record.pop("cruise_speed")
                 path.write_text(json.dumps(payload))

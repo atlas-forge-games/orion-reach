@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Confirmed contact, private diplomacy, collective AI and persistent introductions."""
 
@@ -135,6 +136,7 @@ class ContactRulesTests(unittest.TestCase):
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 25
+            legacy_research_payload(payload)
             states = [payload["game"]["diplomacy"], *payload["game"]["other_diplomacy"].values()]
             for state in states:
                 state.pop("contact_turn")
@@ -152,7 +154,7 @@ class ContactRulesTests(unittest.TestCase):
     def test_v25_fog_migration_preserves_old_active_diplomatic_channels(self):
         game = campaign(fog_of_war=True, rival_count=3)
         game.diplomacy.trade_active = True
-        loaded = GameState.from_dict(game.to_dict(), version=25)
+        loaded = GameState.from_dict(legacy_research_payload(game.to_dict()), version=25)
         self.assertEqual(first_contact.known_opponents(loaded), ["rival"])
         self.assertTrue(loaded.diplomacy.introduced)
 

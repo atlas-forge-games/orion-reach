@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 """Varkesh movement, slave raids, population accounting, AI and save continuity."""
 
 import copy
@@ -470,7 +471,7 @@ class SlaveSaveTests(unittest.TestCase):
         for survey in data["exploration"]["surveys"]:
             for planet in survey["worlds"]:
                 planet.pop("slaves")
-        loaded = GameState.from_dict(data, version=22)
+        loaded = GameState.from_dict(legacy_research_payload(data), version=22)
         self.assertEqual(loaded, game)
         self.assertEqual(loaded.planet_at(0, 2).construction_queue[0].progress, 17)
         self.assertFalse(loaded.raid_events)
@@ -518,7 +519,7 @@ class SlaveSaveTests(unittest.TestCase):
             original = path.read_bytes()
             self.assertEqual(store.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
-            self.assertEqual(json.loads(original)["version"], 27)
+            self.assertEqual(json.loads(original)["version"], 28)
 
 
 class VarkeshInterfaceTests(unittest.TestCase):

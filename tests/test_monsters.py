@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Guardian generation, encounters, rewards, private knowledge and save continuity."""
 
@@ -392,7 +393,7 @@ class GuardianSaveTests(unittest.TestCase):
         expected = copy.deepcopy(game)
         expected.combat.accuracy = False
         expected.combat.shots_fired = 0
-        self.assertEqual(GameState.from_dict(legacy, version=16), expected)
+        self.assertEqual(GameState.from_dict(legacy_research_payload(legacy), version=16), expected)
         self.assertEqual(game.to_dict(), original)
 
     def test_v15_load_does_not_add_guardians_or_change_worlds_and_orders(self):
@@ -405,6 +406,7 @@ class GuardianSaveTests(unittest.TestCase):
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 15
+            legacy_research_payload(payload)
             payload["game"].pop("guardians")
             path.write_text(json.dumps(payload))
             before = path.read_bytes()

@@ -196,6 +196,7 @@ class EnergyRulesTests(unittest.TestCase):
         g.research = 500
         g.choose_research("compact_reactors")
         self.assertEqual(g.planet_energy(p).generated, 16)
+        g.choose_research("fusion_drives")
         g.choose_research("fusion_power")
         self.assertIsNone(g.build_error(0, 2, "fusion_plant"))
         p.buildings = ["fusion_plant"]

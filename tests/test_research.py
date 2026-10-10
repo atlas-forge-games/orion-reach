@@ -22,7 +22,7 @@ from functools import partial
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
 new_game = partial(new_game, fog_of_war=False)
 from orion.production import travel_turns
-from orion.research import BRANCHES, TECHNOLOGIES, choices
+from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
 from orion.storage import SAVE_VERSION, Storage
 
 
@@ -37,8 +37,8 @@ def discover(game, identifier, owner=PLAYER):
 
 
 class ResearchRulesTests(unittest.TestCase):
-    def test_two_exclusive_choices_at_each_of_two_tiers_in_eight_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 53))  # 32 foundations + Ascension Theory + 20 projects
+    def test_two_exclusive_choices_and_sequential_unlocks_in_eight_branches(self):
+        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 53))  # All 52 original branch technologies + Ascension Theory
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology
@@ -258,7 +258,7 @@ class ResearchSaveTests(unittest.TestCase):
             for technology in invalid:
                 data = game.to_dict()
                 target = data if owner == PLAYER else data["opponent"]
-                target["technology"] = copy.deepcopy(technology)
+                target["technology"] = dict(copy.deepcopy(technology), legacy_count=0, legacy_active=False)
                 with self.subTest(owner=owner, technology=technology), self.assertRaises(SaveError):
                     GameState.from_dict(data)
         game.queue_building(0, 2, "factory")

@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 """Research, planetary siege, navigation, sensor privacy and weapon accuracy."""
 
 import copy
@@ -15,7 +16,7 @@ from orion.designs import ShipDesign
 from orion.exploration import refresh
 from orion.ground_combat import forces
 from orion.model import GameState, RuleError, SaveError, Ship
-from orion.research import TECHNOLOGIES, choices
+from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
 from orion.storage import Storage
 from scenarios import empty_fleet_game, place_near
 
@@ -30,11 +31,11 @@ def discover(game, identifier, owner="player"):
         return
     if state.active:
         raise AssertionError("Fixture already researching")
-    if tech.tier > 1 and tech.branch != "ascension" and not any(
-            TECHNOLOGIES[t].branch == tech.branch and TECHNOLOGIES[t].tier <= 2 for t in state.completed):
-        discover(game, choices(tech.branch, 1)[0].id, owner)
-    for prerequisite in tech.requires:
-        discover(game, prerequisite, owner)
+    for tier in range(1, tech.tier):
+        if tier not in state.completed_tiers(tech.branch):
+            # Isolate navigation modifiers from the optional drive-speed bonuses.
+            option = int(tech.branch == "power" and tier <= 2)
+            discover(game, choices(tech.branch, tier)[option].id, owner)
     game._empire(owner).research += tech.cost
     game.choose_research(identifier, owner=owner)
 
@@ -56,30 +57,31 @@ def foreign_colony(game):
 
 
 class ExpansionResearchTests(unittest.TestCase):
-    def test_projects_require_foundations_and_chained_prerequisites(self):
-        game = game_at_start()
-        projects = [t for t in TECHNOLOGIES.values() if not t.exclusive]
-        self.assertEqual(len(projects), 20)
-        for technology in projects:
-            self.assertEqual(game.technology.status(technology.id), "locked")
-        discover(game, "deep_space_radar")
-        self.assertEqual(game.technology.status("long_range_sensors"), "available")
-        self.assertEqual(game.technology.status("subspace_scanners"), "locked")
-        discover(game, "quantum_targeting")
-        self.assertEqual(game.bonuses_for()["accuracy"], 30)
-        self.assertEqual(game.technology.status("long_range_sensors"), "available")
-        self.assertEqual(GameState.from_dict(game.to_dict()), game)
-
-    def test_every_project_can_be_researched_in_one_campaign(self):
+    def test_advanced_tiers_require_previous_tiers_and_allow_switching_specialization(self):
         game = game_at_start()
         for technology in TECHNOLOGIES.values():
-            if not technology.exclusive:
-                discover(game, technology.id)
-        self.assertEqual(sum(not TECHNOLOGIES[t].exclusive for t in game.technology.completed), 20)
-        self.assertEqual(game.bonuses_for()["sensor_range"], 20)
-        self.assertEqual(game.bonuses_for()["shield_capacity"], 200)
-        self.assertEqual(game.bonuses_for()["interdiction_slow"], 40)
+            if technology.tier > 2:
+                self.assertEqual(game.technology.status(technology.id), "locked")
+        discover(game, "deep_space_radar")
+        self.assertEqual(game.technology.status("long_range_sensors"), "available")
+        self.assertEqual(game.technology.status("predictive_fire_control"), "available")
+        self.assertEqual(game.technology.status("subspace_scanners"), "locked")
+        discover(game, "predictive_fire_control")
+        discover(game, "quantum_targeting")
+        self.assertEqual(game.bonuses_for()["accuracy"], 30)
+        self.assertEqual(game.technology.status("long_range_sensors"), "excluded")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
+
+    def test_every_existing_technology_remains_researchable(self):
+        from orion.legacy_research import LEGACY_TECHNOLOGIES
+        self.assertEqual(set(TECHNOLOGIES), set(LEGACY_TECHNOLOGIES))
+        for technology in TECHNOLOGIES.values():
+            if technology.branch in BRANCHES:
+                with self.subTest(technology=technology.id):
+                    game = game_at_start()
+                    discover(game, technology.id)
+                    self.assertIn(technology.id, game.technology.completed)
+                    self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_locked_infrastructure_cannot_spend_credits_or_reserve_slots(self):
         game = game_at_start()
@@ -95,16 +97,16 @@ class ExpansionResearchTests(unittest.TestCase):
         self.assertIsNotNone(game.build_error(0, 2, "planetary_shield"))
 
     def test_upgraded_generators_charge_their_actual_maintenance(self):
-        game = game_at_start()
-        planet = game.planet_at(0, 2)
-        install(game, planet, "planetary_shield")
-        install(game, planet, "interdictor")
-        self.assertEqual(game.planet_maintenance(planet), 7)
-        before = game.planet_yields(planet)[1]
-        discover(game, "barrier_fields")
-        discover(game, "subspace_interdiction")
-        self.assertEqual(game.planet_maintenance(planet), 11)
-        self.assertEqual(game.planet_yields(planet)[1], before-4)
+        for upgrade in ("barrier_fields", "subspace_interdiction"):
+            game = game_at_start()
+            planet = game.planet_at(0, 2)
+            install(game, planet, "planetary_shield")
+            install(game, planet, "interdictor")
+            self.assertEqual(game.planet_maintenance(planet), 7)
+            before = game.planet_yields(planet)[1]
+            discover(game, upgrade)
+            self.assertEqual(game.planet_maintenance(planet), 9)
+            self.assertEqual(game.planet_yields(planet)[1], before-2)
 
     def test_fortifications_improve_actual_defender_firepower(self):
         game = game_at_start()
@@ -116,15 +118,17 @@ class ExpansionResearchTests(unittest.TestCase):
         self.assertEqual((old.defence_bonus, new.defence_bonus), (50, 75))
         self.assertGreater(new.strength, old.strength)
 
-    def test_ai_researches_new_projects_after_establishing_foundations(self):
+    def test_ai_completes_earlier_tiers_before_advanced_research(self):
         game = game_at_start()
-        for branch in ("computers", "fields", "construction", "physics"):
-            discover(game, choices(branch, 1)[0].id, "rival")
-        game.headquarters("rival")[1].buildings = ["trade_center", "trade_center"]
+        for branch in BRANCHES:
+            for tier in (1, 2):
+                discover(game, choices(branch, tier)[0].id, "rival")
         game.fog_of_war = False
         game.opponent.research = 1
         ai.research_choice(game)
-        self.assertEqual(game.opponent.technology.active, "deep_space_radar")
+        active = TECHNOLOGIES[game.opponent.technology.active]
+        self.assertEqual(active.tier, 3)
+        self.assertTrue({1, 2} <= game.opponent.technology.completed_tiers(active.branch))
 
 
 class SiegeTests(unittest.TestCase):
@@ -259,6 +263,7 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(self.game.travel_turns(self.origin, self.target), expected)
 
     def test_two_jump_gates_replace_the_navigation_bonus(self):
+        discover(self.game, "colonial_navigation")
         discover(self.game, "jump_gates")
         self.planet.owner = "player"
         install(self.game, self.game.planet_at(0, 2), "jump_gate")
@@ -523,7 +528,7 @@ class AccuracyTests(unittest.TestCase):
         data = game.to_dict()
         data["combat"].pop("accuracy")
         data["combat"].pop("shots_fired")
-        restored = GameState.from_dict(data, version=24)
+        restored = GameState.from_dict(legacy_research_payload(data), version=24)
         self.assertFalse(restored.combat.accuracy)
         self.assertEqual(restored.combat_fire(first.id, second.id), 5)
         self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
@@ -555,20 +560,22 @@ class ExpansionInterfaceTests(unittest.TestCase):
         self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in self.app.buttons))
         return {b.key: b for b in self.app.buttons}
 
-    def test_projects_are_paginated_reachable_and_active_project_opens_correct_page(self):
+    def test_tiers_are_reachable_and_active_research_opens_correct_tier(self):
         app = self.app
-        app.research_branch, app.research_mode = "computers", "projects"
+        app.select_research_branch("computers")
+        app.select_research_tier(3)
         buttons = self.render("research")
         self.assertIn("research_choose_deep_space_radar", buttons)
-        self.assertTrue(buttons["research_project_next"].enabled)
-        app.change_research_page(1)
-        self.render("research")
+        self.assertEqual(sum(key.startswith("research_choose_") for key in buttons), 2)
+        self.assertNotIn("research_projects", buttons)
+        app.change_research_tier(1)
+        self.assertEqual(app.research_tier, 4)
         discover(app.game, "predictive_fire_control")
         app.game.choose_research("quantum_targeting")
         app.go("galaxy")
         app.open_research()
         app.render()
-        self.assertEqual(app.research_mode, "projects")
+        self.assertEqual(app.research_tier, 5)
         self.assertIn("research_choose_quantum_targeting", {b.key for b in app.buttons})
 
     def test_new_buildings_are_accessible_in_colony_and_surface(self):

@@ -59,7 +59,7 @@ class ExplorationState:
         return self.scanned_others.setdefault(owner, [])
 
     @classmethod
-    def from_dict(cls, data, game, *, version=27):
+    def from_dict(cls, data, game, *, version=28):
         from .model import Planet, _integer
         if version < 20 and isinstance(data, dict):
             data = {k: v for k, v in data.items() if k != "scanned_others"}

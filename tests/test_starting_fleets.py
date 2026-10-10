@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Real campaign starts and reversible orders before the strategic turn advances."""
 
@@ -166,6 +167,7 @@ class PendingDepartureTests(unittest.TestCase):
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 13
+            legacy_research_payload(payload)
             for ship in payload["game"]["ships"]:
                 ship.pop("departure_pending")
             path.write_text(json.dumps(payload))
@@ -179,7 +181,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 27)
+        self.assertEqual(SAVE_VERSION, 28)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

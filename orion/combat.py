@@ -163,7 +163,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=27):
+    def from_dict(cls, data, game, *, version=28):
         from .model import _integer, _name
         if version < 25 and isinstance(data, dict):
             data = {**data, "accuracy": False, "shots_fired": 0}

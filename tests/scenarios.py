@@ -83,6 +83,9 @@ def legacy_economy(game):
     """
     for owner in game.owners:
         game._empire(owner).resources = 120
+        state = game.research_state(owner)
+        state.legacy_count = len(state.completed)
+        state.legacy_active = state.active is not None
     for system in game.systems:
         for planet in system.worlds:
             planet.miners = 0
@@ -96,3 +99,18 @@ def legacy_economy(game):
             for q in world["construction_queue"]:
                 q["paid_credits"] = q["paid_credits"] or q["resource_cost"]
                 q["resource_cost"] = q["paid_resources"] = 0
+
+
+def legacy_research_payload(data):
+    """Represent research in pre-v28 fixtures using their real three-field schema."""
+    if isinstance(data, dict):
+        if {"completed", "active", "progress", "legacy_count", "legacy_active"} == set(data):
+            data.pop("legacy_count")
+            data.pop("legacy_active")
+        else:
+            for value in data.values():
+                legacy_research_payload(value)
+    elif isinstance(data, list):
+        for value in data:
+            legacy_research_payload(value)
+    return data

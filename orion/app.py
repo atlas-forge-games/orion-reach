@@ -24,7 +24,7 @@ from .contact_view import draw_contact
 from . import first_contact
 from .personalities import personality
 from .research_view import draw_research
-from .research import BRANCHES, TECHNOLOGIES, choices
+from .research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
 from .combat import retreat_destination
 from .combat_view import VISIBLE_ROWS, draw_combat
 from .combat_effects import CombatAnimation
@@ -594,8 +594,7 @@ class App:
         self.research_return="galaxy"
         self.research_return_selection=(0,None)
         self.research_branch="construction"
-        self.research_mode="foundations"
-        self.research_page=0
+        self.research_tier=1
         self.objectives_return="galaxy"
         self.gate_colony_index=0
 
@@ -677,6 +676,7 @@ class App:
             self.research_return=self.screen
             self.research_return_selection=(self.game.selected_system,self.game.selected_planet)
             self.go("research")
+            self.select_research_branch(self.research_branch)
             if self.game.technology.active and TECHNOLOGIES[self.game.technology.active].branch in BRANCHES:
                 self.show_research_technology(self.game.technology.active)
 
@@ -686,16 +686,15 @@ class App:
 
     def select_research_branch(self,identifier):
         self.research_branch=identifier
-        self.research_page=0
+        self.research_tier=self.game.technology.next_tier(identifier)
         self.focus=f"research_branch_{identifier}"
 
-    def set_research_mode(self,mode):
-        self.research_mode=mode
-        self.research_page=0
+    def select_research_tier(self,tier):
+        self.research_tier=max(1,min(branch_tiers(self.research_branch)[-1],tier))
+        self.focus=f"research_tier_{self.research_tier}"
 
-    def change_research_page(self,delta):
-        items=[t for t in TECHNOLOGIES.values() if t.branch==self.research_branch and not t.exclusive]
-        self.research_page=max(0,min(max(0,(len(items)-1)//4),self.research_page+delta))
+    def change_research_tier(self,delta):
+        self.select_research_tier(self.research_tier+delta)
 
     def show_research_technology(self,identifier):
         technology=TECHNOLOGIES[identifier]
@@ -703,10 +702,7 @@ class App:
             self.open_objectives()
             return
         self.select_research_branch(technology.branch)
-        self.set_research_mode("foundations" if technology.exclusive else "projects")
-        if not technology.exclusive:
-            items=sorted((t for t in TECHNOLOGIES.values() if t.branch==technology.branch and not t.exclusive),key=lambda t:(t.tier,t.name))
-            self.research_page=next(i//4 for i,t in enumerate(items) if t.id==identifier)
+        self.select_research_tier(technology.tier)
 
     def research_request(self,identifier):
         error=self.game.research_error(identifier)
@@ -714,10 +710,12 @@ class App:
             self.toast(error,True)
             return
         technology=TECHNOLOGIES[identifier]
-        alternative=next((t for t in choices(technology.branch,technology.tier) if t.id!=identifier),None) if technology.exclusive else None
+        alternative=next((t for t in choices(technology.branch,technology.tier) if t.id!=identifier),None)
         def choose():
             try:
                 discovered=self.game.choose_research(identifier)
+                if discovered:
+                    self.research_tier=self.game.technology.next_tier(self.research_branch)
                 if self.save_game(autosave=True):
                     self.toast(f"Discovered {discovered.name}." if discovered else f"Research started: {technology.name}.")
             except RuleError as exc:
@@ -1065,6 +1063,8 @@ class App:
         self.clear_worker_selection()
         self.close_fleet_popup()
         report=self.game.advance_turn()
+        if report.discoveries:
+            self.research_tier=self.game.technology.next_tier(self.research_branch)
         new_news=news_rules.unread_count(self.game)>0
         if report.ground_battles:
             self.ground_reports.extend(report.ground_battles)
@@ -1749,7 +1749,7 @@ class App:
             elif self.screen=="production" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_production_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="research" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
-                self.change_research_page(1 if event.key==pg.K_PAGEDOWN else -1)
+                self.change_research_tier(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="planet" and self.worker_source and event.key in (pg.K_LEFT,pg.K_RIGHT):
                 self.adjust_worker_selection(1 if event.key==pg.K_RIGHT else -1)
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):

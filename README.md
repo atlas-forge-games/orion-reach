@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.36.1
+# Orion Reach — Python prototype 0.37.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,39 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.37: one continuous research tree
+
+**Foundations** and **New projects** are now one sequence in each branch.
+Every tier offers exactly two technologies: choosing one excludes the other,
+and completing it unlocks both options at the next tier. All 52 existing branch
+technologies remain, with no extra technologies added to fill shorter branches.
+
+Branches have different lengths: Construction has **3** tiers; Power & Propulsion,
+Physics and Force Fields have **4**; Computers has **5**; Materials & Chemistry,
+Biology and Society have **2**. Tier buttons show completed, active, available and
+locked stages. Browse them by clicking or with **Page Up / Page Down**. The screen
+opens the next unfinished tier, or your active project's tier.
+
+The first two tiers are unchanged. Orbital Defense Systems joins Construction;
+Colonial Navigation joins Power & Propulsion; Advanced Torpedo Guidance and
+Electronic Countermeasures join Physics. Their effects remain available.
+Advanced shields, interdiction and sensor technologies unlock their buildings
+even if you chose a different specialty earlier. Their stated total capabilities
+replace earlier upgrade levels rather than adding them twice. Targeting upgrades
+work the same way. See **Research and discovery** below for every pairing.
+
+Scientific victory now requires completing every tier in all eight branches
+before Ascension Theory: **26 discoveries**, then the 500-RP capstone in Objectives.
+The AI follows the same sequence and exclusive choices.
+
+Save format **28** preserves all old discoveries, even when an old campaign
+already has both technologies in a newly paired tier. Active research keeps its
+progress and original remaining cost. Existing Ascension Theory research,
+discoveries and gates remain valid. New choices follow the unified tiers; if an
+old campaign skipped an earlier tier, complete that missing tier before advancing.
+
+![Unified research tiers](screenshots/research_tiers.png)
 
 ## New in v0.36.1: move groups between colony jobs
 
@@ -210,7 +243,8 @@ independent projects: existing tier-I/II choices remain intact, and you can
 research every new project in one campaign. Each requires a tier-I foundation
 in its branch, plus any named prerequisite. Tier III costs **120 RP**, tier IV
 **220 RP**, and tier V **360 RP**. One empire-wide project runs at a time.
-Ascension still requires tier II in all eight foundation branches, not the new projects.
+At that release, Ascension required tier II in the foundation branches.
+**v0.37 supersedes this split** with the sequential pairs documented below.
 
 | Technology | Branch / RP | Effect and additional prerequisite |
 | --- | --- | --- |
@@ -1122,8 +1156,9 @@ lab in a colony to start producing points. Research agreements and discovered
 technologies can also provide research income.
 
 - Choose a branch, then one of the two technologies in its first tier.
-  **Tier I costs 40 RP; Tier II costs 100 RP.** All eight branches are available
-  from the start. Completing a tier unlocks the next tier in that branch.
+  Tiers **I / II / III / IV / V** cost **40 / 100 / 120 / 220 / 360 RP**.
+  All eight branches are available from the start and contain two to five tiers.
+  Completing a tier unlocks both choices at the next tier in that branch.
 - Confirming commits to that technology permanently. Its alternative is
   excluded, and the active project cannot be cancelled or switched. One
   empire-wide project runs at a time. Browse other branches while it progresses.
@@ -1150,12 +1185,25 @@ technologies can also provide research income.
 | Computers | Research Networks / Trade Algorithms | Distributed Computing / Planetary Automation |
 | Society | Colonial Administration / Scientific Institutes | Commerce Guilds / Cultural Exchange |
 
-All 32 branch options have effects on existing game systems, described on their cards.
-You can discover 16 foundation technologies, all 20 additional projects, and **Ascension Theory**
-project, available in Objectives after completing tier II in every branch.
-Either choice in each tier qualifies. Building bonuses affect existing and
-future copies; flat colony bonuses affect every owned colony. Bonuses add
-together. Percentage discounts add and the final Resource price rounds up.
+The longer branches continue with these pairs. A dash marks a branch's end.
+
+| Branch | Tier III: choose one | Tier IV: choose one | Tier V: choose one |
+| --- | --- | --- | --- |
+| Construction | Advanced Fortifications / Orbital Defense Systems | — | — |
+| Power & Propulsion | Fusion Power / Colonial Navigation Network | Jump Gates / Field Stabilization | — |
+| Physics | Precision Beam Optics / Electronic Countermeasures | Siege Weapons / Advanced Torpedo Guidance | — |
+| Force Fields | Planetary Shielding / Gravity-Well Generators | Barrier Fields / Subspace Interdiction | — |
+| Computers | Deep-Space Radar / Targeting Computers | Long-Range Sensors / Predictive Fire Control | Subspace Scanners / Quantum Targeting |
+
+All 52 branch options have effects on existing game systems, described on their cards.
+A new campaign can discover one technology in each of 26 tiers, then **Ascension
+Theory**, available in Objectives after completing every branch. Either choice
+in each tier qualifies. Higher upgrades work without their earlier version:
+for example, Targeting Computers can be followed by Long-Range Sensors, which
+provides 10-ly detection and unlocks sensor arrays even without Deep-Space Radar. Building bonuses affect existing and
+future copies; flat colony bonuses affect every owned colony. Most bonuses add
+together. Shield capacity, sensor coverage/detail, interdiction strength/range
+and computer targeting use the highest researched level. Percentage discounts add and the final Resource price rounds up.
 Research never changes the price recorded for an existing queued project.
 
 Speed bonuses also add; both drive technologies give +75% speed. A voyage
@@ -1174,7 +1222,7 @@ They follow the normal exclusive choices: selecting the other option in a tier
 forgoes that tank upgrade. Range upgrades apply to all of that empire's ships;
 drive technologies increase speed separately. The AI uses the same rules.
 
-![Research screen](screenshots/research.png)
+![Research screen](screenshots/research_tiers.png)
 
 ## Basic AI opponents
 
@@ -1712,7 +1760,7 @@ or production; its result and consumed transports are saved immediately by the U
 
 ### Science
 
-1. Complete **tier II in all eight branches**: 16 discoveries in total. Every
+1. Complete **every tier in all eight branches**: 26 discoveries in total. Every
    combination of exclusive technology choices can reach this victory path.
 2. In **Objectives**, choose **Ascension Theory** for **500 RP**. It uses the
    existing one-project research system: stored points apply immediately, then
@@ -1856,7 +1904,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.36 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.37 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -1898,7 +1946,8 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 27**, adding Resource banks, miners, building power switches and
+**format version 28**, retaining legacy research choices and original active
+project costs, together with Resource banks, miners, building power switches and
 construction Resource reservations alongside first-contact dates, defence health,
 sensor contacts/news, route modifiers,
 bombardment use and deterministic combat accuracy. Negative treasuries still support building maintenance debt. They retain slave population in worlds and surveys, private
@@ -2022,6 +2071,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
 | `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
+| `tests/test_research_tiers.py` | Every paired research path, advanced unlocks, legacy discoveries and active costs, AI progression and tier controls |
 | `tests/test_worker_groups.py` | Atomic group transfers, scaled pointer boundaries, keyboard quantities, cancellation, captives and autosaves |
 | `tests/test_resources_energy.py` | Mining, shared supplies, local power, construction payments, authentic save upgrades and UI actions |
 | `tests/test_home_systems.py` | Civilization home names, unchanged generation, repeated races and survey privacy |
@@ -2034,7 +2084,8 @@ migrations when the data schema changes.
 
 ## Development checks
 
-v0.36.1 passes **579 automated checks**, including group workforce transfers,
+v0.37 passes **588 automated checks**, including all research paths, tier navigation,
+independent advanced upgrades, authentic v0.36.1 research migration, and group workforce transfers,
 scaled mouse selection, keyboard quantities, cancellation, captive workers,
 Resources, mining assignments,
 shared construction supply, local power, disabled military infrastructure,

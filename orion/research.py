@@ -6,6 +6,11 @@ from .buildings import BUILDINGS, workforce_bonuses
 from .production import ASCENSION_GATE
 from .population import LUSH_BIOMES, assembly_work
 from .economy import active_buildings
+from .legacy_research import LEGACY_TECHNOLOGIES, validate_legacy
+
+
+TIERS = (1, 2, 3, 4, 5)
+TIER_NAMES = ("I", "II", "III", "IV", "V")
 
 
 @dataclass(frozen=True)
@@ -35,8 +40,6 @@ class Technology:
     name: str
     description: str
     effects: tuple[tuple[str, int], ...]
-    exclusive: bool = True
-    requires: tuple[str, ...] = ()
 
     @property
     def cost(self):
@@ -45,10 +48,6 @@ class Technology:
 
 def tech(identifier, branch, tier, name, description, **effects):
     return Technology(identifier, branch, tier, name, description, tuple(effects.items()))
-
-
-def project(identifier, branch, tier, name, description, *, requires=(), **effects):
-    return Technology(identifier, branch, tier, name, description, tuple(effects.items()), False, requires)
 
 
 TECHNOLOGIES = {t.id: t for t in (
@@ -85,27 +84,31 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("commerce_guilds", "society", 2, "Commerce Guilds", "+3 credits per trade center.", trade_income=3),
     tech("cultural_exchange", "society", 2, "Cultural Exchange", "Your active trade pact earns +3 credits; your research pact earns +3 research.", pact_income=3, pact_research=3),
     tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
-    project("fusion_power", "power", 3, "Fusion Power", "Unlock fusion plants: +30 local energy per plant, with 3 CR/turn upkeep."),
-    project("advanced_fortifications", "construction", 3, "Advanced Fortifications", "Fortifications grant +75% defending firepower instead of +50%.", fortification_bonus=25),
-    project("orbital_defense_systems", "physics", 3, "Orbital Defense Systems", "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles."),
-    project("planetary_shielding", "fields", 3, "Planetary Shielding", "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.", shield_capacity=100),
-    project("barrier_fields", "fields", 4, "Barrier Fields", "Upgrade planetary generators to 200 shield points; upkeep rises from 4 to 6 CR/turn.", requires=("planetary_shielding",), shield_capacity=100, shield_upkeep=2),
-    project("siege_weapons", "physics", 4, "Siege Weapons", "Unlock siege cannons: triple damage to planetary shields and missile bases. Standard warships gain double bombardment damage.", requires=("orbital_defense_systems",), siege_bonus=100),
-    project("deep_space_radar", "computers", 3, "Deep-Space Radar", "Detect fleet positions and owners within 5 ly of colonies. Unlock sensor arrays (+5 ly locally).", sensor_range=5, sensor_level=1),
-    project("long_range_sensors", "computers", 4, "Long-Range Sensors", "Extend detection to 10 ly and reveal ship counts.", requires=("deep_space_radar",), sensor_range=5, sensor_level=1),
-    project("subspace_scanners", "computers", 5, "Subspace Scanners", "Extend detection to 20 ly; reveal ship classes and movement direction, without destination orders.", requires=("long_range_sensors",), sensor_range=10, sensor_level=1),
-    project("colonial_navigation", "computers", 3, "Colonial Navigation Network", "+25% travel speed between your own colonized systems.", colony_speed=25),
-    project("jump_gates", "power", 4, "Jump Gates", "Unlock jump gates. Gates at both endpoints give +50% internal travel speed, replacing the navigation bonus.", requires=("colonial_navigation",)),
-    project("gravity_wells", "fields", 3, "Gravity-Well Generators", "Unlock interdiction generators: hostile final approaches slow by 25% within 5 ly.", interdiction_slow=25, interdiction_range=5),
-    project("subspace_interdiction", "fields", 4, "Subspace Interdiction", "Improve generators to 40% slowdown within 8 ly; upkeep rises from 3 to 5 CR/turn.", requires=("gravity_wells",), interdiction_slow=15, interdiction_range=3, interdiction_upkeep=2),
-    project("field_stabilization", "power", 3, "Field Stabilization", "Your ships suffer half the slowdown from hostile interdiction fields.", field_stabilization=1),
-    project("targeting_computers", "computers", 3, "Targeting Computers", "+10 percentage points to weapon hit chance.", accuracy=10),
-    project("predictive_fire_control", "computers", 4, "Predictive Fire Control", "Improve the targeting bonus to +20 percentage points.", requires=("targeting_computers",), accuracy=10),
-    project("quantum_targeting", "computers", 5, "Quantum Targeting", "Improve the targeting bonus to +30 percentage points.", requires=("predictive_fire_control",), accuracy=10),
-    project("precision_beam_optics", "physics", 3, "Precision Beam Optics", "Halve the accuracy penalty for firing beam weapons at long range.", beam_precision=1),
-    project("torpedo_guidance", "computers", 4, "Advanced Torpedo Guidance", "Halve target evasion against torpedoes and missiles. Point defense still intercepts successful hits.", requires=("targeting_computers",), torpedo_guidance=1),
-    project("electronic_countermeasures", "computers", 3, "Electronic Countermeasures", "Your ships gain 10 percentage points of evasion.", evasion=10),
+    tech("advanced_fortifications", "construction", 3, "Advanced Fortifications", "Fortifications gain +25 percentage points of defending firepower.", fortification_bonus=25),
+    tech("fusion_power", "power", 3, "Fusion Power", "Unlock fusion plants: +30 local energy per plant, with 3 CR/turn upkeep."),
+    tech("colonial_navigation", "power", 3, "Colonial Navigation Network", "+25% travel speed between your own colonized systems.", colony_speed=25),
+    tech("jump_gates", "power", 4, "Jump Gates", "Unlock jump gates. Gates at both endpoints give +50% internal travel speed, replacing any navigation bonus."),
+    tech("field_stabilization", "power", 4, "Field Stabilization", "Your ships suffer half the slowdown from hostile interdiction fields.", field_stabilization=1),
+    tech("orbital_defense_systems", "construction", 3, "Orbital Defense Systems", "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles."),
+    tech("precision_beam_optics", "physics", 3, "Precision Beam Optics", "Halve the accuracy penalty for firing beam weapons at long range.", beam_precision=1),
+    tech("siege_weapons", "physics", 4, "Siege Weapons", "Unlock siege cannons: triple damage to planetary shields and missile bases. Standard warships gain double bombardment damage.", siege_bonus=100),
+    tech("torpedo_guidance", "physics", 4, "Advanced Torpedo Guidance", "Halve target evasion against torpedoes and missiles. Point defense still intercepts successful hits.", torpedo_guidance=1),
+    tech("planetary_shielding", "fields", 3, "Planetary Shielding", "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.", shield_capacity=100),
+    tech("gravity_wells", "fields", 3, "Gravity-Well Generators", "Unlock interdiction generators: hostile final approaches slow by 25% within 5 ly.", interdiction_slow=25, interdiction_range=5),
+    tech("barrier_fields", "fields", 4, "Barrier Fields", "Unlock or upgrade planetary generators to 200 shield points, with 6 CR/turn upkeep.", shield_capacity=200, shield_upkeep=2),
+    tech("subspace_interdiction", "fields", 4, "Subspace Interdiction", "Unlock or upgrade interdiction generators: 40% slowdown within 8 ly, with 5 CR/turn upkeep.", interdiction_slow=40, interdiction_range=8, interdiction_upkeep=2),
+    tech("electronic_countermeasures", "physics", 3, "Electronic Countermeasures", "Your ships gain 10 percentage points of evasion.", evasion=10),
+    tech("deep_space_radar", "computers", 3, "Deep-Space Radar", "Detect fleet positions and owners within 5 ly of colonies. Unlock sensor arrays (+5 ly locally).", sensor_range=5, sensor_level=1),
+    tech("targeting_computers", "computers", 3, "Targeting Computers", "+10 percentage points to weapon hit chance from targeting computers.", targeting_accuracy=10),
+    tech("long_range_sensors", "computers", 4, "Long-Range Sensors", "Detect fleets within 10 ly and reveal ship counts. Unlock sensor arrays. Replaces earlier sensor range.", sensor_range=10, sensor_level=2),
+    tech("predictive_fire_control", "computers", 4, "Predictive Fire Control", "+20 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.", targeting_accuracy=20),
+    tech("subspace_scanners", "computers", 5, "Subspace Scanners", "Detect fleets within 20 ly; reveal classes and movement direction. Unlock sensor arrays. Replaces earlier sensor range.", sensor_range=20, sensor_level=3),
+    tech("quantum_targeting", "computers", 5, "Quantum Targeting", "+30 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.", targeting_accuracy=30),
 )}
+
+
+def branch_tiers(branch):
+    return tuple(sorted({t.tier for t in TECHNOLOGIES.values() if t.branch == branch}))
 
 
 def choices(branch, tier):
@@ -115,9 +118,13 @@ def choices(branch, tier):
 @lru_cache(maxsize=512)
 def _bonuses(completed):
     result = {}
+    upgrades = {"shield_capacity", "sensor_range", "sensor_level", "interdiction_slow",
+                "interdiction_range", "targeting_accuracy"}
     for identifier in completed:
         for effect, amount in TECHNOLOGIES[identifier].effects:
-            result[effect] = result.get(effect, 0)+amount
+            result[effect] = max(result.get(effect, 0), amount) if effect in upgrades else result.get(effect, 0)+amount
+    if "targeting_accuracy" in result:
+        result["accuracy"] = result.get("accuracy", 0)+result.pop("targeting_accuracy")
     return result
 
 
@@ -126,10 +133,37 @@ class ResearchState:
     completed: list[str] = field(default_factory=list)
     active: str | None = None
     progress: int = 0
+    # The validated old discovery prefix may contain both choices or skipped tiers.
+    legacy_count: int = 0
+    legacy_active: bool = False
 
     @property
     def bonuses(self):
         return _bonuses(tuple(sorted(self.completed))).copy()
+
+    @property
+    def project_cost(self):
+        if self.active is None:
+            return 0
+        return LEGACY_TECHNOLOGIES[self.active][2] if self.legacy_active else TECHNOLOGIES[self.active].cost
+
+    def has_unlock(self, identifier):
+        upgrades = {
+            "planetary_shielding": ("barrier_fields",),
+            "gravity_wells": ("subspace_interdiction",),
+            "deep_space_radar": ("long_range_sensors", "subspace_scanners"),
+        }
+        return any(t in self.completed for t in (identifier, *upgrades.get(identifier, ())))
+
+    def completed_tiers(self, branch):
+        return {TECHNOLOGIES[t].tier for t in self.completed if TECHNOLOGIES[t].branch == branch}
+
+    def next_tier(self, branch):
+        if self.active and TECHNOLOGIES[self.active].branch == branch:
+            return TECHNOLOGIES[self.active].tier
+        completed = self.completed_tiers(branch)
+        tiers = branch_tiers(branch)
+        return next((tier for tier in tiers if tier not in completed), tiers[-1])
 
     def status(self, identifier):
         technology = TECHNOLOGIES[identifier]
@@ -139,23 +173,17 @@ class ResearchState:
             return "active"
         if identifier == "ascension_theory":
             return "available" if self.finished_branches == len(BRANCHES) else "locked"
-        if not technology.exclusive:
-            foundation = any(TECHNOLOGIES[t].branch == technology.branch and TECHNOLOGIES[t].tier <= 2
-                             for t in self.completed)
-            return "available" if foundation and all(t in self.completed for t in technology.requires) else "locked"
         committed = self.completed + ([self.active] if self.active else [])
         if any(TECHNOLOGIES[t].branch == technology.branch and
-               TECHNOLOGIES[t].tier == technology.tier and TECHNOLOGIES[t].exclusive for t in committed):
+               TECHNOLOGIES[t].tier == technology.tier for t in committed):
             return "excluded"
-        if technology.tier > 1 and not any(
-                TECHNOLOGIES[t].branch == technology.branch and
-                TECHNOLOGIES[t].tier == technology.tier-1 for t in self.completed):
+        if not set(range(1, technology.tier)) <= self.completed_tiers(technology.branch):
             return "locked"
         return "available"
 
     @property
     def finished_branches(self):
-        return sum(TECHNOLOGIES[t].tier == 2 for t in self.completed)
+        return sum(set(branch_tiers(branch)) <= self.completed_tiers(branch) for branch in BRANCHES)
 
     def choice_error(self, identifier):
         if not isinstance(identifier, str) or identifier not in TECHNOLOGIES:
@@ -167,12 +195,8 @@ class ResearchState:
             return "You chose the other technology in this tier."
         if status == "locked":
             if identifier == "ascension_theory":
-                return "Complete tier II in all eight research branches first."
-            technology = TECHNOLOGIES[identifier]
-            if not technology.exclusive:
-                missing = [TECHNOLOGIES[t].name for t in technology.requires if t not in self.completed]
-                return "Requires "+(", ".join(missing) if missing else "a foundation technology in "+BRANCHES[technology.branch].name)+"."
-            return "Complete the previous tier in this branch first."
+                return "Complete every tier in all eight research branches first."
+            return "Complete the earlier tiers in this branch first."
         if self.active:
             return "Finish your current research project first."
         return None
@@ -182,34 +206,53 @@ class ResearchState:
         if self.active is None:
             return bank, None
         technology = TECHNOLOGIES[self.active]
-        used = min(bank, technology.cost-self.progress)
+        cost = self.project_cost
+        used = min(bank, cost-self.progress)
         self.progress += used
-        if self.progress < technology.cost:
+        if self.progress < cost:
             return bank-used, None
         self.completed.append(self.active)
+        if self.legacy_active:
+            self.legacy_count += 1
+            self.legacy_active = False
         self.active, self.progress = None, 0
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data):
-        if not isinstance(data, dict) or set(data) != {"completed", "active", "progress"}:
+    def from_dict(cls, data, *, version=28):
+        keys = {"completed", "active", "progress"}
+        if version >= 28:
+            keys |= {"legacy_count", "legacy_active"}
+        if not isinstance(data, dict) or set(data) != keys:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
+        if version < 28:
+            validate_legacy(completed, active, progress)
+            return cls(completed.copy(), active, progress, len(completed), active is not None)
         if not isinstance(completed, list) or len(completed) > len(TECHNOLOGIES):
             raise ValueError("Invalid discoveries")
-        state = cls()
-        for identifier in completed:
+        count, legacy_active = data["legacy_count"], data["legacy_active"]
+        if type(count) is not int or not 0 <= count <= len(completed) or type(legacy_active) is not bool:
+            raise ValueError("Invalid legacy research")
+        validate_legacy(completed[:count])
+        state = cls(completed[:count], legacy_count=count)
+        for identifier in completed[count:]:
             if state.choice_error(identifier):
                 raise ValueError("Invalid technology sequence")
             state.completed.append(identifier)
         if type(progress) is not int or progress < 0:
             raise ValueError("Invalid research progress")
-        if active is None:
+        if legacy_active:
+            if active is None or count != len(completed):
+                raise ValueError("Invalid legacy project")
+            validate_legacy(completed, active, progress)
+        elif active is None:
             if progress != 0:
                 raise ValueError("Progress without a project")
         elif state.choice_error(active) or progress >= TECHNOLOGIES[active].cost:
             raise ValueError("Invalid active technology")
         state.active, state.progress = active, progress
+        state.legacy_active = legacy_active
         return state
 
 

@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Fog boundaries, scout discoveries, knowledge persistence and actual UI flows."""
 
@@ -241,6 +242,7 @@ class ExplorationRulesTests(unittest.TestCase):
             path = store.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 9
+            legacy_research_payload(payload)
             payload["game"].pop("fog_of_war")
             payload["game"].pop("exploration")
             path.write_text(json.dumps(payload))

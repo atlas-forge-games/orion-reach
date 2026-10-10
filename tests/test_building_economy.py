@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 """Workforce productivity, recurring costs, debt, AI budgets and save continuity."""
 
 import json
@@ -187,11 +188,11 @@ class BuildingEconomyTests(unittest.TestCase):
             storage = Storage(folder)
             path = storage.save(game)
             original = path.read_bytes()
-            self.assertEqual(json.loads(original)["version"], 27)
+            self.assertEqual(json.loads(original)["version"], 28)
             self.assertEqual(storage.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
         with self.assertRaises(SaveError):
-            GameState.from_dict(game.to_dict(), version=23)
+            GameState.from_dict(legacy_research_payload(game.to_dict()), version=23)
         for value in (-1_000_000_001, True, -.5):
             data = game.to_dict()
             data["credits"] = value

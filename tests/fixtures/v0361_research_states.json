@@ -1,0 +1,19 @@
+{
+  "relocated_active": {
+    "completed": [
+      "compact_reactors"
+    ],
+    "active": "field_stabilization",
+    "progress": 30
+  },
+  "missing_middle": {
+    "completed": [
+      "research_networks",
+      "deep_space_radar",
+      "targeting_computers",
+      "long_range_sensors"
+    ],
+    "active": null,
+    "progress": 0
+  }
+}

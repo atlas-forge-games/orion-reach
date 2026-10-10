@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Workforce decisions, buying/prioritizing projects, migration and real UI flows."""
 
@@ -134,10 +135,11 @@ class ProductionTests(unittest.TestCase):
         self.assertEqual(game.to_dict(), before)
 
     def test_buying_a_gate_starts_its_five_turn_charge_without_skipping_time(self):
-        from orion.research import BRANCHES, choices
-        self.game.research = self.game.credits = self.game.resources = 2000
+        from orion.research import BRANCHES, branch_tiers, choices
+        self.game.credits = self.game.resources = 2000
+        self.game.research = 4000
         for branch in BRANCHES:
-            for tier in (1, 2):
+            for tier in branch_tiers(branch):
                 self.game.choose_research(choices(branch, tier)[0].id)
         self.game.choose_research("ascension_theory")
         self.game.change_production(0, 2, "ascension_gate")
@@ -220,6 +222,7 @@ class WorkforceSaveTests(unittest.TestCase):
             path = store.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 11
+            legacy_research_payload(payload)
             for row in payload["game"]["systems"]+payload["game"]["exploration"]["surveys"]:
                 for world in row["worlds"]:
                     world.pop("farmers")
@@ -234,6 +237,9 @@ class WorkforceSaveTests(unittest.TestCase):
                     world["farmers"], world["scientists"] = min(2, world["population"]), 0
             expected.update(sensor_contacts=[], sensor_reports=[], next_sensor_report_id=1, sensor_news_read=0)
             expected["diplomacy"]["introduced"] = True  # Old confirmed contacts do not replay introductions.
+            for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
+                state = empire["technology"]
+                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None)
             self.assertEqual(restored.to_dict(), expected)
             restored.move_worker(0, 2, "workers", "scientists")
             resumed = store.load(store.save(restored))[0]

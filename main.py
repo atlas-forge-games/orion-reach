@@ -178,12 +178,12 @@ def main():
                         game.selected_planet = planet.id
                     refresh(game)
                 if args.screen == "result":
-                    from orion.research import BRANCHES, choices
+                    from orion.research import BRANCHES, branch_tiers, choices
                     # Preview a science result without altering a real campaign.
                     game = app.game
-                    game.research = 1620
+                    game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+500
                     for branch in BRANCHES:
-                        for tier in (1, 2):
+                        for tier in branch_tiers(branch):
                             game.choose_research(choices(branch, tier)[0].id)
                     game.choose_research("ascension_theory")
                     earth = game.planet_at(0, 2)

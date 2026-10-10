@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 """Tomb generation, ground outcomes, private news, turn ordering and save upgrades."""
 
 import copy
@@ -334,6 +335,7 @@ class SaveTests(unittest.TestCase):
         data = game.to_dict()
         data.pop("tomb_worlds")
         data.pop("news_read_turn")
+        legacy_research_payload(data)
         with tempfile.TemporaryDirectory() as directory:
             storage = Storage(directory)
             path = storage.saves_dir/"previous.json"

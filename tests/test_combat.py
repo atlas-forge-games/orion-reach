@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Tactical rules, strategic consequences, save continuity and real UI controls."""
 
@@ -348,6 +349,7 @@ class CombatSaveTests(unittest.TestCase):
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 7
+            legacy_research_payload(payload)
             payload["game"].pop("combat")
             for ship in payload["game"]["ships"]:
                 ship.pop("hull")

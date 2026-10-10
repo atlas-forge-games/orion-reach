@@ -7,7 +7,7 @@ from .economy import energy_report
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, TROOP_STRENGTH
 from .races import RACES
-from .research import BRANCHES, TECHNOLOGIES, choices
+from .research import BRANCHES, TIERS, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
@@ -122,29 +122,27 @@ def research_choice(game, owner=RIVAL):
         "kharuun": ((0, 0, 0, 0, 0, 1, 1, 0), (1, 0, 1, 0, 1, 0, 1, 0)),
         "aelari": ((1, 1, 0, 0, 0, 0, 0, 1), (0, 0, 1, 0, 0, 1, 0, 1)),
     }.get(race, ((1, 0, 1, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1, 1, 1)))
-    foundations = sum(TECHNOLOGIES[t].tier <= 2 for t in state.completed)
-    advanced = sum(not TECHNOLOGIES[t].exclusive for t in state.completed)
-    # Add useful projects as the economy grows, while still pursuing Ascension.
-    if foundations == 16 and advanced >= 8 and game.research_error("ascension_theory", owner=owner) is None:
-        game.choose_research("ascension_theory", owner=owner)
-        return
-    projects = ("fusion_power", "deep_space_radar", "targeting_computers", "planetary_shielding", "colonial_navigation",
-                "orbital_defense_systems", "advanced_fortifications", "long_range_sensors", "gravity_wells",
-                "predictive_fire_control", "siege_weapons", "precision_beam_optics", "jump_gates",
-                "electronic_countermeasures", "barrier_fields", "torpedo_guidance", "subspace_interdiction",
-                "field_stabilization", "subspace_scanners", "quantum_targeting")
-    if foundations >= 4 and (game.empire_rates_for(owner)[0] >= 15 or foundations == 16) and (advanced < foundations//2 or foundations == 16):
-        for identifier in projects:
-            if game.research_error(identifier, owner=owner) is None:
-                game.choose_research(identifier, owner=owner)
-                return
-    for tier in (1, 2):
+    military = race in ("kharuun", "varkesh", "remnant")
+    preferred = {
+        "orbital_defense_systems", "fusion_power", "jump_gates", "planetary_shielding",
+        "barrier_fields" if military else "subspace_interdiction",
+        "precision_beam_optics" if military else "electronic_countermeasures",
+        "siege_weapons" if military else "torpedo_guidance",
+        *( ("targeting_computers", "predictive_fire_control", "quantum_targeting") if military
+           else ("deep_space_radar", "long_range_sensors", "subspace_scanners") ),
+    }
+    for tier in TIERS:
         for branch in branches:
-            index = tuple(BRANCHES).index(branch)
-            technology = choices(branch, tier)[preferences[tier-1][index]]
-            if game.research_error(technology.id, owner=owner) is None:
-                game.choose_research(technology.id, owner=owner)
-                return
+            options = choices(branch, tier)
+            if tier <= 2:
+                index = tuple(BRANCHES).index(branch)
+                options = sorted(options, key=lambda t: t != options[preferences[tier-1][index]])
+            else:
+                options = sorted(options, key=lambda t: t.id not in preferred)
+            for technology in options:
+                if game.research_error(technology.id, owner=owner) is None:
+                    game.choose_research(technology.id, owner=owner)
+                    return
     if game.research_error("ascension_theory", owner=owner) is None:
         game.choose_research("ascension_theory", owner=owner)
 

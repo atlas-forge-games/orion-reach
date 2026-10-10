@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Movement, beam technology, tactical saves and time-driven battle effects."""
 
@@ -163,6 +164,7 @@ class TacticalRulesTests(unittest.TestCase):
             path = storage.save(game)
             data = json.loads(path.read_text())
             data["version"] = 12
+            legacy_research_payload(data)
             old = data["game"]["combat"]
             old.pop("moved")
             for ship in old["ships"]:
@@ -178,7 +180,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 27)
+        self.assertEqual(SAVE_VERSION, 28)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()

@@ -1,3 +1,4 @@
+from scenarios import legacy_research_payload
 from scenarios import legacy_economy
 """Playable conquest/science endings, real AI orders, save upgrades and UI flows."""
 
@@ -21,14 +22,14 @@ from functools import partial
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
 new_game = partial(new_game, fog_of_war=False)
 from orion.production import ASCENSION_GATE, GATE_CHARGE_TURNS
-from orion.research import BRANCHES, TECHNOLOGIES, choices
+from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
 from orion.storage import SAVE_VERSION, Storage
 from orion.victory import colonies, gate_site, invasion_strength
 
 
 def discover_branches(game, owner=PLAYER, option=0):
     for branch in BRANCHES:
-        for tier in (1, 2):
+        for tier in branch_tiers(branch):
             tech = choices(branch, tier)[option]
             game._empire(owner).research += tech.cost
             game.choose_research(tech.id, owner=owner)
@@ -203,7 +204,7 @@ class ScienceRulesTests(unittest.TestCase):
             game.research = 513
             game.choose_research("ascension_theory")
             self.assertEqual(game.research, 13)
-            self.assertEqual(len(game.technology.completed), 17)
+            self.assertEqual(len(game.technology.completed), 27)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_gate_is_a_unique_shared_queue_project_with_fixed_cost_and_no_slot(self):
@@ -355,6 +356,7 @@ class VictorySaveTests(unittest.TestCase):
             path = storage.save(game)
             payload = json.loads(path.read_text())
             payload["version"] = 8
+            legacy_research_payload(payload)
             payload["game"].pop("result")
             payload["game"]["combat"].pop("moved")
             for ship in payload["game"]["combat"]["ships"]:

@@ -170,7 +170,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=27):
+    def from_dict(cls, data, systems, *, version=28):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -252,7 +252,7 @@ class Opponent:
     resources: int = economy.STARTING_RESOURCES
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=27):
+    def from_dict(cls, data, systems, turn, *, version=28):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -280,7 +280,7 @@ class Opponent:
         race_id = data["race_id"] if version >= 6 else "kharuun"
         if not isinstance(race_id, str) or race_id not in RACES:
             raise ValueError
-        technology = ResearchState.from_dict(data["technology"]) if version >= 7 else ResearchState()
+        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState()
         resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
         if not _integer(resources, 0, 1_000_000_000):
             raise ValueError("Invalid resource stockpile")
@@ -417,7 +417,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=27):
+    def from_dict(cls, data, expected_id, *, version=28):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -1087,7 +1087,7 @@ class GameState:
         if planet.owner != owner:
             return "This colony belongs to another empire."
         technology = BUILDINGS[building_id].technology
-        if technology and technology not in self.research_state(owner).completed:
+        if technology and not self.research_state(owner).has_unlock(technology):
             from .research import TECHNOLOGIES
             return "Requires "+TECHNOLOGIES[technology].name+"."
         if BUILDINGS[building_id].unique and (building_id in planet.buildings or
@@ -1476,7 +1476,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=27):
+    def from_dict(cls, data, *, version=28):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1558,7 +1558,7 @@ class GameState:
                     raise ValueError
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
-            technology = ResearchState.from_dict(data["technology"]) if version >= 7 else ResearchState()
+            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState()
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
