@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 2,
   "format": "RGBA PNG",
-  "integration_status": "planet surface, colony controls and shipyard in prototype 0.8",
+  "integration_status": "all colony building lists, planet surface, shipyard and Ascension Gate screens in prototype 0.38.1",
   "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
   "assets": [
     {
@@ -99,6 +99,231 @@
       ],
       "alpha_threshold_for_bounds": 32,
       "sha256": "1c1da27f41befda4f9b56b9c069013a3ff90af9a3515be646baf4391d19f76db"
+    },
+    {
+      "id": "hydroponic_farm",
+      "name": "Hydroponic farm",
+      "file": "hydroponic_farm-v1.png",
+      "model_building_id": "hydroponic_farm",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        18,
+        183,
+        1240,
+        985
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "276ea6a736e2b0e94a4007718b588f9ad0bf844ac4b3ece2c528641a43e9167d"
+    },
+    {
+      "id": "barracks",
+      "name": "Barracks",
+      "file": "barracks-v1.png",
+      "model_building_id": "barracks",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        26,
+        33,
+        1230,
+        1174
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "774b0f31f83247857fdecd7bb551ca2a86e24c075b7757b75c2364e409ca7338"
+    },
+    {
+      "id": "fortifications",
+      "name": "Fortifications",
+      "file": "fortifications-v1.png",
+      "model_building_id": "fortifications",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        28,
+        133,
+        1251,
+        1088
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "324be12d9ed2a3b7713921dce994050fcca4eacdfefae7aad269ce0c99b32451"
+    },
+    {
+      "id": "missile_base",
+      "name": "Missile base",
+      "file": "missile_base-v1.png",
+      "model_building_id": "missile_base",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        34,
+        55,
+        1225,
+        1189
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "7db04d2651f0e9a02365d88ceb658929a4e4b8d48df4bc93b2143246ff9fd1a0"
+    },
+    {
+      "id": "planetary_shield",
+      "name": "Planetary shield",
+      "file": "planetary_shield-v1.png",
+      "model_building_id": "planetary_shield",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        92,
+        25,
+        1166,
+        1176
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "f79b2677dfbcb08f306d50ed8c35cfb6514c74947e6c2b4a87bf353e3e30c4e1"
+    },
+    {
+      "id": "sensor_array",
+      "name": "Sensor array",
+      "file": "sensor_array-v1.png",
+      "model_building_id": "sensor_array",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        67,
+        62,
+        1187,
+        1179
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "3bae24133521f56d34a3d1f88f82b799c5e146ab3bc06eb2788d02f4ffdafa12"
+    },
+    {
+      "id": "jump_gate",
+      "name": "Jump gate",
+      "file": "jump_gate-v1.png",
+      "model_building_id": "jump_gate",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        82,
+        85,
+        1197,
+        1179
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "6362100ce8b4223cd6631a24b69a6e6096f3f8ac7bb732dc65f6cbdb58452d4a"
+    },
+    {
+      "id": "interdictor",
+      "name": "Interdiction generator",
+      "file": "interdictor-v1.png",
+      "model_building_id": "interdictor",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        105,
+        18,
+        1148,
+        1218
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "99835214f0b5369891d7c9b2ca04c887d1403f16188f48dc78493725943b17b4"
+    },
+    {
+      "id": "solar_array",
+      "name": "Solar array",
+      "file": "solar_array-v1.png",
+      "model_building_id": "solar_array",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        43,
+        163,
+        1211,
+        1082
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "b174edb0f901a52ba781a18413758319c9b6798e459655ddf1eaeb9835b04c17"
+    },
+    {
+      "id": "fusion_plant",
+      "name": "Fusion plant",
+      "file": "fusion_plant-v1.png",
+      "model_building_id": "fusion_plant",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        34,
+        41,
+        1221,
+        1143
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "3b76881af7803f2ce61ce72c9dcc717d8597024e8261d891e71854bf0078678e"
+    },
+    {
+      "id": "geothermal_plant",
+      "name": "Geothermal plant",
+      "file": "geothermal_plant-v1.png",
+      "model_building_id": "geothermal_plant",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        47,
+        30,
+        1223,
+        1166
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "b08a400543a4547d821eff06fc779edac87be6faa33de553431cb77a92240457"
+    },
+    {
+      "id": "thermal_plant",
+      "name": "Thermal backup plant",
+      "file": "thermal_plant-v1.png",
+      "model_building_id": "thermal_plant",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        37,
+        121,
+        1216,
+        1075
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "613da3135f034b51737244aff71e09b424288b894650f12271b81fae01260b9f"
+    },
+    {
+      "id": "singularity_plant",
+      "name": "Singularity plant",
+      "file": "singularity_plant-v1.png",
+      "model_building_id": "singularity_plant",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        24,
+        18,
+        1235,
+        1143
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "ced7d4c01e9d2d392e15df52152f5ce4590c84352fd3fad7d8aacedad939d7d4"
+    },
+    {
+      "id": "ascension_gate",
+      "name": "Ascension Gate",
+      "file": "ascension_gate-v1.png",
+      "model_building_id": null,
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        81,
+        37,
+        1196,
+        1219
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "5d62acfd97d15bbc9d86cbe9a6761d868ce4eacfa39b05a9d70203e83fb4f2ea",
+      "special_project_id": "ascension_gate"
     }
   ]
 }

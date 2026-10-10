@@ -1,57 +1,56 @@
-# Orion Reach — colony buildings v1
+# Orion Reach — complete colony building artwork
 
-Six original building graphics used by the planet colony scene.
-Generated using the built-in image-generation tool, with a shared architectural
-palette, lighting direction and elevated three-quarter view.
+Twenty original building illustrations share one architectural style: pale
+warm-gray ceramic and concrete, charcoal navy metal, muted bronze fittings,
+restrained cyan lights, neutral light from upper left and an elevated
+three-quarter view. The built-in image-generation tool produced each building
+as a separate transparent PNG. Files preserve the generated image bytes.
 
-Extract this pack into the repository root. Files belong under
-`assets/buildings/`.
+Version 0.38.1 adds fourteen images to the original six. Every constructible
+catalogue building now has an illustration, alongside the headquarters,
+shipyard and special Ascension Gate.
 
-| Asset | File | Intended role |
+| Building | File | Distinctive features |
 | --- | --- | --- |
-| Headquarters palace | `headquarters-v1.png` | A distinctive landmark marking planetary headquarters |
-| Factory | `factory-v1.png` | Industrial production; matches the existing `factory` building ID |
-| Shipyard | `shipyard-v1.png` | A surface ship-construction facility |
-| Research lab | `research_lab-v1.png` | Research production; matches `research_lab` |
-| Trade centre | `trade_center-v1.png` | Commercial exchange; matches `trade_center` |
-| Mining complex | `mine-v1.png` | Mineral extraction; matches `mine` |
+| Headquarters palace | `headquarters-v1.png` | Tall civic command tower and terraced wings |
+| Factory | `factory-v1.png` | Production halls, exhaust stacks and gantry |
+| Shipyard | `shipyard-v1.png` | Open assembly hangar and spacecraft slipway |
+| Research lab | `research_lab-v1.png` | Scientific glass dome and instruments |
+| Trade centre | `trade_center-v1.png` | Commercial atrium and freight bays |
+| Mining complex | `mine-v1.png` | Extraction headframe and processing equipment |
+| Hydroponic farm | `hydroponic_farm-v1.png` | Glass greenhouse halls and visible crops |
+| Barracks | `barracks-v1.png` | Armored accommodation wings and drill courtyard |
+| Fortifications | `fortifications-v1.png` | Heavy connected bastions and central bunker |
+| Missile base | `missile_base-v1.png` | Open vertical launch silos and tracking radar |
+| Planetary shield | `planetary_shield-v1.png` | Three emitter pylons and cyan shield field |
+| Sensor array | `sensor_array-v1.png` | Large tracking dish and antenna masts |
+| Jump gate | `jump_gate-v1.png` | Upright oval transit ring and service buttresses |
+| Interdiction generator | `interdictor-v1.png` | Tapered tower and three violet induction rings |
+| Solar array | `solar_array-v1.png` | Blue photovoltaic panels and inverter building |
+| Geothermal plant | `geothermal_plant-v1.png` | Wellheads, large heat pipes and turbine hall |
+| Fusion plant | `fusion_plant-v1.png` | Cylindrical containment vessel and cooling modules |
+| Thermal backup plant | `thermal_plant-v1.png` | Compact furnace, fuel hopper and two stacks |
+| Singularity plant | `singularity_plant-v1.png` | Spherical containment chamber and support arches |
+| Ascension Gate | `ascension_gate-v1.png` | Monumental scientific gateway and luminous aperture |
 
-## Art and integration notes
+## Integration
 
-These are separate original RGBA PNGs with transparent backgrounds, preserved
-byte-for-byte from generation. They contain no UI labels, so the game can draw
-names, selection outlines and building state separately.
+The existing `orion/building_art.py` loader finds each `<building_id>-v1.png`,
+aligns foundations using alpha bounds and caches proportionally scaled sprites.
+The Colony catalogue, building slots, production lists and planet surface use
+these images. `orion/victory_view.py` uses the Ascension Gate in Objectives and
+victory results. Headquarters and shipyard artwork represents existing colony
+capabilities; the special gate retains its separate scientific-victory rules.
 
-The palace has a tall command beacon; the factory has production halls and
-exhaust stacks; the shipyard contains a colony ship under construction; the lab
-has a glass dome and instruments; the trade centre has a tall commercial atrium;
-the mine has an extraction headframe and ore-processing equipment.
+Generated art contains no interface labels. The game draws labels, selection,
+disabled states and construction previews independently. Preserve the alpha
+channel and aspect ratio; never remove a guessed background color. Existing
+procedural fallbacks remain available if an image is missing or unreadable.
 
-The assets form the first shared colony style in prototype 0.8. The planet
-Overview tab displays completed buildings and faded previews for queued types;
-repeat buildings share a graphic and count. The Colony catalogue, occupied
-slots and Shipyard use the same sprites. Click surface buildings to open their
-controls. Headquarters and shipyard artwork marks existing capabilities, without
-introducing new constructible buildings or changing production rules.
+`manifest.json` records all filenames, dimensions, checksums and alpha bounds.
+`generation-prompts.json` contains the complete prompt set and generation mode.
+Run `python tools/preview_building_art.py` from the repository root to render
+`screenshots/building_art_catalogue.png` with the game's normal artwork loader.
 
-Rendering notes:
-
-- `orion/building_art.py` loads the RGBA images and caches proportionally scaled sprites.
-- Preserve the PNG alpha channel; do not remove a guessed background color.
-- Scale proportionally. Original image dimensions differ; never stretch them
-  all into the same rectangle.
-- Buildings align by the bottom of their visible foundations. The renderer
-  calculates bounds from alpha; the manifest also records bounds for reference.
-- `orion/colony_scene.py` draws a seeded landscape for the planet's biome and
-  paints foreground buildings after the rear row.
-- The palace marks Earth and the AI's homeworld; the shipyard appears on every
-  colony. Both are separate from the five constructible building types.
-
-Prototype 0.15 adds `hydroponic_farm`, drawn as an original procedural greenhouse
-sprite in `orion/building_art.py`. It appears in the catalogue, building slots
-and planet surface alongside the six PNG assets above. No generated PNG is
-bundled for it; a future `hydroponic_farm-v1.png` can replace the procedural art
-without changing the rules or building ID. Existing PNGs are unchanged.
-
-`manifest.json` records filenames, dimensions, checksums and model-ID mappings.
-`generation-prompts.json` preserves the complete prompt set and generation mode.
+The original six PNGs are unchanged. This artwork update changes no building
+statistics, research, game rules or save data.

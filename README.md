@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.38.0
+# Orion Reach — Python prototype 0.38.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,25 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.38.1: complete colony building artwork
+
+Every catalogue building now has a detailed transparent illustration matching
+the existing factory, shipyard and laboratory. Fourteen new sprites cover the
+hydroponic farm, barracks, fortifications, missile base, planetary shield, sensor
+array, jump gate, interdiction generator, all five power plants and Ascension
+Gate. The complete set contains **20 building images**.
+
+The new art appears in building lists, occupied colony slots and the planet
+surface; the Ascension Gate appears in Objectives and victory results. Sprites
+keep their proportions and transparent backgrounds at every size. Gameplay,
+building costs and save format 28 are unchanged.
+
+The original PNGs, complete generation prompts and an updated asset manifest
+are included under `assets/buildings/`. To render the whole set using the same
+loader as the game, run `python tools/preview_building_art.py`.
+
+![Complete colony building artwork](screenshots/building_art_catalogue.png)
 
 ## New in v0.38: steady generation and flexible backup power
 
@@ -1327,8 +1346,8 @@ Open a planet to see its surface. Terran, Ocean, Desert,
 Tundra, Barren and Volcanic worlds have distinct seeded landscapes. The compact
 system list keeps the other planets available without leaving the colony view.
 
-- Completed factories, mines, research labs, trade centres and farms appear on the
-  surface. Repeated types share a graphic with a count, such as **Factory ×3**.
+- Completed catalogue buildings, including defenses and power plants, appear on
+  the surface. Repeated types share a graphic with a count, such as **Factory ×3**.
 - Queued types that have no completed building yet appear as faded previews.
   Counts and previews update after construction, cancellation, demolition and loading.
 - Clicking a building opens the Colony tab and selects its first completed copy;
@@ -2084,8 +2103,9 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `assets/audio/` | Supplied MP3 soundtrack and provenance |
 | `assets/branding/` | Original Atlas Forge logo supplied by the project owner |
 | `assets/portraits/` | Terran, Kharuun and Aelari portraits, with generation prompts |
-| `assets/buildings/` | Six colony building sprites, manifest and generation prompts |
+| `assets/buildings/` | Twenty building sprites, manifest and generation prompts |
 | `tools/build_art.py` | Rebuild the original planet/background (optional) |
+| `tools/preview_building_art.py` | Render the complete illustrated building catalogue |
 | `tests/test_prototype.py` | Save integrity and UI event-flow checks |
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
 | `tests/test_population.py` | Food, growth timing, farms, AI, captures, fog, save migration and UI controls |
@@ -2128,6 +2148,9 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.38.1 verifies all 20 PNGs, alpha bounds and manifest hashes, and passes
+**43 focused checks** for colony scenes, power-plant controls and victory screens.
 
 v0.38 passes **604 automated checks**, including fuel-limited backup dispatch,
 shared reserve accounting, power-aware construction forecasts and the new power

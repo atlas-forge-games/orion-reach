@@ -6,7 +6,7 @@ import pygame as pg
 from .ui import ASSETS
 from .buildings import BUILDINGS
 
-BUILDING_ART_IDS = ("headquarters", "shipyard", *BUILDINGS)
+BUILDING_ART_IDS = ("headquarters", "shipyard", *BUILDINGS, "ascension_gate")
 
 
 @lru_cache(maxsize=32)

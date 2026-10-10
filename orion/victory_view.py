@@ -3,6 +3,7 @@
 import math
 import pygame as pg
 
+from .building_art import draw_building_art, load_building_art
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS
 from .research import TECHNOLOGIES
 from .victory import colonies, gate_blocked, gate_site
@@ -12,6 +13,10 @@ from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragra
 
 def gate_icon(surface, center, radius=64, color=CYAN):
     x, y = center
+    if load_building_art("ascension_gate") is not None:
+        extent = radius+18
+        draw_building_art(surface, "ascension_gate", (x-extent, y-extent, extent*2, extent*2))
+        return
     for size, shade in ((radius+18, LINE), (radius, color), (radius-9, MUTED)):
         pg.draw.circle(surface, shade, (x, y), size, 2)
     for index in range(8):
