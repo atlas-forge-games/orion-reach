@@ -14,7 +14,7 @@ from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system
-from .planet_view import draw_planet_overview, draw_production
+from .planet_view import draw_planet_overview, draw_production, worker_row_rect, worker_selection_count
 from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
@@ -108,7 +108,7 @@ class App:
         self.campaign_view="galaxy"
         self.colony_slot=None
         self.colony_build_page=0
-        self.worker_source=None
+        self.clear_worker_selection()
         self.production_page=0
         self.catalog_page=0
         self.designer_return="fleets"
@@ -159,7 +159,7 @@ class App:
             self.map_order_ids=()
             self.fleet_popup=False
         self.screen=screen
-        self.worker_source=None
+        self.clear_worker_selection()
         self.buttons=[]
         self.focus=None
         self.pressed=None
@@ -1062,6 +1062,7 @@ class App:
             self.toast("Resolve the battle before advancing the campaign.",True)
             return
         # An unissued map order is a UI selection, never an automatic next-turn order.
+        self.clear_worker_selection()
         self.close_fleet_popup()
         report=self.game.advance_turn()
         new_news=news_rules.unread_count(self.game)>0
@@ -1286,22 +1287,36 @@ class App:
     def select_colony_slot(self,index):
         self.colony_slot=index
 
+    def clear_worker_selection(self):
+        self.worker_source=None
+        self.worker_count=0
+
+    def adjust_worker_selection(self,delta):
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        available=getattr(planet,self.worker_source)
+        if available:
+            self.worker_count=max(1,min(available,self.worker_count+delta))
+        else:
+            self.clear_worker_selection()
+
     def select_worker_role(self,role):
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
         if planet.owner!=PLAYER or self.game.strategy_error():
             return
         if self.worker_source==role:
-            self.worker_source=None
+            self.clear_worker_selection()
         elif self.worker_source is None:
             if getattr(planet,role)>0:
                 self.worker_source=role
+                x=self.mouse[0] if not self.keyboard_mode and worker_row_rect(role).collidepoint(self.mouse) else None
+                self.worker_count=worker_selection_count(getattr(planet,role),x)
         else:
             try:
-                self.game.move_worker(self.game.selected_system,self.game.selected_planet,self.worker_source,role)
-                self.worker_source=None
+                self.game.move_worker(self.game.selected_system,self.game.selected_planet,self.worker_source,role,count=self.worker_count)
+                self.clear_worker_selection()
                 self.save_game(autosave=True)
             except RuleError as exc:
-                self.worker_source=None
+                self.clear_worker_selection()
                 self.toast(exc,True)
 
     def open_production(self):
@@ -1618,7 +1633,7 @@ class App:
                 self.go("galaxy")
             elif self.screen=="planet":
                 if self.worker_source:
-                    self.worker_source=None
+                    self.clear_worker_selection()
                 else:
                     self.close_planet()
             elif self.screen in ("colony","shipyard","production"):
@@ -1735,6 +1750,8 @@ class App:
                 self.change_production_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="research" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_research_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen=="planet" and self.worker_source and event.key in (pg.K_LEFT,pg.K_RIGHT):
+                self.adjust_worker_selection(1 if event.key==pg.K_RIGHT else -1)
             elif event.key in (pg.K_LEFT,pg.K_RIGHT):
                 delta=1 if event.key==pg.K_RIGHT else -1
                 if self.screen=="galaxy":

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.36.0
+# Orion Reach — Python prototype 0.36.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,29 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.36.1: move groups between colony jobs
+
+Click a worker icon, or the gap immediately before it, to select that worker
+and everyone to its right. The highlighted group and an exact selected count
+appear before anything moves. Click anywhere in another job row to transfer
+the whole group at once. For example, with seven scientists, click just before
+the third scientist to select the last five, then click Farming.
+
+The rightmost icon selects one; clicking left of the first icon or on the role
+label selects the entire row. Clicking the same row again or pressing **Escape**
+cancels. **Left / Right** adjusts the selected quantity one worker at a time.
+Keyboard users can focus a role with **Tab / Up / Down**, press **Enter**, adjust
+the quantity, then focus the destination and press Enter again.
+
+For large populations, the rightmost 24 workers remain individually visible.
+The leading **+N** represents the preceding workers; click it to select the
+whole row, or use the arrow keys to choose any exact quantity. Transfers include
+captive workers, update all outputs and forecasts immediately, and autosave once.
+Changing planets, leaving the screen or ending a turn clears a pending selection.
+This update keeps save format 27 and works with existing v0.36 saves.
+
+![Five scientists selected for reassignment](screenshots/workforce_group_selection.png)
 
 ## New in v0.36: Resources, mining and local energy
 
@@ -891,10 +914,12 @@ colony's **net credits, food, industry, research, Resources and local energy**
 with distinct icons and colours. Shared Resource and credit banks are separate
 in the title bar.
 
-Every **1 billion inhabitants is one worker**. Click a worker row to select one
-person, then click another row to move them. Click the same row or press Escape
-to cancel selection. A move is free, is autosaved, and immediately updates the
-displayed production and construction forecast.
+Every **1 billion inhabitants is one worker**. Click a worker icon or the gap
+before it to select everyone from that point to the right, then click another
+row to move the group. Click the last icon for one, or left of the first for all.
+The highlight and selected count preview the transfer. Left/Right adjusts the
+quantity; the same row or Escape cancels. Each transfer is free, autosaves once,
+and immediately updates output and construction forecasts.
 
 - **Farmers:** produce food at the biome-specific rate shown below, plus
   **1 food each per powered hydroponic farm**.
@@ -1772,7 +1797,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Open a planet | Click its panel row or globe/caption; Enter activates a focused planet |
 | Browse planets while viewing details | Click a planet in the top-left system list, or Left / Right |
 | Return to the galaxy map or full system view | Galaxy map / System view button, or Escape after cancelling any worker selection |
-| Assign workers | Click a worker row, then click the destination role |
+| Assign workers | Click a worker or gap to select everyone to its right, then a destination role; Left/Right adjusts quantity |
 | Choose / prioritize production | Change on the planet overview |
 | Buy the current project | Buy on the planet overview, then confirm the price |
 | Manage buildings | Change to build; click a surface building to inspect |
@@ -1997,6 +2022,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
 | `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
+| `tests/test_worker_groups.py` | Atomic group transfers, scaled pointer boundaries, keyboard quantities, cancellation, captives and autosaves |
 | `tests/test_resources_energy.py` | Mining, shared supplies, local power, construction payments, authentic save upgrades and UI actions |
 | `tests/test_home_systems.py` | Civilization home names, unchanged generation, repeated races and survey privacy |
 
@@ -2008,7 +2034,9 @@ migrations when the data schema changes.
 
 ## Development checks
 
-v0.36 passes **572 automated checks**, including Resources, mining assignments,
+v0.36.1 passes **579 automated checks**, including group workforce transfers,
+scaled mouse selection, keyboard quantities, cancellation, captive workers,
+Resources, mining assignments,
 shared construction supply, local power, disabled military infrastructure,
 AI recovery, authentic v0.35.1 save upgrades and the new interface controls.
 Earlier coverage includes resource-bar reports, navigation, fleet selection and

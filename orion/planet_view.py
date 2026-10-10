@@ -22,7 +22,33 @@ from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, pa
 GREEN = (154, 200, 133)
 SCIENCE = (165, 172, 232)
 ROLE_COLORS = {"farmers": GREEN, "workers": GOLD, "scientists": SCIENCE, "miners": (204, 163, 122)}
+ROLE_LABELS = {"farmers": "FARMING", "workers": "INDUSTRY", "scientists": "RESEARCH", "miners": "MINING"}
+MAX_WORKER_ICONS = 24
 SURFACE_RECT = (24, 314, 1392, 526)
+
+
+def worker_row_rect(role):
+    return pg.Rect(302, 148+WORKER_ROLES.index(role)*31, 742, 29)
+
+
+def worker_icon_layout(count):
+    # Show the rightmost workers: even large captive populations have an exact
+    # clickable tail. The preceding hidden group gets its own +N indicator.
+    return (507, 15) if count > MAX_WORKER_ICONS else (465, 17)
+
+
+def worker_selection_count(count, x=None):
+    """A worker or the gap before it picks everyone from that point rightward."""
+    if not count:
+        return 0
+    if x is None:
+        return 1  # Keyboard activation starts with one; arrows adjust quantity.
+    if x < (498 if count > MAX_WORKER_ICONS else 454):
+        return count
+    first, step = worker_icon_layout(count)
+    visible = min(count, MAX_WORKER_ICONS)
+    index = max(0, min(visible-1, math.ceil((x-first-5)/step)))
+    return visible-index
 
 
 def resource_icon(surface, kind, center, color, scale=1):
@@ -133,23 +159,40 @@ def workforce_panel(app, game, planet, live):
     details = {"farmers": f"{farmer_output(planet, benefits)} food each" if needs_food else "food not required",
                "workers": f"{1+staff.industry:g} base IND each", "scientists": f"{2+staff.research} base RP each",
                "miners": f"{economy.miner_output(planet, benefits):g} RES each"}
-    labels = {"farmers": "FARMING", "workers": "INDUSTRY", "scientists": "RESEARCH", "miners": "MINING"}
-    for index, role in enumerate(WORKER_ROLES):
-        y = 148+index*31
+    preview = None
+    for role in WORKER_ROLES:
+        rect = worker_row_rect(role)
+        y = rect.y
         count = getattr(planet, role)
         color = ROLE_COLORS[role]
-        button = app.button("worker_"+role, "", (302, y, 742, 29), lambda job=role: app.select_worker_role(job),
+        button = app.button("worker_"+role, "", rect, lambda job=role: app.select_worker_role(job),
                             "hotspot", enabled=owned and (count > 0 or app.worker_source is not None)
                             and (role != "farmers" or needs_food or count > 0))
-        active = app.is_active(button)
+        active = button.enabled and app.is_active(button)
+        selected = min(count, app.worker_count) if app.worker_source == role else 0
+        if active and not app.worker_source:
+            selected = worker_selection_count(count, None if app.keyboard_mode else app.mouse[0])
+            preview = role, selected
         if active or app.worker_source == role:
             panel(surface, button.rect, (23, 38, 45), color)
-        text(surface, labels[role], (314, y+9), 10, color, "mono")
+        text(surface, ROLE_LABELS[role], (314, y+9), 10, color, "mono")
         text(surface, str(count), (440, y+4), 17, INK, right=True)
-        for i in range(min(count, 24)):
-            worker_icon(surface, 465+i*17, y+2, color)
-        if count > 24:
-            text(surface, f"+{count-24}", (883, y+8), 11, color)
+        first, step = worker_icon_layout(count)
+        visible = min(count, MAX_WORKER_ICONS)
+        selected_visible = min(selected, visible)
+        if selected_visible:
+            left = first+(visible-selected_visible)*step-7
+            right = first+(visible-1)*step+8
+            panel(surface, (left, y+1, right-left, 27), tuple(c//4 for c in color), color)
+        for i in range(visible):
+            worker_icon(surface, first+i*step, y+2, INK if i >= visible-selected_visible else color)
+        if count > visible:
+            hidden = count-visible
+            selected_hidden = max(0, selected-visible)
+            if selected_hidden:
+                panel(surface, (454, y+1, 44, 27), tuple(c//4 for c in color), color)
+            label = f"{selected_hidden}/{hidden}" if 0 < selected_hidden < hidden else f"+{hidden}"
+            text(surface, label, (459, y+9), 9, INK if selected_hidden else color)
         text(surface, details[role] if live else "last observed", (1032, y+9), 10, MUTED, right=True)
     if not live:
         caption = f"Stored survey · {planet.workforce} B inhabitants last observed. Current production is unknown."
@@ -158,9 +201,11 @@ def workforce_panel(app, game, planet, live):
     elif not owned:
         caption = "Foreign colony · Worker assignments are read-only."
     elif app.worker_source:
-        caption = f"Move one of your {app.worker_source}: choose a different row. Click the same row to cancel."
+        caption = f"{app.worker_count} selected from {ROLE_LABELS[app.worker_source].lower()} · Click destination · ←/→ quantity · Same row / Esc cancels"
+    elif preview:
+        caption = f"Select {preview[1]} from {ROLE_LABELS[preview[0]].lower()} · Click here, then click the destination job."
     else:
-        caption = f"Click a worker row, then its new job.  ·  {food.growth_caption}"
+        caption = f"Click a worker or gap to select everyone to its right, then a new job. · {food.growth_caption}"
     text(surface, shorten(caption, 742, 11), (302, 279), 11, MUTED)
 
 

@@ -533,12 +533,13 @@ class VarkeshInterfaceTests(unittest.TestCase):
         self.app.window = pg.display.set_mode((990, 760), pg.RESIZABLE)
         self.app.present()
 
-    def click(self, key):
+    def click(self, key, *, x=None):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         self.assertTrue(button.enabled, key)
         self.assertTrue(pg.Rect(0, 0, 1440, 900).contains(button.rect))
-        x, y = button.rect.center
+        y = button.rect.centery
+        x = button.rect.centerx if x is None else x
         v = self.app.viewport
         pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
@@ -576,7 +577,7 @@ class VarkeshInterfaceTests(unittest.TestCase):
         planet.slaves = 100
         self.app.open_system(0)
         self.app.open_planet(2)
-        self.click("worker_workers")
+        self.click("worker_workers", x=852)  # Rightmost icon selects one of the large workforce.
         self.click("worker_scientists")
         self.assertEqual(planet.scientists, 1)
         game.set_workforce(0, 2, 54, 20)

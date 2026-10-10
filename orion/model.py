@@ -846,7 +846,8 @@ class GameState:
             raise RuleError("Each population unit can have only one job.")
         planet.farmers, planet.scientists, planet.miners = farmers, scientists, miners
 
-    def move_worker(self, system_id, planet_id, source, destination, *, owner=PLAYER):
+    def move_worker(self, system_id, planet_id, source, destination, *, count=1, owner=PLAYER):
+        """Move a whole selected group atomically, retaining one-worker callers."""
         self._require_strategy()
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
@@ -855,8 +856,10 @@ class GameState:
         counts = {role: getattr(planet, role) for role in population_rules.WORKER_ROLES}
         if counts[source] < 1:
             raise RuleError("There is no worker in that role to move.")
-        counts[source] -= 1
-        counts[destination] += 1
+        if not _integer(count, 1, counts[source]):
+            raise RuleError(f"Choose between 1 and {counts[source]} workers from that role.")
+        counts[source] -= count
+        counts[destination] += count
         self.set_workforce(system_id, planet_id, counts["farmers"], counts["scientists"], counts["miners"], owner=owner)
 
     def building_yields(self, definition, planet):
