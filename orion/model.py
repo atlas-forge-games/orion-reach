@@ -23,7 +23,8 @@ from . import navigation
 from . import sensors
 from . import first_contact
 from . import economy
-from .races import RACES, default_rival_race
+from . import observer as observer_rules
+from .races import RACES, SETUP_RACES, default_rival_race
 from .home_systems import name_home
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
 from .research import TECHNOLOGIES, ResearchState, building_yields, colony_yields, colony_maintenance
@@ -174,7 +175,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=29):
+    def from_dict(cls, data, systems, *, version=30):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -256,7 +257,7 @@ class Opponent:
     resources: int = economy.STARTING_RESOURCES
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=29):
+    def from_dict(cls, data, systems, turn, *, version=30):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -421,7 +422,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=29):
+    def from_dict(cls, data, expected_id, *, version=30):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -563,10 +564,10 @@ class StarSystem:
     worlds: list[Planet] = field(default_factory=list)
 
 
-def generate_planets(system, galaxy_seed):
+def generate_planets(system, galaxy_seed, *, player_home=True):
     """Stable planet data, using a separate RNG so galaxy positions never change."""
     rng = random.Random(f"orion-worlds-v1:{galaxy_seed}:{system.id}")
-    if system.id == 0:
+    if system.id == 0 and player_home:
         # Sol intentionally models four inner worlds at this prototype stage.
         home = [
             Planet(0, "Mercury", "Barren", "Tiny", "Rich", "Low", .39),
@@ -633,13 +634,21 @@ class GameState:
     sensor_news_read: int = 0
     resources: int = economy.STARTING_RESOURCES
 
+    observer_events: list[observer_rules.Observation] = field(default_factory=list)
+    next_observer_event_id: int = 1
+    observer_news_read: int = 0
+
+    @property
+    def is_observer(self):
+        return self.race_id == "observer"
+
     @property
     def opponents(self):
         return ({RIVAL: self.opponent} if self.opponent is not None else {}) | self.other_opponents
 
     @property
     def owners(self):
-        return (PLAYER, *self.opponents)
+        return tuple(self.opponents) if self.is_observer else (PLAYER, *self.opponents)
 
     def diplomacy_between(self, first=PLAYER, second=RIVAL):
         if first == second or first not in self.owners or second not in self.owners:
@@ -669,7 +678,7 @@ class GameState:
         return next((d for d in self.designs if d.id == identifier), None)
 
     def save_design(self, name, kind, modules, identifier=None):
-        self._require_strategy()
+        self._require_strategy(PLAYER)
         name = name.strip() if isinstance(name, str) else name
         if not _name(name):
             raise RuleError("Choose a name of 1–28 printable characters.")
@@ -709,16 +718,18 @@ class GameState:
     def visible_ships(self, owner=PLAYER):
         return [ship for ship in self.ships if exploration_rules.ship_visible(self, ship, owner)]
 
-    def strategy_error(self):
+    def strategy_error(self, owner=None):
         if self.result is not None:
             return "This campaign has ended. Start a new campaign to play again."
         if self.combat is not None:
             return "Resolve the current battle before issuing strategic orders."
+        if self.is_observer and owner == PLAYER:
+            return observer_rules.READ_ONLY
         return None
 
-    def _require_strategy(self):
-        if self.strategy_error():
-            raise RuleError(self.strategy_error())
+    def _require_strategy(self, owner=None):
+        if self.strategy_error(owner):
+            raise RuleError(self.strategy_error(owner))
 
     def check_victory(self):
         if self.result is None and self.combat is None:
@@ -799,7 +810,7 @@ class GameState:
         return self._empire(owner).technology
 
     def bonuses_for(self, owner=PLAYER):
-        if owner is None:
+        if owner is None or (self.is_observer and owner == PLAYER):
             return {}
         empire = self._empire(owner)
         bonuses = empire.technology.bonuses.copy()
@@ -808,8 +819,8 @@ class GameState:
         return economy.PowerBonuses(bonuses, lambda planet: self._power_report(planet, bonuses))
 
     def research_error(self, identifier, *, owner=PLAYER):
-        if self.strategy_error():
-            return self.strategy_error()
+        if self.strategy_error(owner):
+            return self.strategy_error(owner)
         return self.research_state(owner).choice_error(identifier)
 
     def choose_research(self, identifier, *, owner=PLAYER):
@@ -820,7 +831,7 @@ class GameState:
         return self.advance_research(owner)
 
     def advance_research(self, owner=PLAYER):
-        self._require_strategy()
+        self._require_strategy(owner)
         empire = self._empire(owner)
         empire.research, discovered = empire.technology.spend(empire.research)
         if discovered and owner != PLAYER:
@@ -845,7 +856,7 @@ class GameState:
         return population_rules.report(planet, self.bonuses_for(planet.owner or PLAYER))
 
     def set_workforce(self, system_id, planet_id, farmers, scientists, miners=None, *, owner=PLAYER):
-        self._require_strategy()
+        self._require_strategy(owner)
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         miners = planet.miners if miners is None else miners
@@ -858,7 +869,7 @@ class GameState:
 
     def move_worker(self, system_id, planet_id, source, destination, *, count=1, owner=PLAYER):
         """Move a whole selected group atomically, retaining one-worker callers."""
-        self._require_strategy()
+        self._require_strategy(owner)
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if source not in population_rules.WORKER_ROLES or destination not in population_rules.WORKER_ROLES or source == destination:
@@ -936,7 +947,7 @@ class GameState:
         return f"Waiting for {missing} resources" if missing > 0 else "Resources ready" if planet.construction_queue[0].needs_resources else "Resources reserved"
 
     def toggle_building(self, system_id, planet_id, index, *, owner=PLAYER):
-        self._require_strategy()
+        self._require_strategy(owner)
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if not _integer(index, 0, len(planet.buildings)-1):
@@ -990,7 +1001,7 @@ class GameState:
         return None
 
     def can_settle(self, planet, owner=PLAYER):
-        if raid_rules.is_varkesh(self, owner):
+        if (self.is_observer and owner == PLAYER) or raid_rules.is_varkesh(self, owner):
             return False
         return planet.habitability > 0 or bool(self.bonuses_for(owner).get(planet.biome.lower(), 0))
 
@@ -1039,6 +1050,7 @@ class GameState:
         # Orders occur now; an invasion can end this turn before the year advances.
         empire.events.append(AIEvent(self.turn if turn is None else turn, message))
         empire.events = empire.events[-12:]
+        observer_rules.record(self, owner, message, self.turn if turn is None else turn)
 
     def opponent_home(self):
         """Choose a habitable home far from every existing player colony."""
@@ -1052,8 +1064,8 @@ class GameState:
         return max(candidates, key=score, default=None)
 
     def opponent_start_error(self):
-        if self.strategy_error():
-            return self.strategy_error()
+        if self.strategy_error(PLAYER):
+            return self.strategy_error(PLAYER)
         if self.opponent is not None:
             return "A rival empire is already active."
         if self.opponent_home() is None:
@@ -1061,7 +1073,7 @@ class GameState:
         return None
 
     def add_opponent(self, race_id=None):
-        self._require_strategy()
+        self._require_strategy(PLAYER)
         race_id = default_rival_race(self.race_id) if race_id is None else race_id
         if not isinstance(race_id, str) or race_id not in RACES:
             raise RuleError("Unknown rival race.")
@@ -1090,7 +1102,7 @@ class GameState:
                           research=RACES[race_id].starting_research)
         if owner == RIVAL:
             self.opponent = empire
-            self.diplomacy = make_contact(self.turn, name, race_id)
+            self.diplomacy = None if self.is_observer else make_contact(self.turn, name, race_id)
         else:
             self.other_opponents[owner] = empire
             self.exploration.scanned_others[owner] = []
@@ -1114,8 +1126,8 @@ class GameState:
         return worlds[planet_id]
 
     def build_error(self, system_id, planet_id, building_id, *, owner=PLAYER):
-        if self.strategy_error():
-            return self.strategy_error()
+        if self.strategy_error(owner):
+            return self.strategy_error(owner)
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(building_id, str) or building_id not in BUILDINGS:
             return "Unknown building."
@@ -1170,7 +1182,7 @@ class GameState:
         queue.insert(0, queue.pop())
 
     def prioritize_construction(self, system_id, planet_id, index, *, owner=PLAYER):
-        self._require_strategy()
+        self._require_strategy(owner)
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if not _integer(index, 0, len(planet.construction_queue)-1):
@@ -1182,8 +1194,8 @@ class GameState:
         return 2*queue[0].remaining_work if queue else 0
 
     def buy_construction_error(self, system_id, planet_id, *, owner=PLAYER):
-        if self.strategy_error():
-            return self.strategy_error()
+        if self.strategy_error(owner):
+            return self.strategy_error(owner)
         planet = self.planet_at(system_id, planet_id)
         if planet.owner != owner:
             return "You can only buy production on your own colony."
@@ -1214,8 +1226,8 @@ class GameState:
             self.next_ship_id += 1
 
     def ship_build_error(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
-        if self.strategy_error():
-            return self.strategy_error()
+        if self.strategy_error(owner):
+            return self.strategy_error(owner)
         planet = self.planet_at(system_id, planet_id)
         design = self.design_for(kind) if isinstance(kind, str) and owner == PLAYER else None
         if not isinstance(kind, str) or (kind not in SHIP_TYPES and design is None):
@@ -1259,7 +1271,7 @@ class GameState:
 
     def send_ships(self, ship_ids, destination, *, owner=PLAYER):
         """Set a course for the next End Turn; pending orders may be redirected."""
-        self._require_strategy()
+        self._require_strategy(owner)
         identifiers = list(ship_ids)
         if not identifiers:
             raise RuleError("Select at least one ship to send.")
@@ -1291,7 +1303,7 @@ class GameState:
 
     def cancel_departures(self, ship_ids, *, owner=PLAYER):
         """Cancel a whole selection atomically, only before its first travel step."""
-        self._require_strategy()
+        self._require_strategy(owner)
         identifiers = list(ship_ids)
         if not identifiers:
             raise RuleError("Select at least one ship.")
@@ -1325,8 +1337,8 @@ class GameState:
                 and not s.in_transit and s.system_id == system_id]
 
     def colonize_error(self, system_id, planet_id, *, owner=PLAYER):
-        if self.strategy_error():
-            return self.strategy_error()
+        if self.strategy_error(owner):
+            return self.strategy_error(owner)
         if raid_rules.is_varkesh(self, owner):
             return "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits."
         planet = self.planet_at(system_id, planet_id)
@@ -1362,7 +1374,7 @@ class GameState:
         return planet
 
     def cancel_construction(self, system_id, planet_id, queue_index, *, owner=PLAYER):
-        self._require_strategy()
+        self._require_strategy(owner)
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if not _integer(queue_index, 0, len(planet.construction_queue)-1):
@@ -1373,7 +1385,7 @@ class GameState:
         return project.refund_text
 
     def demolish_building(self, system_id, planet_id, building_index, *, owner=PLAYER):
-        self._require_strategy()
+        self._require_strategy(owner)
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
         if not _integer(building_index, 0, len(planet.buildings)-1):
@@ -1496,7 +1508,7 @@ class GameState:
                     self.rival_event(message+".", turn=self.turn, owner=planet.owner)
         population.extend(raid_rules.advance_mortality(self, slave_start))
         exploration = exploration_rules.refresh(self, recover=True)
-        discovered = self.advance_research()
+        discovered = None if self.is_observer else self.advance_research()
         for owner, empire in self.opponents.items():
             empire.credits += rival_rates[owner][0]
             empire.research += rival_rates[owner][1]
@@ -1524,7 +1536,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=29):
+    def from_dict(cls, data, *, version=30):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1598,11 +1610,12 @@ class GameState:
                                      or any(s.owner == RIVAL for s in ships)):
                 raise ValueError
             race_id = data["race_id"] if version >= 6 else "terran"
-            if not isinstance(race_id, str) or race_id not in RACES:
+            if not isinstance(race_id, str) or race_id not in (SETUP_RACES if version >= 30 else RACES):
                 raise ValueError
             if version >= 6:
                 diplomacy = DiplomacyState.from_dict(data["diplomacy"], data["turn"], version=version) if data["diplomacy"] is not None else None
-                if (opponent is None) != (diplomacy is None):
+                if ((race_id == "observer" and diplomacy is not None)
+                        or (race_id != "observer" and (opponent is None) != (diplomacy is None))):
                     raise ValueError
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
@@ -1671,6 +1684,7 @@ class GameState:
                     raise ValueError("Bombardment timestamp is in the future")
             if version < 26:
                 first_contact.migrate(game)
+            observer_rules.load(game, data, version)
             return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
@@ -1685,11 +1699,14 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         raise SaveError("Fog of war must be on or off.")
     if type(with_guardians) is not bool:
         raise SaveError("Guardians must be on or off.")
-    if not isinstance(race_id, str) or race_id not in RACES:
+    if not isinstance(race_id, str) or race_id not in SETUP_RACES:
         raise SaveError("Choose a valid player race.")
+    observer = race_id == "observer"
     if rival_race_id is not None and (not isinstance(rival_race_id, str) or rival_race_id not in RACES):
         raise SaveError("Choose a valid rival race.")
-    count_rivals = (1 if with_ai else 0) if rival_count is None else rival_count
+    count_rivals = (3 if observer else 1 if with_ai else 0) if rival_count is None else rival_count
+    if observer and not _integer(count_rivals, 2, MAX_RIVALS):
+        raise SaveError(f"Choose between 2 and {MAX_RIVALS} computer empires to observe.")
     if not _integer(count_rivals, 0, MAX_RIVALS):
         raise SaveError(f"Choose between 0 and {MAX_RIVALS} rivals.")
     if type(random_starts) is not bool:
@@ -1702,6 +1719,8 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     names = NAMES.copy()
     rng.shuffle(names)
     systems = [StarSystem(0, "Sol", .35, .55, "Yellow dwarf", 4, "Terran", "Average")]
+    if observer:
+        systems[0].name = names[-1]
     starts = random.Random(f"orion-starts-v1:{seed}")
     left, right, top, bottom = GALAXY_BOUNDS
     if random_starts:
@@ -1718,16 +1737,19 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         systems.append(StarSystem(i, names[i-1], x, y, rng.choice(STAR_TYPES),
                                   rng.randint(0, 7), rng.choice(BIOMES[:-1]), rng.choice(RICHNESSES[:-1])))
     for system in systems:
-        system.worlds = generate_planets(system, seed)
+        system.worlds = generate_planets(system, seed, player_home=not observer)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
                      race_id=race_id, fog_of_war=fog_of_war)
-    name_home(game, systems[0], systems[0].worlds[2], race_id)
-    game.research = RACES[race_id].starting_research
-    if not population_rules.food_required(8, game.bonuses_for()):
-        game.planet_at(0, 2).farmers = 0
-    game.planet_at(0, 2).miners = 2
-    game._starting_fleet(PLAYER, 0)
-    if not random_starts and count_rivals <= 1:
+    if observer:
+        game.credits = game.resources = 0
+    else:
+        name_home(game, systems[0], systems[0].worlds[2], race_id)
+        game.research = RACES[race_id].starting_research
+        if not population_rules.food_required(8, game.bonuses_for()):
+            game.planet_at(0, 2).farmers = 0
+        game.planet_at(0, 2).miners = 2
+        game._starting_fleet(PLAYER, 0)
+    if not observer and not random_starts and count_rivals <= 1:
         if count_rivals and game.opponent_start_error() is None:
             game.add_opponent(rival_race_id)
     else:
@@ -1735,7 +1757,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         starts.shuffle(races)
         if rival_race_id:
             races.insert(0, rival_race_id)
-        homes = [systems[0]]
+        homes = [] if observer else [systems[0]]
         for owner, rid in zip(RIVAL_IDS[:count_rivals], races):
             candidates = [s for s in systems if s not in homes and s.worlds]
             separated = [s for s in candidates if all(distance_ly(s, h) >= 20 for h in homes)]
@@ -1747,6 +1769,8 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
                 system.biome, system.richness = planet.biome, planet.richness
             game._place_opponent(owner, rid, system, planet, RACES[rid].default_empire)
             homes.append(system)
+    if observer:
+        game.selected_system = game.opponent.home_system
     if with_guardians:
         monster_rules.seed_guardians(game)
     if with_tombs:

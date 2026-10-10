@@ -145,7 +145,7 @@ def advance_mortality(game, starting):
 
 
 def news(game, owner="player"):
-    return [event for event in reversed(game.raid_events) if owner in event.observers]
+    return [event for event in reversed(game.raid_events) if owner in event.observers or (game.is_observer and owner == "player")]
 
 
 def headline(game, event):

@@ -51,8 +51,8 @@ def invasion_strength(game, system_id, planet_id, owner="player"):
 def invasion_error(game, system_id, planet_id, owner="player"):
     from .defenses import bases, effective_shield
     from .raiding import is_varkesh, homeworld
-    if game.strategy_error():
-        return game.strategy_error()
+    if game.strategy_error(owner):
+        return game.strategy_error(owner)
     if owner not in game.owners or not game.opponents:
         return "No opposing empire is available."
     planet = game.planet_at(system_id, planet_id)
@@ -147,8 +147,8 @@ def gate_blocked(game, system_id, owner):
 
 
 def gate_error(game, system_id, planet_id, owner="player"):
-    if game.strategy_error():
-        return game.strategy_error()
+    if game.strategy_error(owner):
+        return game.strategy_error(owner)
     planet = game.planet_at(system_id, planet_id)
     if planet.owner != owner:
         return "Choose one of your colonies."
@@ -175,7 +175,7 @@ def current_result(game):
         alive = [owner for owner in game.owners if colonies(game, owner)]
         if len(alive) < 2:
             return CampaignResult(alive[0] if alive else None, "conquest", game.turn)
-        if "player" not in alive:
+        if not game.is_observer and "player" not in alive:
             return CampaignResult(None, "elimination", game.turn)
     ascended = {p.owner for s in game.systems for p in s.worlds
                 if p.ascension_gate and p.gate_charge == GATE_CHARGE_TURNS}

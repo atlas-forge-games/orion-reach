@@ -9,10 +9,14 @@ def known(game, first, second):
 
 
 def known_opponents(game):
+    if game.is_observer:
+        return list(game.opponents)
     return [owner for owner in game.opponents if known(game, "player", owner)]
 
 
 def pending(game):
+    if game.is_observer:
+        return []
     return sorted((owner for owner in known_opponents(game)
                    if not game.diplomacy_between("player", owner).introduced and game.colony_systems(owner)),
                   key=lambda owner: (game.diplomacy_between("player", owner).contact_turn, owner))

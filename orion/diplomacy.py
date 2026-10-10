@@ -101,8 +101,8 @@ def agreement_yields(game, owner):
 
 
 def action_error(game, action, target="rival"):
-    if game.strategy_error():
-        return game.strategy_error()
+    if game.strategy_error("player"):
+        return game.strategy_error("player")
     if action not in ACTIONS:
         return "Unknown diplomatic action."
     if target not in game.opponents:

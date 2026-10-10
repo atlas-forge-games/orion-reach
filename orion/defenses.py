@@ -67,8 +67,8 @@ def bombardment_fleet(game, system_id, owner):
 
 
 def bombardment_error(game, system_id, planet_id, owner="player"):
-    if game.strategy_error():
-        return game.strategy_error()
+    if game.strategy_error(owner):
+        return game.strategy_error(owner)
     planet = game.planet_at(system_id, planet_id)
     if planet.owner is None or planet.owner == owner:
         return "Choose an opposing colony."

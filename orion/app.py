@@ -39,7 +39,8 @@ from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
 from .setup_view import draw_race_select, draw_setup
-from .races import RACES
+from .races import SETUP_RACES as RACES
+from .observer_view import draw_observer, draw_observer_header
 from .empires import empire_color
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
@@ -56,7 +57,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer")
 
 
 class App:
@@ -99,6 +100,8 @@ class App:
         self.size="Standard"
         self.race_id="terran"
         self.rival_count=1
+        self.observer_tab="empires"
+        self.observer_page=0
         self.rival_id=RIVAL
         self.fog_of_war=True
         self.field=None
@@ -136,6 +139,13 @@ class App:
     def go(self,screen):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
+        if self.game and self.game.is_observer:
+            tabs={"empire":"empires", "diplomacy":"diplomacy", "research":"research", "fleets":"fleets",
+                  "objectives":"objectives", "designer":"fleets", "exploration":"empires"}
+            if screen in tabs:
+                self.observer_tab=tabs[screen]
+                self.observer_page=0
+                screen="observer"
         if self.game and self.ground_reports and screen in GAME_SCREENS and screen!="contact":
             screen="ground"
         elif self.game and self.game.result is not None and screen in GAME_SCREENS and screen not in ("news","contact"):
@@ -288,6 +298,8 @@ class App:
         self.sensor_contact_id=None
 
     def toggle_sensors(self):
+        if self.game.is_observer:
+            return
         self.show_sensors=not self.show_sensors
         if self.show_sensors and not sensors.centers(self.game):
             self.toast("Research Deep-space Radar to scan around your colonies.")
@@ -799,8 +811,21 @@ class App:
             planet=self.game.known_system(self.game.selected_system).worlds[self.game.selected_planet]
             if planet.owner in self.game.opponents:
                 self.rival_id=planet.owner
-        self.rival_return=self.screen if self.screen in ("diplomacy","planet") else "empire"
+        self.rival_return=self.screen if self.screen in ("diplomacy","planet") else "observer" if self.game.is_observer else "empire"
         self.go("rival")
+
+    def open_observer_tab(self,tab):
+        self.observer_tab=tab
+        self.observer_page=0
+        self.go("observer")
+
+    def open_observed_empire(self,owner):
+        self.rival_id=owner
+        self.rival_return="observer"
+        self.go("rival")
+
+    def change_observer_page(self,delta):
+        self.observer_page=max(0,self.observer_page+delta)
 
     def open_diplomacy(self):
         if self.screen=="diplomacy":
@@ -1067,6 +1092,13 @@ class App:
         self.clear_worker_selection()
         self.close_fleet_popup()
         report=self.game.advance_turn()
+        if self.game.is_observer:
+            if self.game.result is not None:
+                self.go("result")
+            if self.save_game(autosave=True):
+                alive=sum(bool(self.game.colony_systems(o)) for o in self.game.owners)
+                self.toast(f"Turn {self.game.turn} · {alive} empires remain · Galaxy updated · Autosaved")
+            return
         if report.discoveries:
             self.research_tier=self.game.technology.next_tier(self.research_branch)
         new_news=news_rules.unread_count(self.game)>0
@@ -1595,6 +1627,8 @@ class App:
             self.change_galaxy_planet_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="exploration" and not self.dialog and event.y:
             self.change_exploration_page(-1 if event.y>0 else 1)
+        if event.type==pg.MOUSEWHEEL and self.screen=="observer" and not self.dialog and event.y:
+            self.change_observer_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="combat" and not self.dialog and event.y:
             self.pan_combat(-event.y*2)
         if event.type==pg.TEXTINPUT and self.field and not self.dialog:
@@ -1635,6 +1669,8 @@ class App:
             elif self.screen=="exploration":
                 self.close_exploration()
             elif self.screen=="news":
+                self.go("galaxy")
+            elif self.screen=="observer":
                 self.go("galaxy")
             elif self.screen=="system":
                 self.go("galaxy")
@@ -1739,6 +1775,8 @@ class App:
                 self.open_news()
             elif self.screen=="news" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_news_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen=="observer" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.change_observer_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif (self.screen=="galaxy" and not self.fleet_popup and not self.map_order_ids
                   and self.route_ship_id is None and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN)):
                 self.change_galaxy_planet_page(1 if event.key==pg.K_PAGEDOWN else -1)
@@ -1868,6 +1906,8 @@ class App:
         if self.empire==RACES[self.race_id].default_empire:
             self.empire=RACES[race_id].default_empire
         self.race_id=race_id
+        if race_id=="observer":
+            self.rival_count=max(3,self.rival_count)
         self.field=None
         pg.key.stop_text_input()
 
@@ -1954,7 +1994,7 @@ class App:
         if state is None:
             self.go("menu")
             return
-        draw_galaxy_header(self)
+        (draw_observer_header if state.is_observer else draw_galaxy_header)(self)
         panel(self.canvas,MAP,(7,17,25))
         # A sparse coordinate grid makes the map legible without implying travel lanes.
         for x in range(MAP.x+44,MAP.right,76):
@@ -1996,7 +2036,7 @@ class App:
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)
-        if not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
+        if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             draw_contacts(self,MAP)
             self.button("sensor_overlay", "Sensors on · S" if self.show_sensors else "Sensor range · S",
                         (824,187,188,28),self.toggle_sensors,"primary" if self.show_sensors else "normal")
@@ -2013,7 +2053,8 @@ class App:
                 draw_order_panel(self,star)
             hint=f"{len(self.map_order_ids)} {'SHIP' if len(self.map_order_ids)==1 else 'SHIPS'} SELECTED · Click a destination, or the origin to cancel departure."
         elif self.route_ship_id is None:
-            hint="Select a star, then a planet on the right. Click a fleet to send ships."
+            hint=("OBSERVING · Click stars, planets and fleets to inspect. End turn advances every computer empire." if state.is_observer else
+                  "Select a star, then a planet on the right. Click a fleet to send ships.")
         else:
             ship=state.ship_at(self.route_ship_id)
             duration=state.travel_turns(state.systems[ship.system_id],star)
@@ -2090,6 +2131,9 @@ class App:
 
     def draw_news(self):
         draw_news(self)
+
+    def draw_observer(self):
+        draw_observer(self)
 
     def draw_combat(self):
         draw_combat(self)

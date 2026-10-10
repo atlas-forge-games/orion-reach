@@ -215,7 +215,7 @@ def construction_panel(app, game, system, planet, live):
     text(surface, "CURRENT PROJECT", (1090, 66), 10, GOLD, "mono", 1)
     owned = live and planet.owner == PLAYER
     queue = planet.construction_queue
-    if queue and (owned or not live or planet.owner not in game.opponents):
+    if queue and (owned or game.is_observer or not live or planet.owner not in game.opponents):
         project = queue[0]
         spec = project.spec
         text(surface, shorten(spec.name, 307, 20), (1090, 91), 20, INK)
@@ -225,16 +225,24 @@ def construction_panel(app, game, system, planet, live):
         text(surface, f"{project.progress} / {spec.work_cost} work", (1205, 169), 12, MUTED)
         pg.draw.rect(surface, LINE, (1090, 216, 310, 6))
         pg.draw.rect(surface, CYAN, (1090, 216, round(310*project.progress/spec.work_cost), 6))
-        text(surface, shorten(game.construction_status(planet) if owned else "Last observed project", 310, 11), (1090, 232), 11, GOLD)
+        text(surface, shorten(game.construction_status(planet) if owned or game.is_observer else "Last observed project", 310, 11), (1090, 232), 11, GOLD)
     else:
         text(surface, "No project observed" if not live else "Choose production" if owned else "No active project" if planet.colonized else "Unsettled world", (1090, 97), 22, INK)
         paragraph(surface, "Send a ship to refresh this survey." if not live else
+                  "This civilization chooses its own construction and worker assignments." if game.is_observer and planet.colonized else
+                  "An unsettled world. Watch which civilization reaches it first." if game.is_observer else
                   "Build a structure or launch a ship from this colony." if owned else
                   f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
                   "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
                   f"{planet.biome} · {planet.size} · {planet.richness} minerals. Bring a colony ship to settle here.",
                   (1090, 143), 306, 14, MUTED, 25)
-    if owned:
+    if game.is_observer:
+        if planet.colonized:
+            app.button("observer_planet_empire", "Inspect civilization", (1090, 257, 310, 29),
+                       lambda: app.open_observed_empire(planet.owner))
+        else:
+            text(surface, "OBSERVING · NO ORDERS", (1090, 268), 11, MUTED, "mono")
+    elif owned:
         cost = game.buy_construction_cost(system.id, planet.id)
         app.button("planet_change", "Change", (1090, 257, 146, 29), app.open_production)
         app.button("planet_buy", f"Buy · {cost} CR" if queue else "Buy", (1246, 257, 154, 29), app.buy_production_request,
@@ -260,7 +268,8 @@ def draw_planet_overview(app):
     live = game.system_visible(system.id)
     text(surface, shorten(f"Colony of {planet.name}" if planet.colonized else planet.name, 780, 28, "title"),
          (24, 12), 28, INK, "title")
-    text(surface, f"TURN {game.turn} · YEAR {game.year}     {game.resources:,} RES   ·   {game.credits:,} CR", (1416, 22), 12, GOLD, "mono", right=True)
+    heading = f"TURN {game.turn} · YEAR {game.year}     "+("OBSERVER · READ ONLY" if game.is_observer else f"{game.resources:,} RES   ·   {game.credits:,} CR")
+    text(surface, heading, (1416, 22), 12, GOLD, "mono", right=True)
     system_panel(app, game, system, planet, live)
     workforce_panel(app, game, planet, live)
     construction_panel(app, game, system, planet, live)

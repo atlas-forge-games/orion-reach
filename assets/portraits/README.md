@@ -1,6 +1,6 @@
 # Orion Reach — race portraits v1
 
-Eleven original race portrait assets generated with the built-in image-generation tool.
+Eleven race portraits and one Observer portrait generated with the built-in image-generation tool.
 The game uses these portraits on the New Game race cards and the Diplomacy
 screen, including your own empire's profile. Extract updates into the repository
 root to place the files under assets/portraits/.
@@ -18,6 +18,7 @@ root to place the files under assets/portraits/.
 | Aetheri | aetheri-v1.png |
 | The Concord | concord-v1.png |
 | The Remnant | remnant-v1.png |
+| The Observer (spectator mode) | observer-v1.png |
 
 Each file is the unmodified generated PNG, with an opaque dark background.
 The renderer preserves their aspect ratio and caches loaded and scaled images.
@@ -32,6 +33,13 @@ survivor with a proud, patient, melancholy expression. Earlier portrait drafts
 are not included in the game.
 
 ## Generation prompts
+
+The Observer is an original pale, bald, watchful character in a dark suit and
+fedora, inspired by the quiet, mysterious mood of the Observers in *Fringe*.
+It is not a portrait of a particular actor. The square PNG is preserved exactly
+as generated. Its complete prompt is in `observer-generation-prompt.txt`.
+The Observer is a setup identity only; computer rivals never use this portrait
+or race. If the PNG is missing, an eye emblem remains available.
 
 ### terran
 

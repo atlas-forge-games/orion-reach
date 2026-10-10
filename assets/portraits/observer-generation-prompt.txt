@@ -1,0 +1,8 @@
+Use case: stylized-concept.
+Asset type: a standalone square character portrait for The Observer, a spectator mode in Orion Reach, a space strategy game.
+Primary request: An original character inspired by the quiet, enigmatic Observers from Fringe: pale bald humanlike man, dark tailored suit, white shirt, thin black tie, black fedora, unnervingly calm watchful expression. No likeness of a particular actor.
+Style/medium: polished hand-painted science-fiction game concept art, painterly realism, subtle brushwork, detailed believable cloth and skin, restrained cinematic lighting; not a photograph, not cartoon or anime. Match a dignified alien-diplomacy portrait collection.
+Composition/framing: exactly ONE character, centered head and upper-chest bust, shoulders slightly turned, face nearly frontal looking toward viewer. Whole fedora and head visible with generous space above and beside, clear eyes not obscured by hat, face readable at 88px. Square composition.
+Scene/backdrop: understated deep charcoal-navy observation chamber, softly out of focus, faint distant stars behind glass and very subtle orbital arcs; a dark vignette, background does not compete with face.
+Lighting/mood: soft cool light from upper left and faint warm rim light, silver-gray blue palette, mysterious, detached, patient, quietly curious.
+Constraints: no text, no letters, no logos, no watermark, no frame, no card layout, no weapons, no extra figures. Opaque background.

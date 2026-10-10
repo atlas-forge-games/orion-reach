@@ -132,7 +132,7 @@ def observed_systems(game, owner="player"):
 
 
 def is_visible(game, system_id, owner="player"):
-    return not game.fog_of_war or system_id in observed_systems(game, owner)
+    return (game.is_observer and owner == "player") or not game.fog_of_war or system_id in observed_systems(game, owner)
 
 
 def is_explored(game, system_id, owner="player"):
@@ -141,7 +141,7 @@ def is_explored(game, system_id, owner="player"):
 
 def ship_visible(game, ship, owner="player"):
     # No interstellar sensors in this first version: enemy voyages remain hidden.
-    return ship.owner == owner or not game.fog_of_war or (
+    return (game.is_observer and owner == "player") or ship.owner == owner or not game.fog_of_war or (
         not ship.in_transit and is_visible(game, ship.system_id, owner))
 
 

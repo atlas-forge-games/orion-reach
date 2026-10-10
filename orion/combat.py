@@ -440,8 +440,8 @@ def engagement_target(game, system_id, owner="player", target=None):
 
 
 def engagement_error(game, system_id, owner="player", target=None):
-    if game.strategy_error():
-        return game.strategy_error()
+    if game.strategy_error(owner):
+        return game.strategy_error(owner)
     if type(system_id) is not int or not 0 <= system_id < len(game.systems):
         return "Unknown solar system."
     if alive_at(game, system_id) and owner in OWNERS and game.fleet_at(system_id, owner):
@@ -502,7 +502,7 @@ def begin_combat(game, system_id, owner="player", target=None):
 
 
 def begin_guardian_combat(game, system_id, owner="player"):
-    require(game.strategy_error() is None, game.strategy_error())
+    require(game.strategy_error(owner) is None, game.strategy_error(owner))
     guardian = alive_at(game, system_id)
     fleet = game.fleet_at(system_id, owner) if owner in game.owners else []
     require(guardian is not None and bool(fleet), "A guardian and an arriving fleet are required.")

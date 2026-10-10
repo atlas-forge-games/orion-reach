@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.39.0
+# Orion Reach — Python prototype 0.40.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,39 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.40: The Observer
+
+Choose **The Observer** on the New Game race screen to watch **2–5 computer
+empires** play a complete campaign. The Observer has no homeworld, ships,
+economy or diplomatic relationships, and never occupies a rival slot. Competing
+civilizations are still selected from the original eleven races without duplicates.
+
+- See every system, planet and fleet, including ships in transit.
+- Click **End turn** (or **E**) to advance all computer empires. Space and ground
+  battles resolve automatically. New reports do not interrupt the viewing screen.
+- Inspect global totals and read-only **Empires, Diplomacy, Research, Fleets and
+  Objectives** reports from the bottom command bar. Open a civilization for its
+  economy and colonies, or click a fleet or planet to inspect it.
+- Follow the latest **240 empire activity entries** in Turn news, alongside
+  galaxy-wide tomb awakenings and raid reports. Unread indicators survive saves.
+- The **AI fog of war** option controls only the computer empires. With it on,
+  they must explore and detect one another normally; the Observer still sees all.
+- Save from **Menu → Save game**, or use **F5**. End Turn also autosaves.
+- Conquest and scientific victories belong to actual civilizations. The result
+  screen announces the winner without treating the Observer as a defeated empire.
+
+An awakened Remnant can still emerge as an additional computer empire. Observation
+uses the same economy, research, movement, combat and AI rules as normal play.
+The new portrait has a quiet, enigmatic suit-and-fedora appearance inspired by
+*Fringe*. The unmodified asset and full generation prompt are in `assets/portraits/`.
+Run `python tools/preview_observer.py` to reproduce the interface previews.
+
+Save format **30** records the Observer identity and journal. Older campaigns
+retain their player empire and existing progress; loading them does not change
+which side you control.
+
+![Observer selected at game setup](screenshots/observer_race_select.png)
 
 ## New in v0.39: researched ship classes and drone carriers
 
@@ -2068,7 +2101,7 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 29**, adding carrier drone deployments and old-campaign hull access, while retaining legacy research choices and original active
+**format version 30**, adding Observer campaigns and their activity journal, with carrier drone deployments and old-campaign hull access, while retaining legacy research choices and original active
 project costs, together with Resource banks, miners, building power switches and
 construction Resource reservations alongside first-contact dates, defence health,
 sensor contacts/news, route modifiers,
@@ -2207,6 +2240,15 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.40 passes **624 existing checks and 18 Observer checks** for isolated visibility, computer empire setup,
+blocked player orders, every AI taking its turn, automatic space and ground
+combat, Remnant emergence, victory results, bounded news and unread state,
+save/resume determinism, previous-version compatibility, and mouse/keyboard
+navigation. Five-empire simulations ran for 100 turns with AI fog both on and off,
+including periodic save validation. The Observer portrait and real setup, map,
+report and news screens were inspected.
+
 
 v0.39 passes **624 automated checks**. New coverage exercises named hull
 research, exclusive technology paths, standard and custom carrier construction,

@@ -224,7 +224,7 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
         left, top = rect.centerx-226, rect.y+round(rect.h*.51)
         panel(surface, (left, top, 452, 94), (15, 29, 38))
         text(surface, "No colony established", (left+23, top+16), 25, INK, "title")
-        hint = "Bring a colony ship to settle this world." if game.can_settle(planet) else "Research protective habitats to settle this world."
+        hint = "Watch which civilization settles here first." if game.is_observer else "Bring a colony ship to settle this world." if game.can_settle(planet) else "Research protective habitats to settle this world."
         text(surface, hint, (left+23, top+64), 13, MUTED)
     if framed:
         pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.bottom-35, rect.w, 35))

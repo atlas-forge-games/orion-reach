@@ -226,7 +226,7 @@ def draw_fleet_popup(app):
     pg.draw.line(surface, INK, (cx-4, cy+4), (cx+4, cy-4), 1)
     status = (f"To {game.systems[first.destination].name} · {turn_label(first.turns_remaining)} remaining"
               if first.in_transit else f"Departure queued · {turn_label(first.turns_remaining)} to {game.systems[first.destination].name}" if first.departure_pending else
-              "Select ships, then click a destination" if own else "Rival fleet · inspection only")
+              "Select ships, then click a destination" if own else "Computer fleet · inspection only" if game.is_observer else "Rival fleet · inspection only")
     text(surface, shorten(status, 289, 12), (x+18, y+51), 12, GOLD if first.departure_pending else MUTED)
     if editable:
         app.button("fleet_select_all", "All", (x+18, y+78, 85, 29), app.select_fleet_ships)

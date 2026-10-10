@@ -97,6 +97,8 @@ def draw_galaxy_commands(app):
     pg.draw.line(app.canvas, LINE, (64, 801), (1376, 801))
     unread = news.unread_count(game)
     for index, (key, label, method, icon, shortcut) in enumerate(NAVIGATION):
+        if game.is_observer and key == "open_empire":
+            label = "Empires"
         badge = (str(min(unread, 99))+("+" if unread > 99 else "")) if key == "open_news" and unread else ""
         if key == "pause" and (app.fleet_popup or app.map_order_ids or app.route_ship_id is not None or app.sensor_contact_id is not None):
             shortcut = "P"  # Escape closes the active map selection first.

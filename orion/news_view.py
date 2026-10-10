@@ -12,18 +12,21 @@ def draw_news(app):
     app.button("news_back", "←  Campaign result · N" if game.result else "←  Galaxy map · N",
                (64, 124, 280, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
-    text(surface, "Dispatches from the frontier", (64, 189), 40, INK, "title")
-    text(surface, "Frontier reports and hostile sensor contacts · newest first", (66, 250), 15, MUTED)
+    text(surface, "A chronicle of the galaxy" if game.is_observer else "Dispatches from the frontier", (64, 189), 40, INK, "title")
+    text(surface, "Empire activity, battles, raids and awakenings · latest 240 activity entries" if game.is_observer else "Frontier reports and hostile sensor contacts · newest first", (66, 250), 15, MUTED)
     rows = news.entries(game)
     last = max(0, (len(rows)-1)//NEWS_PER_PAGE)
     app.news_page = min(max(0, app.news_page), last)
     for index, tomb in enumerate(rows[app.news_page*NEWS_PER_PAGE:(app.news_page+1)*NEWS_PER_PAGE]):
-        system = game.systems[tomb.system_id]
+        system = game.systems[tomb.system_id] if tomb.system_id is not None else None
         planet = game.planet_at(tomb.system_id, tomb.planet_id) if tomb.planet_id is not None else None
         y = 294+index*163
         panel(surface, (64, y, 1312, 148))
         text(surface, f"TURN {tomb.turn:03}  /  {tomb.category}", (86, y+17), 11, GOLD, "mono", 1)
-        text(surface, shorten(planet.name if planet else system.name, 1050, 27), (86, y+41), 27, CYAN)
+        text(surface, shorten(planet.name if planet else system.name if system else tomb.headline, 1050, 27), (86, y+41), 27, CYAN)
+        if system is None:
+            paragraph(surface, tomb.detail, (87, y+87), 1240, 15, INK, 22)
+            continue
         text(surface, shorten(tomb.headline, 1240, 15), (87, y+80), 15, INK)
         paragraph(surface, tomb.detail, (87, y+106), 1240, 13, MUTED, 19)
         key = f"news_system_{tomb.system_id}_{tomb.planet_id}"+(f"_raid_{tomb.order}" if tomb.order else "")

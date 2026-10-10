@@ -68,7 +68,8 @@ def outcome_text(game, tomb):
 
 
 def news(game, owner=PLAYER):
-    return sorted((t for t in game.tomb_worlds if t.awakened_turn is not None and owner in t.notified_owners),
+    return sorted((t for t in game.tomb_worlds if t.awakened_turn is not None and
+                   (owner in t.notified_owners or (game.is_observer and owner == PLAYER))),
                   key=lambda t: (t.awakened_turn, t.system_id, t.planet_id), reverse=True)
 
 

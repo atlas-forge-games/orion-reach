@@ -122,7 +122,7 @@ def commit_battle_result(game, guardian, hull, owner):
 
 def seed_guardians(game):
     """A separate RNG preserves ordinary generation and keeps both homes safe."""
-    homes = [game.systems[0]]
+    homes = [] if game.is_observer else [game.systems[0]]
     homes.extend(game.systems[r.home_system] for r in game.opponents.values())
     candidates = [s for s in game.systems if s.worlds and not any(p.colonized for p in s.worlds)
                   and all(distance_ly(s, home) >= 28 for home in homes)]

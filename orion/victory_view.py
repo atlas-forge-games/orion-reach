@@ -139,8 +139,12 @@ def draw_result(app):
     result = game.result
     won, draw = result.winner == "player", result.winner is None and result.condition != "elimination"
     color = GOLD if won else CYAN if draw else RIVAL_COLOR
+    if game.is_observer:
+        color = GOLD
     app.chrome("CAMPAIGN COMPLETE")
     title = "A shared ascension" if draw and result.condition == "science" else "Draw" if draw else "Victory" if won else "Defeat"
+    if game.is_observer:
+        title = "A shared ascension" if draw and result.condition == "science" else "Campaign complete"
     text(surface, title, (92, 187), 66, color, "title")
     subtitle = "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
     text(surface, f"{subtitle.upper()}  /  YEAR {game.year}  /  TURN {result.turn}", (96, 280), 12, MUTED, "mono", 2)
@@ -161,7 +165,10 @@ def draw_result(app):
             pg.draw.circle(surface, color, (1200, 441), radius, 2)
         pg.draw.line(surface, color, (1109, 441), (1291, 441), 2)
         pg.draw.line(surface, color, (1200, 350), (1200, 532), 2)
-    for i, owner in enumerate(("player", result.winner if result.winner in game.opponents else next(iter(game.opponents), "rival"))):
+    profiles = ("player", result.winner if result.winner in game.opponents else next(iter(game.opponents), "rival"))
+    if game.is_observer:
+        profiles = sorted(game.owners, key=lambda o: (o != result.winner, -len(colonies(game, o)), o))[:2]
+    for i, owner in enumerate(profiles):
         if owner == "rival" and game.opponent is None:
             continue
         x = 92+i*641

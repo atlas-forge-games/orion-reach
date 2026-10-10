@@ -149,5 +149,17 @@ RACES = {
 }
 
 
+# A setup identity, deliberately excluded from the pool of competing races.
+OBSERVER = RaceSpec(
+    "observer", "The Observer", "Witness to the galaxy",
+    "Silent witnesses to the rise and fall of civilizations. They watch, remember, and never intervene.",
+    "The Observer", (192, 204, 219), 0, 0,
+    abilities=("Watch every system, planet and fleet.",
+               "All empires are controlled by the computer.",
+               "Advance turns, inspect events, save and resume.",
+               "No colonies, ships or diplomatic influence."))
+SETUP_RACES = {**RACES, OBSERVER.id: OBSERVER}
+
+
 def default_rival_race(player_race):
     return "aelari" if player_race == "kharuun" else "kharuun"

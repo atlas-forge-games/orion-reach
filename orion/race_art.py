@@ -4,7 +4,7 @@ from functools import lru_cache
 import math
 import pygame as pg
 
-from .races import RACES
+from .races import SETUP_RACES as RACES
 from .ui import ASSETS
 
 
@@ -50,7 +50,11 @@ def draw_race_emblem(surface, race_id, center, radius=50):
     width = max(1, round(radius/24))
     pg.draw.circle(surface, dim, (int(x), int(y)), round(radius), 1)
     pg.draw.circle(surface, tuple(c//12 for c in color), (int(x), int(y)), round(radius*.85))
-    if race_id == "terran":
+    if race_id == "observer":
+        pg.draw.ellipse(surface, color, (x-radius*.75, y-radius*.36, radius*1.5, radius*.72), width)
+        pg.draw.circle(surface, color, (int(x), int(y)), round(radius*.24), width)
+        pg.draw.circle(surface, color, (int(x), int(y)), max(2, round(radius*.08)))
+    elif race_id == "terran":
         pg.draw.circle(surface, color, (int(x), int(y)), round(radius*.55), width)
         pg.draw.ellipse(surface, color, (x-radius*.24, y-radius*.55, radius*.48, radius*1.1), width)
         pg.draw.line(surface, color, pt(-.55, 0), pt(.55, 0), width)
