@@ -1024,7 +1024,7 @@ class App:
         try:
             self.storage.save(self.game,autosave=autosave)
             if not autosave:
-                self.toast("Game saved. Find this snapshot under Load Game.")
+                self.toast("Game saved. Find this save under Load Game.")
             return True
         except SaveError as exc:
             self.toast(exc,True)
@@ -2012,9 +2012,9 @@ class App:
         text(self.canvas,"EXPEDITION PAUSED",(505,257),11,GOLD,"mono",2)
         text(self.canvas,"The stars can wait.",(502,290),34,INK,"title")
         self.button("resume","Resume campaign",(505,365,430,58),self.resume,"primary")
-        self.button("save","Save a snapshot",(505,438,430,54),self.save_game)
+        self.button("save","Save game",(505,438,430,54),self.save_game)
         self.button("settings","Settings",(505,504,430,54),lambda:self.show_settings("pause"))
-        self.button("main_menu","Save & return to main menu",(505,570,430,54),self.to_menu)
+        self.button("main_menu","Return to main menu",(505,570,430,54),self.to_menu)
         self.button("quit","Quit game",(505,637,430,45),self.quit_request,"ghost")
 
     def draw_system(self):

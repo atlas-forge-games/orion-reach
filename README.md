@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.35.0
+# Orion Reach — Python prototype 0.35.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,15 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.35.1: clear save and return options
+
+The pause menu now has separate **Save game** and **Return to main menu**
+options. Save game creates a manual save, confirms it on screen, and leaves
+the pause menu open. Return to main menu keeps the existing autosave behaviour.
+Manual saves and autosaves remain available under **Load Game**.
+
+![Separate save and return options](screenshots/pause_menu.png)
 
 ## New in v0.35: galaxy command bar and illustrated resources
 
