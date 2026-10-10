@@ -46,7 +46,7 @@ def centers(game, owner="player"):
     radius = game.bonuses_for(owner).get("sensor_range", 0)
     if not radius:
         return []
-    return [(s, radius+(5 if any(p.owner == owner and "sensor_array" in p.buildings for p in s.worlds) else 0))
+    return [(s, radius+(5 if any(p.owner == owner and game.building_operational(p, "sensor_array") for p in s.worlds) else 0))
             for s in game.colony_systems(owner)]
 
 

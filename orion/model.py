@@ -22,6 +22,7 @@ from . import defenses as defense_rules
 from . import navigation
 from . import sensors
 from . import first_contact
+from . import economy
 from .races import RACES, default_rival_race
 from .home_systems import name_home
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
@@ -75,10 +76,33 @@ class ConstructionProject:
     progress: int = 0
     paid_credits: int | None = None
     design: ShipDesign | None = None
+    resource_cost: int | None = None
+    paid_resources: int = 0
 
     def __post_init__(self):
         if self.paid_credits is None:
-            self.paid_credits = self.spec.credit_cost
+            self.paid_credits = 0
+        if self.resource_cost is None:
+            self.resource_cost = 0 if self.paid_credits else self.spec.resource_cost
+            if self.progress and not self.paid_credits:
+                self.paid_resources = self.resource_cost
+
+    @property
+    def needs_resources(self):
+        return self.resource_cost-self.paid_resources
+
+    @property
+    def resource_refund(self):
+        return self.paid_resources*self.remaining_work//self.spec.work_cost
+
+    @property
+    def refund_text(self):
+        parts = []
+        if self.refund:
+            parts.append(f"{self.refund} CR")
+        if self.resource_refund:
+            parts.append(f"{self.resource_refund} RES")
+        return " + ".join(parts) or "0 RES"
 
     @property
     def spec(self):
@@ -146,7 +170,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=25):
+    def from_dict(cls, data, systems, *, version=27):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -225,9 +249,10 @@ class Opponent:
     events: list[AIEvent] = field(default_factory=list)
     race_id: str = "kharuun"
     technology: ResearchState = field(default_factory=ResearchState)
+    resources: int = economy.STARTING_RESOURCES
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=9):
+    def from_dict(cls, data, systems, turn, *, version=27):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -256,7 +281,10 @@ class Opponent:
         if not isinstance(race_id, str) or race_id not in RACES:
             raise ValueError
         technology = ResearchState.from_dict(data["technology"]) if version >= 7 else ResearchState()
-        return cls(**{**data, "events": parsed, "race_id": race_id, "technology": technology})
+        resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
+        if not _integer(resources, 0, 1_000_000_000):
+            raise ValueError("Invalid resource stockpile")
+        return cls(**{**data, "events": parsed, "race_id": race_id, "technology": technology, "resources": resources})
 
 
 @dataclass
@@ -270,6 +298,7 @@ class TurnReport:
     exploration: list[str] = field(default_factory=list)
     population: list[str] = field(default_factory=list)
     ground_battles: list[victory_rules.InvasionReport] = field(default_factory=list)
+    resources: int = 0
 
 
 @dataclass
@@ -297,6 +326,8 @@ class Planet:
     shield_points: int = 0
     battery_hull: int = 0
     bombarded_turn: int = 0
+    miners: int = 0
+    disabled_buildings: list[int] = field(default_factory=list)
 
     @property
     def workforce(self):
@@ -304,7 +335,7 @@ class Planet:
 
     @property
     def workers(self):
-        return self.workforce-self.farmers-self.scientists
+        return self.workforce-self.farmers-self.scientists-self.miners
 
     @property
     def population_capacity(self):
@@ -343,12 +374,14 @@ class Planet:
     def industry_per_turn(self):
         return self.yields_per_turn[0]
 
-    def advance_construction(self, bonuses=None, *, projects=False):
+    def advance_construction(self, bonuses=None, *, projects=False, fund=None):
         """Use this turn's starting industry, carrying overflow into queued projects."""
         work = colony_yields(self, bonuses or {})[0]
         completed = []
         while work > 0 and self.construction_queue:
             project = self.construction_queue[0]
+            if project.needs_resources and (fund is None or not fund(project)):
+                break
             applied = min(work, project.remaining_work)
             project.progress += applied
             work -= applied
@@ -365,7 +398,7 @@ class Planet:
         return completed if project else completed.item_id
 
     def queue_estimates(self, additional=None, *, bonuses=None, mortality=None):
-        """Exact turns until completion, assuming no future player changes."""
+        """Industry-only forecast; the campaign forecast also models material supply."""
         if not self.colonized:
             return []
         forecast = replace(self, buildings=self.buildings.copy(),
@@ -376,7 +409,7 @@ class Planet:
         while forecast.construction_queue:
             turns += 1
             food = population_rules.report(forecast, bonuses)
-            estimates.extend([turns]*len(forecast.advance_construction(bonuses)))
+            estimates.extend([turns]*len(forecast.advance_construction(bonuses, fund=lambda p: True)))
             population_rules.advance(forecast, food)
             if mortality and forecast.slaves:
                 forecast.slaves -= mortality(forecast.slaves, turns)
@@ -384,7 +417,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=25):
+    def from_dict(cls, data, expected_id, *, version=27):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -427,10 +460,14 @@ class Planet:
         if version < 12:
             record["farmers"] = min(2, data["population"])
             record["scientists"] = 0
+        if version < 27:
+            record["miners"] = 0
+            record["disabled_buildings"] = []
         workforce = data["population"]+record["slaves"]
         if (not _integer(record["farmers"], 0, workforce)
                 or not _integer(record["scientists"], 0, workforce)
-                or record["farmers"]+record["scientists"] > workforce):
+                or not _integer(record["miners"], 0, workforce)
+                or record["farmers"]+record["scientists"]+record["miners"] > workforce):
             raise ValueError("Invalid worker allocation")
         if version < 11:
             record["growth_progress"] = 0
@@ -461,6 +498,10 @@ class Planet:
             raise ValueError
         if any(not isinstance(b, str) or b not in BUILDINGS for b in buildings):
             raise ValueError
+        disabled = record["disabled_buildings"]
+        if (not isinstance(disabled, list) or any(not _integer(i, 0, len(buildings)-1) for i in disabled)
+                or disabled != sorted(set(disabled))):
+            raise ValueError("Invalid disabled buildings")
         projects = []
         for i, item in enumerate(queued):
             if not isinstance(item, dict):
@@ -476,11 +517,21 @@ class Planet:
                     (item["item_id"] != design.id if design else item["item_id"] not in PROJECTS)):
                 raise ValueError
             spec = design or PROJECTS[item["item_id"]]
-            cost, price = spec.work_cost, spec.credit_cost
+            cost, price = spec.work_cost, spec.resource_cost
             if version < 7:
                 item["paid_credits"] = price
-            if not _integer(item["paid_credits"], 1, price):
+            if not _integer(item["paid_credits"], 0 if version >= 27 else 1, price):
                 raise ValueError
+            if version < 27:
+                # Old orders already paid their full price in credits.
+                item["resource_cost"], item["paid_resources"] = 0, 0
+            if (not _integer(item["resource_cost"], 0, price)
+                    or not _integer(item["paid_resources"], 0, item["resource_cost"])
+                    or item["paid_resources"] not in (0, item["resource_cost"])
+                    or (item["resource_cost"] == 0 and item["paid_credits"] == 0)
+                    or (item["resource_cost"] and item["paid_credits"])
+                    or (item["progress"] and item["paid_resources"] != item["resource_cost"])):
+                raise ValueError("Invalid construction resource reservation")
             if not _integer(item["progress"], 0, cost-1) or (version < 12 and i>0 and item["progress"] != 0):
                 raise ValueError
             projects.append(ConstructionProject(**item))
@@ -576,6 +627,7 @@ class GameState:
     sensor_reports: list[sensors.SensorReport] = field(default_factory=list)
     next_sensor_report_id: int = 1
     sensor_news_read: int = 0
+    resources: int = economy.STARTING_RESOURCES
 
     @property
     def opponents(self):
@@ -690,7 +742,6 @@ class GameState:
         error = self.gate_error(system_id, planet_id, owner=owner)
         if error:
             raise RuleError(error)
-        self._empire(owner).credits -= ASCENSION_GATE.credit_cost
         self.planet_at(system_id, planet_id).construction_queue.append(ConstructionProject(ASCENSION_GATE.id))
 
     def fleet_at(self, system_id, owner=PLAYER):
@@ -783,15 +834,17 @@ class GameState:
     def population_report(self, planet):
         return population_rules.report(planet, self.bonuses_for(planet.owner or PLAYER))
 
-    def set_workforce(self, system_id, planet_id, farmers, scientists, *, owner=PLAYER):
+    def set_workforce(self, system_id, planet_id, farmers, scientists, miners=None, *, owner=PLAYER):
         self._require_strategy()
         planet = self.planet_at(system_id, planet_id)
         self._require_colony(planet, owner)
+        miners = planet.miners if miners is None else miners
         if (not _integer(farmers, 0, planet.workforce)
                 or not _integer(scientists, 0, planet.workforce)
-                or farmers+scientists > planet.workforce):
+                or not _integer(miners, 0, planet.workforce)
+                or farmers+scientists+miners > planet.workforce):
             raise RuleError("Each population unit can have only one job.")
-        planet.farmers, planet.scientists = farmers, scientists
+        planet.farmers, planet.scientists, planet.miners = farmers, scientists, miners
 
     def move_worker(self, system_id, planet_id, source, destination, *, owner=PLAYER):
         self._require_strategy()
@@ -804,26 +857,63 @@ class GameState:
             raise RuleError("There is no worker in that role to move.")
         counts[source] -= 1
         counts[destination] += 1
-        self.set_workforce(system_id, planet_id, counts["farmers"], counts["scientists"], owner=owner)
+        self.set_workforce(system_id, planet_id, counts["farmers"], counts["scientists"], counts["miners"], owner=owner)
 
     def building_yields(self, definition, planet):
         return building_yields(definition, planet.richness, self.bonuses_for(planet.owner or PLAYER))
 
     def queue_estimates(self, planet, additional=None):
-        if self.design_for(additional):
-            additional = ConstructionProject(additional, design=self.design_for(additional))
-        mortality = None
-        if planet.slaves:
-            sid = next(s.id for s in self.systems if any(p is planet for p in s.worlds))
-            mortality = lambda count, elapsed: raid_rules.deaths(self, sid, planet.id, planet.owner, count, turn=self.turn+elapsed)
-        return planet.queue_estimates(additional, bonuses=self.bonuses_for(planet.owner), mortality=mortality)
+        from .economy_forecast import queue_estimates
+        return queue_estimates(self, planet, additional)
+
+    def resource_rate(self, owner=PLAYER):
+        return sum(self.planet_resources(p) for s in self.systems for p in s.worlds if p.owner == owner)
+
+    def resources_for(self, owner=PLAYER):
+        return self._empire(owner).resources
+
+    def planet_resources(self, planet):
+        return economy.mining_output(planet, self.bonuses_for(planet.owner))
+
+    def planet_energy(self, planet):
+        return economy.energy_report(planet, self.bonuses_for(planet.owner))
+
+    def building_operational(self, planet, identifier):
+        return economy.operational(planet, identifier, self.bonuses_for(planet.owner))
+
+    def fund_project(self, project, owner=PLAYER):
+        empire = self._empire(owner)
+        if project.needs_resources > empire.resources:
+            return False
+        empire.resources -= project.needs_resources
+        project.paid_resources = project.resource_cost
+        return True
+
+    def construction_status(self, planet):
+        if not planet.construction_queue:
+            return "No project queued"
+        missing = planet.construction_queue[0].needs_resources-self.resources_for(planet.owner)
+        return f"Waiting for {missing} resources" if missing > 0 else "Resources ready" if planet.construction_queue[0].needs_resources else "Resources reserved"
+
+    def toggle_building(self, system_id, planet_id, index, *, owner=PLAYER):
+        self._require_strategy()
+        planet = self.planet_at(system_id, planet_id)
+        self._require_colony(planet, owner)
+        if not _integer(index, 0, len(planet.buildings)-1):
+            raise RuleError("Choose an existing building.")
+        if index in planet.disabled_buildings:
+            planet.disabled_buildings.remove(index)
+        else:
+            planet.disabled_buildings.append(index)
+            planet.disabled_buildings.sort()
+        exploration_rules.refresh(self)
 
     def project_price(self, item_id, owner=PLAYER):
         if item_id == ASCENSION_GATE.id:
-            return ASCENSION_GATE.credit_cost
+            return ASCENSION_GATE.resource_cost
         key = "building_discount" if item_id in BUILDINGS else "ship_discount"
         discount = self.bonuses_for(owner).get(key, 0)
-        return max(1, math.ceil(self.project_spec(item_id).credit_cost*(100-discount)/100))
+        return max(1, math.ceil(self.project_spec(item_id).resource_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER):
         bonus, radius, slow = navigation.route_modifiers(self, origin, destination, owner)
@@ -947,7 +1037,7 @@ class GameState:
         name_home(self, system, planet, race_id)
         self._register_opponent(owner, race_id, system, planet, name)
         planet.colonized, planet.owner, planet.population = True, owner, 8
-        planet.farmers, planet.scientists = 2, 0
+        planet.farmers, planet.scientists, planet.miners = 2, 0, 2
         if not population_rules.food_required(8, self.bonuses_for(owner)):
             planet.farmers = 0
         self._starting_fleet(owner, system.id)
@@ -1004,8 +1094,6 @@ class GameState:
             return "The construction queue is full."
         if planet.free_slots <= 0:
             return f"All {planet.building_capacity} building slots are occupied or reserved."
-        if self.treasury_for(owner) < self.project_price(building_id, owner):
-            return "Not enough credits to start this project."
         return None
 
     def queue_building(self, system_id, planet_id, building_id, *, owner=PLAYER):
@@ -1014,8 +1102,7 @@ class GameState:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         price = self.project_price(building_id, owner)
-        self._empire(owner).credits -= price
-        planet.construction_queue.append(ConstructionProject(building_id, paid_credits=price))
+        planet.construction_queue.append(ConstructionProject(building_id, resource_cost=price))
 
     def project_error(self, system_id, planet_id, item_id, *, owner=PLAYER):
         if not isinstance(item_id, str):
@@ -1062,6 +1149,8 @@ class GameState:
             return "You can only buy production on your own colony."
         if not planet.construction_queue:
             return "Choose a construction project first."
+        if planet.construction_queue[0].needs_resources > self.resources_for(owner):
+            return "Not enough resources to finish this project."
         if self.treasury_for(owner) < self.buy_construction_cost(system_id, planet_id):
             return "Not enough credits to finish this project."
         return None
@@ -1071,6 +1160,7 @@ class GameState:
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
+        self.fund_project(planet.construction_queue[0], owner)
         self._empire(owner).credits -= self.buy_construction_cost(system_id, planet_id)
         project = planet.finish_current_project(project=True)
         defense_rules.commissioned(self, planet, project.item_id)
@@ -1096,14 +1186,12 @@ class GameState:
             return "Ships can only be built at an established colony."
         if planet.owner != owner:
             return "This colony belongs to another empire."
-        if kind == "troop_transport" and "barracks" not in planet.buildings:
-            return "Build barracks on this colony to train transport troops."
+        if kind == "troop_transport" and not self.building_operational(planet, "barracks"):
+            return "Build and power barracks on this colony to train transport troops."
         if kind == "colony_ship" and raid_rules.is_varkesh(self, owner):
             return "The Varkesh cannot colonize. Build a raiding fleet instead."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
-        if self.treasury_for(owner) < self.project_price(kind, owner):
-            return "Not enough credits to build this ship."
         return None
 
     def queue_ship(self, system_id, planet_id, kind="colony_ship", *, owner=PLAYER):
@@ -1112,8 +1200,7 @@ class GameState:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         price = self.project_price(kind, owner)
-        self._empire(owner).credits -= price
-        planet.construction_queue.append(ConstructionProject(kind, paid_credits=price, design=self.design_for(kind)))
+        planet.construction_queue.append(ConstructionProject(kind, resource_cost=price, design=self.design_for(kind)))
 
     def ship_at(self, ship_id, *, owner=PLAYER):
         ship = next((s for s in self.ships if type(ship_id) is int and s.id == ship_id), None)
@@ -1239,7 +1326,8 @@ class GameState:
             raise RuleError("That construction project is no longer in the queue.")
         project = planet.construction_queue.pop(queue_index)
         self._empire(owner).credits += project.refund
-        return project.refund
+        self._empire(owner).resources += project.resource_refund
+        return project.refund_text
 
     def demolish_building(self, system_id, planet_id, building_index, *, owner=PLAYER):
         self._require_strategy()
@@ -1247,7 +1335,7 @@ class GameState:
         self._require_colony(planet, owner)
         if not _integer(building_index, 0, len(planet.buildings)-1):
             raise RuleError("That building is no longer on this planet.")
-        identifier = planet.buildings.pop(building_index)
+        identifier = economy.remove_building(planet, building_index)
         defense_rules.normalize(planet)
         return identifier
 
@@ -1279,7 +1367,7 @@ class GameState:
             ship.departure_pending = False
         exploration_rules.refresh(self)
         repairable = {ship.id for ship in self.ships if self.can_repair(ship)}
-        gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate]
+        gates = [(s.id, p.id, p.owner) for s in self.systems for p in s.worlds if p.ascension_gate and self.planet_energy(p).gate_powered]
         alerts, ground_battles = [], []
         slave_start = {(s.id, p.id): (p.owner, p.slaves) for s in self.systems for p in s.worlds if p.slaves}
         from .ai import run_ai
@@ -1296,7 +1384,7 @@ class GameState:
                             for p in s.worlds if p.colonized]
         # Newly completed barracks begin training on the following turn.
         for planet, _ in population_start:
-            ground_rules.train(planet)
+            ground_rules.train(planet, self.bonuses_for(planet.owner))
         arrivals = []
         for ship in self.ships:
             if ship.has_course:
@@ -1310,10 +1398,21 @@ class GameState:
                         arrivals.append(message)
                     else:
                         self.rival_event(f"Arrived: {message}.", owner=ship.owner)
+        resource_rates = {owner: self.resource_rate(owner) for owner in self.owners}
+        for owner, amount in resource_rates.items():
+            self._empire(owner).resources += amount
+        for planet, _ in population_start:
+            if planet.owner == PLAYER and self.planet_energy(planet).balance < 0:
+                report = self.planet_energy(planet)
+                affected = f"{len(report.offline)} buildings offline"
+                if planet.ascension_gate and not report.gate_powered:
+                    affected += "; Ascension Gate unpowered"
+                alerts.append(f"Energy shortage on {planet.name}: {affected}")
         completed = []
         for system in self.systems:
             for planet in system.worlds:
-                for project in planet.advance_construction(self.bonuses_for(planet.owner), projects=True):
+                for project in planet.advance_construction(self.bonuses_for(planet.owner), projects=True,
+                        fund=lambda project: self.fund_project(project, planet.owner)):
                     defense_rules.commissioned(self, planet, project.item_id)
                     item_id = project.item_id
                     self._complete_ship(project, system.id, planet.owner)
@@ -1325,6 +1424,9 @@ class GameState:
                         if item_id == ASCENSION_GATE.id:
                             location = exploration_rules.gate_location(self, system.id, planet)
                             alerts.append(f"Rival gate completed at {location}: five charging turns remain")
+        for planet, _ in population_start:
+            if planet.owner == PLAYER and planet.construction_queue and planet.construction_queue[0].needs_resources > self.resources:
+                alerts.append(f"{planet.name}: {self.construction_status(planet)}")
         self.turn += 1
         self.year += 1
         defense_rules.advance(self)
@@ -1365,13 +1467,13 @@ class GameState:
         self.check_victory()
         combat_rules.intercept(self)
         return TurnReport(income, research, completed, arrivals,
-                          [discovered.name] if discovered else [], alerts, exploration, population, ground_battles)
+                          [discovered.name] if discovered else [], alerts, exploration, population, ground_battles, resource_rates.get(PLAYER, 0))
 
     def to_dict(self):
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=26):
+    def from_dict(cls, data, *, version=27):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1457,6 +1559,9 @@ class GameState:
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
+            game.resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
+            if not _integer(game.resources, 0, 1_000_000_000):
+                raise ValueError("Invalid resource stockpile")
             if version >= 20:
                 extras, relations = data["other_opponents"], data["other_diplomacy"]
                 roster = CAMPAIGN_RIVAL_IDS if version >= 22 else RIVAL_IDS
@@ -1568,6 +1673,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     game.research = RACES[race_id].starting_research
     if not population_rules.food_required(8, game.bonuses_for()):
         game.planet_at(0, 2).farmers = 0
+    game.planet_at(0, 2).miners = 2
     game._starting_fleet(PLAYER, 0)
     if not random_starts and count_rivals <= 1:
         if count_rivals and game.opponent_start_error() is None:

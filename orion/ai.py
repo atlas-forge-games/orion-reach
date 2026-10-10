@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 from .buildings import BUILDINGS
+from .economy import energy_report
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, TROOP_STRENGTH
 from .races import RACES
@@ -127,7 +128,7 @@ def research_choice(game, owner=RIVAL):
     if foundations == 16 and advanced >= 8 and game.research_error("ascension_theory", owner=owner) is None:
         game.choose_research("ascension_theory", owner=owner)
         return
-    projects = ("deep_space_radar", "targeting_computers", "planetary_shielding", "colonial_navigation",
+    projects = ("fusion_power", "deep_space_radar", "targeting_computers", "planetary_shielding", "colonial_navigation",
                 "orbital_defense_systems", "advanced_fortifications", "long_range_sensors", "gravity_wells",
                 "predictive_fire_control", "siege_weapons", "precision_beam_optics", "jump_gates",
                 "electronic_countermeasures", "barrier_fields", "torpedo_guidance", "subspace_interdiction",
@@ -161,7 +162,7 @@ def development_choice(planet, race_id="kharuun"):
 
 
 def projected_colony(planet, extra=None):
-    """A copy with all paid buildings, plus an optional proposed order, complete."""
+    """A copy with all queued buildings, plus an optional proposed order, complete."""
     buildings = planet.buildings+[q.item_id for q in planet.construction_queue if q.item_id in BUILDINGS]
     if extra is not None:
         buildings = buildings+[extra]
@@ -170,7 +171,7 @@ def projected_colony(planet, extra=None):
 
 
 def projected_income(game, owner, extra=None):
-    """Budget for all paid building orders as well as the proposed next one."""
+    """Budget for all queued building orders as well as the proposed next one."""
     income = game.diplomatic_yields(owner)[0]
     for system, planet in empire_colonies(game, owner):
         item = extra[2] if extra and extra[:2] == (system.id, planet.id) else None
@@ -183,6 +184,9 @@ def queue_building(game, system, planet, item, owner):
     if (game.planet_yields(projected_colony(planet, item))[1] < 0
             or projected_income(game, owner, (system.id, planet.id, item)) < 1):
         item = "trade_center"
+    future = projected_colony(planet, item)
+    if energy_report(future, game.bonuses_for(owner)).balance < 0 and not BUILDINGS[item].energy_output:
+        item = "fusion_plant" if "fusion_power" in game.research_state(owner).completed else "solar_array"
     if game.build_error(system.id, planet.id, item, owner=owner) is not None:
         return False
     game.queue_building(system.id, planet.id, item, owner=owner)
@@ -204,9 +208,11 @@ def recover_budget(game, owner):
         options = []
         for system, planet in colonies:
             for index, item in enumerate(planet.buildings):
-                future = replace(planet, buildings=planet.buildings[:index]+planet.buildings[index+1:])
+                future = replace(planet, buildings=planet.buildings[:index]+planet.buildings[index+1:],
+                                 disabled_buildings=[i-(i > index) for i in planet.disabled_buildings if i != index])
                 future.farmers = farmers_needed(future, game.bonuses_for(owner))
                 future.scientists = min(future.scientists, future.workforce-future.farmers)
+                future.miners = min(future.miners, future.workforce-future.farmers-future.scientists)
                 if game.population_report(future).balance < 0:
                     continue
                 saving = game.planet_yields(future)[1]-game.planet_yields(planet)[1]
@@ -217,8 +223,30 @@ def recover_budget(game, owner):
             return
         *_, sid, pid, index, future = min(options, key=lambda row: row[:-1])
         item = game.demolish_building(sid, pid, index, owner=owner)
-        game.set_workforce(sid, pid, future.farmers, future.scientists, owner=owner)
+        game.set_workforce(sid, pid, future.farmers, future.scientists, future.miners, owner=owner)
         event(game, owner, f"Retired {PROJECTS[item].name} on {future.name} to restore the budget.")
+
+
+def recover_power(game, owner):
+    """Provide capacity for existing/queued loads, including full older colonies."""
+    for system, planet in empire_colonies(game, owner):
+        if energy_report(projected_colony(planet), game.bonuses_for(owner)).balance >= 0:
+            continue
+        queued = next((i for i, q in enumerate(planet.construction_queue)
+                       if q.item_id in BUILDINGS and BUILDINGS[q.item_id].energy_output), None)
+        if queued is not None:
+            game.prioritize_construction(system.id, planet.id, queued, owner=owner)
+            continue
+        if not planet.free_slots:
+            disposable = [i for i, b in enumerate(planet.buildings) if b in ("research_lab", "factory", "trade_center")]
+            if not disposable:
+                continue
+            index = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
+            game.demolish_building(system.id, planet.id, index, owner=owner)
+        item = "fusion_plant" if "fusion_power" in game.research_state(owner).completed else "solar_array"
+        if game.build_error(system.id, planet.id, item, owner=owner) is None:
+            game.change_production(system.id, planet.id, item, owner=owner)
+            event(game, owner, f"Restoring power on {planet.name} with {BUILDINGS[item].name}.")
 
 
 def announce_raid(game, owner, defender, system):
@@ -314,7 +342,7 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
                 continue
             attack = len(troop_transports(game, system.id, owner))*TROOP_STRENGTH
             defending = forces(planet, game.bonuses_for(planet.owner))
-            if planet.shield_points or (attack and not resolve(attack, defending).captured):
+            if defenses.effective_shield(game, planet) or (attack and not resolve(attack, defending).captured):
                 report = game.bombard(system.id, planet.id, owner)
                 if planet.owner == "player" or game.system_visible(system.id):
                     messages.append(report.message)
@@ -382,7 +410,10 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         farmers = farmers_needed(planet, game.bonuses_for(owner))
         remaining = planet.workforce-farmers
         scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
-        game.set_workforce(system.id, planet.id, farmers, scientists, owner=owner)
+        available = remaining-scientists
+        miners = min(max(0, available-1), max(1, available//3)) if game.resources_for(owner) < 250 else 0
+        game.set_workforce(system.id, planet.id, farmers, scientists, miners, owner=owner)
+    recover_power(game, owner)
     recover_budget(game, owner)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
     if "ascension_theory" in game._empire(owner).technology.completed and not gate_site(game, owner):
@@ -430,8 +461,16 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         needs_food = food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
                       or planet.farmers > 2
                       or 0 < planet.free_slots <= farms_needed)
+        if needs_food and planet.free_slots == 0:
+            disposable = [i for i, b in enumerate(planet.buildings) if b in ("research_lab", "factory", "trade_center")]
+            if disposable:
+                index_to_remove = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
+                game.demolish_building(system.id, planet.id, index_to_remove, owner=owner)
         if needs_food and planet.free_slots > 0:
             queue_building(game, system, planet, "hydroponic_farm", owner)
+            continue
+        if planet.free_slots > 0 and "mine" not in planet.buildings and game.resources_for(owner) < 90 and planet.miners:
+            queue_building(game, system, planet, "mine", owner)
             continue
         # Reserve local defence before peaceful development fills every slot.
         # The main shipyard needs barracks to recruit expeditionary troops.
@@ -442,7 +481,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
             military_building = "fortifications"
         if (military_building == "barracks" and index == 0 and hostile and transports < troop_limit
                 and planet.free_slots == 0
-                and game.treasury_for(owner) >= game.project_price("barracks", owner)):
+                and game.resources_for(owner) >= game.project_price("barracks", owner)):
             # Older, fully developed colonies need room for the new troop facility.
             # Preserve farms and the last research lab; prefer redundant industry.
             replaceable = [i for i, b in enumerate(planet.buildings) if b in ("factory", "mine", "trade_center")]

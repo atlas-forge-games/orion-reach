@@ -17,11 +17,11 @@ def route_modifiers(game, origin, destination, owner):
     bonus = 0
     if own_origin and own_target:
         bonus = game.bonuses_for(owner).get("colony_speed", 0)
-        if all(any("jump_gate" in p.buildings for p in group) for group in (own_origin, own_target)):
+        if all(any(game.building_operational(p, "jump_gate") for p in group) for group in (own_origin, own_target)):
             bonus = 50
     fields = []
     for p in destination.worlds:
-        if "interdictor" not in p.buildings or not hostile(game, owner, p.owner):
+        if not game.building_operational(p, "interdictor") or not hostile(game, owner, p.owner):
             continue
         benefits = game.bonuses_for(p.owner)
         fields.append((max(25, benefits.get("interdiction_slow", 0)), max(5, benefits.get("interdiction_range", 0))))

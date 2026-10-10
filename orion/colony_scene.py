@@ -8,6 +8,7 @@ import pygame as pg
 
 from .building_art import draw_building_art
 from .buildings import BUILDINGS
+from .economy import building_status
 from .model import PLAYER, RIVAL
 from .empires import empire_color
 from .production import SHIP_TYPES
@@ -151,6 +152,8 @@ PLACEMENTS = {
     "sensor_array": (443, 294, 88, 90),
     "jump_gate": (706, 297, 82, 94),
     "interdictor": (859, 299, 85, 94),
+    "solar_array": (65, 383, 115, 85),
+    "fusion_plant": (880, 398, 105, 111),
 }
 
 
@@ -188,6 +191,10 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
             action = lambda slot=item.slot: app.inspect_surface_building(slot)
             caption = f"{item.queued} queued" if item.queued else "Click to inspect"
         live = game.system_visible(system.id)
+        if item.completed and item.slot is not None and live:
+            status = building_status(planet, item.slot, game.bonuses_for(planet.owner))
+            if status != "OPERATIONAL":
+                caption = status
         if not live:
             caption = "Last observed"
         button = app.button("surface_"+item.asset_id, "", hit, action, "hotspot", enabled=live)

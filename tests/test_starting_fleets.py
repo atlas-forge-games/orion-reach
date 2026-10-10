@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Real campaign starts and reversible orders before the strategic turn advances."""
 
 from collections import Counter
@@ -159,6 +160,7 @@ class PendingDepartureTests(unittest.TestCase):
         game.ships = [Ship(41, "frigate", 0, hull=13)]
         game.next_ship_id = 42
         game.send_ship(41, self.target)
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)
@@ -177,7 +179,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 26)
+        self.assertEqual(SAVE_VERSION, 27)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

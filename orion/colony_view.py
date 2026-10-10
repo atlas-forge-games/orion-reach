@@ -2,7 +2,8 @@
 
 import pygame as pg
 
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, MINERAL_FACTORS
+from . import economy
 from .building_art import draw_building_art
 from .production import MAX_QUEUE
 from .model import PLAYER
@@ -37,6 +38,11 @@ def compact_yields(game, definition, planet):
     parts = [f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v]
     if definition.food:
         parts.append(f"+{definition.food} FOOD")
+    if definition.resources:
+        amount = int(definition.resources*MINERAL_FACTORS[planet.richness])+benefits.get("mine_resources", 0)
+        parts.append(f"+{amount} RES")
+    if definition.energy_output:
+        parts.append(f"+{definition.energy_output} ENERGY")
     return " · ".join(parts)
 
 
@@ -49,7 +55,7 @@ def building_effect(game, definition, planet):
 
 
 def turn_label(count):
-    return f"{count} {'turn' if count == 1 else 'turns'}"
+    return "Supply needed" if count is None else f"{count} {'turn' if count == 1 else 'turns'}"
 
 
 def draw_colony(app):
@@ -111,7 +117,7 @@ def draw_colony(app):
             building_id = planet.buildings[index]
             definition = BUILDINGS[building_id]
             draw_building_art(surface, building_id, (x+6, y+5, 44, 34))
-            text(surface, "OPERATIONAL", (x+52, y+20), 8, CYAN, "mono")
+            text(surface, economy.building_status(planet, index, game.bonuses_for(planet.owner)), (x+52, y+20), 8, CYAN if index in game.planet_energy(planet).active else RED, "mono")
             text(surface, definition.name, (x+12, y+42), 13, INK)
             text(surface, shorten(compact_yields(game, definition, planet), 136, 9), (x+12, y+63), 9, MUTED)
         elif index < planet.used_slots:
@@ -142,7 +148,7 @@ def draw_colony(app):
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
-        text(surface, shorten(f"{price} CR · {definition.work_cost} work · {eta} · Upkeep {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR/turn", 410, 10),
+        text(surface, shorten(f"{price} RES · {definition.work_cost} work · {eta} · {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR + {definition.energy_use} energy/turn", 410, 10),
              (x+70, y+38), 10, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label = "Build"
@@ -157,10 +163,10 @@ def draw_colony(app):
             label, hint = "Full", "No free slots"
         elif len(planet.construction_queue) >= MAX_QUEUE:
             label, hint = "Full", "Queue limit"
-        elif game.credits < price:
-            label, hint = "Funds", f"Need {price} CR"
         elif definition.unique and reason:
             label, hint = "Built / queued", "1 per colony"
+        elif game.resources < price:
+            label, hint = "Queue", "Await resources"
         app.button(f"build_{definition.id}", label, (x+492, y+3, 117, 28),
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
         text(surface, hint, (x+510, y+36), 9, FAINT, "mono")
@@ -172,8 +178,10 @@ def draw_colony(app):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, definition.name, (82, 724), 18, INK)
         text(surface, shorten(building_effect(game, definition, planet), 451, 11), (82, 750), 11, CYAN)
-        text(surface, f"Maintenance: {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR/turn per building", (82, 774), 10, MUTED)
-        app.button("demolish_building", "Demolish", (549, 729, 156, 45),
+        text(surface, f"Upkeep {building_maintenance(definition.id, game.bonuses_for(planet.owner))} CR/turn · Power {definition.energy_use} · {economy.building_status(planet, slot, game.bonuses_for(planet.owner)).lower()}", (82, 774), 10, MUTED)
+        app.button("toggle_building", "Enable" if slot in planet.disabled_buildings else "Disable", (549, 719, 156, 31),
+                   lambda i=slot: app.toggle_building(i), enabled=planet.owner == PLAYER)
+        app.button("demolish_building", "Demolish", (549, 755, 156, 31),
                    lambda i=slot: app.demolish_request(i), enabled=planet.owner == PLAYER)
     elif slot is not None and len(planet.buildings) <= slot < planet.used_slots:
         index, project = building_projects[slot-len(planet.buildings)]
@@ -183,7 +191,7 @@ def draw_colony(app):
              (82, 754), 12, GOLD)
         app.button("cancel_construction", "Cancel", (549, 718, 156, 43),
                    lambda i=index: app.cancel_construction(i), enabled=planet.owner == PLAYER)
-        text(surface, f"Refund: {project.refund} CR", (553, 772), 10, MUTED)
+        text(surface, f"Refund: {project.refund_text}", (553, 772), 10, MUTED)
     else:
         title = f"{planet.size} worlds support {planet.building_capacity} buildings."
         message = "Buildings reserve slots. The Shipyard tab shows the full production queue."
@@ -198,6 +206,6 @@ def draw_colony(app):
 
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
-    text(surface, "Output and upkeep begin the turn after completion.", (399, 828), 12, MUTED)
-    text(surface, "Food stays local: 1 per billion inhabitants. Surplus enables growth.", (399, 850), 11, FAINT)
+    text(surface, f"Resources: {game.resources:,} · +{game.planet_resources(planet)}/turn here. Disabled buildings retain credit upkeep.", (399, 828), 11, MUTED)
+    text(surface, f"Local energy: {game.planet_energy(planet).generated} generated / {game.planet_energy(planet).demand} needed. Farms and mines have priority.", (399, 850), 11, FAINT)
     app.button("colony_end_turn", "End turn · E", (1081, 816, 295, 63), app.advance_turn, "primary")

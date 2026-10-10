@@ -84,10 +84,11 @@ def draw_objectives(app):
         if site:
             if planet.ascension_gate:
                 blocked = gate_blocked(game, system.id, "player")
-                caption = f"Charging {planet.gate_charge} / {GATE_CHARGE_TURNS} turns" + (" · Paused by opposing ships in orbit" if blocked else " · Orbit clear")
-                text(surface, caption, (224, 678), 14, GOLD if blocked else CYAN)
+                powered = game.planet_energy(planet).gate_powered
+                caption = f"Charging {planet.gate_charge} / {GATE_CHARGE_TURNS} turns" + (" · Paused: needs 10 energy" if not powered else " · Paused by opposing ships in orbit" if blocked else " · Powered, orbit clear")
+                text(surface, caption, (224, 678), 14, GOLD if blocked or not powered else CYAN)
                 progress(surface, (224, 707, 776, 5), planet.gate_charge/GATE_CHARGE_TURNS)
-                text(surface, "Capture destroys the gate. Charging resumes when opposing ships leave.", (224, 734), 12, MUTED)
+                text(surface, "Charging requires 10 local energy and clear orbit. Capture destroys the gate.", (224, 734), 12, MUTED)
             else:
                 index, project = next((i, q) for i, q in enumerate(planet.construction_queue) if q.item_id == ASCENSION_GATE.id)
                 eta = game.queue_estimates(planet)[index]
@@ -99,9 +100,9 @@ def draw_objectives(app):
         else:
             reason = game.gate_error(system.id, planet.id)
             eta = game.queue_estimates(planet, ASCENSION_GATE.id)[-1]
-            text(surface, f"500 CR · 300 work · {eta} construction turns + 5 charging turns · No building slot", (224, 679), 13, CYAN)
+            text(surface, f"500 RES · 300 work · 10 energy/turn · {eta} turns to build + 5 to charge", (224, 679), 13, CYAN)
             text(surface, shorten(reason or "One gate per empire. Opposing ships pause charging; capture destroys it.", 794, 12), (224, 710), 12, GOLD if reason else MUTED)
-            text(surface, f"{game.credits:,} CR available · Select a colony using Previous / Next", (224, 745), 12, MUTED)
+            text(surface, f"{game.resources:,} Resources available · Select a colony using Previous / Next", (224, 745), 12, MUTED)
             app.button("gate_previous", "← Previous", (1054, 621, 143, 39), lambda: app.change_gate_colony(-1), enabled=app.gate_colony_index>0)
             app.button("gate_next", "Next →", (1211, 621, 139, 39), lambda: app.change_gate_colony(1), enabled=app.gate_colony_index<len(rows)-1)
             app.button("gate_build", "Build Ascension Gate", (1054, 683, 296, 46),

@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Playable conquest/science endings, real AI orders, save upgrades and UI flows."""
 
 import copy
@@ -60,7 +61,7 @@ class ConquestRulesTests(unittest.TestCase):
         game.planet_at(0, 2).buildings = ["barracks"]
         game.queue_ship(0, 2, "troop_transport")
         earth = game.planet_at(0, 2)
-        self.assertEqual((game.credits, earth.used_slots, game.queue_estimates(earth)), (40, 1, [7]))
+        self.assertEqual((game.credits, earth.used_slots, game.queue_estimates(earth)), (120, 1, [7]))
         for _ in range(7):
             game.advance_turn()
         ship = game.ships[0]
@@ -115,6 +116,7 @@ class ConquestRulesTests(unittest.TestCase):
         planet = game.planet_at(sid, pid)
         planet.buildings = ["factory", "research_lab"]
         game.queue_building(sid, pid, "trade_center", owner=RIVAL)
+        game.fund_project(planet.construction_queue[0], RIVAL)
         planet.construction_queue[0].progress = 7
         queued = copy.deepcopy(planet.construction_queue)
         population = planet.population
@@ -211,26 +213,24 @@ class ScienceRulesTests(unittest.TestCase):
         discover_theory(game)
         earth = game.planet_at(0, 2)
         earth.buildings = ["factory"]*earth.building_capacity
-        game.credits = 499
-        with self.assertRaisesRegex(RuleError, "500"):
-            game.queue_gate(0, 2)
-        game.credits = 700
+        game.credits, game.resources = 700, 499
         game.queue_ship(0, 2, "frigate")
-        game.queue_gate(0, 2)
+        game.queue_gate(0, 2)  # Unfunded orders are allowed and wait for supply.
         self.assertEqual(earth.free_slots, 0)
         self.assertEqual(game.project_price("ascension_gate"), 500)
         self.assertEqual([q.item_id for q in earth.construction_queue], ["frigate", "ascension_gate"])
+        self.assertEqual((game.credits, game.resources), (700, 499))
         other_system, other = extra_colony(game, PLAYER)
         with self.assertRaisesRegex(RuleError, "already"):
             game.queue_gate(other_system.id, other.id)
-        self.assertEqual(game.cancel_construction(0, 2, 1), 500)
+        self.assertEqual(game.cancel_construction(0, 2, 1), "0 RES")
         game.queue_gate(other_system.id, other.id)
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_scientific_victory_requires_construction_then_five_separate_clear_turns(self):
         game = new_game(seed=2408, with_ai=False)
         discover_theory(game)
-        game.credits = 500
+        game.credits = game.resources = 500
         game.queue_gate(0, 2)
         earth = game.planet_at(0, 2)
         eta = game.queue_estimates(earth)[0]
@@ -288,7 +288,7 @@ class ScienceRulesTests(unittest.TestCase):
             self.assertTrue(all(q.item_id != "ascension_gate" for q in enemy.construction_queue))
             self.assertIsNotNone(gate_site(game))
             self.assertIsNone(gate_site(game, RIVAL))
-            self.assertEqual(game.opponent.credits, 500 if built else 0)
+            self.assertEqual(game.opponent.credits, 500)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_simultaneous_gates_are_a_saved_draw_without_player_order_bias(self):
@@ -349,6 +349,7 @@ class VictorySaveTests(unittest.TestCase):
         # v8 had no positions: a resumed battle deploys its surviving snapshot.
         from orion.combat import deploy
         deploy(game.combat)
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as directory:
             storage = Storage(directory)
             path = storage.save(game)
@@ -381,7 +382,7 @@ class VictorySaveTests(unittest.TestCase):
     def test_gate_build_and_charge_continue_identically_after_saving(self):
         game = new_game(seed=2408, with_ai=False)
         discover_theory(game)
-        game.credits = 500
+        game.credits = game.resources = 500
         game.queue_gate(0, 2)
         game.advance_turn()
         with tempfile.TemporaryDirectory() as directory:
@@ -446,7 +447,7 @@ class VictoryScreenTests(unittest.TestCase):
         self.assertIsNone(gate_site(game))
         self.click("gate_build")
         self.click("dialog_ok")
-        self.assertEqual(game.credits, 0)
+        self.assertEqual(game.credits, 500)
         self.click("gate_visit")
         self.assertEqual(self.app.screen, "planet")
         self.key(pg.K_v)

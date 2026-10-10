@@ -59,7 +59,7 @@ class ExpansionResearchTests(unittest.TestCase):
     def test_projects_require_foundations_and_chained_prerequisites(self):
         game = game_at_start()
         projects = [t for t in TECHNOLOGIES.values() if not t.exclusive]
-        self.assertEqual(len(projects), 19)
+        self.assertEqual(len(projects), 20)
         for technology in projects:
             self.assertEqual(game.technology.status(technology.id), "locked")
         discover(game, "deep_space_radar")
@@ -75,7 +75,7 @@ class ExpansionResearchTests(unittest.TestCase):
         for technology in TECHNOLOGIES.values():
             if not technology.exclusive:
                 discover(game, technology.id)
-        self.assertEqual(sum(not TECHNOLOGIES[t].exclusive for t in game.technology.completed), 19)
+        self.assertEqual(sum(not TECHNOLOGIES[t].exclusive for t in game.technology.completed), 20)
         self.assertEqual(game.bonuses_for()["sensor_range"], 20)
         self.assertEqual(game.bonuses_for()["shield_capacity"], 200)
         self.assertEqual(game.bonuses_for()["interdiction_slow"], 40)

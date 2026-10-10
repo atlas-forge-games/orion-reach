@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Workforce decisions, buying/prioritizing projects, migration and real UI flows."""
 
 import copy
@@ -134,7 +135,7 @@ class ProductionTests(unittest.TestCase):
 
     def test_buying_a_gate_starts_its_five_turn_charge_without_skipping_time(self):
         from orion.research import BRANCHES, choices
-        self.game.research, self.game.credits = 2000, 2000
+        self.game.research = self.game.credits = self.game.resources = 2000
         for branch in BRANCHES:
             for tier in (1, 2):
                 self.game.choose_research(choices(branch, tier)[0].id)
@@ -142,7 +143,7 @@ class ProductionTests(unittest.TestCase):
         self.game.change_production(0, 2, "ascension_gate")
         self.assertEqual(self.game.buy_construction_cost(0, 2), 600)
         self.game.buy_construction(0, 2)
-        self.assertEqual((self.game.credits, self.game.turn, self.earth.ascension_gate, self.earth.gate_charge), (900, 1, True, 0))
+        self.assertEqual((self.game.credits, self.game.turn, self.earth.ascension_gate, self.earth.gate_charge), (1400, 1, True, 0))
         self.assertEqual(GameState.from_dict(self.game.to_dict()), self.game)
         for _ in range(4):
             self.game.advance_turn()
@@ -156,19 +157,18 @@ class ProductionTests(unittest.TestCase):
         original = copy.deepcopy(self.earth.construction_queue[0])
         self.game.change_production(0, 2, "scout")
         self.assertEqual(self.earth.construction_queue[1], original)
-        self.assertEqual(self.game.credits, 58)
+        self.assertEqual(self.game.credits, 128)
         restored = GameState.from_dict(self.game.to_dict())
         self.assertEqual(restored, self.game)
         self.game.prioritize_construction(0, 2, 1)
         self.assertEqual(self.earth.construction_queue[0], original)
-        self.assertEqual(self.game.cancel_construction(0, 2, 0), 33)
+        self.assertEqual(self.game.cancel_construction(0, 2, 0), "33 RES")
         self.assertEqual(self.earth.construction_queue[0].item_id, "scout")
 
     def test_buy_and_changes_reject_insufficient_funds_full_slots_and_invalid_indices(self):
         self.game.queue_building(0, 2, "factory")
         self.game.credits = 1
         for action in (lambda: self.game.buy_construction(0, 2),
-                       lambda: self.game.change_production(0, 2, "research_lab"),
                        lambda: self.game.change_production(0, 2, []),
                        lambda: self.game.prioritize_construction(0, 2, True),
                        lambda: self.game.prioritize_construction(0, 2, 7)):
@@ -214,6 +214,7 @@ class WorkforceSaveTests(unittest.TestCase):
         game.queue_building(0, 2, "mine")
         game.ship_at(1).departure_pending = False  # Legacy course snapshot.
         game.planet_at(0, 2).growth_progress = 65
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)
             path = store.save(game)
@@ -313,7 +314,7 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         self.click("planet_buy")
         self.click("dialog_ok")
         self.assertEqual(self.app.game.planet_at(0, 2).buildings, ["factory"])
-        self.assertEqual(self.app.game.credits, 27)
+        self.assertEqual(self.app.game.credits, 72)
         self.assertEqual(self.app.game.turn, 1)
         self.assertFalse(next(b for b in self.app.buttons if b.key == "planet_buy").enabled)
         self.click("surface_factory")

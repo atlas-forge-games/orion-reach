@@ -15,7 +15,7 @@ class Hull:
     defense: int
     support: int
     movement: int
-    credit_cost: int
+    resource_cost: int
     work_cost: int
 
 
@@ -31,7 +31,7 @@ class Module:
     name: str
     category: str
     space: int
-    credit_cost: int
+    resource_cost: int
     work_cost: int
     description: str
     technology: str | None = None
@@ -116,8 +116,8 @@ class ShipDesign:
         return max((m.range+self.modules.count("scanner") for m in self.specs if m.damage), default=0)
 
     @property
-    def credit_cost(self):
-        return HULLS[self.kind].credit_cost+sum(m.credit_cost for m in self.specs)
+    def resource_cost(self):
+        return HULLS[self.kind].resource_cost+sum(m.resource_cost for m in self.specs)
 
     @property
     def work_cost(self):

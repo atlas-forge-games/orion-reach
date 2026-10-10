@@ -5,6 +5,7 @@ from functools import lru_cache
 from .buildings import BUILDINGS, workforce_bonuses
 from .production import ASCENSION_GATE
 from .population import LUSH_BIOMES, assembly_work
+from .economy import active_buildings
 
 
 @dataclass(frozen=True)
@@ -53,12 +54,12 @@ def project(identifier, branch, tier, name, description, *, requires=(), **effec
 TECHNOLOGIES = {t.id: t for t in (
     tech("automated_factories", "construction", 1, "Automated Factories", "+2 industry per factory.", factory_industry=2),
     tech("civil_engineering", "construction", 1, "Civil Engineering", "+2 industry per colony.", colony_industry=2),
-    tech("prefabricated_structures", "construction", 2, "Prefabricated Structures", "New building orders cost 20% fewer credits.", building_discount=20),
-    tech("orbital_assembly", "construction", 2, "Orbital Assembly", "New ship orders cost 20% fewer credits.", ship_discount=20),
+    tech("prefabricated_structures", "construction", 2, "Prefabricated Structures", "New building orders cost 20% fewer resources.", building_discount=20),
+    tech("orbital_assembly", "construction", 2, "Orbital Assembly", "New ship orders cost 20% fewer resources.", ship_discount=20),
     tech("ion_drives", "power", 1, "Ion Drives", "+25% ship speed on newly ordered voyages. Unlock maneuvering thrusters in the ship designer.", ship_speed=25),
-    tech("compact_reactors", "power", 1, "Compact Reactors", "+1 industry and +1 credit per colony.", colony_industry=1, colony_income=1),
+    tech("compact_reactors", "power", 1, "Compact Reactors", "+1 industry, +1 credit and +4 energy per colony.", colony_industry=1, colony_income=1, colony_energy=4),
     tech("fusion_drives", "power", 2, "Fusion Drives", "+50% ship speed on newly ordered voyages.", ship_speed=50),
-    tech("fusion_grids", "power", 2, "Fusion Grids", "+2 industry per factory.", factory_industry=2),
+    tech("fusion_grids", "power", 2, "Fusion Grids", "+2 industry per factory and +8 energy per colony.", factory_industry=2, colony_energy=8),
     tech("research_instruments", "physics", 1, "Research Instruments", "+2 research per laboratory.", lab_research=2),
     tech("field_laboratories", "physics", 1, "Field Laboratories", "+1 research per colony.", colony_research=1),
     tech("planetary_observatories", "physics", 2, "Planetary Observatories", "+3 research per colony.", colony_research=3),
@@ -66,11 +67,11 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("radiation_shields", "fields", 1, "Radiation Shields", "Colony ships can settle barren worlds. Unlock ship shield generators (+12 shields per module).", barren=1),
     tech("habitat_shields", "fields", 1, "Habitat Shields", "+2 credits per desert or tundra colony.", rough_income=2),
     tech("thermal_barriers", "fields", 2, "Thermal Barriers", "Colony ships can settle volcanic worlds.", volcanic=1),
-    tech("industrial_force_fields", "fields", 2, "Industrial Force Fields", "+2 industry per mine, regardless of mineral richness.", mine_industry=2),
-    tech("deep_core_drills", "materials", 1, "Deep Core Drills", "+2 industry per mine, regardless of mineral richness.", mine_industry=2),
-    tech("lightweight_alloys", "materials", 1, "Lightweight Alloys", "Lighter fuel tanks: +10 ly range. New ships cost 10% fewer credits.", ship_discount=10, fuel_range=10),
+    tech("industrial_force_fields", "fields", 2, "Industrial Force Fields", "+2 resources per operational mine, regardless of mineral richness.", mine_resources=2),
+    tech("deep_core_drills", "materials", 1, "Deep Core Drills", "+2 resources per operational mine, regardless of mineral richness.", mine_resources=2),
+    tech("lightweight_alloys", "materials", 1, "Lightweight Alloys", "Lighter fuel tanks: +10 ly range. New ships cost 10% fewer resources.", ship_discount=10, fuel_range=10),
     tech("superconductors", "materials", 2, "Superconductors", "+1 industry per colony and +2 research per laboratory.", colony_industry=1, lab_research=2),
-    tech("composite_structures", "materials", 2, "Composite Structures", "Advanced fuel tanks: +15 ly range. New buildings cost 15% fewer credits.", building_discount=15, fuel_range=15),
+    tech("composite_structures", "materials", 2, "Composite Structures", "Advanced fuel tanks: +15 ly range. New buildings cost 15% fewer resources.", building_discount=15, fuel_range=15),
     tech("colony_biospheres", "biology", 1, "Colony Biospheres", "New colonies start with 1 billion additional inhabitants.", colonists=1),
     tech("symbiotic_farming", "biology", 1, "Symbiotic Farming", "+2 food and +2 credits per colony.", colony_food=2, colony_income=2),
     tech("colony_biogenesis", "biology", 2, "Colony Biogenesis", "New colonies start with 2 billion additional inhabitants.", colonists=2),
@@ -78,12 +79,13 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("research_networks", "computers", 1, "Research Networks", "+1 research per colony and per laboratory. Unlock combat scanners (+1 weapon range).", colony_research=1, lab_research=1),
     tech("trade_algorithms", "computers", 1, "Trade Algorithms", "+2 credits per trade center.", trade_income=2),
     tech("distributed_computing", "computers", 2, "Distributed Computing", "+2 research per colony.", colony_research=2),
-    tech("planetary_automation", "computers", 2, "Planetary Automation", "+1 industry per factory and per mine.", factory_industry=1, mine_industry=1),
+    tech("planetary_automation", "computers", 2, "Planetary Automation", "+1 industry per factory and +1 resource per operational mine.", factory_industry=1, mine_resources=1),
     tech("colonial_administration", "society", 1, "Colonial Administration", "+2 credits per colony.", colony_income=2),
     tech("scientific_institutes", "society", 1, "Scientific Institutes", "+1 research per colony.", colony_research=1),
     tech("commerce_guilds", "society", 2, "Commerce Guilds", "+3 credits per trade center.", trade_income=3),
     tech("cultural_exchange", "society", 2, "Cultural Exchange", "Your active trade pact earns +3 credits; your research pact earns +3 research.", pact_income=3, pact_research=3),
     tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
+    project("fusion_power", "power", 3, "Fusion Power", "Unlock fusion plants: +30 local energy per plant, with 3 CR/turn upkeep."),
     project("advanced_fortifications", "construction", 3, "Advanced Fortifications", "Fortifications grant +75% defending firepower instead of +50%.", fortification_bonus=25),
     project("orbital_defense_systems", "physics", 3, "Orbital Defense Systems", "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles."),
     project("planetary_shielding", "fields", 3, "Planetary Shielding", "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.", shield_capacity=100),
@@ -213,7 +215,7 @@ class ResearchState:
 
 def building_yields(definition, richness, bonuses):
     industry, income, research = definition.yields(richness)
-    industry += bonuses.get({"factory": "factory_industry", "mine": "mine_industry"}.get(definition.id), 0)
+    industry += bonuses.get("factory_industry", 0) if definition.id == "factory" else 0
     income += bonuses.get("trade_income", 0) if definition.id == "trade_center" else 0
     research += bonuses.get("lab_research", 0) if definition.id == "research_lab" else 0
     return industry, income, research
@@ -227,11 +229,11 @@ def scaled_output(value, percent):
 def gross_colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
-    staff = workforce_bonuses(planet)
+    staff = workforce_bonuses(planet, bonuses)
     industry = max(1, planet.workers)+int(planet.workers*staff.industry)+bonuses.get("colony_industry", 0)
     income = planet.workforce+int(planet.workforce*staff.income)+bonuses.get("colony_income", 0)
     research = (2+staff.research)*planet.scientists+bonuses.get("colony_research", 0)
-    for identifier in planet.buildings:
+    for identifier in active_buildings(planet, bonuses):
         extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
         industry, income, research = industry+extra[0], income+extra[1], research+extra[2]
     income += (planet.workforce//2)*bonuses.get("income_per_two_pop", 0)

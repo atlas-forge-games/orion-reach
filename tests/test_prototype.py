@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Headless checks for persistence and actual UI event flows (standard unittest)."""
 
 import json
@@ -95,6 +96,7 @@ class PersistenceTests(unittest.TestCase):
         old_game.advance_turn()
         old_game.planet_at(0, 2).growth_progress=0  # v1 had no population growth.
         old_game.selected_system=4
+        legacy_economy(old_game)
         path=self.store.save(old_game)
         payload=json.loads(path.read_text())
         payload["version"]=1
@@ -377,14 +379,14 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen,"colony")
         earth=self.app.game.systems[0].worlds[2]
         self.click("build_factory")
-        self.assertEqual(self.app.game.credits,75)
+        self.assertEqual(self.app.game.credits,120)
         self.assertEqual(earth.used_slots,1)
         saved,_=self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(saved,self.app.game)
         self.click("colony_end_turn")
         self.assertEqual(earth.construction_queue[0].progress,6)
         self.click("cancel_construction")
-        self.assertEqual(self.app.game.credits,116)
+        self.assertEqual(self.app.game.credits,128)
         self.assertEqual(earth.used_slots,0)
         self.click("build_factory")
         for _ in range(4):
@@ -427,9 +429,9 @@ class InterfaceTests(unittest.TestCase):
         self.click("build_factory")
         self.assertEqual(self.app.game.to_dict(),before)
         self.click("cancel_construction")
-        self.app.game.credits=29
+        self.app.game.credits=self.app.game.resources=0
         self.app.render()
-        self.assertTrue(all(not b.enabled for b in self.app.buttons if b.key.startswith("build_")))
+        self.assertTrue(next(b for b in self.app.buttons if b.key == "build_factory").enabled)
 
     def test_colony_pause_save_load_and_back_navigation(self):
         self.app.game=new_game(seed=38)

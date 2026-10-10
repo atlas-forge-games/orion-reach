@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.35.1
+# Orion Reach — Python prototype 0.36.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,62 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.36: Resources, mining and local energy
+
+**Resources** is one shared construction stockpile for each empire. Colonies
+now have four jobs: **farming, industry, research and mining**. Miners produce
+Resources; industrial workers turn them into buildings and ships. Credits still
+pay building upkeep, diplomacy and rush production. There are no separate ores,
+resource shipments or energy workers to manage.
+
+- Every empire starts with **120 Resources**. New homeworlds assign two miners;
+  a standard Terran homeworld starts with two farmers and four industrial workers.
+- Every colony extracts **2 Resources/turn** automatically. Each miner produces
+  **2 × mineral richness**; each powered mining complex adds **2 × richness**
+  plus **1 × richness per miner**. Mining technologies improve Resource output.
+- Buildings, ships and the Ascension Gate require **Resources + local work**.
+  Orders can be queued without supplies. A project reserves its full Resource
+  cost when it starts work, then keeps that reservation if reordered. A waiting
+  project clearly reports its missing Resources. Unused materials are refunded
+  proportionally on cancellation; cancelling an unpaid order returns nothing.
+- Resources mined at the start of a turn are available for construction that
+  turn. Colonies draw from their empire's bank in system/planet order. Queue
+  forecasts account for those competing orders, mining, power and growth.
+- Each colony has its own **12 energy** supply. A **Solar array** provides another
+  **12**, while the new **Fusion Power** research unlocks a **Fusion plant** for
+  **30**. Compact Reactors also adds **4** energy per colony, and Fusion Grids
+  adds another **8**. Energy is a local supply/demand balance, never a stockpile.
+- Farms and mines receive power first, then other buildings in slot order.
+  Buildings that do not fit within the supply go offline, losing their output,
+  workforce bonuses and military effects. You can **Disable / Enable** a building
+  from its inspection panel to choose where power goes. Fixed credit maintenance
+  continues while disabled or unpowered. Basic extraction and industrial work
+  remain available, so a colony can build its way out of a shortage.
+- Shields, missile bases, sensors, barracks, jump gates and interdiction need
+  power. An Ascension Gate needs **10 spare local energy** throughout a charging
+  turn, as well as clear orbit. Stored gate progress is retained during a shortage.
+
+The galaxy header adds illustrated **Resources** and **Local energy** cards.
+Click Local energy to find colonies with shortages; a surplus elsewhere cannot
+power them. Planet overviews show all six economic figures and four workforce
+rows. Construction lists show Resource prices, power needs and credit upkeep.
+The AI assigns miners, budgets construction supplies and builds power capacity.
+
+**Save continuity:** format **27** adds Resource banks, miners, power switches
+and Resource reservations. Earlier saves receive 120 Resources per empire and
+zero miners, preserving their existing job assignments. Previously paid projects
+retain their credit payments and progress, finish without a second material bill,
+and refund credits if cancelled. New orders use Resources. Existing buildings
+use the new power rules immediately: review local shortages after upgrading.
+Loading does not rewrite the source save.
+
+Extract the update ZIP over your current installation, including
+`assets/resources`, then launch `python main.py` as usual. The new artwork and
+exact generation prompts are included in that folder.
+
+![Resources and local energy on the galaxy screen](screenshots/resources_energy_galaxy.png)
+![Four worker roles and six colony outputs](screenshots/resources_energy_colony.png)
 
 ## New in v0.35.1: clear save and return options
 
@@ -512,6 +568,7 @@ are also chosen randomly, with a preference for at least 20 light-years between
 starting empires. When a crowded map has no suitable separated system, the next
 home uses the most distant available system. Every empire starts in a different
 system with a standard Terran homeworld, 8 billion inhabitants, 120 credits,
+120 Resources,
 two scouts and one colony ship, or the Varkesh raiding fleet. Racial traits apply normally. Reusing the same
 seed and settings reproduces the galaxy, races and starting locations.
 
@@ -546,7 +603,7 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | --- | --- |
 | Lithar | Settle every biome; double population capacity; half food consumption, rounded up; one-quarter normal growth rate. |
 | Varkesh | Cannot colonize; ships travel 50% faster and farther; raids take credits and up to 100 slaves at home; 5% slave mortality each turn. Ships cost −20%; native capacity +50%; research −20%. |
-| Wanderers | +3 ly fuel range from colonies; ships cost 15% fewer credits; colony industry −15%. |
+| Wanderers | +3 ly fuel range from colonies; ships cost 15% fewer Resources; colony industry −15%. |
 | Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
 | Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
@@ -743,11 +800,12 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   top left, visual output totals and worker assignments across the top, and
   the current construction project with **Change** and **Buy** at top right.
   **Return** at bottom right goes to the solar-system overview.
-- Each billion inhabitants is one worker, assigned to farming, industry or
-  research. Earth starts with two farmers and six industrial workers.
+- Each billion inhabitants is one worker, assigned to farming, industry,
+  research or mining. Earth starts with two farmers, four industrial workers
+  and two miners.
 - Construction queues show progress and completion estimates. Completed
-  buildings contribute industry, credits and research; cancel projects for a
-  refund of unspent work or demolish completed buildings to free a slot.
+  powered buildings improve output and workforce productivity. Cancel projects
+  for unused construction payments, or demolish buildings to free a slot.
 - **Empire Overview** combines economy totals and a sortable colony directory.
   Open it with **Empire · I** or the **I** key from any gameplay screen. Click
   a colony row to open its planet overview.
@@ -829,8 +887,9 @@ tools are required to play it.
 Open a planet from its solar-system overview. Its landscape and buildings fill
 the main view. The left panel lists every surveyed planet in the system with
 basic information; click a row to switch planets. The top strip shows this
-colony's **net credit income, food produced/used, industry and research per turn**
-with distinct icons and colours. Empire treasury is separate in the title bar.
+colony's **net credits, food, industry, research, Resources and local energy**
+with distinct icons and colours. Shared Resource and credit banks are separate
+in the title bar.
 
 Every **1 billion inhabitants is one worker**. Click a worker row to select one
 person, then click another row to move them. Click the same row or press Escape
@@ -838,34 +897,39 @@ to cancel selection. A move is free, is autosaved, and immediately updates the
 displayed production and construction forecast.
 
 - **Farmers:** produce food at the biome-specific rate shown below, plus
-  **1 food each per completed hydroponic farm**.
-- **Workers:** produce 1 industry each, plus **1 per factory** and **0.5 per
-  mining complex** on Average worlds, in addition to flat building and technology output.
-  The mining bonus scales with mineral richness.
-  A colony always has at least 1 basic industry, even with no industrial workers.
-- **Scientists:** produce 2 research each, plus **1 per research lab**, in
-  addition to flat laboratory and technology output.
+  **1 food each per powered hydroponic farm**.
+- **Industry:** workers produce 1 industry each, plus **1 per powered factory**,
+  in addition to flat building and technology output. Every colony has at least
+  1 basic industry, even with no industrial workers.
+- **Research:** scientists produce 2 research each, plus **1 per powered lab**,
+  in addition to flat laboratory and technology output.
+- **Mining:** miners produce **2 Resources each**, plus **1 per powered mining
+  complex**, multiplied by mineral richness. Every colony also extracts 2 basic
+  Resources, and each powered mine contributes a further mineral-scaled base 2.
 
-Buildings retain their flat output even when nobody is assigned to the relevant
-job. Their workforce bonuses scale with that job's assigned population. Tax
-income is 1 credit per billion inhabitants, plus **0.5 per trade centre**,
-regardless of job; maintenance is deducted afterward. New inhabitants enter the industrial workforce. New settlements
-first assign farmers to support their population, with the remainder in industry.
-Worker assignments are preserved when saving, loading or capturing a colony.
+Powered buildings retain their flat output even when nobody works in the
+relevant job. Workforce bonuses scale with that job's assigned population.
+Tax income is 1 credit per billion inhabitants, plus **0.5 per powered trade
+centre**, regardless of job; fixed building maintenance is deducted afterward.
+New inhabitants enter industry. New settlements first assign farmers to support
+their population, with the remainder in industry. Assignments are preserved
+when saving, loading or capturing a colony. Captives can work in all four roles.
 
-The top-right card shows the current project's picture, work progress and
-completion estimate. **Change** opens the building/ship catalogue and queue:
+The top-right card shows the current project's picture, work progress, material
+status and completion estimate. **Change** opens the building/ship catalogue:
 
-- **Start** pays the usual upfront cost and puts the chosen project first.
-  Earlier projects stay queued, keeping their paid costs and completed work.
-- Click an existing queued project to make it current without paying again.
-- Use **×** to cancel a project and refund its unspent work. Longer queues have pages.
+- **Start** puts the chosen project first. Earlier projects stay queued, keeping
+  their reserved Resources and completed work. Materials are taken when work
+  begins; insufficient supplies pause that project.
+- Click an existing project to make it current without paying again.
+- Use **×** to cancel and refund its unused reserved materials. An unpaid order
+  returns nothing. Longer queues have pages.
 - **Buy** finishes the current project immediately for **2 credits per remaining
-  work**, in addition to its original upfront price. The confirmation shows the
-  exact amount. Buildings become operational, ships appear in orbit, and other
-  queued projects keep their progress. Bought gates start with zero charge.
+  work**, also reserving any unpaid Resource cost. The confirmation shows both
+  amounts. Other projects keep their progress; bought gates start uncharged.
 
-Completed buildings open their inspection/demolition screen when clicked; the
+Completed buildings open their inspection screen with **Disable / Enable** and
+**Demolish** controls when clicked; the
 shipyard and headquarters open their existing management screens. Building names
 appear on hover, while queued buildings retain their construction labels.
 There are no navigation tabs or extra action buttons along the bottom of the
@@ -885,10 +949,11 @@ rows are read-only. Old surveys show no current output or completion estimate.
 
 Start or load a game, then click **Sol → Earth → Change**. Click **Start** beside
 a building in the catalogue, then advance turns with **E**.
-Earth starts with 120 empire credits, 6 industry per turn, and 8 credits per
-turn from its population. A first factory costs 45 credits and completes after
-four End Turns; it raises industry from 6 to 16 and reduces net income from
-8 to 6 credits for subsequent turns.
+Earth starts with **120 credits and 120 Resources**, 4 industry, 6 Resources and
+8 credits per turn from its initial workforce. A first factory costs **45
+Resources and 24 work**. Growth can shorten the build time as more workers
+join industry; use the live estimate in the catalogue. Each powered factory adds 4 base
+industry plus 1 per industrial worker, costs 2 CR/turn and uses 3 energy.
 
 | Planet size | Building slots |
 | --- | ---: |
@@ -902,50 +967,61 @@ Each completed or queued building uses one slot. Repeated copies of a building
 are allowed, and their outputs add together. Planet size determines capacity;
 habitability does not change it in this version.
 
-| Building | Upfront CR | Work | Base effect per turn | Workforce bonus per copy | Upkeep CR/turn |
-| --- | ---: | ---: | --- | --- | ---: |
-| Factory | 45 | 24 | +4 industry | +1 industry per industrial worker | 2 |
-| Mining complex | 30 | 18 | +2 industry and +1 credit on Average minerals | +0.5 industry per industrial worker on Average minerals | 1 |
-| Trade centre | 40 | 24 | +4 credits | +0.5 credits per population unit, any job | 1 |
-| Research lab | 50 | 30 | +4 research points | +1 research per scientist | 2 |
-| Hydroponic farm | 30 | 18 | +4 food on every biome | +1 food per farmer | 1 |
-| Barracks | 50 | 30 | Trains 1 garrison troop per turn to 8; enables troop transport construction | None; one per colony | 1 |
-| Fortifications | 60 | 36 | +50% defending firepower | None; one per colony | 2 |
+| Building | Resources | Work | Base effect per turn | Workforce bonus per copy | Upkeep CR | Energy used |
+| --- | ---: | ---: | --- | --- | ---: | ---: |
+| Factory | 45 | 24 | +4 industry | +1 industry per industrial worker | 2 | 3 |
+| Mining complex | 30 | 18 | +2 Resources × richness | +1 Resource × richness per miner | 1 | 2 |
+| Trade centre | 40 | 24 | +4 credits | +0.5 credits per population unit, any job | 1 | 1 |
+| Research lab | 50 | 30 | +4 research | +1 research per scientist | 2 | 4 |
+| Hydroponic farm | 30 | 18 | +4 food | +1 food per farmer | 1 | 2 |
+| Barracks | 50 | 30 | Trains 1 garrison troop/turn to 8; enables troop transports | None; one per colony | 1 | 1 |
+| Fortifications | 60 | 36 | +50% defending firepower | None; one per colony | 2 | 0 |
+| Missile base | 100 | 60 | Orbital battery | None; one per colony | 3 | 3 |
+| Planetary shield | 120 | 70 | 100-point defensive shield | None; one per colony | 4 | 8 |
+| Sensor array | 60 | 36 | Increases local sensor range | None; one per colony | 2 | 3 |
+| Jump gate | 140 | 84 | Faster travel between powered gates | None; one per colony | 4 | 8 |
+| Interdiction generator | 110 | 66 | Slows approaching hostile ships | None; one per colony | 3 | 8 |
+| Solar array | 30 | 18 | Generates 12 energy | None | 1 | 0 |
+| Fusion plant | 80 | 48 | Generates 30 energy; requires Fusion Power | None | 3 | 0 |
 
-Mining base industry and workforce bonuses use the same mineral multiplier:
-**Poor ×0.5, Average ×1, Rich ×1.5, Ultra-rich ×3**. The fixed +1 credit
-does not scale. Bonuses from repeated completed buildings add together;
-fractional worker industry and population credit bonuses are rounded down
-after summing all copies. For example, two Average mines give one worker a
-combined **+1 industry**, in addition to each mine's flat output.
+Mining uses **Poor ×0.5, Average ×1, Rich ×1.5, Ultra-rich ×3**. Fractions
+are summed before rounding down; technology bonuses per mine are added after
+that. Mines improve Resources, while factories improve industry. Repeated
+copies of non-unique buildings stack. These are base values: technologies can
+change construction prices, output and upkeep. Work and slot costs stay fixed.
 
-These are base values. Discovered technologies change the prices and outputs
-shown in the catalogue. Capacity and work costs remain unchanged.
+Energy stays on its colony. Basic supply is 12; power plants add generation.
+Farms and mines receive power first, then other buildings in slot order. Loads
+that do not fit automatically go offline. Disabled or unpowered buildings
+produce nothing and grant no workforce or military bonus, but still cost their
+fixed credit maintenance. Manually disable a building from its inspection panel
+to free power for another. New power generation takes effect as soon as built;
+normal economic output is calculated from each turn's starting buildings.
 
-- Industry advances one sequential queue on each colony. Overflow work can
-  start the next queued project in the same turn; unused industry is not stored.
-- The catalogue estimates completion after any projects already in the queue,
-  including speed increases from factories/mines that will finish ahead of it.
-  Queue forecasts also include population growth adding industrial workers;
-  they assume no future reassignment or new research bonuses.
-- A turn collects output and pays maintenance for buildings operational at
-  its start. A newly completed building starts producing and incurring upkeep
-  on the following turn. Queued projects incur no maintenance.
-- Click a queued slot to inspect it and **Cancel**. An unstarted project returns
-  its full credit cost; a partially built project refunds
-  `floor(credits actually paid × remaining work / total work)`. The displayed refund
-  is exact, even if a discount is discovered after the order was placed.
-- Click an operational building to **Demolish** it. Confirmation is required;
-  its output and maintenance stop immediately; its construction cost is not refunded.
-- Uncolonized planets show their capacity, with construction disabled until
-  settled. Bring a colony ship to the system and use the planet's Overview tab.
+- One local queue consumes industrial work. Overflow can start the next project
+  if its materials are available; unused work is not stored.
+- Each empire collects all starting mining output before construction, then
+  funds projects in system/planet order. Resources are reserved once, in full,
+  at the start of work. Queueing itself is free.
+- Forecasts include shared material competition, existing queues, completed
+  factories/mines/power plants, growth and captive mortality. They assume no
+  future reassignment, new orders or research. Very distant estimates can show
+  **Supply needed**.
+- Starting buildings determine the turn's output and upkeep. Completed buildings
+  contribute to normal income next turn. Queued projects have no maintenance.
+- Cancellation refunds `floor(Resources reserved × remaining work / total work)`.
+  An unpaid order refunds zero; legacy credit-paid orders refund credits by the
+  same formula. The displayed refund reflects the actual reservation, even if
+  a discount is researched after queueing.
+- Demolition requires confirmation, immediately stops output and upkeep, and
+  gives no construction refund. Disabled building positions remain correct.
+- Settlements have basic extraction and minimum industrial work even during a
+  power or material shortage, allowing construction of recovery infrastructure.
 
-Basic industry comes from industrial workers (minimum 1 per colony), plus
-buildings and technology. Every colony earns one credit per billion inhabitants,
-plus building and technology income, less building maintenance.
-All net colony income and research contribute to the empire totals. Deficits
-reduce the treasury and can create debt, repaid by future net income.
-Building costs, work and slots can be tuned in `orion/buildings.py`.
+Colony income and research contribute to empire totals. Credit deficits create
+debt, repaid by future income. Resource-funded construction can continue during
+credit debt; cash is still required for rush orders and diplomatic payments.
+Building balance is defined in `orion/buildings.py` and `orion/economy.py`.
 
 ## Population growth and food
 
@@ -961,9 +1037,9 @@ feed another colony. There is no food stockpile or shipping in this version.
 | Desert / Tundra | 0 | 2 |
 | Barren / Volcanic | 0 | 1 |
 
-Build a **Hydroponic farm** through **Change** for **30 credits, 18 construction
-work and one building slot**. Each completed farm adds **4 food per turn plus
-1 per assigned farmer** on any biome, at **1 CR/turn** maintenance, starting on
+Build a **Hydroponic farm** through **Change** for **30 Resources, 18 construction
+work and one building slot**. Each powered farm adds **4 food per turn plus
+1 per assigned farmer** on any biome, at **1 CR/turn** maintenance and **2 energy**, starting on
 the turn after completion. Farms can be repeated and
 use the normal construction, discount, cancellation and demolition rules.
 They appear as clickable greenhouses on the planet surface.
@@ -1050,12 +1126,12 @@ technologies can also provide research income.
 | Society | Colonial Administration / Scientific Institutes | Commerce Guilds / Cultural Exchange |
 
 All 32 branch options have effects on existing game systems, described on their cards.
-You can discover 16 foundation technologies, all 19 additional projects, and **Ascension Theory**
+You can discover 16 foundation technologies, all 20 additional projects, and **Ascension Theory**
 project, available in Objectives after completing tier II in every branch.
 Either choice in each tier qualifies. Building bonuses affect existing and
 future copies; flat colony bonuses affect every owned colony. Bonuses add
-together. Percentage discounts add and the final credit price rounds up.
-Research never changes the price already paid for a project.
+together. Percentage discounts add and the final Resource price rounds up.
+Research never changes the price recorded for an existing queued project.
 
 Speed bonuses also add; both drive technologies give +75% speed. A voyage
 keeps its departure speed until arrival, including across save/load. New orders
@@ -1079,7 +1155,7 @@ drive technologies increase speed separately. The AI uses the same rules.
 
 New games include your chosen number of rivals, with randomly selected races
 and starting systems. Every empire starts with one colony, 8 billion inhabitants,
-120 credits, no buildings, **two scouts and one colony ship** in their home system
+120 credits, 120 Resources, no buildings, **two scouts and one colony ship** in their home system
 (Varkesh instead start with two scouts, one frigate and two troop transports).
 These ships are free starting assets, independent of race and the fog setting.
 New rival homeworlds use a medium Terran planet with average minerals and normal
@@ -1239,7 +1315,7 @@ to turn it off before beginning. The setting is saved with the campaign and is
 fixed during play. Old campaigns keep their fully revealed maps.
 
 1. New games give you **two scouts at Sol**, ready to explore. To build more,
-   open **Sol → Earth → Change** and start a **Scout**: **25 credits, 12 work,
+   open **Sol → Earth → Change** and start a **Scout**: **25 Resources, 12 work,
    8 hull**, no weapons and no building slot. At Earth's initial industry this
    takes **two turns**.
 2. On the galaxy map, click your fleet badge, select a scout in the popup,
@@ -1297,9 +1373,9 @@ gate milestones, but omit locations you cannot currently observe.
 ## Build, travel and colonize
 
 1. Use your **starting colony ship at Sol**. To build another, open
-   **Sol → Earth → Change** and start a **Colony ship**. It costs **80 credits
-   and 42 work**, completing after seven End Turns at Earth's initial 6 industry
-   per turn, if there are no projects ahead of it.
+   **Sol → Earth → Change** and start a **Colony ship**. It costs **80 Resources
+   and 42 work**. The live forecast includes its material supply, current
+   industry, growth and any projects already queued.
 2. Return to the **galaxy map** and click the cyan fleet badge beside Sol.
    Its number is the number of ships in that fleet. A small popup lists their
    types and hull health; select the ships you want to send.
@@ -1397,8 +1473,8 @@ Issued journeys retain their orders if supply changes before they arrive.
 
 ## Fleet combat
 
-1. Build a **frigate** at a colony's Shipyard. Base cost is **60 credits and 36 work**:
-   six End Turns at Earth's initial industry, with no earlier projects in the queue.
+1. Build a **frigate** at a colony's Shipyard. Base cost is **60 Resources and 36 work**.
+   Its live forecast includes industry, growth and available materials.
    Existing ship-price discounts and propulsion technologies also apply to frigates.
 2. Select ships from a galaxy fleet badge and send them to a system containing
    rival ships, or use the individual **Fleets → Course** controls.
@@ -1422,7 +1498,7 @@ Issued journeys retain their orders if supply changes before they arrive.
    positions, hulls and remaining orders. Loading resumes after the last applied
    action; it does not replay animations or apply damage twice.
 
-| Ship | Base credits | Work | Hull | Movement | Base damage per shot |
+| Ship | Base Resources | Work | Hull | Movement | Base damage per shot |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Colony ship | 80 | 42 | 12 | 2 cells | 0 (unarmed) |
 | Frigate | 60 | 36 | 20 | 3 cells | 5 |
@@ -1508,8 +1584,8 @@ They are neutral creatures, not a third diplomatic empire.
 population capacity: a Huge Gaia world supports **28 B**. With enough food,
 growth progresses by up to 35 points per turn, reaching another billion in
 three turns from zero progress. Ordinary worlds retain their 25-point growth cap.
-**Ultra-rich** mines provide **6 industry each**, before technology bonuses;
-the bonus applies to mines, using the existing mineral rules.
+**Ultra-rich** mines provide **6 base Resources each** and **+3 per miner**,
+before technology bonuses; richness also scales miners' basic output.
 
 **Ancient ruins** award 120 research points immediately when the Sentinel is
 destroyed. The reward is paid once to the victor, whether player or rival.
@@ -1567,7 +1643,7 @@ conquest simply because no rival was added.
 
 ### Conquest
 
-1. Build **barracks**, then **troop transports** in the Shipyard: **80 credits,
+1. Build **barracks**, then **troop transports** in the Shipyard: **80 Resources,
    42 work, 16 hull** and **8 troops** each. They are unarmed in fleet combat, so escort
    them with frigates. Ordinary ship discounts and propulsion bonuses apply.
 2. Send them to a system containing a rival colony. Destroy or drive away **all
@@ -1617,12 +1693,13 @@ or production; its result and consumed transports are saved immediately by the U
    existing one-project research system: stored points apply immediately, then
    normal research income contributes until completion.
 3. Choose one of your colonies in Objectives and build the **Ascension Gate**:
-   **500 credits and 300 work**, paid through the normal shared construction
+   **500 Resources and 300 work**, built through the normal local construction
    queue. It needs no building slot, has no discount, and is limited to one built
    or queued gate per empire. Cancel an unfinished gate from its Shipyard queue
    for the normal unspent-work refund.
-4. After construction, keep the gate for **five charging turns**. Charging starts
-   on the turn after completion. Any opposing ship in that system pauses charging,
+4. After construction, keep the gate for **five charging turns** with **10 spare
+   local energy** throughout each turn. Charging starts on the turn after
+   completion. A power shortage or any opposing ship in that system pauses charging,
    even in peacetime; existing charge is preserved and resumes when orbit clears.
    A ship arriving that turn blocks charging immediately.
 5. The fifth clear-orbit charge wins. Protect the colony: capture destroys the
@@ -1754,7 +1831,7 @@ use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
 
-**Compatibility:** v0.35 loads all earlier prototype saves without rewriting the
+**Compatibility:** v0.36 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;
 the new workforce bonuses and maintenance apply to future turns. Existing empire identities, home positions and rival
 counts are retained; the rectangular map and fully random starting neighborhoods
@@ -1796,7 +1873,9 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 26**, adding first-contact dates and acknowledgements alongside defense health, sensor contacts/news, route modifiers,
+**format version 27**, adding Resource banks, miners, building power switches and
+construction Resource reservations alongside first-contact dates, defence health,
+sensor contacts/news, route modifiers,
 bombardment use and deterministic combat accuracy. Negative treasuries still support building maintenance debt. They retain slave population in worlds and surveys, private
 raid records and fractional Varkesh voyage speeds, while retaining hidden tomb
 worlds, once-only awakening outcomes, private turn-news records and an optional
@@ -1834,6 +1913,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/colony_view.py` | Colony slots, construction catalogue and project inspection |
 | `orion/buildings.py` | Building costs, base output, workforce bonuses, upkeep and size-based capacity |
 | `orion/command_buttons.py` | Beveled command controls, scalable icons and interaction states |
+| `orion/economy.py` | Local power dispatch, mining output and recovery baselines |
+| `orion/economy_forecast.py` | Shared Resource supply and colony construction forecasts |
 | `orion/population.py` | Local food production, consumption, population limits and growth |
 | `orion/empire.py` | Read-only empire totals, colony filtering and sorting |
 | `orion/empire_view.py` | Empire Overview layout and colony directory |
@@ -1916,6 +1997,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
 | `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
+| `tests/test_resources_energy.py` | Mining, shared supplies, local power, construction payments, authentic save upgrades and UI actions |
 | `tests/test_home_systems.py` | Civilization home names, unchanged generation, repeated races and survey privacy |
 
 Keep new simulation rules in `model.py` or additional model modules. Add screens
@@ -1926,8 +2008,11 @@ migrations when the data schema changes.
 
 ## Development checks
 
-v0.35 passes **552 automated checks**, including resource-bar reports, bottom-menu
-navigation, menu saves during fleet selection, and fog-safe shared-system names.
+v0.36 passes **572 automated checks**, including Resources, mining assignments,
+shared construction supply, local power, disabled military infrastructure,
+AI recovery, authentic v0.35.1 save upgrades and the new interface controls.
+Earlier coverage includes resource-bar reports, navigation, fleet selection and
+fog-safe shared-system names.
 The earlier v0.34 upgrade verification created and replayed **58 authentic v0.33 campaigns** across
 all civilizations, fog settings, queues, voyages, active battles, retreats, research
 and tomb awakenings. Six-empire campaigns with the new technologies were also

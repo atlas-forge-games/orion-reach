@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Guardian generation, encounters, rewards, private knowledge and save continuity."""
 
 import copy
@@ -96,7 +97,8 @@ class GuardianRulesTests(unittest.TestCase):
                 self.assertEqual(game.population_report(p).produced, 15)
             elif g.kind == "crystal_guardian":
                 self.assertEqual(p.richness, "Ultra-rich")
-                self.assertEqual(BUILDINGS["mine"].yields(p.richness)[0], 6)
+                self.assertEqual(BUILDINGS["mine"].resources*3, 6)
+        self.assertEqual(BUILDINGS["mine"].yields(p.richness)[0], 0)
 
     def test_arrival_starts_battle_and_scout_can_retreat_before_being_hit(self):
         game = new_game(seed=2408, with_ai=False)
@@ -397,6 +399,7 @@ class GuardianSaveTests(unittest.TestCase):
         game = new_game(seed=2408, with_guardians=False)
         place_near(game, 1)
         game.send_ship(1, 1)
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)

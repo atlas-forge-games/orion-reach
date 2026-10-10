@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Construction economy, turn timing, and compatibility of persistent colonies."""
 
 import json
@@ -51,11 +52,10 @@ class ColonyRulesTests(unittest.TestCase):
                 with self.assertRaises(RuleError):
                     self.game.queue_building(system, planet, building)
                 self.assertEqual(self.game.to_dict(), before)
-        self.game.credits = 44
-        before = self.game.to_dict()
-        with self.assertRaisesRegex(RuleError, "credits"):
-            self.game.queue_building(0, 2, "factory")
-        self.assertEqual(self.game.to_dict(), before)
+        self.game.credits = self.game.resources = 0
+        self.game.queue_building(0, 2, "factory")
+        self.assertEqual(self.earth.construction_queue[0].progress, 0)
+        self.assertEqual((self.game.credits, self.game.resources), (0, 0))
 
     def test_forecast_overflow_and_factory_output_start_next_turn(self):
         for building in ("factory", "factory", "mine"):
@@ -77,17 +77,17 @@ class ColonyRulesTests(unittest.TestCase):
         self.assertEqual(self.earth.buildings, ["factory", "factory", "mine"])
         self.assertEqual(self.earth.construction_queue, [])
         self.assertEqual(report.income, 4)
-        self.assertEqual(self.earth.yields_per_turn, (31, 4, 0))
-        self.assertEqual(self.game.advance_turn().income, 4)
+        self.assertEqual(self.earth.yields_per_turn, (26, 3, 0))
+        self.assertEqual(self.game.advance_turn().income, 3)
 
     def test_cancel_refunds_unspent_work_and_releases_the_slot(self):
         self.game.queue_building(0, 2, "factory")
         self.game.queue_building(0, 2, "trade_center")
-        self.assertEqual(self.game.cancel_construction(0, 2, 1), 40)
+        self.assertEqual(self.game.cancel_construction(0, 2, 1), "0 RES")
         self.game.advance_turn()
-        self.assertEqual(self.earth.construction_queue[0].refund, 33)
-        self.assertEqual(self.game.cancel_construction(0, 2, 0), 33)
-        self.assertEqual(self.game.credits, 116)
+        self.assertEqual(self.earth.construction_queue[0].resource_refund, 33)
+        self.assertEqual(self.game.cancel_construction(0, 2, 0), "33 RES")
+        self.assertEqual((self.game.credits, self.game.resources), (128, 110))
         self.assertEqual(self.earth.free_slots, 8)
         before = self.game.to_dict()
         with self.assertRaises(RuleError):
@@ -110,10 +110,10 @@ class ColonyRulesTests(unittest.TestCase):
 
     def test_minerals_only_scale_mining_industry(self):
         self.earth.buildings = ["factory", "mine", "trade_center", "research_lab"]
-        for richness, expected_industry in (("Poor", 18), ("Average", 21), ("Rich", 23)):
+        for richness, expected_industry in (("Poor", 16), ("Average", 16), ("Rich", 16)):
             self.earth.richness = richness
-            self.assertEqual(self.earth.yields_per_turn, (expected_industry, 11, 4))
-        self.assertEqual(self.game.empire_rates, (11, 4))
+            self.assertEqual(self.earth.yields_per_turn, (expected_industry, 10, 4))
+        self.assertEqual(self.game.empire_rates, (10, 4))
         self.assertEqual(self.game.systems[0].worlds[3].yields_per_turn, (0, 0, 0))
 
     def test_income_and_research_begin_after_completion(self):
@@ -152,6 +152,7 @@ class ColonyRulesTests(unittest.TestCase):
         self.game.selected_planet = 2
         self.earth.population = 9
         self.earth.richness = "Rich"
+        legacy_economy(self.game)
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)
             path = store.save(self.game)

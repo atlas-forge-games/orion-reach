@@ -49,7 +49,7 @@ def invasion_strength(game, system_id, planet_id, owner="player"):
 
 
 def invasion_error(game, system_id, planet_id, owner="player"):
-    from .defenses import bases
+    from .defenses import bases, effective_shield
     from .raiding import is_varkesh, homeworld
     if game.strategy_error():
         return game.strategy_error()
@@ -62,7 +62,7 @@ def invasion_error(game, system_id, planet_id, owner="player"):
         return "Clear all opposing ships from this system before invading."
     if any(p.owner != owner for p in bases(game, system_id)):
         return "Destroy the opposing missile bases before landing troops."
-    if planet.shield_points:
+    if effective_shield(game, planet):
         return f"Suppress the planetary shield by bombardment first ({planet.shield_points} points remain)."
     if not troop_transports(game, system_id, owner):
         return "Bring troop transports into orbit first."
@@ -158,8 +158,6 @@ def gate_error(game, system_id, planet_id, owner="player"):
         return "Your empire already has an Ascension Gate built or queued."
     if len(planet.construction_queue) >= MAX_QUEUE:
         return "The construction queue is full."
-    if game.treasury_for(owner) < ASCENSION_GATE.credit_cost:
-        return f"Requires {ASCENSION_GATE.credit_cost} credits."
     return None
 
 
@@ -168,7 +166,7 @@ def advance_gates(game, eligible):
     for system_id, planet_id, owner in eligible:
         planet = game.planet_at(system_id, planet_id)
         if (planet.owner == owner and planet.ascension_gate
-                and not gate_blocked(game, system_id, owner)):
+                and not gate_blocked(game, system_id, owner) and game.planet_energy(planet).gate_powered):
             planet.gate_charge = min(GATE_CHARGE_TURNS, planet.gate_charge+1)
 
 

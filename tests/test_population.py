@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Local food, deterministic growth, production timing, AI and save continuity."""
 
 import copy
@@ -104,7 +105,7 @@ class PopulationRulesTests(unittest.TestCase):
 
     def test_farm_uses_normal_cost_queue_slot_and_starts_food_next_turn(self):
         self.game.queue_building(0, 2, "hydroponic_farm")
-        self.assertEqual((self.game.credits, self.earth.used_slots), (90, 1))
+        self.assertEqual((self.game.credits, self.earth.used_slots), (120, 1))
         self.assertEqual(self.game.queue_estimates(self.earth), [3])
         for _ in range(3):
             result = self.game.advance_turn()
@@ -117,7 +118,7 @@ class PopulationRulesTests(unittest.TestCase):
         self.assertEqual(self.game.population_report(self.earth).produced, 10)
         self.game.queue_building(0, 2, "hydroponic_farm")
         self.game.advance_turn()
-        self.assertEqual(self.game.cancel_construction(0, 2, 0), 20)
+        self.assertEqual(self.game.cancel_construction(0, 2, 0), "20 RES")
         self.assertEqual(self.earth.used_slots, 0)
 
     def test_farming_technology_preserves_income_and_applies_food_next_turn(self):
@@ -151,8 +152,9 @@ class PopulationRulesTests(unittest.TestCase):
         home.size, home.biome = "Medium", "Tundra"
         for _ in range(10):
             game.advance_turn()
-        self.assertEqual(home.buildings, ["hydroponic_farm", "factory"])
-        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (121, 9, 0))
+        self.assertEqual(home.buildings, ["hydroponic_farm"])
+        self.assertEqual(home.construction_queue[0].item_id, "factory")
+        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (199, 9, 0))
         game.advance_turn()
         self.assertEqual(home.growth_progress, 20)
         self.assertEqual(game.planet_at(0, 2).growth_progress, 5)
@@ -163,7 +165,7 @@ class PopulationRulesTests(unittest.TestCase):
         home = game.planet_at(game.opponent.home_system, game.opponent.home_planet)
         home.size, home.biome, home.population = "Small", "Terran", 8
         # One slot remains; income already covers the existing labs and a farm.
-        home.buildings = ["research_lab"]*4+["trade_center"]
+        home.buildings = ["solar_array"]+["research_lab"]*3+["trade_center"]
         self.assertEqual(game.population_report(home).balance, 2)
         run_ai(game)
         self.assertEqual(home.construction_queue[0].item_id, "hydroponic_farm")
@@ -239,6 +241,7 @@ class PopulationSaveTests(unittest.TestCase):
         game.send_ship(1, 0)
         game.queue_building(0, 2, "factory")
         game.advance_turn()
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)
@@ -261,7 +264,7 @@ class PopulationSaveTests(unittest.TestCase):
             expected["diplomacy"]["introduced"] = True  # Old confirmed contacts do not replay introductions.
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 26)
+        self.assertEqual(SAVE_VERSION, 27)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

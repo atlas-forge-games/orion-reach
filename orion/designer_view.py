@@ -34,7 +34,7 @@ def draw_designer(app):
         b = app.button(f"design_load_{item.id}", "", (82, y, 232, 46), lambda d=item: app.load_design(d), "hotspot")
         panel(surface, b.rect, (16, 32, 43), GOLD if item.id == app.design_id else LINE)
         text(surface, shorten(item.name, 213, 16), (91, y+4), 16, INK)
-        text(surface, f"{HULLS[item.kind].name} · {game.project_price(item.id)} CR", (92, y+27), 10, MUTED)
+        text(surface, f"{HULLS[item.kind].name} · {game.project_price(item.id)} RES", (92, y+27), 10, MUTED)
     if not game.designs:
         paragraph(surface, "Your saved blueprints appear here. Select one to revise its future production orders.", (83, 328), 231, 14, MUTED, 25)
     app.button("design_prev", "←", (82, 677, 54, 30), lambda: app.design_page_change(-1), enabled=app.design_page > 0)
@@ -59,7 +59,7 @@ def draw_designer(app):
         y = 340+index*52
         locked = module.technology and module.technology not in game.technology.completed
         text(surface, module.name, (369, y), 16, MUTED if locked else INK)
-        text(surface, f"{module.space} {module.category} · {module.credit_cost} CR", (785, y+3), 10, GOLD, right=True)
+        text(surface, f"{module.space} {module.category} · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
         detail = f"Requires {TECHNOLOGIES[module.technology].name}" if locked else module.description
         text(surface, shorten(detail, 424, 11), (369, y+26), 11, MUTED if locked else CYAN)
         app.button("design_remove_"+identifier, "−", (802, y, 37, 36), lambda m=identifier: app.change_design_module(m, -1), enabled=identifier in design.modules)
@@ -73,12 +73,12 @@ def draw_designer(app):
     text(surface, hull.name.upper(), (1003, 329), 10, GOLD, "mono", 1)
     text(surface, "LIVE PREVIEW", (1003, 444), 10, MUTED, "mono", 1)
     discount = game.bonuses_for().get("ship_discount", 0)
-    cost = max(1, math.ceil(design.credit_cost*(100-discount)/100))
+    cost = max(1, math.ceil(design.resource_cost*(100-discount)/100))
     values = (("Hull / shields", f"{design.hull} / {design.shields}"),
               ("Volley / max range", f"{design.damage} / {design.weapon_range}"),
               ("Tactical movement", f"{design.movement} cells"),
               ("Torpedo interception", f"{design.interception}%"),
-              ("Build cost / work", f"{cost} CR / {design.work_cost}"))
+              ("Build cost / work", f"{cost} RES / {design.work_cost}"))
     for index, (label, value) in enumerate(values):
         y = 471+index*29
         text(surface, label, (1003, y), 13, MUTED)

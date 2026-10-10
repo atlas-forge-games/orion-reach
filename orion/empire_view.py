@@ -44,22 +44,25 @@ def draw_empire(app):
          f"{summary.capacity-summary.used_slots} free · queued slots included", INK),
         ("FOOD / CONSUMED", f"{summary.food_produced} / {summary.food_consumed}",
          f"{summary.food_shortages} shortages · supplies local", RED if summary.food_shortages else CYAN),
+        ("RESOURCES", f"{game.resources:,} RES", f"+{summary.resources} / turn · shared", GOLD),
+        ("LOCAL ENERGY", f"{summary.energy_generated}/{summary.energy_demand}",
+         f"{summary.energy_shortages} shortages · local", RED if summary.energy_shortages else CYAN),
     ]
     for i, (label, value, caption, color) in enumerate(stats):
-        x = 64+i*222
-        panel(surface, (x, 284, 202, 91))
-        text(surface, label, (x+17, 295), 9, MUTED, "mono", 1)
-        text(surface, value, (x+17, 316), 22, color)
-        text(surface, shorten(caption, 175, 10), (x+17, 352), 10, MUTED)
+        x = 64+i*166
+        panel(surface, (x, 284, 150, 91))
+        text(surface, label, (x+10, 295), 8, MUTED, "mono")
+        text(surface, value, (x+10, 316), 18, color)
+        text(surface, shorten(caption, 134, 9), (x+10, 352), 9, MUTED)
 
     text(surface, "COLONY DIRECTORY", (64, 402), 11, GOLD, "mono", 2)
     text(surface, f"{len(rows)} of {summary.colonies} {'colonies' if summary.colonies != 1 else 'colony'}", (338, 402), 12, MUTED)
     for i, key in enumerate(FILTERS):
-        x = 816+i*143
-        app.button(f"empire_filter_{key}", key.capitalize(), (x, 391, 131, 36),
+        x = 782+i*120
+        app.button(f"empire_filter_{key}", key.capitalize(), (x, 391, 114, 36),
                    lambda f=key: app.set_empire_filter(f))
         if app.empire_filter == key:
-            pg.draw.line(surface, GOLD, (x, 427), (x+131, 427), 2)
+            pg.draw.line(surface, GOLD, (x, 427), (x+114, 427), 2)
 
     headings = [
         ("name", "COLONY / SYSTEM", 78, 250),
@@ -93,7 +96,8 @@ def draw_empire(app):
         pop = f"{planet.population}+{planet.slaves} S" if planet.slaves else f"{planet.population}/{food.capacity} B"
         text(surface, pop, (440, y+7), 15, INK, right=True)
         growth = f"Growth {food.progress}%" if food.growth_rate else "Limit reached" if planet.population>=food.capacity else "Growth paused"
-        text(surface, growth, (440, y+31), 9, MUTED, right=True)
+        power = game.planet_energy(planet)
+        text(surface, f"Power {power.balance}" if power.balance < 0 else growth, (440, y+31), 9, RED if power.balance < 0 else MUTED, right=True)
         text(surface, f"{food.balance:+}", (545, y+7), 16, RED if food.balance<0 else CYAN, right=True)
         text(surface, f"{food.produced} / {food.consumed} used", (545, y+31), 9, MUTED, right=True)
         for value, right, color in ((str(industry), 635, CYAN),

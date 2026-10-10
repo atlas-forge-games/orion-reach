@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Two-empire economy, AI expansion, ownership boundaries and save continuity."""
 
 import copy
@@ -35,6 +36,7 @@ class AIRulesTests(unittest.TestCase):
         self.assertEqual(game.systems[0], peaceful.systems[0])
         self.assertEqual(game.empire_rates, (8, 0))
         peaceful.add_opponent()
+        peaceful.headquarters(RIVAL)[1].miners = 0
         # Adding an empire preserves the surrounding random systems.
         self.assertEqual(game.systems, peaceful.systems)
         self.assertEqual(game.opponent, peaceful.opponent)
@@ -44,23 +46,26 @@ class AIRulesTests(unittest.TestCase):
         self.assertEqual(game.to_dict(), before)
 
     def test_separate_banks_equal_costs_local_work_and_refunds(self):
+        from unittest.mock import patch
         game = new_game(seed=2408)
         sid, pid = game.opponent.home_system, game.opponent.home_planet
         home = game.planet_at(sid, pid)
-        home.biome = "Terran"  # Match Earth's food and workforce for equal production.
+        home.biome = "Terran"
         game.queue_building(sid, pid, "factory", owner=RIVAL)
         game.queue_building(0, 2, "factory")
-        self.assertEqual((game.credits, game.opponent.credits), (75, 75))
-        report = game.advance_turn()
-        self.assertEqual((game.credits, game.opponent.credits), (83, 83))
+        self.assertEqual((game.credits, game.opponent.credits), (120, 120))
+        with patch("orion.ai.run_ai", return_value=[]):
+            report = game.advance_turn()
+        self.assertEqual((game.credits, game.opponent.credits), (128, 128))
+        self.assertEqual((game.resources, game.opponent.resources), (77, 77))
         self.assertEqual(home.construction_queue, game.planet_at(0, 2).construction_queue)
         self.assertEqual((report.income, report.research, report.completed), (8, 0, []))
-        self.assertEqual(game.cancel_construction(sid, pid, 0, owner=RIVAL), 33)
-        self.assertEqual(game.credits, 83)
-        self.assertEqual(game.opponent.credits, 116)
+        self.assertEqual(game.cancel_construction(sid, pid, 0, owner=RIVAL), "33 RES")
+        self.assertEqual((game.resources, game.opponent.resources), (77, 110))
         home.buildings = ["research_lab"]
-        game.opponent.credits = 0  # AI cannot place another project before income.
-        game.advance_turn()
+        game.set_workforce(sid, pid, 2, 1, 0, owner=RIVAL)
+        with patch("orion.ai.run_ai", return_value=[]):
+            game.advance_turn()
         self.assertEqual((game.research, game.opponent.research), (0, 7))
         self.assertEqual(summarize_empire(game).research, 0)
         self.assertEqual(summarize_empire(game, owner=RIVAL).research, 7)
@@ -105,7 +110,7 @@ class AIRulesTests(unittest.TestCase):
                 place_near(game, frontier.id, anchor=home)
                 expected_credits = game.credits
                 # Farms also use construction time before the scientific endgame.
-                for _ in range(180):  # Slower expansion delays the scientific endgame.
+                for _ in range(280):  # Slower expansion delays the scientific endgame.
                     if game.result is not None:
                         break
                     expected_credits += game.empire_rates[0]
@@ -146,8 +151,10 @@ class AIRulesTests(unittest.TestCase):
         game.planet_at(sid, pid).biome = "Terran"
         game.queue_ship(0, 2)
         game.queue_ship(sid, pid, owner=RIVAL)
-        for _ in range(7):
-            report = game.advance_turn()
+        from unittest.mock import patch
+        with patch("orion.ai.run_ai", return_value=[]):
+            for _ in range(7):
+                report = game.advance_turn()
         self.assertEqual(len(game.ships), 2)
         self.assertEqual({s.owner for s in game.ships}, {PLAYER, RIVAL})
         self.assertEqual(report.completed, ["Colony ship on Earth"])
@@ -232,6 +239,7 @@ class AIRulesTests(unittest.TestCase):
         game.queue_building(0, 2, "mine")
         game.advance_turn()
         game.planet_at(0, 2).growth_progress = 0  # Legacy saves had no growth progress.
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)

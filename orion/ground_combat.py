@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from .buildings import BUILDINGS
+from .economy import active_buildings
 
 MAX_GARRISON = 100_000  # Includes occupation forces larger than the training limit.
 
@@ -45,23 +46,24 @@ class GroundOutcome:
 def forces(planet, bonuses=None):
     if not planet.colonized:
         return GroundForces(0, 0, 0)
-    bonus = (bonuses or {}).get("fortification_bonus", 0) if "fortifications" in planet.buildings else 0
+    buildings = active_buildings(planet, bonuses)
+    bonus = (bonuses or {}).get("fortification_bonus", 0) if "fortifications" in buildings else 0
     return GroundForces(max(0, 4+planet.population-planet.militia_losses), planet.garrison,
-                        sum(BUILDINGS[b].defence_bonus for b in planet.buildings)+bonus)
+                        sum(BUILDINGS[b].defence_bonus for b in buildings)+bonus)
 
 
-def training_limit(planet):
-    return sum(BUILDINGS[b].garrison_limit for b in planet.buildings)
+def training_limit(planet, bonuses=None):
+    return sum(BUILDINGS[b].garrison_limit for b in active_buildings(planet, bonuses))
 
 
-def train(planet):
+def train(planet, bonuses=None):
     """Train locally without removing population or consuming worker assignments."""
     if not planet.colonized:
         return 0
     # Militia remuster gradually; losses cannot be reset by reopening an invasion.
     planet.militia_losses = max(0, planet.militia_losses-1)
-    recruits = min(sum(BUILDINGS[b].training for b in planet.buildings),
-                   max(0, training_limit(planet)-planet.garrison))
+    recruits = min(sum(BUILDINGS[b].training for b in active_buildings(planet, bonuses)),
+                   max(0, training_limit(planet, bonuses)-planet.garrison))
     planet.garrison += recruits
     return recruits
 

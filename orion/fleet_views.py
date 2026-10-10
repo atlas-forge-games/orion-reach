@@ -21,7 +21,7 @@ def draw_shipyard(app):
     text(surface, shorten(f"{system.name.upper()} / {planet.name.upper()}", 530, 11, "mono"),
          (347, 143), 11, MUTED, "mono")
     app.button("shipyard_fleets", "Open fleets →", (924, 124, 190, 46), app.open_fleets)
-    text(surface, f"YEAR {game.year} · {game.treasury_for(planet.owner or PLAYER):,} CR", (1376, 141), 12, GOLD, "mono", right=True)
+    text(surface, f"{game.resources:,} RES · {game.credits:,} CR", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(planet.name, 720, 43, "title"), (64, 185), 43, INK, "title")
     text(surface, f"Shipyard · {game.planet_yields(planet)[0]} industry / turn · {game.empire_name_for(planet.owner)}",
          (66, 249), 14, MUTED)
@@ -44,7 +44,7 @@ def draw_shipyard(app):
                     "scout": "Charts systems and recovers one-time discoveries."}
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
-        text(surface, shorten(f"{game.project_price(spec.id, planet.owner or PLAYER)} CR · {spec.work_cost} work · {eta}", 277, 11),
+        text(surface, shorten(f"{game.project_price(spec.id, planet.owner or PLAYER)} RES · {spec.work_cost} work · {eta}", 277, 11),
              (85, y+91), 11, INK)
         reason = game.ship_build_error(system.id, planet.id, spec.id)
         text(surface, shorten(reason or captions[spec.id], 471, 11), (154, y+61), 11, GOLD if reason else MUTED)
@@ -66,7 +66,10 @@ def draw_shipyard(app):
         text(surface, f"{index+1:02}", (711, y+12), 11, GOLD, "mono")
         text(surface, definition.name, (748, y+7), 16, INK)
         text(surface, turn_label(estimates[index]), (1178, y+9), 12, CYAN, right=True)
-        text(surface, f"{project.progress}/{definition.work_cost} work · Refund {project.refund} CR", (749, y+32), 11, MUTED)
+        detail = f"{project.progress}/{definition.work_cost} work · Refund {project.refund_text}"
+        if index == 0:
+            detail += " · "+game.construction_status(planet)
+        text(surface, shorten(detail, 429, 11), (749, y+32), 11, MUTED)
         app.button(f"queue_cancel_{index}", "Cancel", (1210, y+9, 128, 38),
                    lambda i=index: app.cancel_construction(i), enabled=planet.owner == PLAYER)
         pg.draw.rect(surface, LINE, (749, y+51, 429, 2))

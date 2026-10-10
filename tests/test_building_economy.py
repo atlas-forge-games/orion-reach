@@ -38,7 +38,7 @@ class BuildingEconomyTests(unittest.TestCase):
         planet.buildings = ["factory", "mine", "research_lab", "hydroponic_farm"]
         game.set_workforce(0, 2, 0, 8)
         # Minimum one construction industry, plus the two buildings' fixed output.
-        self.assertEqual(game.planet_yields(planet), (7, 3, 28))
+        self.assertEqual(game.planet_yields(planet), (5, 2, 28))
         self.assertEqual(game.population_report(planet).produced, 10)
         game.set_workforce(0, 2, 8, 0)
         self.assertEqual(game.planet_yields(planet)[2], 4)
@@ -48,9 +48,11 @@ class BuildingEconomyTests(unittest.TestCase):
         planet = game.planet_at(0, 2)
         planet.population, planet.farmers = 1, 0
         planet.buildings = ["mine", "mine"]
-        for richness, industry in (("Poor", 3), ("Average", 6), ("Rich", 8), ("Ultra-rich", 16)):
+        planet.miners = 1
+        for richness, resources in (("Poor", 6), ("Average", 10), ("Rich", 14), ("Ultra-rich", 26)):
             planet.richness = richness
-            self.assertEqual(game.planet_yields(planet), (industry, 1, 0))
+            self.assertEqual(game.planet_resources(planet), resources)
+            self.assertEqual(game.planet_yields(planet), (1, -1, 0))
         planet.richness, planet.buildings = "Average", ["trade_center", "trade_center"]
         # Two half-credit population bonuses sum to one before rounding.
         self.assertEqual(game.planet_yields(planet)[1], 8)
@@ -60,7 +62,7 @@ class BuildingEconomyTests(unittest.TestCase):
         planet = game.planet_at(0, 2)
         planet.slaves, planet.scientists = 10, 3
         planet.buildings = ["factory", "mine", "trade_center", "research_lab", "hydroponic_farm"]
-        self.assertEqual(game.planet_yields(planet), (38, 25, 10))
+        self.assertEqual(game.planet_yields(planet), (30, 24, 10))
         self.assertEqual((planet.maintenance_per_turn, farmer_output(planet)), (7, 3))
 
     def test_farming_assignments_include_all_completed_farm_bonuses(self):
@@ -117,8 +119,9 @@ class BuildingEconomyTests(unittest.TestCase):
         self.assertEqual((report.income, game.credits), (-15, -15))
         self.assertTrue(any("debt" in message for message in report.alerts))
         self.assertTrue(any(ship.kind == "scout" for ship in game.ships))
+        game.queue_ship(0, 2, "scout")  # Debt does not prevent resource-funded construction.
         with self.assertRaises(RuleError):
-            game.queue_ship(0, 2, "scout")
+            game.buy_construction(0, 2)
         for _ in range(8):
             game.demolish_building(0, 2, 0)
         self.assertEqual(game.advance_turn().income, 1)
@@ -164,14 +167,17 @@ class BuildingEconomyTests(unittest.TestCase):
         planet.construction_queue = [ConstructionProject("research_lab") for _ in range(3)]
         self.assertEqual(ai.projected_income(game, "rival"), 2)
         self.assertTrue(ai.queue_building(game, system, planet, "factory", "rival"))
-        self.assertEqual(planet.construction_queue[-1].item_id, "trade_center")
+        self.assertEqual(planet.construction_queue[-1].item_id, "solar_array")
         planet.construction_queue.clear()
         planet.buildings = ["research_lab"]*8
         game.opponent.credits = -5
-        game.advance_turn()
+        for _ in range(30):
+            game.advance_turn()
+            if game.empire_rates_for("rival")[0] > 0:
+                break
         self.assertGreater(game.empire_rates_for("rival")[0], 0)
         self.assertGreaterEqual(game.population_report(planet).balance, 0)
-        self.assertLess(len(planet.buildings), 8)
+        self.assertTrue(any(b in ("solar_array", "fusion_plant") for b in planet.buildings))
         self.assertEqual(game, GameState.from_dict(game.to_dict()))
 
     def test_debt_save_roundtrip_and_old_versions_still_reject_negative_banks(self):
@@ -181,7 +187,7 @@ class BuildingEconomyTests(unittest.TestCase):
             storage = Storage(folder)
             path = storage.save(game)
             original = path.read_bytes()
-            self.assertEqual(json.loads(original)["version"], 26)
+            self.assertEqual(json.loads(original)["version"], 27)
             self.assertEqual(storage.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
         with self.assertRaises(SaveError):

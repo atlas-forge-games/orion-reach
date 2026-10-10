@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen",
+  "version": "0.36.0",
+  "date": "2026-10-10",
+  "prompts": {
+    "resources": "Use case: stylized-concept. Asset type: square resource illustration for the top resource bar of an original space strategy game called Orion Reach. Style: detailed painterly retro science-fiction game inventory art, a compact isometric still life on a small industrial platform, high-end realistic rendering with hand-painted texture, warm metal highlights, cool navy shadows. Plain very dark blue-black backdrop. Single large central object cluster fills 80 percent of the square; must read instantly at 58 pixels. No text, letters, numbers, UI frame, symbols or logos. Original artwork. Subject: a rugged futuristic cargo crate filled with rough copper-brown and silver-grey metallic ore chunks, with two refined steel ingots beside it. Emphasize useful raw construction materials, rugged rock texture and silver metal sheen. Warm copper/bronze accent color. No crystals, gems, gold coins, tools or humans.",
+    "energy": "Use case: stylized-concept. Asset type: square resource illustration for the top resource bar of an original space strategy game called Orion Reach. Style: detailed painterly retro science-fiction game inventory art, a compact isometric still life on a small industrial platform, high-end realistic rendering with hand-painted texture, warm metal highlights, cool navy shadows. Plain very dark blue-black backdrop. Single large central object cluster fills 80 percent of the square; must read instantly at 58 pixels. No text, letters, numbers, UI frame, symbols or logos. Original artwork. Subject: a compact futuristic fusion reactor with a bright warm golden plasma core inside a steel cylindrical containment chamber, glowing amber rings, thick electrical conduits and a sturdy platform. Visually conveys electrical power. Strong golden-yellow/amber light contrasted with blue-grey steel. No flask, microscope, atom symbol, coins or humans."
+  },
+  "files": [
+    "resources-v1.png",
+    "energy-v1.png"
+  ],
+  "notes": "Original generated illustrations; unchanged PNGs, scaled only at runtime."
+}

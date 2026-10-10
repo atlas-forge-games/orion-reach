@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from .model import PLAYER
 
-FILTERS = ("all", "building", "idle", "full")
+FILTERS = ("all", "building", "idle", "full", "power")
 SORT_KEYS = ("name", "population", "food", "industry", "income", "research", "slots")
 COLONIES_PER_PAGE = 5
 
@@ -27,6 +27,10 @@ class EmpireSummary:
     food_produced: int = 0
     food_consumed: int = 0
     food_shortages: int = 0
+    resources: int = 0
+    energy_generated: int = 0
+    energy_demand: int = 0
+    energy_shortages: int = 0
 
 
 def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owner=PLAYER):
@@ -41,6 +45,8 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
         rows = [(s, p) for s, p in rows if not p.construction_queue]
     elif filter_by == "full":
         rows = [(s, p) for s, p in rows if p.free_slots == 0]
+    elif filter_by == "power":
+        rows = [(s, p) for s, p in rows if game.planet_energy(p).balance < 0]
     # Deterministic alphabetical ties, even for descending numerical sorts.
     rows.sort(key=lambda row: (row[1].name.casefold(), row[0].name.casefold(), row[0].id, row[1].id))
     keys = {
@@ -78,4 +84,8 @@ def summarize_empire(game, *, owner=PLAYER):
         food_produced=sum(r.produced for r in food),
         food_consumed=sum(r.consumed for r in food),
         food_shortages=sum(r.balance < 0 for r in food),
+        resources=sum(game.planet_resources(p) for p in colonies),
+        energy_generated=sum(game.planet_energy(p).generated for p in colonies),
+        energy_demand=sum(game.planet_energy(p).demand for p in colonies),
+        energy_shortages=sum(game.planet_energy(p).balance < 0 for p in colonies),
     )

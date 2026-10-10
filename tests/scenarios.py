@@ -12,6 +12,13 @@ def fixed_start_game(*args, **kwargs):
     kwargs.setdefault("random_starts", False)
     kwargs.setdefault("with_tombs", False)
     game = make_game(*args, **kwargs)
+    # These established-colony fixtures retain their historical job allocation.
+    # Resource/power tests exercise the real new-game allocation directly.
+    for system in game.systems:
+        for planet in system.worlds:
+            planet.miners = 0
+    from orion.exploration import refresh
+    refresh(game)
     # Established-campaign fixtures predate the new introductory transmissions.
     # Dedicated first-contact tests use model.new_game directly.
     from orion.first_contact import pending, acknowledge
@@ -65,3 +72,27 @@ def use_nearby_system(game, system_id, *, excluding=()):
         key=lambda xy: min(math.hypot((xy[0]-s.x)*1.4, xy[1]-s.y)
                            for s in game.systems if s.id not in (0, target.id)))
     return target
+
+
+def legacy_economy(game):
+    """Prepare credit-paid economic records when constructing pre-v27 fixtures.
+
+    Historical-version tests must not relabel resource-paid projects as old
+    saves. Keep their other targeted legacy fields and stale surveys intact.
+    A separate fixture from the actual v0.35.1 executable checks real migration.
+    """
+    for owner in game.owners:
+        game._empire(owner).resources = 120
+    for system in game.systems:
+        for planet in system.worlds:
+            planet.miners = 0
+            planet.disabled_buildings = []
+            for q in planet.construction_queue:
+                q.paid_credits = q.paid_credits or q.resource_cost
+                q.resource_cost = q.paid_resources = 0
+    for survey in game.exploration.surveys:
+        for world in survey.worlds:
+            world["miners"], world["disabled_buildings"] = 0, []
+            for q in world["construction_queue"]:
+                q["paid_credits"] = q["paid_credits"] or q["resource_cost"]
+                q["resource_cost"] = q["paid_resources"] = 0

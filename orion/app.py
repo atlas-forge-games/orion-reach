@@ -556,7 +556,7 @@ class App:
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
             self.shipyard_page=(len(planet.construction_queue)-1)//QUEUE_PER_PAGE
             if self.save_game(autosave=True):
-                self.toast(f"{self.game.project_spec(kind).name} queued · {planet.construction_queue[-1].paid_credits} CR paid")
+                self.toast(f"{self.game.project_spec(kind).name} queued · {planet.construction_queue[-1].resource_cost} RES on start")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -626,7 +626,7 @@ class App:
             except RuleError as exc:
                 self.toast(exc,True)
         self.confirm("Build the Ascension Gate?",
-                     f"Pay 500 CR to queue 300 work on {planet.name}. Then charge for five turns with no opposing ships in orbit. "
+                     f"Reserve 500 Resources when work begins on {planet.name}, then complete 300 work. Supply 10 energy while charging for five turns without opposing ships in orbit. "
                      "Capturing this colony destroys the gate.","Build gate",build)
 
     def invade_request(self):
@@ -1083,7 +1083,7 @@ class App:
             self.focus_empire_row()
         self.show_first_contact()
         if self.save_game(autosave=True):
-            message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP"
+            message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP · +{report.resources} RES"
             if self.game.combat is not None:
                 message+=" · Enemy fleet engaged at "+self.game.systems[self.game.combat.system_id].name
             if report.discoveries:
@@ -1420,7 +1420,7 @@ class App:
             except RuleError as exc:
                 self.toast(exc,True)
         self.confirm("Buy current production?",f"Finish {name} immediately for {price} credits (2 CR per remaining work). "
-                     "This is additional to the price already paid. Other queued projects are kept.","Buy",buy)
+                     f"Also reserves {project.needs_resources} Resources if not already reserved. Other queued projects are kept.","Buy",buy)
 
     def inspect_surface_building(self,index):
         self.colony_slot=index
@@ -1433,7 +1433,7 @@ class App:
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
             self.colony_slot=planet.used_slots-1
             if self.save_game(autosave=True):
-                self.toast(f"{BUILDINGS[building_id].name} queued · {planet.construction_queue[-1].paid_credits} CR paid")
+                self.toast(f"{BUILDINGS[building_id].name} queued · {planet.construction_queue[-1].resource_cost} RES on start")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -1442,7 +1442,15 @@ class App:
             refund=self.game.cancel_construction(self.game.selected_system,self.game.selected_planet,index)
             self.colony_slot=None
             if self.save_game(autosave=True):
-                self.toast(f"Project cancelled · {refund} CR refunded")
+                self.toast(f"Project cancelled · {refund} refunded")
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def toggle_building(self,index):
+        try:
+            self.game.toggle_building(self.game.selected_system,self.game.selected_planet,index)
+            if self.save_game(autosave=True):
+                self.toast("Power allocation updated · Credit maintenance still applies")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -2079,7 +2087,7 @@ class App:
         paragraph(self.canvas,"Choose a race, build an empire, research technologies, and negotiate with an expanding AI rival. Fight fleet battles and invade colonies, or build the Ascension Gate to win through science.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Food shipments, more empires, shields and advanced weapons. Assign colony workers to farming, industry or science, manage construction, and grow toward each world's population limit.",
+        paragraph(self.canvas,"Food shipments, more empires, shields and advanced weapons. Assign colony workers to farming, industry, research or mining, manage construction, and grow toward each world's population limit.",
                   (282,552),840,18,MUTED,32)
         text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
         text(self.canvas,"Music: Distant Stars · alexander_kies · Created with Suno",(282,699),12,MUTED)

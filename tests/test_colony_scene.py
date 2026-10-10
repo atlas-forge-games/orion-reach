@@ -152,7 +152,7 @@ class SceneInterfaceTests(unittest.TestCase):
             before = game.to_dict()
             self.app.render()
             self.assertEqual(game.to_dict(), before)
-            self.assertEqual(len(self.surface_keys()), len(BUILDINGS)+2)
+            self.assertEqual(len(self.surface_keys()), min(len(BUILDINGS), earth.building_capacity)+2)
             buttons = [b for b in self.app.buttons if b.key.startswith("surface_")]
             for i, a in enumerate(buttons):
                 self.assertTrue(pg.Rect(24, 314, 1392, 526).contains(a.rect))

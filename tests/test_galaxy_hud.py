@@ -155,8 +155,8 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertIn(f"{income:+,} CR net / turn", values)
         self.assertIn(f"{research:+,} RP / turn", values)
         self.assertIn("+9 / turn", values)
-        self.assertIn("22 produced · 13 used", values)
-        self.assertIn("Local food · 1 colony short", values)
+        self.assertIn("22 made / 13 used", values)
+        self.assertIn("1 local shortage", values)
 
     def test_unexplored_label_rectangles_include_parentheses_without_overlap(self):
         from orion.app import MAP

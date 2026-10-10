@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Tactical rules, strategic consequences, save continuity and real UI controls."""
 
 import json
@@ -68,7 +69,7 @@ class CombatRulesTests(unittest.TestCase):
         game = new_game(seed=2408, with_ai=False)
         earth = game.planet_at(0, 2)
         game.queue_ship(0, 2, "frigate")
-        self.assertEqual((game.credits, earth.used_slots, game.queue_estimates(earth)), (60, 0, [6]))
+        self.assertEqual((game.credits, earth.used_slots, game.queue_estimates(earth)), (120, 0, [6]))
         for _ in range(6):
             game.advance_turn()
         ship = game.ships[0]
@@ -80,8 +81,8 @@ class CombatRulesTests(unittest.TestCase):
         self.assertEqual(game.project_price("frigate"), 48)
         before = game.credits
         game.queue_ship(0, 2, "frigate")
-        self.assertEqual(game.credits, before-48)
-        self.assertEqual(game.cancel_construction(0, 2, 0), 48)
+        self.assertEqual(game.credits, before)
+        self.assertEqual(game.cancel_construction(0, 2, 0), "0 RES")
 
     def test_engagement_is_atomic_and_breaks_treaties_only_when_started(self):
         game = encounter(start=False)
@@ -341,6 +342,7 @@ class CombatSaveTests(unittest.TestCase):
         place_near(game, game.opponent.home_system)
         game.send_ship(1, game.opponent.home_system)
         game.ship_at(1).departure_pending = False  # A v7 course was already committed.
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)
@@ -435,7 +437,7 @@ class CombatScreenTests(unittest.TestCase):
     def test_build_frigate_and_engage_from_fleet_with_cancel_safe_confirmation(self):
         self.app.go("shipyard")
         self.click("build_frigate")
-        self.assertEqual(self.app.game.credits, 60)
+        self.assertEqual(self.app.game.credits, 120)
         self.assertEqual(self.app.game.planet_at(0, 2).construction_queue[0].item_id, "frigate")
         self.key(pg.K_f)
         before = self.app.game.to_dict()

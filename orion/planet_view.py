@@ -6,7 +6,7 @@ import pygame as pg
 from .building_art import draw_building_art
 from .buildings import BUILDINGS, workforce_bonuses
 from .colony_scene import draw_colony_scene
-from .colony_view import building_effect, compact_yields
+from .colony_view import building_effect, compact_yields, turn_label
 from .ground_combat import forces, training_limit
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
@@ -16,12 +16,12 @@ from .population import BASE_FOOD, WORKER_ROLES, farmer_output
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
 from .research import building_maintenance
 from .designs import HULLS
-from . import raiding, defenses
+from . import raiding, defenses, economy
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 GREEN = (154, 200, 133)
 SCIENCE = (165, 172, 232)
-ROLE_COLORS = {"farmers": GREEN, "workers": GOLD, "scientists": SCIENCE}
+ROLE_COLORS = {"farmers": GREEN, "workers": GOLD, "scientists": SCIENCE, "miners": (204, 163, 122)}
 SURFACE_RECT = (24, 314, 1392, 526)
 
 
@@ -42,6 +42,12 @@ def resource_icon(surface, kind, center, color, scale=1):
     elif kind == "industry":
         pg.draw.line(surface, color, pts([(-7, 11)])[0], pts([(6, -5)])[0], max(2, round(5*scale)))
         pg.draw.polygon(surface, color, pts([(-3, -10), (3, -15), (15, -5), (9, 1)]))
+    elif kind == "resources":
+        pg.draw.polygon(surface, color, pts([(-12, 6), (-8, -8), (1, -13), (12, -4), (10, 10), (-2, 13)]), line)
+        for a, b in (((-8,-8),(2,2)), ((12,-4),(2,2)), ((-2,13),(2,2))):
+            pg.draw.line(surface, color, pts([a])[0], pts([b])[0], line)
+    elif kind == "energy":
+        pg.draw.polygon(surface, color, pts([(2,-14), (-10,3), (-1,3), (-4,15), (11,-4), (3,-4)]))
     else:
         outline = pts([(-5, -13), (5, -13), (5, -3), (12, 10), (10, 13), (-10, 13), (-12, 10), (-5, -3)])
         pg.draw.polygon(surface, color, outline, line)
@@ -110,33 +116,41 @@ def workforce_panel(app, game, planet, live):
                ("industry", "INDUSTRY", str(industry) if live else "—",
                 f"{food.assembly_industry} to assembly" if food and food.assembly_industry else "construction", CYAN),
                ("research", "RESEARCH", f"+{research}" if live else "—", "research points", SCIENCE)]
+    energy = game.planet_energy(planet) if live else None
+    outputs += [("resources", "RESOURCES", f"+{game.planet_resources(planet)}" if live else "—",
+                 f"{game.resources:,} stored" if owned else "mined / turn", ROLE_COLORS["miners"]),
+                ("energy", "ENERGY", f"{energy.generated}/{energy.demand}" if live else "—",
+                 f"{energy.balance:+} surplus" if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
-        x = 302+index*186
-        panel(surface, (x, 86, 182, 57), (15, 28, 37))
-        resource_icon(surface, kind, (x+20, 115), color, .8)
-        text(surface, label, (x+40, 91), 9, MUTED, "mono")
-        text(surface, value, (x+40, 109), 21, color)
-        text(surface, caption, (x+174, 124), 9, MUTED, right=True)
-    staff = workforce_bonuses(planet)
-    details = {"farmers": f"{farmer_output(planet)} food each" if needs_food else "food not required",
-               "workers": f"{1+staff.industry:g} base IND each", "scientists": f"{2+staff.research} base RP each"}
+        x = 302+index*124
+        panel(surface, (x, 86, 120, 57), (15, 28, 37))
+        resource_icon(surface, kind, (x+14, 114), color, .6)
+        text(surface, label, (x+7, 91), 8, MUTED, "mono")
+        text(surface, value, (x+32, 105), 19, color)
+        text(surface, shorten(caption, 108, 8), (x+7, 130), 8, MUTED)
+    benefits = game.bonuses_for(planet.owner) if live else {}
+    staff = workforce_bonuses(planet, benefits)
+    details = {"farmers": f"{farmer_output(planet, benefits)} food each" if needs_food else "food not required",
+               "workers": f"{1+staff.industry:g} base IND each", "scientists": f"{2+staff.research} base RP each",
+               "miners": f"{economy.miner_output(planet, benefits):g} RES each"}
+    labels = {"farmers": "FARMING", "workers": "INDUSTRY", "scientists": "RESEARCH", "miners": "MINING"}
     for index, role in enumerate(WORKER_ROLES):
-        y = 150+index*41
+        y = 148+index*31
         count = getattr(planet, role)
         color = ROLE_COLORS[role]
-        button = app.button("worker_"+role, "", (302, y, 742, 34), lambda job=role: app.select_worker_role(job),
+        button = app.button("worker_"+role, "", (302, y, 742, 29), lambda job=role: app.select_worker_role(job),
                             "hotspot", enabled=owned and (count > 0 or app.worker_source is not None)
                             and (role != "farmers" or needs_food or count > 0))
         active = app.is_active(button)
         if active or app.worker_source == role:
             panel(surface, button.rect, (23, 38, 45), color)
-        text(surface, role.upper(), (314, y+10), 10, color, "mono")
-        text(surface, str(count), (440, y+6), 17, INK, right=True)
+        text(surface, labels[role], (314, y+9), 10, color, "mono")
+        text(surface, str(count), (440, y+4), 17, INK, right=True)
         for i in range(min(count, 24)):
-            worker_icon(surface, 465+i*17, y+5, color)
+            worker_icon(surface, 465+i*17, y+2, color)
         if count > 24:
-            text(surface, f"+{count-24}", (883, y+9), 11, color)
-        text(surface, details[role] if live else "last observed", (1032, y+10), 10, MUTED, right=True)
+            text(surface, f"+{count-24}", (883, y+8), 11, color)
+        text(surface, details[role] if live else "last observed", (1032, y+9), 10, MUTED, right=True)
     if not live:
         caption = f"Stored survey · {planet.workforce} B inhabitants last observed. Current production is unknown."
     elif not planet.colonized:
@@ -162,16 +176,16 @@ def construction_panel(app, game, system, planet, live):
         text(surface, shorten(spec.name, 307, 20), (1090, 91), 20, INK)
         project_art(surface, project.item_id, (1095, 122, 93, 85), project.design)
         turns = game.queue_estimates(planet)[0] if live else None
-        text(surface, f"{turns} {'turn' if turns == 1 else 'turns'}" if live else "Last observed", (1205, 131), 22, CYAN)
+        text(surface, turn_label(turns) if live else "Last observed", (1205, 131), 22, CYAN)
         text(surface, f"{project.progress} / {spec.work_cost} work", (1205, 169), 12, MUTED)
         pg.draw.rect(surface, LINE, (1090, 216, 310, 6))
         pg.draw.rect(surface, CYAN, (1090, 216, round(310*project.progress/spec.work_cost), 6))
-        text(surface, f"{len(queue)-1} waiting · {project.remaining_work} work remaining", (1090, 232), 11, MUTED)
+        text(surface, shorten(game.construction_status(planet) if owned else "Last observed project", 310, 11), (1090, 232), 11, GOLD)
     else:
         text(surface, "No project observed" if not live else "Choose production" if owned else "No active project" if planet.colonized else "Unsettled world", (1090, 97), 22, INK)
         paragraph(surface, "Send a ship to refresh this survey." if not live else
                   "Build a structure or launch a ship from this colony." if owned else
-                  f"Shield: {planet.shield_points} points. Clear orbital defenders, then bombard before landing troops." if planet.colonized else
+                  f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
                   "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
                   f"{planet.biome} · {planet.size} · {planet.richness} minerals. Bring a colony ship to settle here.",
                   (1090, 143), 306, 14, MUTED, 25)
@@ -201,7 +215,7 @@ def draw_planet_overview(app):
     live = game.system_visible(system.id)
     text(surface, shorten(f"Colony of {planet.name}" if planet.colonized else planet.name, 780, 28, "title"),
          (24, 12), 28, INK, "title")
-    text(surface, f"TURN {game.turn} · YEAR {game.year}     TREASURY {game.credits:,} CR", (1416, 22), 12, GOLD, "mono", right=True)
+    text(surface, f"TURN {game.turn} · YEAR {game.year}     {game.resources:,} RES   ·   {game.credits:,} CR", (1416, 22), 12, GOLD, "mono", right=True)
     system_panel(app, game, system, planet, live)
     workforce_panel(app, game, planet, live)
     construction_panel(app, game, system, planet, live)
@@ -221,6 +235,10 @@ def draw_planet_overview(app):
         cap = str(defenses.shield_capacity(game, planet)) if live else "?"
         shield = f"SHIELD {planet.shield_points}/{cap}" if "planetary_shield" in planet.buildings else "NO SHIELD"
         battery = f"MISSILE BASE {planet.battery_hull or 40}/40" if "missile_base" in planet.buildings else "NO BASE"
+        if live and "planetary_shield" in planet.buildings and not game.building_operational(planet, "planetary_shield"):
+            shield += " OFFLINE"
+        if live and "missile_base" in planet.buildings and not game.building_operational(planet, "missile_base"):
+            battery += " OFFLINE"
         text(surface, shield+" · "+battery, (784, 327), 12, CYAN)
         text(surface, "Peaceful recovery: +25 shield, +4 base hull/turn" if live else "Defense status at last survey", (784, 348), 11, MUTED)
     if planet.colonized:
@@ -229,8 +247,8 @@ def draw_planet_overview(app):
                    f"    GROUND: {defence.garrison} garrison + {defence.militia} militia · +{defence.defence_bonus}% firepower")
         if not live:
             caption += " · Last observed"
-        elif training_limit(planet):
-            caption += f" · Barracks +1/turn, limit {training_limit(planet)}"
+        elif training_limit(planet, game.bonuses_for(planet.owner) if live else {}):
+            caption += f" · Barracks +1/turn, limit {training_limit(planet, game.bonuses_for(planet.owner) if live else {})}"
         text(surface, shorten(caption, 1162, 12), (24, 854), 12, CYAN)
     else:
         text(surface, f"{planet.building_capacity} building slots · {planet.habitability}% habitability · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
@@ -244,7 +262,7 @@ def draw_production(app):
     sid, pid = game.selected_system, game.selected_planet
     planet = game.planet_at(sid, pid)
     text(surface, shorten(f"{planet.name} · Choose production", 1030, 35, "title"), (40, 28), 35, INK, "title")
-    text(surface, f"{game.credits:,} CR AVAILABLE", (1400, 45), 15, GOLD, "mono", right=True)
+    text(surface, f"{game.resources:,} RES · {game.credits:,} CR", (1400, 45), 15, GOLD, "mono", right=True)
     text(surface, "Start a new first project, or prioritize one in the queue. Paused projects keep their progress.", (40, 83), 15, MUTED)
     identifiers = list(BUILDINGS)+list(SHIP_TYPES)
     if "ascension_theory" in game.technology.completed:
@@ -261,7 +279,7 @@ def draw_production(app):
         text(surface, shorten(spec.name, 330, 18), (x+85, y+12), 18, INK)
         price = game.project_price(item_id)
         upkeep = building_maintenance(item_id, game.bonuses_for()) if item_id in BUILDINGS else getattr(spec, "maintenance", 0)
-        cost = f"{price} CR · {spec.work_cost} work"+(f" · Upkeep {upkeep} CR/turn" if upkeep else "")
+        cost = f"{price} RES · {spec.work_cost} work"+(f" · {upkeep} CR/turn" if upkeep else "")
         text(surface, cost, (x+85, y+42), 10, GOLD)
         reason = game.project_error(sid, pid, item_id)
         detail = building_effect(game, spec, planet) if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
@@ -269,12 +287,15 @@ def draw_production(app):
             detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
         if item_id in BUILDINGS:
             text(surface, shorten(compact_yields(game, spec, planet), 326, 10), (x+85, y+62), 10, CYAN)
-            text(surface, spec.workforce_text(planet.richness), (x+85, y+78), 10, CYAN)
+            details = [spec.workforce_text(planet.richness)]
+            if spec.energy_use:
+                details.append(f"Uses {spec.energy_use} energy")
+            text(surface, shorten(" · ".join(part for part in details if part), 325, 10), (x+85, y+78), 10, CYAN)
         else:
             text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
         app.button("production_build_"+item_id, "Start", (x+312, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen), enabled=reason is None)
-        text(surface, shorten(reason or "Previous work is retained", 294, 10), (x+13, y+94), 10, MUTED)
+        text(surface, shorten(reason or "Resources reserved when work starts", 294, 10), (x+13, y+94), 10, MUTED)
     app.button("catalog_previous", "←", (40, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page-1), enabled=app.catalog_page > 0)
     text(surface, f"Projects {app.catalog_page+1} / {catalog_pages}", (120, 801), 12, MUTED)
     app.button("catalog_next", "→", (334, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page+1), enabled=app.catalog_page < catalog_pages-1)
@@ -293,14 +314,14 @@ def draw_production(app):
                             lambda index=i: app.prioritize_production(index), "hotspot")
         panel(surface, button.rect, (18, 32, 41), GOLD if app.is_active(button) else LINE)
         text(surface, shorten(f"{i+1}. {spec.name}", 340, 15), (974, y+9), 15, INK)
-        text(surface, f"{project.progress}/{spec.work_cost} work · completes in {estimates[i]} turns", (974, y+33), 11, CYAN)
-        text(surface, "Current project" if i == 0 else "Click to make current", (974, y+52), 10, MUTED)
+        text(surface, f"{project.progress}/{spec.work_cost} work · {turn_label(estimates[i])}", (974, y+33), 11, CYAN)
+        text(surface, game.construction_status(planet) if i == 0 else "Click to make current", (974, y+52), 10, MUTED)
         app.button(f"production_cancel_{i}", "×", (1338, y, 46, 34), lambda index=i: app.cancel_construction(index))
-        text(surface, f"+{project.refund}", (1362, y+47), 10, MUTED, right=True)
+        text(surface, project.refund_text, (1362, y+47), 10, MUTED, right=True)
     if not queue:
         paragraph(surface, "Nothing queued. Choose a building or ship to begin production.", (971, 203), 393, 18, MUTED, 30)
     app.button("production_previous", "←", (960, 690, 68, 33), lambda: app.change_production_page(-1), enabled=app.production_page > 0)
     app.button("production_next", "→", (1316, 690, 68, 33), lambda: app.change_production_page(1), enabled=app.production_page < pages-1)
     text(surface, f"Page {app.production_page+1} / {pages}", (1116, 700), 12, MUTED)
-    text(surface, "× cancels and refunds unspent work.", (960, 750), 12, MUTED)
+    text(surface, "× refunds unused construction payments.", (960, 750), 12, MUTED)
     app.button("production_return", "Return to colony", (1122, 833, 278, 48), lambda: app.go("planet"), "primary")

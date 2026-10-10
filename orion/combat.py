@@ -1,3 +1,4 @@
+from .economy import remove_building
 """Deterministic, grid-based fleet combat; campaign losses commit on resolution."""
 
 from collections import deque
@@ -162,7 +163,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=25):
+    def from_dict(cls, data, game, *, version=27):
         from .model import _integer, _name
         if version < 25 and isinstance(data, dict):
             data = {**data, "accuracy": False, "shots_fired": 0}
@@ -494,7 +495,7 @@ def resolve(game, status, destination=None):
             if not planet.battery_hull:
                 unit.hull = 0
                 if "missile_base" in planet.buildings:
-                    planet.buildings.remove("missile_base")
+                    remove_building(planet, planet.buildings.index("missile_base"))
     if retreating:
         message = f"{game.empire_name_for(retreating)} retreated toward {game.systems[destination].name}."
     else:
@@ -733,7 +734,7 @@ def autoresolve(game):
             planet = defenses.base_planet(game, ship.id)
             planet.battery_hull = ship.hull
             if not ship.hull and "missile_base" in planet.buildings:
-                planet.buildings.remove("missile_base")
+                remove_building(planet, planet.buildings.index("missile_base"))
         elif ship.owner != MONSTER and ship.hull > 0:
             game.ship_at(ship.id, owner=ship.owner).hull = ship.hull
     game.ships[:] = [s for s in game.ships if not game.combat.ship(s.id) or game.combat.ship(s.id).hull > 0]

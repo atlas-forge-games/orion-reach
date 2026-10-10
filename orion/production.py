@@ -10,7 +10,7 @@ from .buildings import BUILDINGS
 class ShipSpec:
     id: str
     name: str
-    credit_cost: int
+    resource_cost: int
     work_cost: int
     hull: int
     damage: int = 0
@@ -28,7 +28,7 @@ SHIP_TYPES = {
 class SpecialProject:
     id: str
     name: str
-    credit_cost: int
+    resource_cost: int
     work_cost: int
     maintenance: int = 0
 

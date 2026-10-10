@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Fog boundaries, scout discoveries, knowledge persistence and actual UI flows."""
 
 import copy
@@ -75,7 +76,7 @@ class ExplorationRulesTests(unittest.TestCase):
         game = new_game(seed=2408, with_ai=False)
         earth = game.planet_at(0, 2)
         game.queue_ship(0, 2, "scout")
-        self.assertEqual(game.credits, 95)
+        self.assertEqual(game.credits, 120)
         self.assertEqual(game.queue_estimates(earth), [2])
         self.assertEqual(earth.used_slots, 0)
         game.advance_turn()
@@ -213,7 +214,7 @@ class ExplorationRulesTests(unittest.TestCase):
         game = new_game(seed=172)  # Naturally has two stars within the rival's initial range.
         hidden = next(s for s in game.systems if s.id != game.opponent.home_system)
         self.assertEqual(available_worlds(game, hidden), [])
-        for _ in range(30):  # The rival now establishes farms and reallocates labour first.
+        for _ in range(55):  # Mining and power infrastructure also precede expansion.
             game.advance_turn()
         self.assertTrue(any(s.kind == "scout" for s in game.ships_owned_by(RIVAL)))
         self.assertGreater(len(game.exploration.scanned_rival), 2)
@@ -234,6 +235,7 @@ class ExplorationRulesTests(unittest.TestCase):
         game.send_ship(2, 1)
         game.ship_at(2).departure_pending = False  # Legacy journeys were committed immediately.
         game.queue_building(0, 2, "factory")
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)
             path = store.save(game)

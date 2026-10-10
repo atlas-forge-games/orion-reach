@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Movement, beam technology, tactical saves and time-driven battle effects."""
 
 import copy
@@ -156,6 +157,7 @@ class TacticalRulesTests(unittest.TestCase):
         game.combat_move(1, 7, 4)
         game.combat_fire(1, 3)
         game.combat_end_turn()
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)
@@ -176,7 +178,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 26)
+        self.assertEqual(SAVE_VERSION, 27)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()

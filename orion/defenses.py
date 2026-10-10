@@ -21,12 +21,16 @@ def base_planet(game, identifier):
 
 
 def bases(game, system_id, owner=None):
-    return [p for p in game.systems[system_id].worlds if p.colonized and "missile_base" in p.buildings
+    return [p for p in game.systems[system_id].worlds if p.colonized and game.building_operational(p, "missile_base")
             and (owner is None or p.owner == owner)]
 
 
 def shield_capacity(game, planet):
     return max(100, game.bonuses_for(planet.owner).get("shield_capacity", 0)) if "planetary_shield" in planet.buildings and planet.owner else 0
+
+
+def effective_shield(game, planet):
+    return planet.shield_points if game.building_operational(planet, "planetary_shield") else 0
 
 
 def commissioned(game, planet, identifier):
@@ -52,8 +56,9 @@ def advance(game):
             blocked = any(hostile(game, s.owner, planet.owner) and s.damage and not s.in_transit and s.system_id == system.id
                           for s in game.ships)
             if not blocked and planet.bombarded_turn < game.turn-1:
-                planet.shield_points = min(shield_capacity(game, planet), planet.shield_points+25)
-                if "missile_base" in planet.buildings:
+                if game.building_operational(planet, "planetary_shield"):
+                    planet.shield_points = min(shield_capacity(game, planet), planet.shield_points+25)
+                if game.building_operational(planet, "missile_base"):
                     planet.battery_hull = min(BASE_HULL, (planet.battery_hull or BASE_HULL)+4)
 
 
@@ -73,7 +78,7 @@ def bombardment_error(game, system_id, planet_id, owner="player"):
         return "Defeat the opposing ships and missile bases before bombardment."
     if not bombardment_fleet(game, system_id, owner):
         return "Bring armed ships that have not bombarded this turn."
-    if planet.shield_points == 0 and ground_combat.forces(planet).troops == 0:
+    if effective_shield(game, planet) == 0 and ground_combat.forces(planet).troops == 0:
         return "The shield and ground defenses are already suppressed."
     return None
 
@@ -97,14 +102,14 @@ def bombardment_power(game, system_id, owner="player"):
 
 def bombardment_forecast(game, system_id, planet_id, owner="player"):
     planet = game.planet_at(system_id, planet_id)
-    shield, ground_thirds = planet.shield_points, 0
+    shield, ground_thirds = effective_shield(game, planet), 0
     for damage, multiplier in bombardment_attacks(game, system_id, owner):
         absorbed = min(shield, damage*multiplier)
         shield -= absorbed
         # Keep fractional spillover exact: the siege bonus applies only to shields.
         ground_thirds += damage*3-absorbed*(3//multiplier)
     troops = ground_combat.forces(planet, game.bonuses_for(planet.owner))
-    return planet.shield_points-shield, min(troops.troops, ground_thirds//15)
+    return effective_shield(game, planet)-shield, min(troops.troops, ground_thirds//15)
 
 
 @dataclass(frozen=True)

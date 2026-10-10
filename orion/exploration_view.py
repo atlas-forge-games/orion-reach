@@ -117,7 +117,7 @@ def draw_exploration(app):
     paragraph(surface, "Ships reveal planets when they arrive. Last-known surveys remain after departure. Live enemy activity requires a ship or colony in the system."
               if game.fog_of_war else "The entire map is revealed. Scouts can still recover discoveries; revealing the map does not collect their rewards.",
               (977, 464), 373, 15, MUTED, 25)
-    paragraph(surface, "Scouts are unarmed: 25 CR, 12 work and 8 hull. Travel speed matches your other ships. They cannot settle worlds or invade colonies.",
+    paragraph(surface, "Scouts are unarmed: 25 Resources, 12 work and 8 hull. Travel speed matches your other ships. They cannot settle worlds or invade colonies.",
               (977, 597), 373, 14, MUTED, 24)
     app.button("exploration_build_scout", "Open scout shipyard", (976, 736, 376, 57), app.open_scout_shipyard,
                "primary", enabled=game.headquarters() is not None)

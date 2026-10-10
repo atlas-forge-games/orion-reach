@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Confirmed contact, private diplomacy, collective AI and persistent introductions."""
 
 import copy
@@ -128,6 +129,7 @@ class ContactRulesTests(unittest.TestCase):
 
     def test_v25_migration_preserves_assets_history_and_source_file(self):
         game = campaign(fog_of_war=False, rival_count=3)
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)

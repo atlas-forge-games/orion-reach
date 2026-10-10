@@ -25,7 +25,7 @@ def scenario(ai=False):
     game = new_game(seed=2408, with_ai=ai, with_guardians=False, fog_of_war=False)
     game.ships.clear()
     game.next_ship_id = 1
-    game.credits = 5000
+    game.credits = game.resources = 5000
     return game
 
 
@@ -119,6 +119,7 @@ class DesignerRulesTests(unittest.TestCase):
         game.change_production(0, 2, second.id)
         queue = game.planet_at(0, 2).construction_queue
         for project in queue:
+            game.fund_project(project)
             project.progress = project.spec.work_cost-1
         game.save_design("Alpha II", "battleship", ["laser"], first.id)
         report = game.advance_turn()
@@ -302,7 +303,8 @@ class DesignerUITests(unittest.TestCase):
             self.assertTrue(self.app.canvas.get_rect().contains(button.rect), button.key)
         self.app.game.selected_system, self.app.game.selected_planet = 0, 2
         self.app.open_production()
-        for _ in range(3):
+        self.app.render()
+        while next(b for b in self.app.buttons if b.key == "catalog_next").enabled:
             self.click("catalog_next")
         self.click("production_build_design_24")
         self.assertEqual(self.app.game.planet_at(0, 2).construction_queue[0].design.id, "design_24")

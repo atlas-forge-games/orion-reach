@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Ship production, travel, settlement, migration, and the playable UI loop."""
 
 import json
@@ -37,7 +38,7 @@ class ColonizationRulesTests(unittest.TestCase):
         self.earth = self.game.systems[0].worlds[2]
 
     def test_shared_queue_overflow_forecast_and_no_building_slot_for_ships(self):
-        self.game.credits = 1000
+        self.game.credits = self.game.resources = 1000
         self.game.queue_building(0, 2, "factory")
         self.game.queue_ship(0, 2)
         self.game.queue_building(0, 2, "mine")
@@ -56,7 +57,7 @@ class ColonizationRulesTests(unittest.TestCase):
 
     def test_full_planet_can_build_ships_and_queue_limit_is_atomic(self):
         self.earth.buildings = ["factory"]*8
-        self.game.credits = 10000
+        self.game.credits = self.game.resources = 10000
         for _ in range(MAX_QUEUE):
             self.game.queue_ship(0, 2)
         self.assertEqual(self.earth.free_slots, 0)
@@ -75,14 +76,12 @@ class ColonizationRulesTests(unittest.TestCase):
                 self.game.queue_ship(system, planet, kind)
             self.assertEqual(self.game.to_dict(), before)
         self.game.queue_ship(0, 2)
-        self.assertEqual(self.game.credits, 40)
-        with self.assertRaisesRegex(RuleError, "credits"):
-            self.game.queue_ship(0, 2)
-        self.assertEqual(self.game.cancel_construction(0, 2, 0), 80)
+        self.assertEqual(self.game.credits, 120)
+        self.assertEqual(self.game.cancel_construction(0, 2, 0), "0 RES")
         self.game.queue_ship(0, 2)
         self.game.advance_turn()
-        self.assertEqual(self.game.cancel_construction(0, 2, 0), 68)
-        self.assertEqual(self.game.credits, 116)
+        self.assertEqual(self.game.cancel_construction(0, 2, 0), "68 RES")
+        self.assertEqual((self.game.credits, self.game.resources), (128, 110))
         self.assertEqual(self.game.ships, [])
 
     def test_distance_travel_arrival_and_no_early_or_duplicate_arrival(self):
@@ -164,7 +163,7 @@ class ColonizationRulesTests(unittest.TestCase):
             self.assertEqual(self.game.to_dict(), before)
 
     def test_ids_remain_unique_after_settlement_and_new_construction(self):
-        self.game.credits = 1000
+        self.game.credits = self.game.resources = 1000
         self.earth.buildings = ["factory"]*8
         for _ in range(2):
             self.game.queue_ship(0, 2)
@@ -202,6 +201,7 @@ class ColonizationRulesTests(unittest.TestCase):
         self.game.advance_turn()
         self.game.research = 12
         self.game.planet_at(0, 2).growth_progress = 0  # Legacy field defaults to zero.
+        legacy_economy(self.game)
         with tempfile.TemporaryDirectory() as folder:
             store = Storage(folder)
             path = store.save(self.game)
@@ -282,7 +282,7 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.click("galaxy_world_2")
         self.click("surface_shipyard")
         self.click("build_colony_ship")
-        self.assertEqual(self.app.game.credits, 40)
+        self.assertEqual(self.app.game.credits, 120)
         for _ in range(7):
             self.key(pg.K_e)
         self.click("shipyard_fleets")

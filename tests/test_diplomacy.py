@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Diplomatic costs, AI responses, race traits, treaty income and playable screens."""
 
 import json
@@ -218,6 +219,7 @@ class DiplomacySaveTests(unittest.TestCase):
                 planet.growth_progress = 0  # Legacy saves had no growth progress.
                 planet.garrison = planet.militia_losses = 0  # Or persistent ground forces.
                 planet.farmers, planet.scientists = min(2, planet.population), 0
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(game)

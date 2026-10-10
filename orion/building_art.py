@@ -5,7 +5,7 @@ import pygame as pg
 
 from .ui import ASSETS
 
-BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm", "barracks", "fortifications", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor")
+BUILDING_ART_IDS = ("headquarters", "factory", "shipyard", "research_lab", "trade_center", "mine", "hydroponic_farm", "barracks", "fortifications", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "solar_array", "fusion_plant")
 
 
 @lru_cache(maxsize=16)
@@ -26,6 +26,23 @@ def load_building_art(building_id):
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
     image = pg.Surface((120, 110), pg.SRCALPHA)
+    if building_id in ("solar_array", "fusion_plant"):
+        pg.draw.polygon(image, (59, 84, 98), [(5, 78), (60, 55), (115, 78), (60, 107)])
+        if building_id == "solar_array":
+            for x, y in ((9, 29), (47, 15), (45, 59)):
+                pg.draw.line(image, (134, 153, 160), (x+18, y+19), (x+18, y+39), 4)
+                pg.draw.polygon(image, (34, 86, 139), [(x, y), (x+35, y-9), (x+57, y+10), (x+21, y+21)])
+                pg.draw.polygon(image, (129, 197, 231), [(x, y), (x+35, y-9), (x+57, y+10), (x+21, y+21)], 2)
+                for offset in (10, 21, 32):
+                    pg.draw.line(image, (76, 143, 190), (x+offset, y-2), (x+offset+19, y+16), 1)
+        else:
+            pg.draw.rect(image, (59, 86, 104), (32, 29, 56, 52))
+            pg.draw.ellipse(image, (111, 152, 175), (32, 13, 56, 32))
+            for y in (35, 48, 61):
+                pg.draw.ellipse(image, (94, 217, 235), (29, y, 62, 22), 3)
+            pg.draw.ellipse(image, (197, 244, 252), (43, 18, 34, 18))
+            pg.draw.rect(image, (190, 167, 111), (52, 75, 16, 15))
+        return image
     if building_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"):
         metal, light, dark = (78, 107, 124), (126, 215, 224), (24, 46, 60)
         pg.draw.polygon(image, metal, [(5, 78), (61, 55), (115, 78), (60, 106)])

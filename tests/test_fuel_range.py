@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Colony-based supply, slower travel, AI boundaries and real map controls."""
 
 import json
@@ -162,6 +163,7 @@ class TravelSaveTests(unittest.TestCase):
             ship.turns_remaining = ship.travel_total if pending else ship.travel_total-1
             ship.departure_pending = pending
             ship.cruise_speed = LEGACY_SHIP_SPEED
+            legacy_economy(game)
             with tempfile.TemporaryDirectory() as folder:
                 storage = Storage(folder)
                 path = storage.save(game)

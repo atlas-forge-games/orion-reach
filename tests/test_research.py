@@ -1,3 +1,4 @@
+from scenarios import legacy_economy
 """Research decisions, real gameplay effects, migrations and screen interaction."""
 
 import copy
@@ -37,7 +38,7 @@ def discover(game, identifier, owner=PLAYER):
 
 class ResearchRulesTests(unittest.TestCase):
     def test_two_exclusive_choices_at_each_of_two_tiers_in_eight_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 52))  # 32 foundations + Ascension Theory + 19 projects
+        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (8, 53))  # 32 foundations + Ascension Theory + 20 projects
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology
@@ -99,24 +100,24 @@ class ResearchRulesTests(unittest.TestCase):
         game = new_game(seed=2408)
         earth = game.planet_at(0, 2)
         home = game.planet_at(game.opponent.home_system, game.opponent.home_planet)
-        earth.buildings = ["research_lab", "research_lab", "factory", "mine", "trade_center"]
+        earth.buildings = ["solar_array", "research_lab", "research_lab", "factory", "mine", "trade_center"]
         home.buildings = earth.buildings.copy()
         home.richness = earth.richness
         for identifier in ("research_instruments", "research_networks", "superconductors"):
             discover(game, identifier)
-        self.assertEqual(game.planet_yields(earth), (24, 9, 19))
-        self.assertEqual(game.planet_yields(home), (21, 9, 8))
+        self.assertEqual(game.planet_yields(earth), (17, 7, 19))
+        self.assertEqual(game.planet_yields(home), (16, 7, 8))
         self.assertEqual(game.building_yields(BUILDINGS["research_lab"], earth), (0, 0, 9))
         summary = summarize_empire(game)
-        self.assertEqual((summary.industry, summary.income, summary.research), (24, 9, 19))
-        self.assertEqual(game.empire_rates, (9, 19))
+        self.assertEqual((summary.industry, summary.income, summary.research), (17, 7, 19))
+        self.assertEqual(game.empire_rates, (7, 19))
         self.assertEqual(game.planet_yields(game.planet_at(0, 3)), (0, 0, 0))
 
     def test_forecasts_match_shared_production_with_researched_factory_output(self):
         game = new_game(seed=2408, with_ai=False)
         discover(game, "automated_factories")
         discover(game, "planetary_automation")
-        game.credits = 500
+        game.credits = game.resources = 500
         earth = game.planet_at(0, 2)
         game.queue_building(0, 2, "factory")
         game.queue_building(0, 2, "factory")
@@ -135,23 +136,25 @@ class ResearchRulesTests(unittest.TestCase):
         game = new_game(seed=2408, with_ai=False)
         earth = game.planet_at(0, 2)
         game.queue_building(0, 2, "factory")
+        game.fund_project(earth.construction_queue[0])
         discover(game, "prefabricated_structures")
         discover(game, "composite_structures")
-        self.assertEqual(game.project_price("factory"), 30)  # ceil(45 * .65)
-        self.assertEqual(game.cancel_construction(0, 2, 0), 45)
+        self.assertEqual(game.project_price("factory"), 30)
+        self.assertEqual(game.cancel_construction(0, 2, 0), "45 RES")
         game.queue_building(0, 2, "factory")
-        self.assertEqual(earth.construction_queue[0].paid_credits, 30)
+        self.assertEqual(earth.construction_queue[0].resource_cost, 30)
         game.advance_turn()
         restored = GameState.from_dict(game.to_dict())
-        self.assertEqual(restored.cancel_construction(0, 2, 0), 22)  # 30 * 18 // 24
-        self.assertEqual(game.cancel_construction(0, 2, 0), 22)
+        self.assertEqual(restored.cancel_construction(0, 2, 0), "22 RES")
+        self.assertEqual(game.cancel_construction(0, 2, 0), "22 RES")
         ships = new_game(seed=2408, with_ai=False)
         discover(ships, "orbital_assembly")
         discover(ships, "lightweight_alloys")
-        ships.credits = 56
+        ships.resources = 56
         ships.queue_ship(0, 2)
-        self.assertEqual(ships.credits, 0)
-        self.assertEqual(ships.cancel_construction(0, 2, 0), 56)
+        ships.fund_project(ships.planet_at(0, 2).construction_queue[0])
+        self.assertEqual(ships.resources, 0)
+        self.assertEqual(ships.cancel_construction(0, 2, 0), "56 RES")
 
     def test_speed_applies_to_new_voyages_and_in_flight_save_keeps_departure_speed(self):
         game = new_game(seed=2408, with_ai=False)
@@ -215,6 +218,7 @@ class ResearchSaveTests(unittest.TestCase):
         game.next_ship_id = 2
         place_near(game, 1)
         game.send_ship(1, 1)
+        legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             game.ship_at(1).departure_pending = False  # Legacy course snapshot.
             storage = Storage(folder)
@@ -258,7 +262,7 @@ class ResearchSaveTests(unittest.TestCase):
                 with self.subTest(owner=owner, technology=technology), self.assertRaises(SaveError):
                     GameState.from_dict(data)
         game.queue_building(0, 2, "factory")
-        for payment in (True, 0, -1, 46):
+        for payment in (True, -1, 46):
             data = game.to_dict()
             data["systems"][0]["worlds"][2]["construction_queue"][0]["paid_credits"] = payment
             with self.assertRaises(SaveError):

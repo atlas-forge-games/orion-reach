@@ -45,7 +45,7 @@ class GroundBuildingTests(unittest.TestCase):
         planet = game.planet_at(0, 2)
         self.assertIn("barracks", game.ship_build_error(0, 2, "troop_transport"))
         game.queue_building(0, 2, "barracks")
-        self.assertEqual((game.credits, planet.used_slots), (70, 1))
+        self.assertEqual((game.credits, planet.used_slots), (120, 1))
         for _ in range(5):
             game.advance_turn()
             self.assertEqual(planet.garrison, 0)
@@ -269,7 +269,7 @@ class GroundAITests(unittest.TestCase):
         place_near(game, sid)
         home = game.planet_at(sid, pid)
         # Keep this full colony solvent so military expansion is the priority.
-        home.buildings = ["hydroponic_farm", "research_lab"]+["trade_center"]*2+["factory"]*(home.building_capacity-4)
+        home.buildings = ["solar_array"]*2+["hydroponic_farm", "research_lab"]+["trade_center"]*2+["factory"]*(home.building_capacity-6)
         game.opponent.credits = 300
         run_ai(game)
         self.assertEqual(home.construction_queue[0].item_id, "barracks")

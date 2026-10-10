@@ -73,13 +73,13 @@ class RaceRulesTests(unittest.TestCase):
     def test_varkesh_discount_stacks_with_research_and_applies_to_designs(self):
         game = solo("varkesh")
         design = game.save_design("Raider", "frigate", ["laser"])
-        self.assertLess(game.project_price(design.id), design.credit_cost)
+        self.assertLess(game.project_price(design.id), design.resource_cost)
         self.assertEqual(game.project_price("frigate"), 48)
         game.queue_ship(0, 2, design.id)
-        paid = game.planet_at(0, 2).construction_queue[0].paid_credits
+        paid = game.planet_at(0, 2).construction_queue[0].resource_cost
         game.technology.completed.append("lightweight_alloys")
         self.assertLess(game.project_price(design.id), paid)
-        self.assertEqual(game.planet_at(0, 2).construction_queue[0].paid_credits, paid)
+        self.assertEqual(game.planet_at(0, 2).construction_queue[0].resource_cost, paid)
         game.set_workforce(0, 2, 2, 2)
         self.assertEqual(game.planet_yields(game.planet_at(0, 2))[2], 3)
 
