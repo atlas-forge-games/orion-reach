@@ -50,13 +50,14 @@ class CombatAnimation:
         a, b = self.path[index:index+2]
         return a[0]+(b[0]-a[0])*(step-index), a[1]+(b[1]-a[1])*(step-index)
 
-    def draw(self, surface, project):
+    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0):
         if self.kind == "move":
             points = [project(p) for p in self.path]
             if len(points) > 1:
                 pg.draw.lines(surface, (51, 91, 112), False, points, 2)
             return
-        origin, target = (project(p) for p in self.path)
+        origin = project(self.path[0]) if origin is None else origin
+        target = project(self.path[1]) if target is None else target
         if self.missed:
             target = (target[0]+18, target[1]-25)
         color = BEAMS[(self.weapons or (self.weapon,))[0]].color
@@ -81,7 +82,7 @@ class CombatAnimation:
         if age >= .18:
             impact = age-.18
             if self.destroyed:
-                self.draw_explosion(surface, target, impact)
+                self.draw_explosion(surface, target, impact, explosion_scale)
             elif not self.missed and impact < .4:
                 radius = max(2, round(5+impact*43))
                 pg.draw.circle(surface, color, target, radius, max(1, round(4*(1-impact/.4))))
@@ -120,7 +121,7 @@ class CombatAnimation:
         pg.draw.circle(surface, shade, start, 7)
         pg.draw.circle(surface, INK, start, 3)
 
-    def draw_explosion(self, surface, center, age):
+    def draw_explosion(self, surface, center, age, scale=1.0):
         """Flash, fireball, shock ring and deterministic drifting debris."""
         x, y = center
         progress = min(1, age/1.12)
@@ -141,4 +142,7 @@ class CombatAnimation:
             head = (round(90+dx*travel), round(90+dy*travel))
             tail = (round(90+dx*(travel-4-7*(1-progress))), round(90+dy*(travel-4-7*(1-progress))))
             pg.draw.line(layer, (255, 180+(i%3)*25, 92, alpha), tail, head, 2)
-        surface.blit(layer, (x-90, y-90))
+        if scale != 1.0:
+            size = max(1, round(180*scale))
+            layer = pg.transform.smoothscale(layer, (size, size))
+        surface.blit(layer, layer.get_rect(center=(x, y)))

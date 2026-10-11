@@ -95,7 +95,7 @@ BUILDINGS = {
                              50, 30, training=1, garrison_limit=8, unique=True, energy_use=1, maintenance=1),
     "fortifications": BuildingSpec("fortifications", "Fortifications", "Bunkers give all defending troops 50% more firepower. One per colony.",
                                    60, 36, defence_bonus=50, unique=True, energy_use=0, maintenance=2),
-    "missile_base": BuildingSpec("missile_base", "Missile base", "An immobile orbital defender with 40 hull, range 8 and 10 missile damage. One per colony.",
+    "missile_base": BuildingSpec("missile_base", "Missile base", "A planetary surface battery defending orbit with 40 hull, range 8 and 10 missile damage. One per colony.",
                                 100, 60, unique=True, energy_use=3, maintenance=3, technology="orbital_defense_systems", special_effect="40 hull · 10 missile damage · range 8"),
     "planetary_shield": BuildingSpec("planetary_shield", "Planetary shield", "Blocks hostile landings while charged. Regenerates 25 points each peaceful turn. Barrier Fields improves capacity and upkeep.",
                                     120, 70, unique=True, energy_use=8, maintenance=4, technology="planetary_shielding", special_effect="100 shield points · 25 recovery/turn"),

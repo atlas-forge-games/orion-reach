@@ -8,6 +8,7 @@ import random
 import pygame as pg
 
 from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination, interception
+from . import combat_planets
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .monsters import MONSTER, MONSTERS
@@ -68,6 +69,24 @@ def draw_battlefield(app):
         pg.draw.line(surface, (22, 34, 45), (BOARD.x+x*CELL, BOARD.top), (BOARD.x+x*CELL, BOARD.bottom))
     for y in range(VISIBLE_ROWS+1):
         pg.draw.line(surface, (22, 34, 45), (BOARD.left, BOARD.y+y*CELL), (BOARD.right, BOARD.y+y*CELL))
+    # Worlds remain after their batteries are destroyed. Draw them underneath
+    # ships so the existing movement rules and empty-cell click targets survive.
+    for unit in battle.ships:
+        planet = combat_planets.planet_for(app.game, unit)
+        if planet is None:
+            continue
+        cx, cy = project(unit.position)
+        cell = pg.Rect(cx-CELL//2, cy-CELL//2, CELL, CELL)
+        if not BOARD.colliderect(cell):
+            continue
+        surface.set_clip(BOARD.clip(cell))
+        before_impact = effect and effect.kind == "fire" and effect.target_id == unit.id and effect.elapsed < .18
+        combat_planets.draw_base(surface, app.game, unit, (cx, cy), app.empire_color(unit.owner),
+                                 1 if unit.owner == PLAYER else -1, destroyed=unit.hull <= 0 and not before_impact)
+        text(surface, shorten(planet.name, CELL-6, 8), (cx-CELL//2+3, cy-CELL//2), 8, app.empire_color(unit.owner))
+        if unit.hull <= 0 and not before_impact:
+            text(surface, "BASE LOST", (cx-23, cy+20), 7, MUTED, "mono")
+        surface.set_clip(BOARD)
     if effect and effect.kind == "move":
         effect.draw(surface, project)
     for ship in battle.ships:
@@ -86,17 +105,21 @@ def draw_battlefield(app):
         box = pg.Rect(cx-CELL//2+3, cy-CELL//2+3, CELL-6, CELL-6)
         if is_selected or targetable or ship.id == app.combat_target_id:
             pg.draw.rect(surface, GOLD if is_selected else RED if targetable else FAINT, box, 1, border_radius=6)
-        icon_color = BEAMS[ship.weapon].color if ship.kind == "combat_drone" else color
-        ship_icon(surface, (cx, cy-3), .55, icon_color, kind=ship.kind, facing=1 if ship.owner == PLAYER else -1)
+        planetary = combat_planets.planet_for(app.game, ship) is not None
+        if not planetary:
+            icon_color = BEAMS[ship.weapon].color if ship.kind == "combat_drone" else color
+            ship_icon(surface, (cx, cy-3), .55, icon_color, kind=ship.kind, facing=1 if ship.owner == PLAYER else -1)
         hull = min(ship.max_hull, ship.hull+(effect.damage if before_impact else 0))
-        pg.draw.rect(surface, LINE, (cx-18, cy+19, 36, 3))
-        pg.draw.rect(surface, color, (cx-18, cy+19, round(36*hull/ship.max_hull), 3))
+        hull_y = cy+23 if planetary else cy+19
+        pg.draw.rect(surface, LINE, (cx-18, hull_y, 36, 3))
+        pg.draw.rect(surface, color, (cx-18, hull_y, round(36*hull/ship.max_hull), 3))
         if ship.design and ship.design.shields:
             pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.design.shields), 2))
-        text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+        if not planetary:
+            text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.graviton_slow:
             text(surface, "SLOW", (cx-16, cy+28), 7, BEAMS["graviton"].color, "mono")
-        if ship.owner == PLAYER and ship.hull > 0:
+        if ship.owner == PLAYER and ship.hull > 0 and not planetary:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship) or battle.can_launch(ship))):
                 pg.draw.circle(surface, CYAN if available else LINE, (cx+dx, cy-19), 2)
         if BOARD.contains(box):
@@ -104,7 +127,12 @@ def draw_battlefield(app):
                        lambda side=ship.owner, sid=ship.id: app.select_combat_ship(side, sid), "hotspot",
                        enabled=player_turn and ship.hull > 0)
     if effect and effect.kind == "fire":
-        effect.draw(surface, project)
+        attacker, target = battle.ship(effect.ship_id), battle.ship(effect.target_id)
+        def anchor(unit):
+            center = project(unit.position)
+            return combat_planets.surface_anchor(center, 1 if unit.owner == PLAYER else -1) if combat_planets.planet_for(app.game, unit) else center
+        effect.draw(surface, project, origin=anchor(attacker), target=anchor(target),
+                    explosion_scale=.35 if combat_planets.planet_for(app.game, target) else 1.0)
     surface.set_clip(old_clip)
     pg.draw.rect(surface, LINE, BOARD, 1)
 
@@ -135,11 +163,17 @@ def draw_combat(app):
     pg.draw.line(surface, LINE, (x, 193), (1388, 193))
     if active:
         ship, target = battle.ship(app.combat_ship_id), battle.ship(app.combat_target_id)
-        text(surface, "COMPUTER COMMAND" if automatic else "SELECTED SHIP", (x, 210), 10, CYAN if automatic else MUTED, "mono", 1)
+        planet = combat_planets.planet_for(game, ship)
+        text(surface, "COMPUTER COMMAND" if automatic else "PLANETARY DEFENSE" if planet else "SELECTED SHIP", (x, 210), 10, CYAN if automatic else MUTED, "mono", 1)
         if ship:
-            ship_icon(surface, (1357, 254), .85, app.empire_color(ship.owner), kind=ship.kind, facing=1)
-            text(surface, shorten(ship.name, 235, 21), (x, 235), 21, INK)
-            text(surface, f"HULL  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
+            if planet:
+                combat_planets.draw_base(surface, game, ship, (1357, 256), app.empire_color(ship.owner), 1, diameter=60)
+            else:
+                ship_icon(surface, (1357, 254), .85, app.empire_color(ship.owner), kind=ship.kind, facing=1)
+            text(surface, shorten(planet.name if planet else ship.name, 235, 21), (x, 235), 21, INK)
+            text(surface, f"{'BASE' if planet else 'HULL'}  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
+            if planet:
+                text(surface, "Surface missile base · "+planet.biome, (x, 286), 10, MUTED)
             if ship.design:
                 text(surface, f"SHIELDS {ship.shields}/{ship.design.shields} · PD {interception(battle, ship)}%", (x, 286), 10, MUTED, "mono")
             for left, title, available, value in ((x, "MOVEMENT", battle.can_move(ship), f"{ship.movement} cells"+(" · −1" if ship.graviton_slow else "")),
@@ -148,7 +182,7 @@ def draw_combat(app):
                 panel(surface, (left, 301, 149, 58))
                 text(surface, title, (left+10, 310), 9, MUTED, "mono")
                 recharging = title != "MOVEMENT" and ship.damage and not ship.ready_damage and ship.id not in battle.acted
-                text(surface, value if available else "Recharging" if recharging else "Spent" if ship.damage or ship.drone_bays or title == "MOVEMENT" else "Unarmed",
+                text(surface, "Fixed to planet" if planet and title == "MOVEMENT" else value if available else "Recharging" if recharging else "Spent" if ship.damage or ship.drone_bays or title == "MOVEMENT" else "Unarmed",
                      (left+10, 329), 15, CYAN if available else FAINT)
             beam = BEAMS[ship.weapon]
             pg.draw.line(surface, beam.color, (x, 383), (x+23, 383), 3)
@@ -169,11 +203,12 @@ def draw_combat(app):
         else:
             paragraph(surface, "The computer is managing your fleet's orders and turns." if automatic else "Your ships have finished their orders. End your turn to let the opponent act.", (x, 239), 308, 16, MUTED, 26)
         pg.draw.line(surface, LINE, (x, 432), (1388, 432))
-        text(surface, "ENEMY TARGET", (x, 449), 10, RIVAL_COLOR, "mono", 1)
-        text(surface, shorten(target.name, 308, 18) if target else "Click an enemy ship", (x, 473), 18, INK)
+        target_planet = combat_planets.planet_for(game, target)
+        text(surface, "PLANETARY TARGET" if target_planet else "ENEMY TARGET", (x, 449), 10, RIVAL_COLOR, "mono", 1)
+        text(surface, shorten(combat_planets.unit_name(game, target), 308, 18) if target else "Click an enemy ship or base", (x, 473), 18, INK)
         if target and target.owner == MONSTER:
             ship_icon(surface, (1356, 472), .57, kind=target.kind)
-        caption = f"{target.hull}/{target.max_hull} hull · {target.shields} shields" if target else "Targets must be within weapon range."
+        caption = (f"{target.hull}/{target.max_hull} base hull" if target_planet else f"{target.hull}/{target.max_hull} hull · {target.shields} shields") if target else "Targets must be within weapon range."
         if target and ship:
             caption += f"  ·  Distance {math.dist(ship.position, target.position):.1f}"
         text(surface, caption, (x, 503), 12, MUTED)
@@ -217,11 +252,17 @@ def draw_combat(app):
         title = ("Victory" if battle.status == "player_victory" else "Fleet withdrawn" if battle.status == "player_retreat"
                  else "Enemy withdrew" if battle.status.endswith("_retreat") else "Defeat")
         text(surface, title, (x, 221), 29, GOLD, "title")
-        lost = {side: sum(s.hull == 0 and s.kind != "combat_drone" for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
+        lost = {side: sum(s.hull == 0 and s.kind not in ("combat_drone", "missile_base") for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
         text(surface, f"Your ships lost: {lost[PLAYER]}", (x, 288), 16, CYAN)
         text(surface, f"{'Guardians' if battle.guardian else 'Enemy ships'} lost: {lost[enemy]}", (x, 321), 16, RIVAL_COLOR)
+        details_y = 350
+        if any(s.kind == "missile_base" for s in battle.ships):
+            bases_lost = {side: sum(s.hull == 0 and s.kind == "missile_base" for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
+            text(surface, f"Missile bases lost: {bases_lost[PLAYER]} yours · {bases_lost[enemy]} enemy", (x, details_y), 12, MUTED)
+            details_y += 27
         if any(s.drone_bays for s in battle.ships):
-            text(surface, "Surviving drones return to their carriers.", (x, 350), 11, MUTED)
+            text(surface, "Surviving drones return to their carriers.", (x, details_y), 11, MUTED)
+            details_y += 27
         caption = "Surviving ships remain in orbit. Hull damage is retained; colonies keep their current owners."
         if battle.retreat_destination is not None:
             caption = f"The withdrawing fleet is travelling to {game.systems[battle.retreat_destination].name}. Surviving ships retain their hull damage."
@@ -235,7 +276,7 @@ def draw_combat(app):
                            if battle.status == "player_victory" else "The legendary guardian still protects the relic. A retreat or defeat earns no reward.")
             if battle.status == "player_victory" and spec.research_reward:
                 caption = f"Ancient ruins recovered: +{spec.research_reward} RP added to your research. The rich world is now open for colonization."
-        paragraph(surface, caption, (x, 377), 302, 15, MUTED, 26)
+        paragraph(surface, caption, (x, max(377, details_y)), 302, 15, MUTED, 26)
         app.button("combat_continue", "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
 
     panel(surface, (32, 763, 1376, 77))

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.50.0
+# Orion Reach — Python prototype 0.50.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,24 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.50.1: missile bases on their planets
+
+Tactical missile bases now sit on the surface of their own planets, using the
+same biome and globe artwork as the system view. Each defended world shows its
+name, an attached battery and the base's hull bar. Click the planet to select
+or target its battery; the side panel identifies the world and surface defense.
+
+Missiles launch from the surface installation, and incoming fire strikes it.
+A destroyed base leaves a damaged installation on the surviving planet. The
+colony, its population and its ownership remain unchanged. Battle results count
+missile bases separately from ships. Multiple defended worlds and both sides'
+defenses are supported, including automatic combat.
+
+This changes presentation only: movement, targeting cells, weapon ranges, hull,
+damage and save format remain unchanged. Existing battles can be loaded.
+
+![Planetary missile batteries](screenshots/planetary_combat_defense.png)
 
 ## New in v0.50: automatic fleet combat
 
@@ -2618,6 +2636,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/monster_art.py` | Procedural guardian illustrations and distinct galaxy-map symbols |
 | `orion/combat_view.py` | Clickable battlefield, movement/range overlays, health bars, logs and results |
 | `orion/combat_effects.py` | Presentation-only movement, beams, impact flashes and destruction explosions |
+| `orion/combat_planets.py` | Real planet artwork, surface batteries, launcher anchors and surviving worlds |
 | `orion/branding.py` | Supplied studio logo, proportional scaling, splash and menu credit |
 | `orion/victory.py` | Invasions, Ascension Gates, victory checks and outcome validation |
 | `orion/ground_combat.py` | Garrison training, militia recovery and simultaneous casualty rounds |
@@ -2670,6 +2689,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
 | `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
 | `tests/test_auto_combat.py` | Automatic player orders, manual takeover, pause/save continuity, drones, retreat and guardian rewards |
+| `tests/test_combat_planets.py` | Planet selection, surface fire on both sides, surviving colonies, base losses and save continuity |
 | `tests/test_monsters.py` | Guardians, prize economies, interception, retreat, fog, AI, save validation and tactical UI |
 | `tests/test_council.py` | Council thresholds, elections, war, saves, UI and 5,000-RP Ascension |
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
@@ -2691,6 +2711,13 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.50.1 passes **199 focused combat and interface checks**, including **five new
+planetary-defense checks**. These cover multiple worlds, selecting and targeting
+bases, surface launch and impact points, localized destruction, separate base
+losses, unchanged colonies, automatic control and save/load. The defense,
+missile-fire and surviving-world previews were rendered and inspected. Recreate
+them with `python tools/preview_planetary_combat.py`.
 
 v0.50 passes **776 automated checks**, including **10 new automatic-combat
 checks**. These cover mouse and keyboard takeover during movement and weapon
