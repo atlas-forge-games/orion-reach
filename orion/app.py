@@ -49,6 +49,7 @@ from .fleets import fleet_containing
 from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects
 from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
+from .galaxy_background import draw_galaxy_background
 from .galaxy_labels import draw_system_label
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
@@ -2163,25 +2164,26 @@ class App:
         self.heading("03  /  MAKE IT YOURS","Set your course.","Changes take effect immediately and are saved automatically.")
         options=[("fullscreen","Fullscreen","Use the entire display. F11 also toggles this setting."),
                  ("animated_background","Animated background","Moving ships and softly twinkling stars."),
+                 ("galaxy_background","Galaxy background","Nebula artwork behind the galaxy map."),
                  ("sound","Interface sounds","A quiet tone when you activate a control."),
                  ("music","Background music",self.audio.music_description)]
         for i,(key,label,description) in enumerate(options):
-            y=302+i*79
-            panel(self.canvas,(256,y,928,72))
-            text(self.canvas,label,(280,y+12),21,INK)
-            text(self.canvas,description,(280,y+43),14,MUTED)
-            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+13,135,46),lambda k=key:self.toggle_setting(k))
+            y=302+i*64
+            panel(self.canvas,(256,y,928,60))
+            text(self.canvas,label,(280,y+7),21,INK)
+            text(self.canvas,description,(280,y+36),14,MUTED)
+            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+8,135,44),lambda k=key:self.toggle_setting(k))
             if self.settings[key]:
-                pg.draw.circle(self.canvas,CYAN,(1132,y+36),4)
+                pg.draw.circle(self.canvas,CYAN,(1132,y+30),4)
         volume=self.settings["music_volume"]
         muted=not self.settings["music"] or volume==0
-        panel(self.canvas,(256,618,928,72))
-        text(self.canvas,"Music volume"+(" · Muted" if muted else ""),(280,630),21,INK)
-        text(self.canvas,"Use − / + to adjust in 10% steps.",(280,661),14,MUTED)
-        self.button("music_quieter","−",(880,631,52,46),lambda:self.change_music_volume(-10),enabled=volume>0)
+        panel(self.canvas,(256,625,928,66))
+        text(self.canvas,"Music volume"+(" · Muted" if muted else ""),(280,632),21,INK)
+        text(self.canvas,"Use − / + to adjust in 10% steps.",(280,666),14,MUTED)
+        self.button("music_quieter","−",(880,635,52,46),lambda:self.change_music_volume(-10),enabled=volume>0)
         label=f"{volume}%"
-        text(self.canvas,label,(1018-font(23).size(label)[0]//2,639),23,CYAN)
-        self.button("music_louder","+",(1104,631,52,46),lambda:self.change_music_volume(10),enabled=volume<100)
+        text(self.canvas,label,(1018-font(23).size(label)[0]//2,643),23,CYAN)
+        self.button("music_louder","+",(1104,635,52,46),lambda:self.change_music_volume(10),enabled=volume<100)
         panel(self.canvas,(256,697,928,98))
         text(self.canvas,"Galaxy colors",(280,709),21,INK)
         text(self.canvas,"Your empire's color. Neutral systems stay gray.",(280,746),14,MUTED)
@@ -2204,7 +2206,7 @@ class App:
             self.go("menu")
             return
         (draw_observer_header if state.is_observer else draw_galaxy_header)(self)
-        panel(self.canvas,MAP,(7,17,25))
+        draw_galaxy_background(self.canvas,MAP,self.settings["galaxy_background"])
         # A sparse coordinate grid makes the map legible without implying travel lanes.
         for x in range(MAP.x+44,MAP.right,76):
             pg.draw.line(self.canvas,(14,29,38),(x,MAP.y+1),(x,MAP.bottom-1))

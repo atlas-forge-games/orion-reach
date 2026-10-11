@@ -14,7 +14,8 @@ from .empires import DEFAULT_PALETTE, PLAYER_PALETTES
 
 SAVE_VERSION = 33
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
-                    "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE}
+                    "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE,
+                    "galaxy_background": True}
 
 
 def default_data_dir():
@@ -60,7 +61,7 @@ class Storage:
             data = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 result.update({k: v for k, v in data.items()
-                               if k in ("fullscreen", "animated_background", "sound", "music") and type(v) is bool})
+                               if k in ("fullscreen", "animated_background", "sound", "music", "galaxy_background") and type(v) is bool})
                 if type(data.get("music")) is not bool:
                     result["music"] = result["sound"]  # Respect older muted preferences.
                 volume = data.get("music_volume")

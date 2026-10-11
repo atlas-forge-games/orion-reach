@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.47.0
+# Orion Reach — Python prototype 0.48.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,24 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.48: galaxy map artwork
+
+The galaxy map now displays a nebula and starfield background behind its systems,
+fleets and routes. The image keeps its proportions, fills the map without black
+bars, and is slightly dimmed for readability. The right-hand system overview and
+command bars retain their existing panels.
+
+**Menu → Settings → Galaxy background** turns the artwork on or off. It is on by
+default, and the preference is saved between sessions. Turning it off restores
+the plain map. Campaigns, fog of war and fleet orders are unaffected.
+
+The supplied artwork lives at `assets/backgrounds/galaxy-v1.png`. Replace that PNG
+and restart to use your own image; missing or unreadable artwork falls back to
+the plain map. The original image is preserved, with scaling and dimming cached
+in memory. No new dependencies or save migration are required.
+
+![Galaxy map with nebula background](screenshots/galaxy_nebula_background.png)
 
 ## New in v0.47: legendary artifacts in the encyclopedia
 
