@@ -141,11 +141,12 @@ class RectangularMapInterfaceTests(unittest.TestCase):
             self.app.render()
 
     def test_rectangular_map_names_fit_and_do_not_overlap_stars(self):
+        from orion.black_holes import chart_systems
         from orion.app import MAP
         from orion.galaxy_fleet_view import fleet_markers, star_label_rects
         labels = list(star_label_rects(self.app, MAP).values())
         stars = [pg.Rect(round(x)-14, round(y)-14, 28, 28)
-                 for x, y in (self.app.star_pos(s) for s in self.app.game.systems)]
+                 for x, y in (self.app.star_pos(s) for s in chart_systems(self.app.game))]
         for index, label in enumerate(labels):
             self.assertTrue(MAP.contains(label))
             self.assertEqual(label.collidelist(stars), -1)

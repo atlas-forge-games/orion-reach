@@ -11,7 +11,7 @@ from .research import BRANCHES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
-from . import monsters, defenses, sensors
+from . import monsters, defenses, sensors, black_holes
 from . import raiding
 from . import first_contact
 from .personalities import personality
@@ -86,7 +86,7 @@ def scouting_orders(game, owner=RIVAL):
     for ship in sorted(game.ships_owned_by(owner), key=lambda s: s.id):
         if ship.kind != "scout" or ship.has_course:
             continue
-        candidates = [s for s in game.systems if s.id != ship.system_id and s.id not in incoming
+        candidates = [s for s in game.systems if s.kind != black_holes.KIND and s.id != ship.system_id and s.id not in incoming
                       and monsters.known_status(game, s.id, owner) != "alive"
                       and s.id not in game.exploration.scanned(owner) and game.within_fuel_range(s.id, owner)]
         if not candidates:
@@ -105,7 +105,7 @@ def research_choice(game, owner=RIVAL):
     if state.active or game._empire(owner).research == 0:
         return
     # Extend an exhausted frontier using the same exclusive tank upgrades as the player.
-    unknown = [s for s in game.systems if not game.system_explored(s.id, owner)]
+    unknown = [s for s in game.systems if s.kind != black_holes.KIND and not game.system_explored(s.id, owner)]
     raid_targets = known_enemy_colonies(game, owner) if raiding.is_varkesh(game, owner) else []
     if ((unknown and not any(game.within_fuel_range(s.id, owner) for s in unknown))
             or (raid_targets and not any(game.within_fuel_range(s.id, owner) for s, _ in raid_targets))):
@@ -124,6 +124,7 @@ def research_choice(game, owner=RIVAL):
     }.get(race, ((1, 0, 1, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 1, 1, 1)))
     military = race in ("kharuun", "varkesh", "remnant")
     preferred = {
+        "gravitic_mapping", "event_horizon_navigation",
         "destroyer_hulls", "cruiser_hulls", "titan_hulls",
         "battleship_hulls" if military else "drone_carriers",
         "orbital_defense_systems", "fusion_power", "jump_gates", "planetary_shielding",
@@ -425,7 +426,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         targets = [s for s in game.systems if game.within_fuel_range(s.id, owner)
                    and len(available_worlds(game, s, owner)) > incoming.get(s.id, 0)]
         if not targets:
-            unknown = [s for s in game.systems if not game.system_explored(s.id, owner) and not incoming.get(s.id)
+            unknown = [s for s in game.systems if s.kind != black_holes.KIND and not game.system_explored(s.id, owner) and not incoming.get(s.id)
                        and monsters.known_status(game, s.id, owner) != "alive"
                        and game.within_fuel_range(s.id, owner)]
             if unknown:
@@ -481,7 +482,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     military_limit = max(military_limit, min(12, 3+known_bases*3) if known_bases else 0)
     troop_limit = max((transports_needed(p, TROOP_STRENGTH, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {}) for s, p in known_enemy_colonies(game, owner)
                        if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
-    unknown = sum(not game.system_explored(s.id, owner) for s in game.systems)
+    unknown = sum(not game.system_explored(s.id, owner) for s in game.systems if s.kind != black_holes.KIND)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
     if raiding.is_varkesh(game, owner):
         fleet_limit = 0

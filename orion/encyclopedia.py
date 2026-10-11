@@ -55,6 +55,12 @@ def guides():
             ("CHOOSE A DISCOVERY", "Click the Research card at the top of the galaxy map, or press R. Research unlocks new economic options, defenses, hulls and equipment."),
             ("ADVANCE THE GALAXY", "End turn applies production, movement and the other empires' actions. Check Turn news for discoveries, completed projects and important events."),
         )),
+        Article("black_holes", "basics", "Black-hole expeditions", "Hidden sites and legendary relics", (
+            ("FIND THE SINGULARITIES", "New campaigns contain two black holes in a Compact galaxy, or three in Standard and Expansive galaxies. Gravitic Mapping, Computers tier VI, reveals their names and locations. They stay hidden even with fog of war disabled. The Observer can see them from the start. Earlier campaigns keep their original worlds and gain no black holes."),
+            ("APPROACH SAFELY", "Event Horizon Navigation, Computers tier VII, allows a safe approach and also includes detection if you chose the other tier VI technology. Without it, every ship that arrives at a black hole is lost. Unsafe orders require confirmation; pending departures can be cancelled before End Turn. Normal routes crossing the area are safe. Ordinary colony-based fuel range still applies."),
+            ("DEFEAT THE GUARDIAN", "A prepared fleet approaches an ancient site outside the event horizon and fights its legendary guardian using normal tactical combat. Damage persists between expeditions. Retreat or defeat earns no relic. The first empire to defeat the guardian recovers the site's unique relic; revisiting cannot award another."),
+            ("YOUR COLLECTION", "Recovery is saved with the campaign and announced in Turn news. Info → Legendary artifacts marks your recovered relics. Flagship/capital placement, bonuses and special powers remain proposed; collection does not activate them yet."),
+        )),
         Article("map", "basics", "Reading the galaxy map", "Names, colors and intelligence", (
             ("SYSTEM NAMES", "Parentheses mark systems you have not surveyed. Gray names are neutral. Colonized names use their known owners' colors; shared systems split the name between those colors."),
             ("INFORMATION", "Explored systems may show a stored survey rather than a live view. A survey does not reveal later enemy movement or changes until you observe the system again."),
@@ -192,7 +198,7 @@ def articles():
         result.append(Article("race_"+spec.id, "civilizations", spec.name, spec.focus, tuple(sections)))
     for concept in ARTIFACT_CONCEPTS:
         result.append(Article("artifact_"+concept.id, "artifacts", concept.name,
-                              "Planned · "+concept.placement, (
+                              "Proposed use · "+concept.placement, (
             ("LEGEND", concept.lore),
             ("PROPOSED BONUS", concept.bonus),
             ("PROPOSED SPECIAL POWER", concept.power),

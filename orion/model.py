@@ -16,6 +16,7 @@ from . import council as council_rules
 from . import exploration as exploration_rules
 from . import population as population_rules
 from . import monsters as monster_rules
+from . import black_holes
 from . import ground_combat as ground_rules
 from . import tomb_worlds as tomb_rules
 from . import raiding as raid_rules
@@ -258,7 +259,7 @@ class Opponent:
     resources: int = economy.STARTING_RESOURCES
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=33):
+    def from_dict(cls, data, systems, turn, *, version=34):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -286,7 +287,7 @@ class Opponent:
         race_id = data["race_id"] if version >= 6 else "kharuun"
         if not isinstance(race_id, str) or race_id not in RACES:
             raise ValueError
-        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True, legacy_fuel=True)
+        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True, legacy_fuel=True, legacy_black_holes=True)
         resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
         if not _integer(resources, 0, 1_000_000_000):
             raise ValueError("Invalid resource stockpile")
@@ -640,6 +641,7 @@ class GameState:
     observer_news_read: int = 0
     council: council_rules.CouncilState = field(default_factory=council_rules.CouncilState)
     victory_conditions: tuple[str, ...] = victory_rules.CONDITIONS
+    black_holes: black_holes.BlackHoleState = field(default_factory=black_holes.BlackHoleState)
 
     @property
     def is_observer(self):
@@ -870,6 +872,7 @@ class GameState:
         if discovered and owner != PLAYER:
             self.rival_event(f"Discovered {discovered.name}.", turn=self.turn, owner=owner)
         if discovered:
+            black_holes.report_mapping(self, owner)
             exploration_rules.refresh(self)
         return discovered
 
@@ -1300,10 +1303,10 @@ class GameState:
             raise RuleError("You can only command ships belonging to your empire.")
         return ship
 
-    def send_ship(self, ship_id, destination, *, owner=PLAYER):
-        return self.send_ships([ship_id], destination, owner=owner)
+    def send_ship(self, ship_id, destination, *, owner=PLAYER, accept_black_hole_risk=False):
+        return self.send_ships([ship_id], destination, owner=owner, accept_black_hole_risk=accept_black_hole_risk)
 
-    def send_ships(self, ship_ids, destination, *, owner=PLAYER):
+    def send_ships(self, ship_ids, destination, *, owner=PLAYER, accept_black_hole_risk=False):
         """Set a course for the next End Turn; pending orders may be redirected."""
         self._require_strategy(owner)
         identifiers = list(ship_ids)
@@ -1321,6 +1324,9 @@ class GameState:
         if destination == ships[0].system_id:
             raise RuleError("The selected ships are already in this system.")
         error = self.fuel_range_error(destination, owner)
+        if error:
+            raise RuleError(error)
+        error = black_holes.order_error(self, destination, owner, accept_black_hole_risk)
         if error:
             raise RuleError(error)
         for ship in ships:
@@ -1489,6 +1495,8 @@ class GameState:
                 if ship.turns_remaining == 0:
                     ship.system_id = ship.destination
                     self._clear_course(ship)
+                    if black_holes.at(self, ship.system_id) and not black_holes.can_explore(self, ship.owner):
+                        continue  # Report the lost expedition after advancing the turn.
                     message = f"{ship.name} at {self.systems[ship.system_id].name}"
                     if ship.owner == PLAYER:
                         arrivals.append(message)
@@ -1525,6 +1533,7 @@ class GameState:
                 alerts.append(f"{planet.name}: {self.construction_status(planet)}")
         self.turn += 1
         self.year += 1
+        black_holes.resolve_arrivals(self, alerts)
         defense_rules.advance(self)
         self.credits += income
         if income < 0:
@@ -1572,7 +1581,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=33):
+    def from_dict(cls, data, *, version=34):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1607,7 +1616,8 @@ class GameState:
                 for axis in ("x", "y"):
                     if type(s[axis]) not in (int, float) or not math.isfinite(s[axis]) or not 0 <= s[axis] <= 1:
                         raise ValueError
-                if s["kind"] not in STAR_TYPES or s["biome"] not in BIOMES or s["richness"] not in RICHNESSES:
+                allowed_types = STAR_TYPES + ((black_holes.KIND,) if version >= 34 else ())
+                if s["kind"] not in allowed_types or s["biome"] not in BIOMES or s["richness"] not in RICHNESSES:
                     raise ValueError
                 if not _integer(s["planets"], 0, 8):
                     raise ValueError
@@ -1655,7 +1665,7 @@ class GameState:
                     raise ValueError
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
-            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True, legacy_fuel=True)
+            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True, legacy_fuel=True, legacy_black_holes=True)
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
@@ -1715,8 +1725,10 @@ class GameState:
                         game.opponents["rival_6"].race_id != "remnant"
                         or not any(t.remnant_owner == "rival_6" for t in game.tomb_worlds)):
                     raise ValueError("The extra rival must be an awakened Remnant enclave")
+            black_holes.load(game, data, version)
             if version >= 16:
                 game.guardians = monster_rules.parse_guardians(data["guardians"], game, version=version)
+            black_holes.validate_guardians(game)
             if version >= 8 and data["combat"] is not None:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
@@ -1736,6 +1748,8 @@ class GameState:
             if version < 26:
                 first_contact.migrate(game)
             observer_rules.load(game, data, version)
+            if not black_holes.charted(game, game.systems[game.selected_system]):
+                game.selected_system, game.selected_planet = 0, None
             return game
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
@@ -1743,13 +1757,18 @@ class GameState:
 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
              race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
-             rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS):
+             rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS,
+             with_black_holes=None):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if type(fog_of_war) is not bool:
         raise SaveError("Fog of war must be on or off.")
     if type(with_guardians) is not bool:
         raise SaveError("Guardians must be on or off.")
+    if with_black_holes is None:
+        with_black_holes = with_guardians
+    if type(with_black_holes) is not bool:
+        raise SaveError("Black holes must be on or off.")
     if not isinstance(race_id, str) or race_id not in SETUP_RACES:
         raise SaveError("Choose a valid player race.")
     observer = race_id == "observer"
@@ -1828,6 +1847,8 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         game.selected_system = game.opponent.home_system
     if with_guardians:
         monster_rules.seed_guardians(game)
+    if with_black_holes:
+        black_holes.seed_sites(game)
     if with_tombs:
         tomb_rules.seed_worlds(game)
     exploration_rules.refresh(game)

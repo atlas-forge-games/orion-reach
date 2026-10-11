@@ -463,6 +463,7 @@ class SlaveSaveTests(unittest.TestCase):
             game.research_state(owner).legacy_starships = True
             game.research_state(owner).legacy_arsenal = True
             game.research_state(owner).legacy_fuel = True
+            game.research_state(owner).legacy_black_holes = True
         game.ships = [Ship(1, "colony_ship", 0)]
         game.next_ship_id = 2
         game.planet_at(0, 2).construction_queue = [ConstructionProject("colony_ship", progress=17, paid_credits=64)]
@@ -523,7 +524,7 @@ class SlaveSaveTests(unittest.TestCase):
             original = path.read_bytes()
             self.assertEqual(store.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
-            self.assertEqual(json.loads(original)["version"], 33)
+            self.assertEqual(json.loads(original)["version"], 34)
 
 
 class VarkeshInterfaceTests(unittest.TestCase):

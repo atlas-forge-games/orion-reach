@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import random
 
 from .production import distance_ly
+from . import black_holes
 
 MONSTER = "monster"
 EMPIRES = ("player", "rival")
@@ -25,6 +26,9 @@ MONSTERS = {
     "crystal_guardian": MonsterSpec("Crystal Guardian", 80, 1, "crystal_ray", (111, 208, 255), "Large ultra-rich world"),
     "ancient_sentinel": MonsterSpec("Ancient Sentinel", 96, 2, "ancient_lance", (255, 198, 104), "Ancient ruins + 120 RP", 120),
     "void_leviathan": MonsterSpec("Void Leviathan", 140, 3, "void_ray", (196, 143, 255), "Three exceptional worlds"),
+    "ashen_leviathan": MonsterSpec("Ashen Leviathan", 280, 3, "plasma", (255, 194, 113), "Unique legendary relic"),
+    "horizon_warden": MonsterSpec("Horizon Warden", 260, 2, "graviton", (201, 178, 255), "Unique legendary relic"),
+    "crown_sentinel": MonsterSpec("Crown Sentinel", 320, 2, "heavy_beam", (236, 207, 151), "Unique legendary relic"),
 }
 
 # Secondary prize IDs are fixed by orbital order; no planet IDs are added or moved.
@@ -69,6 +73,8 @@ def alive_at(game, system_id):
 
 
 def known_status(game, system_id, owner="player"):
+    if not black_holes.charted(game, game.systems[system_id], owner):
+        return None
     guardian = at(game, system_id)
     if guardian is None:
         return None
@@ -89,11 +95,15 @@ def observe(game, system_id, owner):
 
 
 def prize_ids(system, guardian):
+    if guardian.kind not in PRIZE_WORLDS:
+        return []
     others = [p.id for p in system.worlds if p.id != guardian.planet_id]
     return [guardian.planet_id] + others[:len(PRIZE_WORLDS[guardian.kind])-1]
 
 
 def prize_details(guardian, *, defeated=False):
+    if guardian.kind not in PRIZE_WORLDS:
+        return "Relic recovered" if defeated else "Defeat the guardian to recover one legendary relic"
     if guardian.kind == "space_serpent":
         return "28 B capacity · abundant food · faster growth"
     if guardian.kind == "crystal_guardian":
@@ -104,6 +114,8 @@ def prize_details(guardian, *, defeated=False):
 
 
 def reward_caption(guardian, *, defeated=False):
+    if defeated and guardian.kind not in PRIZE_WORLDS:
+        return "Relic recovered"
     if defeated and guardian.kind == "ancient_sentinel":
         return "Ruins recovered · Rich world"
     return guardian.spec.reward
@@ -113,6 +125,8 @@ def commit_battle_result(game, guardian, hull, owner):
     """Commit damage and award ruins once, on the living-to-defeated transition."""
     was_alive = guardian.alive
     guardian.hull = hull
+    if was_alive and not guardian.alive and (site := black_holes.at(game, guardian.system_id)):
+        return black_holes.claim(game, site, owner)
     if was_alive and not guardian.alive and guardian.spec.research_reward:
         game._empire(owner).research += guardian.spec.research_reward
         planet = game.planet_at(guardian.system_id, guardian.planet_id)
@@ -128,7 +142,7 @@ def seed_guardians(game):
                   and all(distance_ly(s, home) >= 28 for home in homes)]
     rng = random.Random(f"orion-guardians-v2:{game.seed}")
     rng.shuffle(candidates)
-    kinds = list(MONSTERS)
+    kinds = list(PRIZE_WORLDS)
     rng.shuffle(kinds)
     kinds = kinds[:2] if game.galaxy_size == "Compact" else kinds
     # Place the three-world prize first, while it has the widest choice of sites.
@@ -164,9 +178,12 @@ def parse_guardians(data, game, *, version=20):
         sid, pid, kind = row["system_id"], row["planet_id"], row["kind"]
         if (not _integer(sid, 1, len(game.systems)-1) or sid in occupied
                 or not isinstance(kind, str) or kind not in MONSTERS
-                or not _integer(pid, 0, len(game.systems[sid].worlds)-1)
+                or not _integer(pid, -1 if kind not in PRIZE_WORLDS else 0, len(game.systems[sid].worlds)-1)
                 or not _integer(row["hull"], 0, MONSTERS[kind].hull)):
             raise ValueError("Invalid guardian location or health")
+        site = black_holes.at(game, sid)
+        if kind not in PRIZE_WORLDS and (site is None or pid != -1 or black_holes.SITES[site.kind][1] != kind):
+            raise ValueError("Legendary guardian requires its black-hole site")
         awakened = {t.planet_id for t in game.tomb_worlds if t.system_id == sid
                     and t.outcome in ("founded", "captured", "reinforced")}
         if any(r.home_system == sid and r.home_planet not in awakened for r in game.opponents.values()):
@@ -187,9 +204,9 @@ def parse_guardians(data, game, *, version=20):
             raise ValueError("Living guardian cannot share a colony system")
         guardian = Guardian(**row)
         ids = prize_ids(system, guardian)
-        if len(ids) != len(PRIZE_WORLDS[kind]):
+        if len(ids) != len(PRIZE_WORLDS.get(kind, ())):
             raise ValueError("Guardian prize worlds are missing")
-        for planet_id, reward in zip(ids, PRIZE_WORLDS[kind]):
+        for planet_id, reward in zip(ids, PRIZE_WORLDS.get(kind, ())):
             planet = system.worlds[planet_id]
             if (planet.biome, planet.size, planet.richness) != reward:
                 raise ValueError("Guardian prize does not match its world")
@@ -204,12 +221,15 @@ def intercept(game):
     if game.combat or game.result:
         return False
     for guardian in game.guardians:
-        if guardian.alive and game.fleet_at(guardian.system_id, "player"):
+        if (guardian.alive and game.fleet_at(guardian.system_id, "player") and
+                (not black_holes.at(game, guardian.system_id) or black_holes.can_explore(game))):
             combat.begin_guardian_combat(game, guardian.system_id, "player")
             return True
     for guardian in game.guardians:
         for owner in game.opponents:
             if not guardian.alive or not game.fleet_at(guardian.system_id, owner):
+                continue
+            if black_holes.at(game, guardian.system_id) and not black_holes.can_explore(game, owner):
                 continue
             combat.begin_guardian_combat(game, guardian.system_id, owner)
             combat.autoresolve(game)
@@ -223,7 +243,10 @@ def ai_orders(game, owner="rival"):
     if owner not in game.opponents or any(game.diplomacy_between(owner, other).relations < -30
                                          for other in game.owners if other != owner):
         return set()
-    targets = [g for g in game.guardians if known_status(game, g.system_id, owner) == "alive"
+    targets = [g for g in game.guardians if (known_status(game, g.system_id, owner) == "alive" or
+               (black_holes.at(game, g.system_id) and black_holes.can_explore(game, owner)
+                and known_status(game, g.system_id, owner) is None))
+               and (not black_holes.at(game, g.system_id) or black_holes.can_explore(game, owner))
                and game.within_fuel_range(g.system_id, owner)]
     ships = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and not s.has_course]
     colonies = game.colony_systems(owner)

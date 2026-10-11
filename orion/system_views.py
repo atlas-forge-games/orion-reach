@@ -35,6 +35,10 @@ def system_layout(worlds):
 
 
 def draw_system(app):
+    from .black_holes import KIND
+    if app.game.systems[app.game.selected_system].kind == KIND:
+        app.draw_galaxy()
+        return
     surface = app.canvas
     game = app.game
     system = game.known_system(game.selected_system)

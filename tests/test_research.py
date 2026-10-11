@@ -38,7 +38,7 @@ def discover(game, identifier, owner=PLAYER):
 
 class ResearchRulesTests(unittest.TestCase):
     def test_two_exclusive_choices_and_sequential_unlocks_in_nine_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (9, 85))  # Existing discoveries plus three paired fuel tiers
+        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (9, 89))  # Two new paired Computers tiers.
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology

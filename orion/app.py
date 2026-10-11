@@ -34,7 +34,7 @@ from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
 from .news_view import NEWS_PER_PAGE, draw_news
 from . import news as news_rules
-from . import defenses, sensors
+from . import defenses, sensors, black_holes, black_hole_view
 from .sensor_view import draw_coverage, draw_contacts, draw_contact_panel
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
@@ -259,10 +259,12 @@ class App:
     def open_system(self,system_id):
         if self.game is None or not 0 <= system_id < len(self.game.systems):
             return
+        if not black_holes.charted(self.game,self.game.systems[system_id]):
+            return
         if self.game.selected_system != system_id:
             self.game.selected_planet=None
         self.game.selected_system=system_id
-        self.go("system")
+        self.go("galaxy" if black_holes.at(self.game,system_id) else "system")
 
     def open_planet(self,planet_id):
         if not self.game.system_explored(self.game.selected_system):
@@ -452,13 +454,14 @@ class App:
             for guardian, rect, _ in reversed(guardian_markers(self,MAP)):
                 if rect.collidepoint(self.mouse):
                     return guardian.system_id
-            for system in reversed(self.game.systems):
+            for system in reversed(black_holes.chart_systems(self.game)):
                 x,y=self.star_pos(system)
-                if pg.Rect(int(x)-18,int(y)-18,36,36).collidepoint(self.mouse):
+                rect=black_hole_view.hit_rect((x,y)) if system.kind==black_holes.KIND else pg.Rect(int(x)-18,int(y)-18,36,36)
+                if rect.collidepoint(self.mouse):
                     return system.id
         return self.game.selected_system
 
-    def send_map_fleet(self,destination):
+    def send_map_fleet(self,destination,accept_black_hole_risk=False):
         try:
             identifiers=self.map_order_ids
             count=len(identifiers)
@@ -476,7 +479,12 @@ class App:
                 self.toast(f"Departure already queued · {turn_label(first.turns_remaining)} to {self.game.systems[destination].name}.")
                 return
             else:
-                duration=self.game.send_ships(identifiers,destination)
+                warning=black_holes.risk(self.game,destination)
+                if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination):
+                    self.confirm("Unsafe black-hole expedition",f"{count} ships → {self.game.systems[destination].name}. "+warning,
+                                 "Send anyway",lambda:self.send_map_fleet(destination,True))
+                    return
+                duration=self.game.send_ships(identifiers,destination,accept_black_hole_risk=accept_black_hole_risk)
                 message=f"Course set to {self.game.systems[destination].name} · {turn_label(duration)} · Click {self.game.systems[origin].name} to cancel before End Turn."
             self.fleet_anchor_id=identifiers[0]
             self.fleet_selected_ids=set(identifiers)
@@ -541,6 +549,8 @@ class App:
             self.toast(exc,True)
 
     def select_star(self,system_id):
+        if not black_holes.charted(self.game,self.game.systems[system_id]):
+            return
         self.sensor_contact_id=None
         if self.map_order_ids:
             self.send_map_fleet(system_id)
@@ -570,11 +580,16 @@ class App:
             self.game.selected_planet=None
             self.focus="send_course"
 
-    def send_course(self):
+    def send_course(self,accept_black_hole_risk=False):
         try:
             ship=self.game.ship_at(self.route_ship_id)
             destination=self.game.selected_system
-            duration=self.game.send_ship(ship.id,destination)
+            warning=black_holes.risk(self.game,destination)
+            if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination):
+                self.confirm("Unsafe black-hole expedition",f"{ship.name} → {self.game.systems[destination].name}. "+warning,
+                             "Send anyway",lambda:self.send_course(True))
+                return
+            duration=self.game.send_ship(ship.id,destination,accept_black_hole_risk=accept_black_hole_risk)
             self.go("fleets")
             if self.save_game(autosave=True):
                 self.toast(f"{ship.name} en route to {self.game.systems[destination].name} · {turn_label(duration)}")
@@ -2217,9 +2232,17 @@ class App:
         draw_fuel_range(self,MAP)
         labels=star_label_rects(self,MAP)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
-        for star in state.systems:
+        for star in black_holes.chart_systems(state):
             x,y=self.star_pos(star)
             selected=star.id==preview
+            if star.kind==black_holes.KIND:
+                black_hole_view.draw_marker(self,star,selected)
+                label=labels[star.id]
+                if abs(label.x-(x+34))+abs(label.y-(y-9))>12:
+                    tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
+                    pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
+                draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
+                continue
             known=state.known_system(star.id)
             color=STAR_COLORS[star.kind] if known else tuple(c//3 for c in STAR_COLORS[star.kind])
             pg.draw.circle(self.canvas,tuple(c//8 for c in color),(int(x),int(y)),14)
@@ -2275,6 +2298,8 @@ class App:
             known=state.known_system(star.id)
             targets=sum(not p.colonized and state.can_settle(p) for p in known.worlds) if known else 0
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
+            if black_holes.at(state,star.id):
+                detail="FATAL APPROACH: this ship will be lost." if black_holes.risk(state,star.id) else "Safe approach unlocked. Guardian combat possible."
             hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony · Range {state.fuel_range()} ly. "
                   +("Colonize closer worlds or research fuel tanks." if blocked else detail))
         ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None

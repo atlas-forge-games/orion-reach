@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.48.0
+# Orion Reach — Python prototype 0.49.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,44 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.49: black-hole expeditions
+
+New galaxies contain **two black holes in Compact**, or **three in Standard and
+Expansive**. The Maw, The Silent Eye and The Broken Crown have distinct map
+sprites and detailed artwork in the right-hand overview. They replace remote,
+unsettled map locations; homeworlds and ordinary guardian worlds are preserved.
+
+- **Gravitic Mapping**, Computers VI, costs **540 RP** and reveals their names
+  and positions. Its alternative is Planetary Data Vaults (+2 RP per colony).
+- **Event Horizon Navigation**, Computers VII, costs **760 RP** and permits safe
+  approaches. It includes detection even if Mapping was skipped. Its alternative
+  is Quantum Research Archives (+4 RP per colony). Earlier choices are unchanged.
+- Without safe navigation, **every ship arriving at a black hole is lost**. The
+  game asks for confirmation before queuing an unsafe expedition. Departure can
+  be cancelled before End Turn. Navigation must be completed before the arrival
+  turn; research finishing during that turn comes too late. Ordinary routes
+  crossing the area remain safe, and normal colony-based fuel range still applies.
+- A safe expedition encounters a **legendary guardian** at an ancient site
+  outside the event horizon. Fight or retreat using normal tactical combat;
+  damage persists. The first empire to defeat it recovers **one unique relic**.
+  Defeat, retreat and later visits grant no additional reward.
+- **Turn news** reports mapped sites, lost expeditions and recovered relics.
+  **Info → Legendary artifacts** marks relics in your collection. Ownership is
+  saved; flagship/capital placement and all proposed bonuses remain planned.
+
+Computer empires research navigation and assemble military expeditions under
+the same rules. The Observer sees all sites from the beginning. Otherwise,
+black holes remain hidden until researched, even with fog of war disabled.
+Mapping alone does not reveal the guardian's condition or the site's relic.
+Black holes do not count toward the council's settled solar-system threshold.
+
+**Start a new campaign to get black holes.** Older saves retain their original
+worlds and Ascension requirements. Saves now use format **34**, including
+expeditions in flight, ongoing guardian battles, claims and news read markers.
+There are no new dependencies.
+
+![Black-hole expedition overview](screenshots/black_holes_maw.png)
 
 ## New in v0.48: galaxy map artwork
 
@@ -32,8 +70,9 @@ Each entry includes the original artwork, its legend, a proposed flagship or
 capital placement, and proposed bonuses and special powers. The artwork and
 **Planned content** notice stay visible while long descriptions scroll.
 
-These entries are previews only: artifacts cannot be discovered, owned,
-transported, equipped or activated, and grant no current gameplay bonuses.
+Originally these entries were previews only. As of v0.49, black-hole expeditions
+can recover relics into an empire's collection. Transport, equipment and
+activation remain planned, and relics grant no current gameplay bonuses.
 Combat, economy, research, council votes, AI and campaign saves are unchanged.
 The encyclopedia now contains 176 entries across 11 categories.
 

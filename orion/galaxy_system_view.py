@@ -21,6 +21,10 @@ def allegiance(game, system):
 
 
 def draw_system_panel(app, star):
+    from . import black_holes, black_hole_view
+    if star.kind == black_holes.KIND:
+        black_hole_view.draw_panel(app, star)
+        return
     surface, game = app.canvas, app.game
     r = SYSTEM_PANEL
     x, right, width = r.x+24, r.right-24, r.w-48

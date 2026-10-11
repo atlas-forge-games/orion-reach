@@ -41,7 +41,7 @@ def fund(game, *identifiers):
 class TierRulesTests(unittest.TestCase):
     def test_every_path_has_two_choices_per_tier_and_no_dead_ends(self):
         self.assertLessEqual(set(LEGACY_TECHNOLOGIES), set(TECHNOLOGIES))
-        self.assertEqual([len(branch_tiers(b)) for b in BRANCHES], [3, 4, 8, 5, 7, 2, 5, 2, 6])
+        self.assertEqual([len(branch_tiers(b)) for b in BRANCHES], [3, 4, 8, 5, 7, 2, 7, 2, 6])
         for branch in BRANCHES:
             tiers = branch_tiers(branch)
             self.assertEqual(tiers, tuple(range(1, len(tiers)+1)))

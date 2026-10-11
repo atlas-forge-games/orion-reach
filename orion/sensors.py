@@ -6,6 +6,7 @@ import math
 
 from .fleets import group_fleets
 from .navigation import hostile, position
+from . import black_holes
 
 CONTACT_LIFETIME = 20
 MAX_CONTACTS_PER_EMPIRE = 200
@@ -55,6 +56,8 @@ def distance(x, y, system):
 
 
 def detection_level(game, ship, owner="player", coverage=None):
+    if not black_holes.fleet_charted(game, ship, owner):
+        return 0
     if ship.owner == owner or not game.fog_of_war:
         return 3
     if not ship.in_transit and game.system_visible(ship.system_id, owner):

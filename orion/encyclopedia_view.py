@@ -5,6 +5,7 @@ import pygame as pg
 
 from .command_buttons import command_icon
 from .encyclopedia import CATEGORIES, Article, articles, category_articles
+from . import black_holes
 from .ui import ASSETS, CYAN, GOLD, INK, LINE, MUTED, font, panel, shorten, text, wrapped_lines
 
 ARTICLES_PER_PAGE = 8
@@ -106,6 +107,7 @@ def draw_info(app):
     last = (len(entries)-1)//ARTICLES_PER_PAGE
     page = min(app.info_page, last)
     start = page*ARTICLES_PER_PAGE
+    collected = {"artifact_"+site.relic_id for site in black_holes.collection(app.game)}
     text(surface, CATEGORIES[app.info_category].upper(), (314, 247), 10, GOLD, "mono")
     text(surface, str(len(entries)), (602, 247), 10, MUTED, "mono", right=True)
     for index, article in enumerate(entries[start:start+ARTICLES_PER_PAGE]):
@@ -115,13 +117,16 @@ def draw_info(app):
         selected = article.id == app.info_article
         active = app.is_active(button)
         panel(surface, rect, (20, 38, 49) if selected or active else (10, 23, 32), GOLD if active else CYAN if selected else LINE)
+        if article.id in collected:
+            pg.draw.rect(surface, GOLD, (rect.x+2, rect.y+5, 3, rect.h-10))
         title = wrapped_lines(article.title, rect.w-24, 14)
         if len(title) > 1:
             for row, line in enumerate(title):
                 text(surface, line, (rect.x+12, rect.y+6+row*18), 14, INK)
         else:
             text(surface, article.title, (rect.x+12, rect.y+6), 14, INK)
-            text(surface, shorten(article.subtitle, rect.w-24, 10), (rect.x+12, rect.y+29), 10, MUTED)
+            subtitle = "Recovered · In your collection" if article.id in collected else article.subtitle
+            text(surface, shorten(subtitle, rect.w-24, 10), (rect.x+12, rect.y+29), 10, GOLD if article.id in collected else MUTED)
     app.button("info_previous", "← Prev", (308, 751, 91, 35), lambda: app.change_info_page(-1), enabled=page>0)
     text(surface, f"{page+1} / {last+1}", (458, 762), 12, MUTED, "mono", right=True)
     app.button("info_next", "Next →", (515, 751, 93, 35), lambda: app.change_info_page(1), enabled=page<last)
@@ -134,8 +139,9 @@ def draw_info(app):
     if article.planned:
         notice = pg.Rect(660, area.top-64, 692, 50)
         panel(surface, notice, (29, 29, 24), (112, 96, 61))
-        text(surface, "PLANNED CONTENT · PROPOSED EFFECTS", (674, notice.y+7), 10, GOLD, "mono_bold")
-        text(surface, "Encyclopedia preview. Artifacts cannot be obtained or equipped yet.",
+        owned = article.id in collected
+        text(surface, ("RECOVERED RELIC" if owned else "LEGENDARY RELIC")+" · PROPOSED EFFECTS", (674, notice.y+7), 10, GOLD, "mono_bold")
+        text(surface, ("In your collection." if owned else "Recover relics at black holes.")+" Placement and bonuses remain planned.",
              (674, notice.y+26), 13, INK)
     else:
         pg.draw.line(surface, LINE, (660, area.top-15), (1352, area.top-15))

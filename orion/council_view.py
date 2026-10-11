@@ -1,6 +1,6 @@
 """Galactic Council census, public ballots and the accept-or-defy decision."""
 
-from .council import ELECTION_INTERVAL, settled_systems
+from .council import ELECTION_INTERVAL, settled_systems, solar_systems
 from .race_art import draw_race_portrait
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
@@ -42,7 +42,7 @@ def draw_council(app):
                   "You may refuse a foreign emperor, continuing the campaign at war with every surviving computer empire.",
                   (88, 496), 1170, 19, MUTED, 31)
         if "council" in game.victory_conditions and (not game.fog_of_war or game.is_observer):
-            text(surface, f"{settled_systems(game)} / {len(game.systems)} systems settled", (88, 695), 21, CYAN)
+            text(surface, f"{settled_systems(game)} / {solar_systems(game)} solar systems settled", (88, 695), 21, CYAN)
     else:
         title = (f"Your delegation controls {election.weights['player']} votes. Choose an empire below." if election.status == "voting" else
                  f"{game.empire_name_for(election.winner)} has been elected." if election.winner else

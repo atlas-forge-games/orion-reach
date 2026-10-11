@@ -11,6 +11,8 @@ from orion.model import new_game as make_game
 def fixed_start_game(*args, **kwargs):
     kwargs.setdefault("random_starts", False)
     kwargs.setdefault("with_tombs", False)
+    # These fixtures isolate earlier features. Black-hole tests use new_game directly.
+    kwargs.setdefault("with_black_holes", False)
     game = make_game(*args, **kwargs)
     # These established-colony fixtures retain their historical job allocation.
     # Resource/power tests exercise the real new-game allocation directly.
@@ -89,6 +91,7 @@ def legacy_economy(game):
         state.legacy_starships = True
         state.legacy_arsenal = True
         state.legacy_fuel = True
+        state.legacy_black_holes = True
     for system in game.systems:
         for planet in system.worlds:
             planet.miners = 0
@@ -108,6 +111,7 @@ def legacy_research_payload(data):
     """Represent research in pre-v28 fixtures using their real three-field schema."""
     if isinstance(data, dict):
         if {"completed", "active", "progress", "legacy_count", "legacy_active"} <= set(data):
+            data.pop("legacy_black_holes", None)
             data.pop("legacy_fuel", None)
             data.pop("legacy_arsenal", None)
             data.pop("legacy_starships", None)

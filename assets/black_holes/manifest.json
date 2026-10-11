@@ -1,0 +1,26 @@
+{
+  "maw": {
+    "file": "maw-v1.png",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "sha256": "e1fe7003e195939df2e871514a63d96becebad9c1590f74756c9b3bc08f4360e"
+  },
+  "silent_eye": {
+    "file": "silent_eye-v1.png",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "sha256": "6c7f94ed02ff07cd587075b9f22d980b0bb5ba7e286cb642a5ac04cfc0600e92"
+  },
+  "broken_crown": {
+    "file": "broken_crown-v1.png",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "sha256": "a45549a548c8d36708661eb6977318990f7085e0899c91c6039ef5467e0783e0"
+  }
+}

@@ -9,7 +9,8 @@ from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .galaxy_labels import LABEL_FAMILY, LABEL_SIZE, system_label
-from . import monsters, navigation
+from . import monsters, navigation, black_holes
+from .black_hole_view import hit_rect
 from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
 from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
@@ -75,24 +76,27 @@ def marker_layout(bounds, star_obstacles, preferred_rects, padding=4):
 
 def star_label_rects(app, map_rect):
     """Keep names inside the rectangular map and clear of nearby stars and names."""
-    obstacles = [pg.Rect(int(x)-15, int(y)-15, 30, 30)
-                 for x, y in (app.star_pos(s) for s in app.game.systems)]
+    systems = black_holes.chart_systems(app.game)
+    obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
+                 pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
+                 for s in systems]
     obstacles += [pg.Rect(map_rect.x, map_rect.y, map_rect.w, 34), guardian_legend_rect(map_rect)]
     preferred = []
-    for system in app.game.systems:
+    for system in systems:
         x, y = app.star_pos(system)
         width, height = font(LABEL_SIZE, LABEL_FAMILY).size(system_label(app.game, system))
-        preferred.append((round(x)+17, round(y)-9, width, height))
+        preferred.append((round(x)+(34 if system.kind == black_holes.KIND else 17), round(y)-9, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))
-    return {s.id: pg.Rect(rect) for s, rect in zip(app.game.systems, rectangles)}
+    return {s.id: pg.Rect(rect) for s, rect in zip(systems, rectangles)}
 
 
 def star_obstacles(app, map_rect, radius=21):
     obstacles = []
-    for system in app.game.systems:
+    for system in black_holes.chart_systems(app.game):
         x, y = app.star_pos(system)
-        obstacles.append(pg.Rect(int(x)-radius, int(y)-radius, radius*2, radius*2))
+        obstacles.append(hit_rect((x, y)) if system.kind == black_holes.KIND else
+                         pg.Rect(int(x)-radius, int(y)-radius, radius*2, radius*2))
     # Label bounds include the bold glyphs; keep a one-pixel gap on each side.
     obstacles.extend(rect.inflate(2, 2) for rect in star_label_rects(app, map_rect).values())
     return obstacles
@@ -132,10 +136,14 @@ def draw_map_guardians(app, map_rect):
         rect = guardian_legend_rect(map_rect)
         panel(app.canvas, rect, (9, 17, 28))
         text(app.canvas, "GUARDIANS", (rect.x+10, rect.y+7), 9, MUTED, "mono")
-        for index, kind in enumerate(kinds):
-            x = rect.x+119+index*199
-            draw_guardian_symbol(app.canvas, (x, rect.centery), kind, 15)
-            text(app.canvas, monsters.MONSTERS[kind].name, (x+17, rect.y+6), 11, monsters.MONSTERS[kind].color)
+        entries = [(kind, monsters.MONSTERS[kind].name) for kind in kinds if kind in monsters.PRIZE_WORLDS]
+        if any(kind not in monsters.PRIZE_WORLDS for kind in kinds):
+            entries.append(("crown_sentinel", "Legendary guardian"))
+        spacing = (rect.w-130)//max(4, len(entries))
+        for index, (kind, name) in enumerate(entries):
+            x, y = rect.x+119+index*spacing, rect.centery
+            draw_guardian_symbol(app.canvas, (x, y), kind, 15)
+            text(app.canvas, name, (x+17, y-6), 10 if len(entries)>4 else 11, monsters.MONSTERS[kind].color)
     app.canvas.set_clip(old_clip)
 
 
@@ -282,6 +290,10 @@ def draw_fleet_popup(app):
         danger = not blocked and monsters.known_status(game, target.id) == "alive"
         if danger:
             hint = f"Danger: {monsters.at(game, target.id).spec.name} · combat on arrival"
+        if black_holes.risk(game, target.id):
+            danger, hint = True, "FATAL APPROACH · All selected ships will be lost"
+        elif black_holes.at(game, target.id) and not keeping and not danger:
+            hint = "Black-hole expedition · Guardian combat possible"
     else:
         if own and (first.route_bonus or first.approach_slow):
             details = f"Route +{first.route_bonus}% · Approach −{first.approach_slow:g}%"
@@ -401,7 +413,9 @@ def draw_order_panel(app, target):
         detail = ("Unsurveyed · Planets unknown" if known is None else
                   "Last survey · Activity unknown" if not game.system_visible(target.id) else
                   f"{enemy_count} rival ships in orbit" if enemy_count else f"{targets} worlds available to settle")
-        text(surface, detail, (1075, 565), 13, MUTED)
+        if black_holes.at(game, target.id):
+            detail = "FATAL APPROACH · Fleet will be lost" if black_holes.risk(game, target.id) else "Black-hole expedition · Guardian site"
+        text(surface, detail, (1075, 565), 13, RED if black_holes.risk(game, target.id) else MUTED)
     else:
         text(surface, "Ships are still in orbit.", (1075, 530), 15, MUTED)
     paragraph(surface, "Click a destination star to send. Hover to preview travel time. Escape returns to ship selection.",

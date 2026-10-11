@@ -41,7 +41,7 @@ def discover(game, identifier, owner="player"):
 def finish_branches(game, owner="player", old=False):
     for branch in BRANCHES:
         for tier in branch_tiers(branch):
-            if not old or branch != "materials" or tier <= 4:
+            if not old or (branch != "materials" or tier <= 4) and (branch != "computers" or tier <= 5):
                 discover(game, choices(branch, tier)[0].id, owner)
 
 
@@ -51,6 +51,7 @@ def v32_data(game):
     for empire in [data, data["opponent"], *data["other_opponents"].values()]:
         if empire:
             empire["technology"].pop("legacy_fuel")
+            empire["technology"].pop("legacy_black_holes")
     return data
 
 
@@ -157,6 +158,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
         # Old goals should not cause AI to skip optional research forever when Science is off.
         game.opponent.technology.legacy_arsenal = True
         game.opponent.technology.legacy_fuel = True
+        game.opponent.technology.legacy_black_holes = True
         count = sum(len(branch_tiers(b)) for b in BRANCHES)
         for _ in range(count+3):
             ai.research_choice(game)
@@ -194,6 +196,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
     def test_v32_ascension_goal_progress_and_finished_gate_survive(self):
         game = campaign(with_ai=False)
         game.technology.legacy_fuel = True
+        game.technology.legacy_black_holes = True
         finish_branches(game, old=True)
         game.research = 1234
         game.choose_research("ascension_theory")
@@ -268,6 +271,8 @@ class AdvancedFuelTests(unittest.TestCase):
     def test_new_campaigns_include_tank_tiers_in_ascension_requirements(self):
         game = campaign(with_ai=False)
         finish_branches(game, old=True)
+        for identifier in ("planetary_data_vaults", "quantum_research_archives"):
+            discover(game, identifier)
         self.assertIsNotNone(game.research_error("ascension_theory"))
         for identifier in ("cryogenic_fuel_tanks", "molecular_shipbuilding", "nanostructured_materials"):
             discover(game, identifier)

@@ -5,12 +5,16 @@ import pygame as pg
 
 from .monsters import MONSTERS
 
+LEGENDARY_SHAPES = {"ashen_leviathan": "void_leviathan", "horizon_warden": "crystal_guardian",
+                    "crown_sentinel": "ancient_sentinel"}
+
 
 def draw_guardian_symbol(surface, center, kind, size=18):
     """Distinct silhouettes stay legible at map scale, including without colour."""
     x, y = center
     scale = size/20
     color = MONSTERS[kind].color
+    kind = LEGENDARY_SHAPES.get(kind, kind)
     dark = tuple(c//3 for c in color)
     def points(values):
         return [(round(x+a*scale), round(y+b*scale)) for a, b in values]
@@ -38,6 +42,7 @@ def draw_guardian_symbol(surface, center, kind, size=18):
 
 
 def draw_monster(surface, center, kind, scale=1.0, facing=-1):
+    kind = LEGENDARY_SHAPES.get(kind, kind)
     x, y = center
     direction = -1 if facing == 1 else 1
     def point(a, b):

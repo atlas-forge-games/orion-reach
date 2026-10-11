@@ -533,7 +533,10 @@ def begin_combat(game, system_id, owner="player", target=None):
 
 
 def begin_guardian_combat(game, system_id, owner="player"):
+    from . import black_holes
     require(game.strategy_error(owner) is None, game.strategy_error(owner))
+    require(not black_holes.at(game, system_id) or black_holes.can_explore(game, owner),
+            "Event Horizon Navigation is required to approach this guardian.")
     guardian = alive_at(game, system_id)
     fleet = game.fleet_at(system_id, owner) if owner in game.owners else []
     require(guardian is not None and bool(fleet), "A guardian and an arriving fleet are required.")
@@ -612,7 +615,9 @@ def resolve(game, status, destination=None):
         from .exploration import refresh
         refresh(game)
         if not guardian.alive:
-            state.record(f"{guardian.spec.name} destroyed. Protected worlds are open for colonization.")
+            from .black_holes import at as black_hole_at
+            outcome = "The relic site is secured." if black_hole_at(game, guardian.system_id) else "Protected worlds are open for colonization."
+            state.record(f"{guardian.spec.name} destroyed. {outcome}")
         if reward:
             state.record(reward)
             if state.sides[0] in game.opponents:
@@ -835,12 +840,13 @@ def hold(game, ship_id, owner="player"):
 
 
 def retreat_destination(game, owner="player"):
+    from . import black_holes
     if game.combat is None or owner not in OWNERS:
         return None
     if not any(s.kind not in ("missile_base", "combat_drone") for s in game.combat.fleet(owner)):
         return None
     origin = game.systems[game.combat.system_id]
-    safe = [s for s in game.systems if s.id != origin.id and
+    safe = [s for s in game.systems if s.id != origin.id and s.kind != black_holes.KIND and
             game.within_fuel_range(s.id, owner) and
             known_status(game, s.id, owner) != "alive" and
             not (game.system_visible(s.id, owner) and game.foreign_fleet(s.id, owner))]

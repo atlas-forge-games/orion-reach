@@ -64,7 +64,7 @@ class GuardianRulesTests(unittest.TestCase):
                 self.assertEqual(len(game.guardians), count)
                 self.assertEqual(len({g.kind for g in game.guardians}), count)
                 if size != "Compact":
-                    self.assertEqual({g.kind for g in game.guardians}, set(monsters.MONSTERS))
+                    self.assertEqual({g.kind for g in game.guardians}, set(monsters.PRIZE_WORLDS))
                 homes = [game.systems[0], game.systems[game.opponent.home_system]]
                 prizes = {(g.system_id, pid) for g in game.guardians
                           for pid in monsters.prize_ids(game.systems[g.system_id], g)}
@@ -395,6 +395,7 @@ class GuardianSaveTests(unittest.TestCase):
             expected.research_state(owner).legacy_starships = True
             expected.research_state(owner).legacy_arsenal = True
             expected.research_state(owner).legacy_fuel = True
+            expected.research_state(owner).legacy_black_holes = True
         expected.combat.accuracy = False
         expected.combat.shots_fired = 0
         self.assertEqual(GameState.from_dict(legacy_research_payload(legacy), version=16), expected)
@@ -519,7 +520,7 @@ class GuardianUITests(unittest.TestCase):
                 fleet(app.game, guardian.system_id, ("scout", "frigate"), owner)
         app.go("galaxy")
         app.render()
-        self.assertEqual(set(known_guardian_kinds(app.game)), set(monsters.MONSTERS))
+        self.assertEqual(set(known_guardian_kinds(app.game)), set(monsters.PRIZE_WORLDS))
         symbols = [rect for _, rect, _ in guardian_markers(app, MAP)]
         self.assertEqual(len(symbols), 4)
         for index, rect in enumerate(symbols):

@@ -14,6 +14,10 @@ STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
 
 
 def draw_system_intelligence(app, star):
+    from . import black_holes, black_hole_view
+    if star.kind == black_holes.KIND:
+        black_hole_view.draw_panel(app, star)
+        return
     surface, game = app.canvas, app.game
     known = game.known_system(star.id)
     live = game.system_visible(star.id)

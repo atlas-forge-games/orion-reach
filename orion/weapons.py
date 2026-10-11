@@ -58,4 +58,5 @@ DRONE_ROLES = {
     "bomber": ("Bomber", "bomber_torpedo", 3),
 }
 CAPITAL_TARGETS = frozenset(("cruiser", "battleship", "carrier", "titan", "missile_base",
-                           "space_serpent", "crystal_guardian", "ancient_sentinel", "void_leviathan"))
+                           "space_serpent", "crystal_guardian", "ancient_sentinel", "void_leviathan",
+                           "ashen_leviathan", "horizon_warden", "crown_sentinel"))

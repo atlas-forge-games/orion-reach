@@ -257,6 +257,7 @@ class CouncilSaveTests(unittest.TestCase):
         for empire in [data, data["opponent"], *data["other_opponents"].values()]:
             if empire:
                 empire["technology"].pop("legacy_fuel")
+                empire["technology"].pop("legacy_black_holes")
         restored = GameState.from_dict(data, version=31)
         self.assertEqual(restored.council, council.CouncilState())
         convene(restored)
@@ -303,14 +304,15 @@ class AscensionCostTests(unittest.TestCase):
 
     def test_previous_cost_bounds_are_validated_before_migration(self):
         from test_victory import discover_branches
-        game = new_game(seed=2408, with_ai=False, with_tombs=False)
+        game = new_game(seed=2408, with_ai=False, with_tombs=False, with_black_holes=False)
         discover_branches(game)
         game.research = 499
         game.choose_research('ascension_theory')
         data = game.to_dict()
         data.pop('council')
         data['technology'].pop('legacy_fuel')
-        data['technology']['completed'] = [t for t in data['technology']['completed'] if TECHNOLOGIES[t].branch != 'materials' or TECHNOLOGIES[t].tier <= 4]
+        data['technology'].pop('legacy_black_holes')
+        data['technology']['completed'] = [t for t in data['technology']['completed'] if (TECHNOLOGIES[t].branch != 'materials' or TECHNOLOGIES[t].tier <= 4) and (TECHNOLOGIES[t].branch != 'computers' or TECHNOLOGIES[t].tier <= 5)]
         restored = GameState.from_dict(data, version=31)
         self.assertEqual(restored.technology.progress, 499)
         self.assertEqual(restored.technology.project_cost, 5000)

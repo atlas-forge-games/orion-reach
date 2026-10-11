@@ -1,4 +1,4 @@
-"""Planned relics for the encyclopedia only, with no gameplay effect definitions."""
+"""Relic lore and proposed powers; collecting a relic does not activate bonuses."""
 
 from dataclasses import dataclass
 

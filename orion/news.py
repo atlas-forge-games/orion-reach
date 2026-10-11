@@ -1,7 +1,7 @@
 """A common view of private tomb-world and raid dispatches."""
 
 from dataclasses import dataclass
-from . import raiding, tomb_worlds
+from . import raiding, tomb_worlds, black_holes
 
 
 @dataclass(frozen=True)
@@ -31,6 +31,9 @@ def entries(game):
              for e in game.observer_events]
     rows += [NewsEntry(e.turn, None, None, "GALACTIC COUNCIL", "The Galactic Council", e.message, e.id)
              for e in game.council.events]
+    rows += [NewsEntry(e.turn, e.system_id, None, "LEGENDARY RELIC" if e.kind == "recovered" else "BLACK HOLE",
+                      black_holes.headline(game, e), black_holes.detail(game, e), e.id)
+             for e in black_holes.events(game)]
     return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id if n.system_id is not None else -1,
                                       n.planet_id if n.planet_id is not None else -1), reverse=True)
 
@@ -39,7 +42,8 @@ def unread_count(game):
     return (tomb_worlds.unread_count(game)+sum(r.id > game.raid_news_read for r in raiding.news(game))+
             sum(r.observer == "player" and r.id > game.sensor_news_read for r in game.sensor_reports)+
             sum(e.id > game.observer_news_read for e in game.observer_events)+
-            sum(e.id > game.council.news_read for e in game.council.events))
+            sum(e.id > game.council.news_read for e in game.council.events)+
+            sum(e.id > game.black_holes.news_read for e in black_holes.events(game)))
 
 
 def mark_read(game):
@@ -48,3 +52,4 @@ def mark_read(game):
     game.sensor_news_read = game.next_sensor_report_id-1
     game.observer_news_read = game.next_observer_event_id-1
     game.council.news_read = game.council.next_event_id-1
+    game.black_holes.news_read = len(game.black_holes.events)

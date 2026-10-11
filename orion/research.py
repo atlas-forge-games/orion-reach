@@ -111,6 +111,10 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("predictive_fire_control", "computers", 4, "Predictive Fire Control", "+20 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.", targeting_accuracy=20),
     tech("subspace_scanners", "computers", 5, "Subspace Scanners", "Detect fleets within 20 ly; reveal classes and movement direction. Unlock sensor arrays. Replaces earlier sensor range.", sensor_range=20, sensor_level=3),
     tech("quantum_targeting", "computers", 5, "Quantum Targeting", "+30 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.", targeting_accuracy=30),
+    tech("gravitic_mapping", "computers", 6, "Gravitic Mapping", "Reveal the names and locations of black holes. Approaching them remains fatal without Event Horizon Navigation.", black_hole_detection=1),
+    tech("planetary_data_vaults", "computers", 6, "Planetary Data Vaults", "+2 research per colony.", colony_research=2),
+    tech("event_horizon_navigation", "computers", 7, "Event Horizon Navigation", "Reveal black holes and safely approach their ancient relic sites. A legendary guardian must be defeated to recover each relic. Includes Gravitic Mapping.", black_hole_detection=1, black_hole_navigation=1),
+    tech("quantum_research_archives", "computers", 7, "Quantum Research Archives", "+4 research per colony.", colony_research=4),
     tech("destroyer_hulls", "starships", 1, "Destroyer Hulls", "Unlock destroyers: agile torpedo warships. Build the standard class or create a custom design."),
     tech("modular_spaceframes", "starships", 1, "Modular Spaceframes", "New ships cost 10% fewer Resources. Does not unlock destroyers.", ship_discount=10),
     tech("cruiser_hulls", "starships", 2, "Cruiser Hulls", "Unlock cruisers: versatile warships with eight module spaces. Does not unlock skipped hull classes."),
@@ -148,6 +152,7 @@ TECHNOLOGIES = {t.id: t for t in (
 FUEL_TANK_TECHNOLOGIES = ("lightweight_alloys", "composite_structures", "cryogenic_fuel_tanks",
                           "antimatter_fuel_tanks", "spatial_compression_tanks")
 FUEL_EXPANSION_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values() if t.branch == "materials" and t.tier >= 5)
+BLACK_HOLE_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values() if t.branch == "computers" and t.tier >= 6)
 
 
 def branch_tiers(branch):
@@ -184,6 +189,8 @@ class ResearchState:
     legacy_arsenal: bool = False
     # Pre-v0.44 campaigns keep their original Ascension requirements.
     legacy_fuel: bool = False
+    # Existing campaigns keep the five-tier Computers requirement for Ascension.
+    legacy_black_holes: bool = False
 
     @property
     def bonuses(self):
@@ -202,6 +209,7 @@ class ResearchState:
             "planetary_shielding": ("barrier_fields",),
             "gravity_wells": ("subspace_interdiction",),
             "deep_space_radar": ("long_range_sensors", "subspace_scanners"),
+            "gravitic_mapping": ("event_horizon_navigation",),
         }
         return any(t in self.completed for t in (identifier, *upgrades.get(identifier, ())))
 
@@ -220,7 +228,8 @@ class ResearchState:
     def required_tiers(self, branch):
         return tuple(t for t in branch_tiers(branch)
                      if (not self.legacy_arsenal or t <= LEGACY_TIER_LIMITS[branch])
-                     and (not self.legacy_fuel or branch != "materials" or t <= 4))
+                     and (not self.legacy_fuel or branch != "materials" or t <= 4)
+                     and (not self.legacy_black_holes or branch != "computers" or t <= 5))
 
     def next_tier(self, branch):
         if self.active and TECHNOLOGIES[self.active].branch == branch:
@@ -282,7 +291,7 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=33):
+    def from_dict(cls, data, *, version=34):
         keys = {"completed", "active", "progress"}
         if version >= 28:
             keys |= {"legacy_count", "legacy_active"}
@@ -292,16 +301,20 @@ class ResearchState:
             keys.add("legacy_arsenal")
         if version >= 33:
             keys.add("legacy_fuel")
+        if version >= 34:
+            keys.add("legacy_black_holes")
         if not isinstance(data, dict) or set(data) != keys:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
         if version < 28:
             validate_legacy(completed, active, progress)
-            return cls(completed.copy(), active, progress, len(completed), active is not None, True, True, True)
+            return cls(completed.copy(), active, progress, len(completed), active is not None, True, True, True, True)
         if not isinstance(completed, list) or len(completed) > len(TECHNOLOGIES):
             raise ValueError("Invalid discoveries")
         if version < 33 and any(isinstance(t, str) and t in FUEL_EXPANSION_TECHNOLOGIES for t in (*completed, active)):
             raise ValueError("Fuel technology is newer than this save format")
+        if version < 34 and any(isinstance(t, str) and t in BLACK_HOLE_TECHNOLOGIES for t in (*completed, active)):
+            raise ValueError("Black-hole technology is newer than this save format")
         count, legacy_active = data["legacy_count"], data["legacy_active"]
         if type(count) is not int or not 0 <= count <= len(completed) or type(legacy_active) is not bool:
             raise ValueError("Invalid legacy research")
@@ -315,8 +328,12 @@ class ResearchState:
         legacy_fuel = data["legacy_fuel"] if version >= 33 else True
         if type(legacy_fuel) is not bool:
             raise ValueError("Invalid legacy fuel research goal")
+        legacy_black_holes = data["legacy_black_holes"] if version >= 34 else True
+        if type(legacy_black_holes) is not bool:
+            raise ValueError("Invalid legacy black-hole research goal")
         state = cls(completed[:count], legacy_count=count, legacy_starships=legacy_starships,
-                    legacy_arsenal=legacy_arsenal, legacy_fuel=legacy_fuel)
+                    legacy_arsenal=legacy_arsenal, legacy_fuel=legacy_fuel,
+                    legacy_black_holes=legacy_black_holes)
         for identifier in completed[count:]:
             if state.choice_error(identifier):
                 raise ValueError("Invalid technology sequence")

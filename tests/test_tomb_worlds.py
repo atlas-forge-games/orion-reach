@@ -336,6 +336,7 @@ class SaveTests(unittest.TestCase):
             game.research_state(owner).legacy_starships = True
             game.research_state(owner).legacy_arsenal = True
             game.research_state(owner).legacy_fuel = True
+            game.research_state(owner).legacy_black_holes = True
         data = game.to_dict()
         data.pop("tomb_worlds")
         data.pop("news_read_turn")

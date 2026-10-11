@@ -4,6 +4,7 @@ import pygame as pg
 
 from .empires import DEFAULT_PALETTE, EMPIRE_IDS, empire_color
 from .ui import FAINT, INK, MUTED, font, text_image
+from . import black_holes
 
 LABEL_SIZE = 13
 LABEL_FAMILY = "mono_bold"
@@ -11,6 +12,8 @@ LABEL_FAMILY = "mono_bold"
 
 def system_label(game, system):
     name = system.name.upper()
+    if system.kind == black_holes.KIND:
+        return name
     return name if game.known_system(system.id) is not None else f"({name})"
 
 
@@ -30,6 +33,8 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE):
     owners = known_owners(game, system)
     face = font(LABEL_SIZE, LABEL_FAMILY)
     width = face.size(label)[0]
+    if site := black_holes.at(game, system.id):
+        return label, ((0, width, black_holes.SITES[site.kind][2]),)
     if not owners:
         color = INK if selected else FAINT if label.startswith("(") else MUTED
         return label, ((0, width, color),)

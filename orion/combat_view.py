@@ -224,6 +224,10 @@ def draw_combat(app):
             spec = MONSTERS[battle.guardian.kind]
             caption = (f"{spec.reward}. Protected worlds are now open for colonization. Bring colony ships to settle them."
                        if battle.status == "player_victory" else "The guardian still controls this system. Assemble a stronger fleet to claim its worlds.")
+            from . import black_holes
+            if site := black_holes.at(game, battle.system_id):
+                caption = (f"Recovered {black_holes.RELICS[site.relic_id].name}. View it in Info → Legendary artifacts. Placement and bonuses remain planned."
+                           if battle.status == "player_victory" else "The legendary guardian still protects the relic. A retreat or defeat earns no reward.")
             if battle.status == "player_victory" and spec.research_reward:
                 caption = f"Ancient ruins recovered: +{spec.research_reward} RP added to your research. The rich world is now open for colonization."
         paragraph(surface, caption, (x, 377), 302, 15, MUTED, 26)

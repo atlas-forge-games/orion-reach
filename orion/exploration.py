@@ -2,6 +2,7 @@
 
 from dataclasses import asdict, dataclass, field, replace
 import random
+from . import black_holes
 
 @dataclass(frozen=True)
 class DiscoverySpec:
@@ -132,6 +133,9 @@ def observed_systems(game, owner="player"):
 
 
 def is_visible(game, system_id, owner="player"):
+    if game.systems[system_id].kind == black_holes.KIND:
+        return ((game.is_observer and owner == "player") or
+                (black_holes.can_detect(game, owner) and system_id in observed_systems(game, owner)))
     return (game.is_observer and owner == "player") or not game.fog_of_war or system_id in observed_systems(game, owner)
 
 
@@ -140,6 +144,8 @@ def is_explored(game, system_id, owner="player"):
 
 
 def ship_visible(game, ship, owner="player"):
+    if not black_holes.fleet_charted(game, ship, owner):
+        return False
     # No interstellar sensors in this first version: enemy voyages remain hidden.
     return (game.is_observer and owner == "player") or ship.owner == owner or not game.fog_of_war or (
         not ship.in_transit and is_visible(game, ship.system_id, owner))
@@ -159,7 +165,7 @@ def known_system(game, system_id, owner="player"):
 
 
 def record_survey(game, system_id, owner):
-    if not game.fog_of_war:
+    if not game.fog_of_war and game.systems[system_id].kind != black_holes.KIND:
         return False
     survey = game.exploration.survey(system_id, owner)
     worlds = [asdict(p) for p in game.systems[system_id].worlds]
@@ -172,7 +178,7 @@ def record_survey(game, system_id, owner):
 
 def discovery_at(game, system_id):
     # The contents depend only on the galaxy seed, even if a rival is added later.
-    if system_id == 0:
+    if system_id == 0 or game.systems[system_id].kind == black_holes.KIND:
         return None
     rng = random.Random(f"orion-discovery-v1:{game.seed}:{system_id}")
     return rng.choice(tuple(DISCOVERIES)) if rng.random() < .35 else None
@@ -187,8 +193,8 @@ def refresh(game, *, recover=False):
     for owner in game.owners:
         for sid in observed_systems(game, owner):
             observe(game, sid, owner)
-        if game.fog_of_war:
-            for sid in sorted(observed_systems(game, owner)):
+        for sid in sorted(observed_systems(game, owner)):
+            if game.fog_of_war or game.systems[sid].kind == black_holes.KIND:
                 if record_survey(game, sid, owner) and owner == "player":
                     system = game.systems[sid]
                     messages.append(f"Surveyed {system.name}: {system.planets} planets")

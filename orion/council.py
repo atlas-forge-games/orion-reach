@@ -66,13 +66,18 @@ def settled_systems(game):
     return sum(any(p.colonized and p.owner in game.owners for p in s.worlds) for s in game.systems)
 
 
+def solar_systems(game):
+    from .black_holes import KIND
+    return sum(s.kind != KIND for s in game.systems)
+
+
 def schedule(game):
     """Check the formation threshold at the end of a completed strategic turn."""
     if "council" not in game.victory_conditions:
         return
     state = game.council
     if (not state.formed_turn and game.result is None and len(world_votes(game)) >= 2
-            and 2*settled_systems(game) >= len(game.systems)):
+            and 2*settled_systems(game) >= solar_systems(game)):
         state.formed_turn = state.next_vote_turn = game.turn
         state.record(game.turn, "Half the galaxy's solar systems are settled. The Galactic Council has been formed.")
 
