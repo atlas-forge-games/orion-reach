@@ -10,7 +10,6 @@ from .colony_view import building_effect, compact_yields, turn_label
 from .ground_combat import forces, training_limit
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
-from .empires import empire_color
 from .planet_art import draw_planet
 from .population import BASE_FOOD, WORKER_ROLES, farmer_output
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
@@ -112,7 +111,7 @@ def system_panel(app, game, system, planet, live):
         if selected or app.is_active(button):
             pg.draw.rect(app.canvas, (24, 43, 50), button.rect)
         draw_planet(app.canvas, world, (46, y+(14 if row_height>=30 else 8)), 23 if row_height>=30 else 17, f"{game.seed}:{system.id}:{world.id}")
-        color = empire_color(world.owner) if world.owner else MUTED
+        color = app.empire_color(world.owner) if world.owner else MUTED
         label = world.name if row_height>=30 else f"{world.name} · {world.biome}"
         text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
         if row_height>=30:

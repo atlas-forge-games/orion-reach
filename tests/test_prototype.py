@@ -83,7 +83,7 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(list(self.store.saves_dir.glob(".writing-*")),[])
 
     def test_settings_validate_types_and_recover_from_damage(self):
-        settings={"fullscreen":False,"animated_background":False,"sound":False,"music":False,"music_volume":40}
+        settings={"fullscreen":False,"animated_background":False,"sound":False,"music":False,"music_volume":40,"galaxy_palette":"blue"}
         self.store.save_settings(settings)
         self.assertEqual(self.store.load_settings(),settings)
         (self.store.root/"settings.json").write_text('{"sound":"false","fullscreen":true}')

@@ -3,7 +3,6 @@
 import pygame as pg
 
 from .empire import summarize_empire
-from .empires import empire_color
 from .first_contact import known
 from .fleets import group_fleets
 from .galaxy_hud import RESOURCE_RECTS, draw_galaxy_commands
@@ -75,7 +74,7 @@ def report_rows(app):
                       f"{first.turns_remaining} turns" if first.has_course else "—")
             detail = " · ".join(f"{sum(s.kind == k for s in ships)} {next(s for s in ships if s.kind == k).name.rsplit(' ', 1)[0]}"
                                 for k in dict.fromkeys(s.kind for s in ships))
-            rows.append((values, detail, empire_color(first.owner),
+            rows.append((values, detail, app.empire_color(first.owner),
                          lambda sid=first.id: app.open_map_fleet(sid)))
     else:
         columns = {
@@ -89,7 +88,7 @@ def report_rows(app):
         }[tab]
         for owner, empire in game.opponents.items():
             summary = summarize_empire(game, owner=owner)
-            state, color = empire.technology, empire_color(owner)
+            state, color = empire.technology, app.empire_color(owner)
             if tab == "empires":
                 values = (empire.name, str(summary.colonies), f"{summary.population} B", f"{empire.credits:,}",
                           f"{empire.resources:,}", str(summary.industry), str(summary.research), str(len(game.ships_owned_by(owner))))

@@ -2,7 +2,6 @@
 
 from .empire import colony_rows, summarize_empire
 from .rival_selector import draw_rival_selector
-from .empires import empire_color
 from .production import PROJECTS
 from .races import RACES
 from .research import TECHNOLOGIES
@@ -14,7 +13,7 @@ def draw_rival(app):
     surface, game = app.canvas, app.game
     owner = app.selected_rival_id()
     rival = game.opponents.get(owner)
-    color = empire_color(owner)
+    color = app.empire_color(owner)
     if game.fog_of_war and not game.is_observer and rival:
         draw_surveyed_rival(app)
         return
@@ -111,7 +110,7 @@ def draw_surveyed_rival(app):
     surface, game = app.canvas, app.game
     owner = app.selected_rival_id()
     rival = game.opponents.get(owner)
-    color = empire_color(owner)
+    color = app.empire_color(owner)
     app.chrome("RIVAL INTELLIGENCE")
     app.button("rival_back", "←  Back", (64, 124, 225, 46), lambda: app.go(app.rival_return), "ghost")
     app.button("rival_galaxy", "Galaxy map", (307, 124, 174, 46), lambda: app.go("galaxy"), "ghost")

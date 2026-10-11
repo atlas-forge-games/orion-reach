@@ -10,7 +10,6 @@ from .building_art import draw_building_art
 from .buildings import BUILDINGS
 from .economy import building_status
 from .model import PLAYER, RIVAL
-from .empires import empire_color
 from .production import SHIP_TYPES
 from .ui import CYAN, GOLD, INK, MUTED, RIVAL_COLOR, panel, text, text_image
 
@@ -203,7 +202,7 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
             caption = "Last observed"
         button = app.button("surface_"+item.asset_id, "", hit, action, "hotspot", enabled=live)
         active = app.is_active(button)
-        color = GOLD if active or not item.completed else empire_color(planet.owner)
+        color = GOLD if active or not item.completed else app.empire_color(planet.owner)
         pg.draw.ellipse(surface, (29, 39, 41), (target.x+5, target.bottom-19, target.w-10, 23))
         if not item.completed:
             pg.draw.ellipse(surface, GOLD, (target.x, target.bottom-24, target.w, 29), 1)

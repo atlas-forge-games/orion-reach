@@ -3,7 +3,6 @@
 import pygame as pg
 
 from . import monsters, defenses
-from .empires import empire_color
 from .planet_art import draw_planet, draw_star
 from .system_views import STAR_COLORS, visual_seed
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, arrow, panel, paragraph, shorten, text
@@ -56,7 +55,9 @@ def draw_system_panel(app, star):
                    lambda: app.open_system(star.id), "command", icon="system")
         return
 
-    text(surface, shorten(allegiance(game, known), width, 11), (x, 290), 11, CYAN if live else MUTED)
+    owners = {world.owner for world in known.worlds if world.colonized}
+    owner_color = app.empire_color(next(iter(owners))) if len(owners) == 1 else MUTED
+    text(surface, shorten(allegiance(game, known), width, 11), (x, 290), 11, owner_color)
     summaries = [("WORLDS", len(worlds)), ("HABITABLE", sum(p.habitability >= 35 for p in worlds)),
                  ("COLONIES", sum(p.colonized for p in worlds)), ("POPULATION", f"{sum(p.workforce for p in worlds)} B")]
     strip = pg.Rect(x-6, 313, width+12, 43)
@@ -83,7 +84,7 @@ def draw_system_panel(app, star):
         panel(surface, row, (23, 43, 53) if active else (16, 32, 42) if selected else (9, 22, 31),
               GOLD if active else (58, 90, 103) if selected else LINE)
         draw_planet(surface, world, (row.x+23, row.centery), 35, visual_seed(game, known, world))
-        color = empire_color(world.owner) if world.colonized else MUTED
+        color = app.empire_color(world.owner) if world.colonized else MUTED
         if world.colonized:
             pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
         left = row.x+48
@@ -134,7 +135,7 @@ def draw_system_panel(app, star):
     target = app.rival_id if app.rival_id in opponents else opponents[0] if opponents else None
     reason = game.engagement_error(star.id, target=target) if can_face else None
     if can_face and len(opponents) > 1 and guardian_status != "alive":
-        text(surface, shorten("Target: "+game.empire_name_for(target), width-39, 10), (x, 687), 10, empire_color(target))
+        text(surface, shorten("Target: "+game.empire_name_for(target), width-39, 10), (x, 687), 10, app.empire_color(target))
         button = app.button("galaxy_target_next", "", (right-28, 682, 28, 21),
                             lambda: app.change_rival(1, star.id), "hotspot")
         arrow(surface, button.rect.center, GOLD)

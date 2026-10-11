@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.44.0
+# Orion Reach — Python prototype 0.45.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,25 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.45: clearer galaxy colors
+
+The galaxy uses **saturated blue** for your empire by default, gray for neutral
+system names, brighter rival colors, stronger ownership rings and **13 px bold
+system names**. Unexplored systems retain parentheses; shared systems retain
+their names split into each known owner's color.
+
+Open **Settings → Galaxy colors** from the main menu or the in-game Menu to
+choose **Saturated blue** or **Saturated turquoise**. The choice applies
+immediately and is saved automatically for future sessions and campaigns.
+Ownership labels, rings, fleet markers and empire colors in other views use
+the same choice. Generic interface accents retain the blue UI color.
+
+Existing settings without a color preference use saturated blue. This is a
+display preference; existing campaigns load normally with no save migration.
+
+![Galaxy with saturated blue](screenshots/galaxy_saturated_blue.png)
+![Galaxy color preferences](screenshots/galaxy_color_settings.png)
 
 ## New in v0.44: victory options and advanced fuel tanks
 

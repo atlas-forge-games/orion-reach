@@ -2,10 +2,11 @@
 
 import pygame as pg
 
-from .empires import EMPIRE_IDS, empire_color
+from .empires import DEFAULT_PALETTE, EMPIRE_IDS, empire_color
 from .ui import FAINT, INK, MUTED, font, text_image
 
-LABEL_SIZE = 11
+LABEL_SIZE = 13
+LABEL_FAMILY = "mono_bold"
 
 
 def system_label(game, system):
@@ -19,7 +20,7 @@ def known_owners(game, system):
     return tuple(owner for owner in EMPIRE_IDS if owner in owners)
 
 
-def label_bands(game, system, selected=False):
+def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE):
     """Return text and (pixel start, pixel end, colour) runs in stable empire order.
 
     Share whole letters as evenly as possible. When a very short name has more
@@ -27,7 +28,7 @@ def label_bands(game, system, selected=False):
     """
     label = system_label(game, system)
     owners = known_owners(game, system)
-    face = font(LABEL_SIZE, "mono")
+    face = font(LABEL_SIZE, LABEL_FAMILY)
     width = face.size(label)[0]
     if not owners:
         color = INK if selected else FAINT if label.startswith("(") else MUTED
@@ -39,12 +40,12 @@ def label_bands(game, system, selected=False):
         edges = [face.size(label[:offset])[0] for offset in offsets]
     else:
         edges = [i*width//count for i in range(count+1)]
-    return label, tuple((edges[i], edges[i+1], empire_color(owner)) for i, owner in enumerate(owners))
+    return label, tuple((edges[i], edges[i+1], empire_color(owner, palette)) for i, owner in enumerate(owners))
 
 
-def draw_system_label(surface, game, system, pos, selected=False):
-    label, bands = label_bands(game, system, selected)
+def draw_system_label(surface, game, system, pos, selected=False, palette=DEFAULT_PALETTE):
+    label, bands = label_bands(game, system, selected, palette)
     x, y = pos
     for left, right, color in bands:
-        rendered = text_image(label, LABEL_SIZE, color, "mono")
+        rendered = text_image(label, LABEL_SIZE, color, LABEL_FAMILY)
         surface.blit(rendered, (x+left, y), pg.Rect(left, 0, right-left, rendered.get_height()))

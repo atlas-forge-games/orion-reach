@@ -14,7 +14,7 @@ import pygame as pg
 
 from orion.empires import empire_color
 from orion.exploration import refresh
-from orion.galaxy_labels import draw_system_label, label_bands, system_label
+from orion.galaxy_labels import LABEL_FAMILY, LABEL_SIZE, draw_system_label, label_bands, system_label
 from orion.model import Ship
 from orion.ui import font, text_image
 from scenarios import fixed_start_game as new_game
@@ -75,7 +75,7 @@ class GalaxyHudTests(unittest.TestCase):
         for planet, owner in zip(target.worlds, ("player", "rival", "player", None)):
             planet.owner, planet.colonized = owner, owner is not None
         label, bands = label_bands(game, target)
-        split, width = font(11, "mono").size("OBE")[0], font(11, "mono").size("OBERON")[0]
+        split, width = font(LABEL_SIZE, LABEL_FAMILY).size("OBE")[0], font(LABEL_SIZE, LABEL_FAMILY).size("OBERON")[0]
         self.assertEqual(label, "OBERON")
         self.assertEqual(bands, ((0, split, empire_color("player")),
                                  (split, width, empire_color("rival"))))
@@ -96,7 +96,9 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertTrue(all(right > left for left, right, color in bands))
         target.worlds[-1].owner, target.worlds[-1].colonized = None, False
         target.name = "Oberon"
-        self.assertEqual([right-left for left, right, _ in label_bands(game, target)[1]], [14, 14, 14])
+        edges = [font(LABEL_SIZE, LABEL_FAMILY).size(target.name.upper()[:index])[0] for index in (0, 2, 4, 6)]
+        self.assertEqual([right-left for left, right, _ in label_bands(game, target)[1]],
+                         [end-start for start, end in zip(edges, edges[1:])])
 
     def test_dock_and_top_research_open_each_screen_at_multiple_window_sizes(self):
         routes = {"open_empire": "empire", "open_diplomacy": "diplomacy", "open_research": "research",
@@ -165,7 +167,7 @@ class GalaxyHudTests(unittest.TestCase):
         self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5)
         labels = star_label_rects(self.app, MAP)
         for i, (identifier, rect) in enumerate(labels.items()):
-            self.assertEqual(rect.size, font(11, "mono").size(system_label(self.app.game, self.app.game.systems[identifier])))
+            self.assertEqual(rect.size, font(LABEL_SIZE, LABEL_FAMILY).size(system_label(self.app.game, self.app.game.systems[identifier])))
             self.assertTrue(MAP.contains(rect))
             self.assertEqual(rect.collidelist(list(labels.values())[i+1:]), -1)
 

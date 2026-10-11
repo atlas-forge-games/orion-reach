@@ -79,7 +79,7 @@ def draw_battlefield(app):
         cx, cy = project(position)
         if not BOARD.inflate(CELL, CELL).collidepoint(cx, cy):
             continue
-        color = MONSTERS[ship.kind].color if ship.owner == MONSTER else CYAN if ship.owner == PLAYER else RIVAL_COLOR
+        color = MONSTERS[ship.kind].color if ship.owner == MONSTER else app.empire_color(ship.owner)
         is_selected = ship.id == app.combat_ship_id
         targetable = bool(selected and player_turn and ship.owner != PLAYER
                           and battle.can_fire(selected) and in_range(selected, ship))
@@ -125,14 +125,14 @@ def draw_combat(app):
     panel(surface, (1060, 119, 348, 627), (11, 22, 31), GOLD if player_turn else LINE)
     x = 1080
     text(surface, "FLEET STATUS", (x, 137), 10, GOLD, "mono", 1)
-    text(surface, f"YOUR UNITS  {len(battle.fleet(PLAYER))}", (x, 164), 12, CYAN, "mono")
+    text(surface, f"YOUR UNITS  {len(battle.fleet(PLAYER))}", (x, 164), 12, app.empire_color(PLAYER), "mono")
     text(surface, f"ENEMY  {len(battle.fleet(enemy))}", (1388, 164), 12, RIVAL_COLOR, "mono", right=True)
     pg.draw.line(surface, LINE, (x, 193), (1388, 193))
     if active:
         ship, target = battle.ship(app.combat_ship_id), battle.ship(app.combat_target_id)
         text(surface, "SELECTED SHIP", (x, 210), 10, MUTED, "mono", 1)
         if ship:
-            ship_icon(surface, (1357, 254), .85, CYAN, kind=ship.kind, facing=1)
+            ship_icon(surface, (1357, 254), .85, app.empire_color(ship.owner), kind=ship.kind, facing=1)
             text(surface, shorten(ship.name, 235, 21), (x, 235), 21, INK)
             text(surface, f"HULL  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
             if ship.design:

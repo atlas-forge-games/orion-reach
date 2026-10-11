@@ -1,7 +1,6 @@
 """Galactic Council census, public ballots and the accept-or-defy decision."""
 
 from .council import ELECTION_INTERVAL, settled_systems
-from .empires import empire_color
 from .race_art import draw_race_portrait
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
@@ -56,7 +55,7 @@ def draw_council(app):
         tally = election.tally
         for index, owner in enumerate(sorted(election.weights, key=lambda o: (-election.weights[o], o))):
             y = 348+index*56
-            color = empire_color(owner)
+            color = app.empire_color(owner)
             panel(surface, (64, y, 1312, 50), border=color if owner == election.winner else LINE)
             draw_race_portrait(surface, game._empire(owner).race_id, (76, y+5, 40, 40))
             text(surface, shorten(game.empire_name_for(owner), 350, 17), (129, y+6), 17, INK)

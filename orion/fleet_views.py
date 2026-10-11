@@ -34,7 +34,7 @@ def draw_shipyard(app):
     for index, spec in enumerate(list(SHIP_TYPES.values())[app.shipyard_catalog_page*4:app.shipyard_catalog_page*4+4]):
         y = 306+index*122
         panel(surface, (64, y, 585, 116))
-        ship_icon(surface, (112, y+44), 1.0, kind=spec.id)
+        ship_icon(surface, (112, y+44), 1.0, app.empire_color(PLAYER), kind=spec.id)
         text(surface, spec.name, (153, y+7), 23, INK, "title")
         description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
                        if spec.id == "colony_ship" else f"{spec.hull} hull · {TROOP_STRENGTH} invasion attack · Unarmed"
@@ -124,7 +124,7 @@ def draw_fleets(app):
     for i, ship in enumerate(ships[start:start+FLEETS_PER_PAGE]):
         y = 429+i*87
         panel(surface, (64, y, 1312, 76))
-        ship_icon(surface, (100, y+38), .67, kind=ship.kind)
+        ship_icon(surface, (100, y+38), .67, app.empire_color(ship.owner), kind=ship.kind)
         text(surface, ship.name, (142, y+12), 18, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
@@ -153,7 +153,7 @@ def draw_fleets(app):
                    enabled=not ship.in_transit and game.engagement_error(ship.system_id) is None)
     if not ships:
         panel(surface, (64, 429, 1312, 248))
-        ship_icon(surface, (144, 526), 1.6)
+        ship_icon(surface, (144, 526), 1.6, app.empire_color(PLAYER))
         text(surface, "Your fleet starts at a shipyard.", (248, 467), 28, INK, "title")
         paragraph(surface, "Build scouts to explore, colony ships to settle, frigates to fight, or troop transports to invade. Finished ships appear here in orbit.",
                   (250, 515), 995, 16, MUTED, 27)

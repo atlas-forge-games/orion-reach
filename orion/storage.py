@@ -10,10 +10,11 @@ import sys
 import tempfile
 
 from .model import GameState, SaveError
+from .empires import DEFAULT_PALETTE, PLAYER_PALETTES
 
 SAVE_VERSION = 33
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
-                    "music": True, "music_volume": 30}
+                    "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE}
 
 
 def default_data_dir():
@@ -65,6 +66,9 @@ class Storage:
                 volume = data.get("music_volume")
                 if type(volume) is int and 0 <= volume <= 100:
                     result["music_volume"] = volume
+                palette = data.get("galaxy_palette")
+                if type(palette) is str and palette in PLAYER_PALETTES:
+                    result["galaxy_palette"] = palette
         except (OSError, ValueError, RecursionError):
             pass
         return result

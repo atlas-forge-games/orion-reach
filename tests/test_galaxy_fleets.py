@@ -274,7 +274,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
 
     def test_dense_map_badges_remain_inside_map_and_clear_of_stars_and_other_badges(self):
         from orion.app import MAP
-        from orion.galaxy_fleet_view import fleet_markers
+        from orion.galaxy_fleet_view import fleet_markers, star_label_rects
         for seed in (0, 2408, 100):
             game = new_game(seed=seed, galaxy_size="Expansive")
             game.ships = [Ship(i+1, "frigate", system.id, owner=owner)
@@ -283,11 +283,13 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
             markers = fleet_markers(self.app, MAP)
             self.assertEqual(len(markers), 144)
             rects = [rect for _, rect, _ in markers]
+            labels = list(star_label_rects(self.app, MAP).values())
             stars = [pg.Rect(int(x)-18, int(y)-18, 36, 36)
                      for x, y in (self.app.star_pos(s) for s in game.systems)]
             for index, rect in enumerate(rects):
                 self.assertTrue(MAP.contains(rect))
                 self.assertEqual(rect.collidelist(stars), -1)
+                self.assertEqual(rect.collidelist(labels), -1)
                 self.assertEqual(rect.collidelist(rects[:index]), -1)
 
     def test_clicking_origin_cancels_selected_departures_and_preserves_unselected_ships(self):

@@ -57,8 +57,8 @@ def draw_ground(app):
         attacker, defender = "player", planet.owner
         attack_left, defence_left = None, None
         captured, rounds = outcome.captured, outcome.rounds
-    attack_color = CYAN if attacker == "player" else RED
-    defence_color = CYAN if defender == "player" else RED
+    attack_color = app.empire_color("player") if attacker == "player" else RED
+    defence_color = app.empire_color("player") if defender == "player" else RED
     success_color = attack_color if captured else defence_color
     app.chrome("GROUND OPERATIONS")
     title = f"Awakening on {planet.name}" if tomb else f"Raid on {planet.name}" if raid else f"Invasion of {planet.name}"

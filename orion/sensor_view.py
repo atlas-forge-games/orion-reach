@@ -4,7 +4,6 @@ import math
 import pygame as pg
 
 from . import sensors
-from .empires import empire_color
 from .galaxy_fleet_view import fleet_markers, guardian_markers, guardian_legend_rect, marker_layout, star_obstacles
 from .galaxy_system_view import SYSTEM_PANEL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
@@ -41,7 +40,7 @@ def contact_markers(app, rect):
 
 def draw_contacts(app, rect):
     for contact, badge, anchor in contact_markers(app, rect):
-        color = empire_color(contact.owner) if contact.active else FAINT
+        color = app.empire_color(contact.owner) if contact.active else FAINT
         pg.draw.line(app.canvas, color, anchor, badge.center, 1)
         pg.draw.circle(app.canvas, color, (round(anchor[0]), round(anchor[1])), 4, 1)
         if contact.heading is not None and contact.active:
@@ -64,7 +63,7 @@ def draw_contact_panel(app):
     if contact is None:
         paragraph(surface, "This contact has expired. Last sightings are retained for 20 turns.", (x, 262), width, 17, MUTED, 27)
     else:
-        color = empire_color(contact.owner)
+        color = app.empire_color(contact.owner)
         paragraph(surface, game.empire_name_for(contact.owner), (x, 240), width, 23, color, 29)
         text(surface, "LIVE TRACK" if contact.active else f"LAST SEEN · TURN {contact.seen_turn}", (x, 320), 12, CYAN if contact.active else GOLD, "mono")
         nearby = game.systems[contact.near_system]

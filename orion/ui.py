@@ -7,21 +7,24 @@ from typing import Callable
 import pygame as pg
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
-INK = (232, 235, 228)
-MUTED = (133, 151, 160)
-FAINT = (77, 98, 112)
-GOLD = (215, 182, 125)
-CYAN = (119, 194, 207)
-RIVAL_COLOR = (231, 150, 100)
-LINE = (38, 57, 68)
+INK = (241, 246, 241)
+MUTED = (172, 172, 172)
+FAINT = (140, 140, 140)
+GOLD = (236, 199, 137)
+CYAN = (44, 164, 255)
+RIVAL_COLOR = (250, 168, 111)
+LINE = (50, 72, 88)
 PANEL = (10, 20, 29)
-RED = (235, 140, 130)
+RED = (255, 157, 145)
 
 
 @lru_cache(maxsize=64)
 def font(size, family="sans"):
-    filename = {"sans": "DejaVuSans.ttf", "mono": "DejaVuSansMono.ttf", "title": "DejaVuSerif.ttf"}[family]
-    return pg.font.Font(str(ASSETS / "fonts" / filename), size)
+    filename = {"sans": "DejaVuSans.ttf", "mono": "DejaVuSansMono.ttf",
+                "mono_bold": "DejaVuSansMono.ttf", "title": "DejaVuSerif.ttf"}[family]
+    face = pg.font.Font(str(ASSETS / "fonts" / filename), size)
+    face.set_bold(family == "mono_bold")
+    return face
 
 
 @lru_cache(maxsize=768)

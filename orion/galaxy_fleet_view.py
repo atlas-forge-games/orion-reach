@@ -8,8 +8,7 @@ from .fleet_art import ship_icon
 from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
-from .empires import empire_color
-from .galaxy_labels import LABEL_SIZE, system_label
+from .galaxy_labels import LABEL_FAMILY, LABEL_SIZE, system_label
 from . import monsters, navigation
 from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
 from .designs import HULLS
@@ -29,8 +28,8 @@ def draw_fuel_range(app, map_rect):
     for system in game.colony_systems():
         x, y = app.star_pos(system)
         ellipse = pg.Rect(round(x-map_rect.x-rx), round(y-map_rect.y-ry), round(rx*2), round(ry*2))
-        pg.draw.ellipse(overlay, (67, 158, 174, 19), ellipse)
-        pg.draw.ellipse(overlay, (119, 194, 207, 90), ellipse, 1)
+        pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 19), ellipse)
+        pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 90), ellipse, 1)
     app.canvas.blit(overlay, map_rect.topleft)
     speed = 100*SHIP_SPEED*(1+game.ship_speed_bonus()/100)
     text(app.canvas, f"FUEL RANGE {game.fuel_range()} LY  ·  SPEED {speed:g} LY/TURN",
@@ -82,19 +81,20 @@ def star_label_rects(app, map_rect):
     preferred = []
     for system in app.game.systems:
         x, y = app.star_pos(system)
-        width, height = font(LABEL_SIZE, "mono").size(system_label(app.game, system))
+        width, height = font(LABEL_SIZE, LABEL_FAMILY).size(system_label(app.game, system))
         preferred.append((round(x)+17, round(y)-9, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))
     return {s.id: pg.Rect(rect) for s, rect in zip(app.game.systems, rectangles)}
 
 
-def star_obstacles(app, map_rect):
+def star_obstacles(app, map_rect, radius=21):
     obstacles = []
     for system in app.game.systems:
         x, y = app.star_pos(system)
-        obstacles.append(pg.Rect(int(x)-21, int(y)-21, 42, 42))
-    obstacles.extend(rect.inflate(4, 4) for rect in star_label_rects(app, map_rect).values())
+        obstacles.append(pg.Rect(int(x)-radius, int(y)-radius, radius*2, radius*2))
+    # Label bounds include the bold glyphs; keep a one-pixel gap on each side.
+    obstacles.extend(rect.inflate(2, 2) for rect in star_label_rects(app, map_rect).values())
     return obstacles
 
 
@@ -141,7 +141,9 @@ def draw_map_guardians(app, map_rect):
 
 def fleet_markers(app, map_rect):
     """Visible fleet badges avoid stars, guardian symbols and their legend."""
-    obstacles = star_obstacles(app, map_rect)
+    # Reserve each star's full click target; extra halo padding can consume the
+    # last free badge positions on a 72-system map with multiple fleets per star.
+    obstacles = star_obstacles(app, map_rect, radius=18)
     obstacles.extend(rect.inflate(4, 4) for _, rect, _ in guardian_markers(app, map_rect))
     if known_guardian_kinds(app.game):
         obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
@@ -153,7 +155,7 @@ def fleet_markers(app, map_rect):
         nx, ny = navigation.position(app.game, ship)
         x, y = map_rect.x+40+nx*(map_rect.w-80), map_rect.y+32+ny*(map_rect.h-64)
         preferred = (x+12, y+12) if ship.has_course else (x+18, y+23)
-        width = max(44, 32+font(11, "mono").size(str(len(ships)))[0])
+        width = max(44, 32+font(11, "mono_bold").size(str(len(ships)))[0])
         anchors.append((x, y))
         preferred_rects.append(tuple(pg.Rect(*preferred, width, 23)))
     rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), tuple(preferred_rects), padding=2)
@@ -168,7 +170,7 @@ def draw_map_fleets(app, map_rect):
     for ships, _, _ in markers:
         ship = ships[0]
         if ship.has_course:
-            color = empire_color(ship.owner)
+            color = app.empire_color(ship.owner)
             origin = app.star_pos(game.systems[ship.system_id])
             end = app.star_pos(game.systems[ship.destination])
             pg.draw.line(surface, tuple(c//3 for c in color), origin, end, 1)
@@ -183,7 +185,7 @@ def draw_map_fleets(app, map_rect):
             blocked = target != ship.system_id and not keeping and not game.within_fuel_range(target)
             pg.draw.line(surface, RED if blocked else GOLD, origin, end, 2)
     for ships, rect, anchor in markers:
-        color = empire_color(ships[0].owner)
+        color = app.empire_color(ships[0].owner)
         selected = any(s.id in order_ids for s in ships)
         if selected:
             color = GOLD
@@ -191,7 +193,7 @@ def draw_map_fleets(app, map_rect):
         pg.draw.circle(surface, color, (int(anchor[0]), int(anchor[1])), 2)
         panel(surface, rect, (11, 27, 36), color)
         ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
-        text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono")
+        text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono_bold")
         app.button(f"map_fleet_{ships[0].id}", "", rect,
                    lambda sid=ships[0].id: app.open_map_fleet(sid), "hotspot")
     surface.set_clip(clip)
@@ -214,7 +216,7 @@ def draw_fleet_popup(app):
     bottom = y+120+len(visible)*48
     rect = pg.Rect(x, y, width, bottom-y+150)
     app.fleet_popup_rect = rect
-    panel(surface, rect, (10, 24, 34), empire_color(first.owner))
+    panel(surface, rect, (10, 24, 34), app.empire_color(first.owner))
     app.button("fleet_popup_panel", "", rect, lambda: None, "hotspot")
     origin = game.systems[first.system_id]
     title = "Fleet in transit" if first.in_transit else f"Fleet at {origin.name}"
@@ -232,7 +234,7 @@ def draw_fleet_popup(app):
         app.button("fleet_select_all", "All", (x+18, y+78, 85, 29), app.select_fleet_ships)
         app.button("fleet_select_none", "Clear", (x+114, y+78, 95, 29), lambda: app.select_fleet_ships(False))
     else:
-        text(surface, shorten(game.empire_name_for(first.owner), 288, 13), (x+18, y+85), 13, empire_color(first.owner))
+        text(surface, shorten(game.empire_name_for(first.owner), 288, 13), (x+18, y+85), 13, app.empire_color(first.owner))
     for index, ship in enumerate(visible):
         top = y+120+index*48
         selected = ship.id in app.fleet_selected_ids
@@ -243,7 +245,7 @@ def draw_fleet_popup(app):
             pg.draw.rect(surface, CYAN if selected else FAINT, box, 1)
             if selected:
                 pg.draw.lines(surface, CYAN, False, [(x+29, top+20), (x+32, top+24), (x+38, top+16)], 2)
-        ship_icon(surface, (x+63, top+20), .37, empire_color(first.owner), kind=ship.kind)
+        ship_icon(surface, (x+63, top+20), .37, app.empire_color(first.owner), kind=ship.kind)
         text(surface, ship.name, (x+88, top+4), 14, INK)
         text(surface, f"{ship.hull}/{ship.max_hull} hull", (x+89, top+24), 10, MUTED)
         if editable:
@@ -253,7 +255,7 @@ def draw_fleet_popup(app):
     app.button("fleet_page_previous", "←", (x+203, bottom+4, 47, 27), lambda: app.change_manifest_page(-1), enabled=app.manifest_page>0)
     app.button("fleet_page_next", "→", (x+262, bottom+4, 47, 27), lambda: app.change_manifest_page(1), enabled=app.manifest_page<pages-1)
     text(surface, f"{len(app.fleet_selected_ids)} / {len(ships)} selected" if editable else f"{len(ships)} ships · Read only",
-         (x+18, bottom+43), 12, empire_color(first.owner))
+         (x+18, bottom+43), 12, app.empire_color(first.owner))
     danger = False
     if editable:
         target = game.systems[app.fleet_route_target()]
@@ -309,7 +311,7 @@ def draw_fleet(app):
                 if first.in_transit else f"{origin.name} orbit · {'Select the ships you want to send' if own else 'Rival fleet · Inspection only'}")
     text(surface, location, (66, 246), 15, MUTED)
     text(surface, shorten(game.empire_name_for(first.owner), 415, 16), (1376, 250), 16,
-         empire_color(first.owner), right=True)
+         app.empire_color(first.owner), right=True)
     app.button("fleet_select_all", "Select all", (64, 289, 155, 37), app.select_fleet_ships, enabled=commandable)
     app.button("fleet_select_none", "Clear", (233, 289, 123, 37), lambda: app.select_fleet_ships(False), enabled=commandable)
     caption = f"{len(app.fleet_selected_ids)} of {len(ships)} selected" if commandable else f"{len(ships)} ships · Read only"
@@ -325,7 +327,7 @@ def draw_fleet(app):
             pg.draw.rect(surface, CYAN if selected else FAINT, box, 1, border_radius=2)
             if selected:
                 pg.draw.lines(surface, CYAN, False, [(86, y+30), (91, y+35), (98, y+25)], 2)
-        ship_icon(surface, (139, y+31), .55, empire_color(first.owner), kind=ship.kind)
+        ship_icon(surface, (139, y+31), .55, app.empire_color(first.owner), kind=ship.kind)
         text(surface, ship.name, (190, y+8), 19, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.ship_attack(ship)} damage / volley" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
@@ -335,7 +337,7 @@ def draw_fleet(app):
         text(surface, role, (191, y+36), 12, MUTED)
         text(surface, f"{ship.hull} / {ship.max_hull} hull", (918, y+11), 13, INK, right=True)
         pg.draw.rect(surface, LINE, (774, y+39, 144, 4), border_radius=2)
-        pg.draw.rect(surface, empire_color(first.owner), (774, y+39, round(144*ship.hull/ship.max_hull), 4), border_radius=2)
+        pg.draw.rect(surface, app.empire_color(first.owner), (774, y+39, round(144*ship.hull/ship.max_hull), 4), border_radius=2)
         if commandable:
             app.button(f"fleet_select_{ship.id}", "", rect, lambda sid=ship.id: app.toggle_fleet_ship(sid), "hotspot")
     last = max(0, (len(ships)-1)//FLEET_SHIPS_PER_PAGE)

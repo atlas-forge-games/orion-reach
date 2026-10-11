@@ -42,7 +42,7 @@ from .designer_view import draft, draw_designer
 from .setup_view import draw_race_select, draw_setup
 from .races import SETUP_RACES as RACES
 from .observer_view import draw_observer, draw_observer_header
-from .empires import empire_color
+from .empires import PLAYER_PALETTES, empire_color
 from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
@@ -1049,6 +1049,15 @@ class App:
     def change_music_volume(self,delta):
         self.settings["music_volume"]=max(0,min(100,self.settings["music_volume"]+delta))
         self.audio.apply_music(self.settings["music"],self.settings["music_volume"])
+        self.save_preferences()
+
+    def empire_color(self,owner):
+        return empire_color(owner,self.settings["galaxy_palette"])
+
+    def set_galaxy_palette(self,palette):
+        if palette not in PLAYER_PALETTES:
+            return
+        self.settings["galaxy_palette"]=palette
         self.save_preferences()
 
     def save_preferences(self):
@@ -2084,22 +2093,32 @@ class App:
                  ("sound","Interface sounds","A quiet tone when you activate a control."),
                  ("music","Background music",self.audio.music_description)]
         for i,(key,label,description) in enumerate(options):
-            y=322+i*94
-            panel(self.canvas,(256,y,928,82))
+            y=302+i*79
+            panel(self.canvas,(256,y,928,72))
             text(self.canvas,label,(280,y+12),21,INK)
-            text(self.canvas,description,(280,y+47),14,MUTED)
-            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+18,135,46),lambda k=key:self.toggle_setting(k))
+            text(self.canvas,description,(280,y+43),14,MUTED)
+            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+13,135,46),lambda k=key:self.toggle_setting(k))
             if self.settings[key]:
-                pg.draw.circle(self.canvas,CYAN,(1132,y+41),4)
+                pg.draw.circle(self.canvas,CYAN,(1132,y+36),4)
         volume=self.settings["music_volume"]
         muted=not self.settings["music"] or volume==0
-        panel(self.canvas,(256,698,928,85))
-        text(self.canvas,"Music volume"+(" · Muted" if muted else ""),(280,711),21,INK)
-        text(self.canvas,"Use − / + to adjust in 10% steps.",(280,748),14,MUTED)
-        self.button("music_quieter","−",(880,714,52,46),lambda:self.change_music_volume(-10),enabled=volume>0)
+        panel(self.canvas,(256,618,928,72))
+        text(self.canvas,"Music volume"+(" · Muted" if muted else ""),(280,630),21,INK)
+        text(self.canvas,"Use − / + to adjust in 10% steps.",(280,661),14,MUTED)
+        self.button("music_quieter","−",(880,631,52,46),lambda:self.change_music_volume(-10),enabled=volume>0)
         label=f"{volume}%"
-        text(self.canvas,label,(1018-font(23).size(label)[0]//2,722),23,CYAN)
-        self.button("music_louder","+",(1104,714,52,46),lambda:self.change_music_volume(10),enabled=volume<100)
+        text(self.canvas,label,(1018-font(23).size(label)[0]//2,639),23,CYAN)
+        self.button("music_louder","+",(1104,631,52,46),lambda:self.change_music_volume(10),enabled=volume<100)
+        panel(self.canvas,(256,697,928,98))
+        text(self.canvas,"Galaxy colors",(280,709),21,INK)
+        text(self.canvas,"Your empire's color. Neutral systems stay gray.",(280,746),14,MUTED)
+        text(self.canvas,"Blue is the default.",(280,769),12,MUTED)
+        for index,(palette,label) in enumerate((("blue","Saturated blue"),("turquoise","Saturated turquoise"))):
+            x=724+index*221
+            selected=self.settings["galaxy_palette"]==palette
+            self.button("galaxy_palette_"+palette,label,(x,727,209,44),
+                        lambda value=palette:self.set_galaxy_palette(value),"tab_active" if selected else "tab")
+            pg.draw.line(self.canvas,PLAYER_PALETTES[palette],(x+12,775),(x+197,775),3)
         text(self.canvas,"Music and interface sounds have separate controls.",(256,834),14,MUTED)
         self.button("settings_done","Done",(933,817,251,52),lambda:self.go(self.settings_return),"primary")
 
@@ -2141,14 +2160,14 @@ class App:
                     pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
             owners={p.owner for p in known.worlds if p.colonized} if known else set()
             if PLAYER in owners:
-                pg.draw.circle(self.canvas,CYAN,(int(x),int(y)),11,1)
+                pg.draw.circle(self.canvas,self.empire_color(PLAYER),(int(x),int(y)),11,2)
             for index,owner in enumerate(o for o in state.opponents if o in owners):
-                pg.draw.circle(self.canvas,empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,1)
+                pg.draw.circle(self.canvas,self.empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,2)
             label=labels[star.id]
             if abs(label.x-(x+17))+abs(label.y-(y-9))>12:
                 tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
                 pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
-            draw_system_label(self.canvas,state,star,label.topleft,selected)
+            draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
             self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
                         lambda s=star.id:self.select_star(s),"hotspot")
         draw_map_fleets(self,MAP)

@@ -6,12 +6,17 @@ RIVAL_IDS = (RIVAL, *(f"rival_{i}" for i in range(2, MAX_RIVALS+1)))
 # A Remnant enclave can emerge even when all five setup slots are occupied.
 CAMPAIGN_RIVAL_IDS = (*RIVAL_IDS, "rival_6")
 EMPIRE_IDS = (PLAYER, *CAMPAIGN_RIVAL_IDS)
-COLORS = ((119, 194, 207), (226, 145, 100), (178, 151, 231),
-          (128, 194, 117), (231, 191, 107), (219, 131, 179), (179, 185, 208))
+DEFAULT_PALETTE = "blue"
+PLAYER_PALETTES = {"blue": (44, 164, 255), "turquoise": (0, 218, 225)}
+COLORS = (PLAYER_PALETTES[DEFAULT_PALETTE], (250, 168, 111), (203, 169, 255),
+          (145, 223, 126), (249, 207, 116), (245, 151, 200), (203, 213, 239))
 
 
-def empire_color(owner):
-    return COLORS[EMPIRE_IDS.index(owner)] if owner in EMPIRE_IDS else (133, 151, 160)
+def empire_color(owner, palette=DEFAULT_PALETTE):
+    """Resolve display colors without changing campaign state or global colors."""
+    if owner == PLAYER:
+        return PLAYER_PALETTES.get(palette, PLAYER_PALETTES[DEFAULT_PALETTE])
+    return COLORS[EMPIRE_IDS.index(owner)] if owner in EMPIRE_IDS else (172, 172, 172)
 
 
 def relation_key(first, second):

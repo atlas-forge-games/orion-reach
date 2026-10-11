@@ -4,7 +4,6 @@ import pygame as pg
 
 from .planet_art import draw_planet, draw_star
 from .model import PLAYER, RIVAL
-from .empires import empire_color
 from . import monsters, defenses
 from .fleet_art import ship_icon
 from .exploration_view import draw_unsurveyed_system
@@ -67,7 +66,7 @@ def draw_system(app):
         if len(opponents) > 1 and guardian_status != "alive":
             if app.rival_id not in opponents:
                 app.rival_id = opponents[0]
-            text(surface, shorten("Target: "+game.empire_name_for(app.rival_id), 268, 12), (765, 263), 12, empire_color(app.rival_id))
+            text(surface, shorten("Target: "+game.empire_name_for(app.rival_id), 268, 12), (765, 263), 12, app.empire_color(app.rival_id))
             app.button("system_target_next", "→", (1046, 247, 42, 43), lambda: app.change_rival(1, system.id))
         reason = game.engagement_error(system.id)
         app.button("system_engage", "Face guardian" if guardian_status == "alive" else "Engage orbital defenses" if enemy_bases else "Engage opposing fleet", (1100, 247, 276, 43),
@@ -106,7 +105,7 @@ def draw_system(app):
             text(surface, "ANCIENT RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE WORLD",
                  (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")
         if world.colonized:
-            pg.draw.circle(surface, empire_color(world.owner),
+            pg.draw.circle(surface, app.empire_color(world.owner),
                            (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
 
     if not system.worlds:
