@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.45.0
+# Orion Reach — Python prototype 0.47.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,47 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.47: legendary artifacts in the encyclopedia
+
+Open **Info → Legendary artifacts** to browse ten illustrated relic concepts.
+Each entry includes the original artwork, its legend, a proposed flagship or
+capital placement, and proposed bonuses and special powers. The artwork and
+**Planned content** notice stay visible while long descriptions scroll.
+
+These entries are previews only: artifacts cannot be discovered, owned,
+transported, equipped or activated, and grant no current gameplay bonuses.
+Combat, economy, research, council votes, AI and campaign saves are unchanged.
+The encyclopedia now contains 176 entries across 11 categories.
+
+![Flagship artifact concept](screenshots/encyclopedia_artifact_flagship.png)
+![Capital artifact concept](screenshots/encyclopedia_artifact_capital.png)
+
+## New in v0.46: Info and the galactic encyclopedia
+
+The galaxy's bottom bar now includes **Info**, with an open-book icon:
+**Empire · Diplomacy · Info | Menu | Fleets · Objectives · Turn news · End turn**.
+Menu and End turn keep their previous positions.
+
+Click **Info**, or press **F1** from a campaign view, to open the encyclopedia.
+It starts with guides to exploration, colonization, population, resources,
+energy, fleet travel, combat, diplomacy and victory. The catalog also lists
+all current buildings, research technologies, ship classes, ship equipment and
+civilizations, including the Observer. Costs, effects and traits come from the
+game's public rule catalogs. Values are base values, before empire bonuses.
+
+Choose a category on the left and an article in the middle. **Previous/Next**,
+Left/Right, or the mouse wheel over the article list changes its page. Read long
+articles with the mouse wheel, Page Up/Page Down or the article's arrow buttons.
+**Back, Escape or F1** returns to the previous view with fleet selections and
+orders intact. Reading does not advance turns, change research, or reveal
+hidden campaign intelligence; battles pause while the encyclopedia is open.
+
+The reference is organized for additional topics in later updates. Existing
+campaigns and settings continue to work without migration.
+
+![Info in the galaxy command bar](screenshots/galaxy_info_button.png)
+![Galactic encyclopedia](screenshots/encyclopedia_overview.png)
 
 ## New in v0.45: clearer galaxy colors
 

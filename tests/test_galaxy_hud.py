@@ -102,7 +102,7 @@ class GalaxyHudTests(unittest.TestCase):
 
     def test_dock_and_top_research_open_each_screen_at_multiple_window_sizes(self):
         routes = {"open_empire": "empire", "open_diplomacy": "diplomacy", "open_research": "research",
-                  "open_fleets": "fleets", "open_objectives": "objectives", "open_news": "news"}
+                  "open_fleets": "fleets", "open_objectives": "objectives", "open_news": "news", "open_info": "info"}
         for size in ((980, 900), (1280, 800), (1920, 1080)):
             self.app.window = pg.display.set_mode(size, pg.RESIZABLE)
             self.app.present()
@@ -115,6 +115,8 @@ class GalaxyHudTests(unittest.TestCase):
             self.assertEqual(buttons["end_turn"].rect, pg.Rect(1081, 813, 295, 61))
             self.assertLess(buttons["open_research"].rect.bottom, 130)
             self.assertLess(buttons["open_diplomacy"].rect.right, buttons["pause"].rect.left)
+            self.assertLess(buttons["open_info"].rect.right, buttons["pause"].rect.left)
+            self.assertEqual(buttons["pause"].rect, pg.Rect(496, 813, 132, 61))
             self.assertLess(buttons["pause"].rect.right, buttons["open_fleets"].rect.left)
             for i, button in enumerate(commands):
                 self.assertGreaterEqual(button.rect.top, 800)

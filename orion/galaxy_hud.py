@@ -15,14 +15,13 @@ FOOD_GREEN = (157, 199, 132)
 NAVIGATION = (
     ("open_empire", "Empire", "open_empire", "empire", "I"),
     ("open_diplomacy", "Diplomacy", "open_diplomacy", "diplomacy", "D"),
+    ("open_info", "Info", "open_info", "info", "F1"),
     ("pause", "Menu", "pause", "menu", "Esc"),
     ("open_fleets", "Fleets", "open_fleets", "fleets", "F"),
     ("open_objectives", "Objectives", "open_objectives", "objectives", "V"),
     ("open_news", "Turn news", "open_news", "news", "N"),
 )
-COMMAND_RECTS = ((64, 813, 204, 61), (280, 813, 204, 61),
-                 (496, 813, 132, 61), (640, 813, 132, 61),
-                 (784, 813, 132, 61), (928, 813, 132, 61))
+COMMAND_RECTS = tuple((64+index*144, 813, 132, 61) for index in range(len(NAVIGATION)))
 
 
 @lru_cache(maxsize=5)

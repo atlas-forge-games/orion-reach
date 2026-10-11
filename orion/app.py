@@ -50,6 +50,8 @@ from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popu
 from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_labels import draw_system_label
+from .encyclopedia import CATEGORIES, category_articles
+from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
@@ -112,6 +114,12 @@ class App:
         self.settings_return="menu"
         self.pause_return="galaxy"
         self.campaign_view="galaxy"
+        self.info_return="galaxy"
+        self.info_focus=None
+        self.info_category="basics"
+        self.info_article="welcome"
+        self.info_page=0
+        self.info_scroll=0
         self.colony_slot=None
         self.colony_build_page=0
         self.clear_worker_selection()
@@ -1112,6 +1120,55 @@ class App:
         self.news_page=0
         self.go("galaxy" if self.screen=="news" else "news")
 
+    def open_info(self):
+        if self.dialog or self.field:
+            return
+        if self.screen=="info":
+            self.close_info()
+        elif self.game is not None and self.screen in (*GAME_SCREENS,"pause"):
+            self.info_return,self.info_focus=self.screen,self.focus
+            # A read-only overlay must not trigger go()'s order resets, news
+            # read markers, research prompts or other screen-entry actions.
+            self.screen="info"
+            self.buttons=[]
+            self.technology_regions=[]
+            self.pressed=None
+            self.focus="info_article_"+self.info_article
+
+    def close_info(self):
+        if self.screen!="info":
+            return
+        self.screen,self.focus=self.info_return,self.info_focus
+        self.buttons=[]
+        self.technology_regions=[]
+        self.pressed=None
+        if self.screen=="combat":
+            self.combat_last_update=self.time
+            self.combat_ai_due=self.time+.8
+
+    def select_info_category(self,category):
+        if category not in CATEGORIES:
+            return
+        self.info_category=category
+        self.info_page=self.info_scroll=0
+        self.info_article=category_articles(category)[0].id
+
+    def select_info_article(self,identifier):
+        entries=category_articles(self.info_category)
+        for index,article in enumerate(entries):
+            if article.id==identifier:
+                self.info_article=identifier
+                self.info_page=index//ARTICLES_PER_PAGE
+                self.info_scroll=0
+                self.focus="info_article_"+identifier
+                return
+
+    def change_info_page(self,delta):
+        entries=category_articles(self.info_category)
+        page=max(0,min((len(entries)-1)//ARTICLES_PER_PAGE,self.info_page+delta))
+        if page!=self.info_page:
+            self.select_info_article(entries[page*ARTICLES_PER_PAGE].id)
+
     def change_news_page(self,delta):
         last=max(0,(len(news_rules.entries(self.game))-1)//NEWS_PER_PAGE)
         self.news_page=min(max(0,self.news_page+delta),last)
@@ -1755,6 +1812,11 @@ class App:
             self.change_exploration_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="observer" and not self.dialog and event.y:
             self.change_observer_page(-1 if event.y>0 else 1)
+        if event.type==pg.MOUSEWHEEL and self.screen=="info" and not self.dialog and event.y:
+            if INDEX_RECT.collidepoint(self.mouse):
+                self.change_info_page(-1 if event.y>0 else 1)
+            else:
+                scroll_article(self,-event.y*72)
         if event.type==pg.MOUSEWHEEL and self.screen=="combat" and not self.dialog and event.y:
             self.pan_combat(-event.y*2)
         if event.type==pg.TEXTINPUT and self.field and not self.dialog:
@@ -1771,12 +1833,17 @@ class App:
         if event.key==pg.K_F11 and not self.dialog:
             self.toggle_setting("fullscreen")
             return
+        if event.key==pg.K_F1 and not self.dialog:
+            self.open_info()
+            return
         if event.key==pg.K_ESCAPE:
             if self.dialog:
                 self.cancel_dialog()
             elif self.field:
                 self.field=None
                 pg.key.stop_text_input()
+            elif self.screen=="info":
+                self.close_info()
             elif self.screen=="contact":
                 self.finish_contact()
             elif self.screen=="galaxy":
@@ -1864,6 +1931,12 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected:
                 self.activate(selected)
+        elif self.screen=="info" and not self.dialog:
+            if event.key in (pg.K_LEFT,pg.K_RIGHT):
+                self.change_info_page(1 if event.key==pg.K_RIGHT else -1)
+            elif event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                height=article_body_rect(selected_article(self)).h
+                scroll_article(self,(height-24)*(1 if event.key==pg.K_PAGEDOWN else -1))
         elif self.screen in ("combat","ground","result","contact","council") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
@@ -2267,6 +2340,9 @@ class App:
 
     def draw_news(self):
         draw_news(self)
+
+    def draw_info(self):
+        draw_info(self)
 
     def draw_observer(self):
         draw_observer(self)

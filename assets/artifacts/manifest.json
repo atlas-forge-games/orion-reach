@@ -1,0 +1,112 @@
+[
+  {
+    "id": "heart_of_a_dead_sun",
+    "name": "The Heart of a Dead Sun",
+    "file": "heart_of_a_dead_sun-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "888a8cca151b183321a4bf27a4d921852c98539ecb522ff195b5a54606ab6f4e",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "aegis_of_eternity",
+    "name": "The Aegis of Eternity",
+    "file": "aegis_of_eternity-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "9c6f8feaee9f471c7cb7817d10c7140c1ac6a5ff9dda5e27a8b97908521f7650",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "silent_choir",
+    "name": "The Silent Choir",
+    "file": "silent_choir-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "90876a8a1ef1ec006d6bbe5b141e32807f92fdb28b06e7bc5ff646cfb21409a1",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "spear_of_the_last_dawn",
+    "name": "The Spear of the Last Dawn",
+    "file": "spear_of_the_last_dawn-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "4cf2e0b4d164709b7d224b99bf18df21a93b29dcc7b2dce318d5cd7ac3399d6d",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "funeral_bell",
+    "name": "The Funeral Bell",
+    "file": "funeral_bell-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "07913530fc64ebf3440259c06da5163e3c47cb365754a781e5039855366aa8aa",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "worldseed",
+    "name": "The Worldseed",
+    "file": "worldseed-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "72ef32f39ca7cc60c9641af5936f54610ddff89a277ebe935dee85198456cb1a",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "forge_of_creation",
+    "name": "The Forge of Creation",
+    "file": "forge_of_creation-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "57e860d293430a0ada4f214112a981cf411032cdf63d177a6807947a67a6171d",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "unwritten_equation",
+    "name": "The Unwritten Equation",
+    "file": "unwritten_equation-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "11e550c85c9037bd9cf6b47640f2674f1d7128741de0e28f32ef3b0741447ad0",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "throne_of_the_last_emperor",
+    "name": "The Throne of the Last Emperor",
+    "file": "throne_of_the_last_emperor-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "33ab9c5b895572b7569049e890668c46f5a26e2a10bd8f9cb12c65f409547539",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  },
+  {
+    "id": "captive_horizon",
+    "name": "The Captive Horizon",
+    "file": "captive_horizon-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "4d526724bc4e0f7369b56bbd531710db6c901d81dfed42f317d982ca2a559a98",
+    "usage": "Encyclopedia concept only; no gameplay effect"
+  }
+]
