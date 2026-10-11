@@ -69,6 +69,7 @@ def guides():
         )),
         Article("controls", "basics", "Controls and saving", "Keyboard reference", (
             ("GALAXY SHORTCUTS", "I: Empire\nD: Diplomacy\nR: Research\nF: Fleets\nV: Objectives\nN: Turn news\nS: Sensor coverage\nE: End turn\nP: Menu\nF1: Encyclopedia"),
+            ("COMBAT SHORTCUTS", "A: Auto combat / Take control\nE: End tactical turn\nN: Next ship\nPage Up / Page Down: Scroll the battlefield\nEscape: Pause\nF5: Save"),
             ("SAVING", "Choose Menu → Save game, or press F5 in a campaign view. Saving and returning to the main menu are separate actions."),
             ("NAVIGATION", "Tab or Up/Down moves between controls; Enter activates one. Escape returns or closes the current selection. F11 toggles fullscreen."),
             ("READING THIS GUIDE", "Choose a category and an article. Previous/Next, Left/Right, or the mouse wheel over the article list changes its page. Scroll the text with the wheel, Page Up/Page Down, or its arrow buttons. Back, Escape or F1 returns to your previous screen."),
@@ -115,6 +116,8 @@ def guides():
         )),
         Article("space_combat", "combat", "Space combat", "Movement, weapons and drones", (
             ("ENGAGEMENT", "Opposing fleets and orbital defenses are resolved in turn-based combat. Select a ship, move to a reachable cell and fire a ready weapon at a target in range."),
+            ("AUTO COMBAT", "Choose Auto combat or press A to let the computer move your ships, choose targets, fire weapons, launch drones and end tactical turns. Battles remain animated and use the same rules, including guardian battles. A fleet that can no longer attack retreats if a safe destination is available."),
+            ("TAKING CONTROL", "Choose Take control or press A again to resume manual orders. An action already underway finishes; spent movement and weapons stay spent. If it is the enemy's turn, wait for your next turn. Menus and this guide pause the battle. Auto combat stops at the result screen; new battles and loaded games start with manual control."),
             ("WEAPON CHOICES", "Beams, torpedoes and other weapons differ in damage, range, accuracy and special effects. Shields, armor and interception offer different defenses. Research and Ship equipment describe the available upgrades."),
             ("CARRIERS", "Carriers fitted with drone bays can launch drones. Bays limit active drones and launches per battle. Interceptor and bomber research unlock specialized drone types."),
             ("DESIGNS", "Research unlocks hulls and modules for new designs. Each hull has a total capacity and separate weapon, defense and support limits. Existing ships retain their blueprints."),

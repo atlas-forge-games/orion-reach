@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.49.0
+# Orion Reach — Python prototype 0.50.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,27 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.50: automatic fleet combat
+
+Choose **Auto combat · A** on the tactical screen to let the computer command
+your ships. It moves ships, chooses targets, fires weapons, launches carrier
+drones and ends tactical turns using the existing combat rules. You can watch
+the normal movement, weapon and explosion animations, including guardian and
+black-hole battles. An unarmed surviving fleet retreats if a safe route exists.
+
+Choose **Take control · A** at any time to resume manual orders. An action
+already underway finishes its animation; used movement, weapon shots and drone
+launches stay spent. If the enemy is acting, your orders resume on your next
+turn. Menu, Settings, dialogs and Info pause combat. Saving retains every
+applied action; loading a battle restores manual control.
+
+Automatic control is selected separately for each battle. It stops at victory,
+defeat or retreat, leaving the result for you to review. Strategic time does not
+advance. Existing saves work unchanged; no new research or dependencies are
+required.
+
+![Automatic fleet combat](screenshots/autocombat_active.png)
 
 ## New in v0.49: black-hole expeditions
 
@@ -2129,6 +2150,9 @@ Issued journeys retain their orders if supply changes before they arrive.
    fires its fleet under the same rules. **Done ship** skips that ship's remaining
    orders; **Next ship · N** cycles ships with orders available. Ending your turn
    skips any unused orders. Scouts and transports can maneuver but cannot fire.
+   Or choose **Auto combat · A** to have the computer command your fleet too.
+   **Take control · A** returns to manual orders after the current animation;
+   remaining orders are preserved. You can toggle this during either side's turn.
 6. Resolve the battle or retreat, then choose **Return to system**. Strategic time,
    income, research, construction and other travel do not advance during combat.
    Escape pauses the battle and its effects. Save / Load retains the exact round,
@@ -2448,6 +2472,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Start a fleet battle | Engage in Fleets or on the system overview |
 | Move in combat | Select your ship → click a highlighted empty cell |
 | Attack in combat | Select your ship → select an enemy → review chance → Fire at target |
+| Automatic fleet commands / take control | Auto combat / Take control, or A; current actions finish and spent orders remain spent |
 | Sensor coverage | S on the galaxy map |
 | Finish a tactical turn | End turn / E; passes to the opposing fleet |
 | Skip remaining ship orders | Done ship; Next ship / N selects another ship |
@@ -2644,6 +2669,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_research.py` | Research choices, effects, accounting, forecasts, save migrations and screen interaction |
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
 | `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
+| `tests/test_auto_combat.py` | Automatic player orders, manual takeover, pause/save continuity, drones, retreat and guardian rewards |
 | `tests/test_monsters.py` | Guardians, prize economies, interception, retreat, fog, AI, save validation and tactical UI |
 | `tests/test_council.py` | Council thresholds, elections, war, saves, UI and 5,000-RP Ascension |
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
@@ -2665,6 +2691,14 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.50 passes **776 automated checks**, including **10 new automatic-combat
+checks**. These cover mouse and keyboard takeover during movement and weapon
+animations, partially spent turns, enemy-turn handover, pause/settings/dialogs/
+Info, manual control after loading, drone orders, victory, defeat, retreat and
+one-time black-hole relic recovery. Automatic combat, manual takeover and the
+result screen were rendered and inspected. Recreate those previews with
+`python tools/preview_auto_combat.py`.
 
 v0.42 passes **692 automated checks**, including **28 new arsenal checks**.
 These cover every module unlock and construction path, paired research,

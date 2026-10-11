@@ -41,7 +41,7 @@ def background(system_id):
 def draw_battlefield(app):
     surface, battle = app.canvas, app.game.combat
     effect = app.combat_animation
-    player_turn = battle.status == "active" and battle.active_owner == PLAYER and effect is None
+    player_turn = app.combat_input_ready()
     selected = battle.ship(app.combat_ship_id)
     camera = app.combat_camera_row
     project = lambda cell: cell_center(cell, camera)
@@ -114,12 +114,17 @@ def draw_combat(app):
     enemy = battle.enemy(PLAYER)
     busy = app.combat_animation is not None
     active = battle.status == "active" or busy
-    player_turn = battle.status == "active" and battle.active_owner == PLAYER and not busy
+    player_turn = app.combat_input_ready()
+    automatic = app.combat_auto and battle.status == "active"
     app.chrome("TACTICAL COMMAND")
     text(surface, shorten(f"Battle of {game.systems[battle.system_id].name}", 670, 32, "title"), (32, 119), 32, INK, "title")
-    text(surface, f"ROUND {battle.round:02}  ·  "+("YOUR TURN" if battle.active_owner == PLAYER else "ENEMY TURN" if battle.active_owner else "BATTLE ENDED"),
-         (1038, 128), 12, GOLD, "mono", right=True)
-    text(surface, "Select your ship → click a highlighted cell to move → select a target → review hit chances → Fire.", (34, 162), 13, MUTED)
+    turn = "YOUR TURN" if battle.active_owner == PLAYER else "ENEMY TURN" if battle.active_owner else "BATTLE ENDED"
+    if automatic:
+        turn = "AUTO: YOUR FLEET" if battle.active_owner == PLAYER else "AUTO: ENEMY TURN"
+    text(surface, f"ROUND {battle.round:02}  ·  "+turn, (1038, 128), 12, CYAN if automatic else GOLD, "mono", right=True)
+    instructions = ("Computer controls your fleet: movement, weapons and drones. Choose Take control · A to resume manual orders."
+                    if automatic else "Select your ship → click a highlighted cell to move → select a target → review hit chances → Fire.")
+    text(surface, instructions, (34, 162), 13, CYAN if automatic else MUTED)
     draw_battlefield(app)
 
     panel(surface, (1060, 119, 348, 627), (11, 22, 31), GOLD if player_turn else LINE)
@@ -130,7 +135,7 @@ def draw_combat(app):
     pg.draw.line(surface, LINE, (x, 193), (1388, 193))
     if active:
         ship, target = battle.ship(app.combat_ship_id), battle.ship(app.combat_target_id)
-        text(surface, "SELECTED SHIP", (x, 210), 10, MUTED, "mono", 1)
+        text(surface, "COMPUTER COMMAND" if automatic else "SELECTED SHIP", (x, 210), 10, CYAN if automatic else MUTED, "mono", 1)
         if ship:
             ship_icon(surface, (1357, 254), .85, app.empire_color(ship.owner), kind=ship.kind, facing=1)
             text(surface, shorten(ship.name, 235, 21), (x, 235), 21, INK)
@@ -162,7 +167,7 @@ def draw_combat(app):
             elif ship.design:
                 text(surface, "Only weapons in range fire; one volley per turn.", (x, 420), 11, MUTED)
         else:
-            paragraph(surface, "Your ships have finished their orders. End your turn to let the opponent act.", (x, 239), 308, 16, MUTED, 26)
+            paragraph(surface, "The computer is managing your fleet's orders and turns." if automatic else "Your ships have finished their orders. End your turn to let the opponent act.", (x, 239), 308, 16, MUTED, 26)
         pg.draw.line(surface, LINE, (x, 432), (1388, 432))
         text(surface, "ENEMY TARGET", (x, 449), 10, RIVAL_COLOR, "mono", 1)
         text(surface, shorten(target.name, 308, 18) if target else "Click an enemy ship", (x, 473), 18, INK)
@@ -239,8 +244,15 @@ def draw_combat(app):
         text(surface, shorten(message, 1120, 12), (233, 773+i*21), 12, INK if i == len(battle.log[-3:])-1 else MUTED)
     app.button("combat_pause", "Menu · Esc", (32, 851, 153, 38), app.pause)
     app.button("combat_save", "Save · F5", (198, 851, 153, 38), app.save_game)
-    status = "Firing…" if busy and app.combat_animation.kind == "fire" else "Maneuvering…" if busy else "Enemy is giving orders…" if active and not player_turn else "One move + one shot per ship · Strategic time paused"
-    text(surface, status, (372, 863), 12, MUTED)
+    if active:
+        app.button("combat_auto", "Take control · A" if automatic else "Auto combat · A", (364, 851, 218, 38),
+                   app.toggle_combat_auto, "primary" if automatic else "normal", enabled=battle.status == "active")
+    status = ("Firing…" if busy and app.combat_animation.kind == "fire" else "Maneuvering…" if busy
+              else "Computer is giving your fleet orders…" if automatic and battle.active_owner == PLAYER
+              else "Enemy is giving orders…" if battle.status == "active" and battle.active_owner != PLAYER
+              else "Battle ended · Review the result to continue" if not active
+              else "One move + one shot per ship · Strategic time paused")
+    text(surface, shorten(status, 454, 12), (600 if active else 372, 863), 12, CYAN if automatic else MUTED)
     if battle.rows > VISIBLE_ROWS:
         text(surface, f"ROWS {app.combat_camera_row+1}–{app.combat_camera_row+VISIBLE_ROWS}/{battle.rows}", (1190, 864), 10, MUTED, "mono", right=True)
         app.button("combat_map_up", "↑", (1206, 851, 90, 38), lambda: app.pan_combat(-3), enabled=app.combat_camera_row > 0)

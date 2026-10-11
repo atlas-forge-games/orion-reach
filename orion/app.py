@@ -235,7 +235,7 @@ class App:
             self.sync_combat_selection()
             self.combat_ai_due=self.time+.8
             self.combat_last_update=self.time
-            self.focus="combat_continue" if self.game.combat.status!="active" else "combat_end_turn"
+            self.focus="combat_continue" if self.game.combat.status!="active" else "combat_auto" if self.combat_auto else "combat_end_turn"
         if screen=="system":
             known=self.game.known_system(self.game.selected_system)
             worlds=known.worlds if known else []
@@ -1307,6 +1307,7 @@ class App:
                 self.notice_until=self.time+7
 
     def reset_combat_view(self):
+        self.combat_auto=False
         self.combat_ship_id=None
         self.combat_target_id=None
         self.combat_camera_row=0
@@ -1328,9 +1329,21 @@ class App:
             self.reveal_combat_row(battle.ship(self.combat_ship_id).y)
 
     def combat_input_ready(self):
-        return (self.screen=="combat" and not self.dialog and self.game is not None
+        return (self.screen=="combat" and not self.dialog and not self.combat_auto and self.game is not None
                 and self.game.combat is not None and self.game.combat.status=="active"
                 and self.game.combat.active_owner==PLAYER and self.combat_animation is None)
+
+    def toggle_combat_auto(self):
+        if (self.screen!="combat" or self.dialog or self.field or self.game is None
+                or self.game.combat is None or self.game.combat.status!="active"):
+            return
+        self.combat_auto=not self.combat_auto
+        self.combat_ai_due=self.time+.4
+        # Taking control stops future orders; an already applied action still
+        # finishes its animation and keeps its spent movement / weapon use.
+        if not self.combat_auto and self.combat_animation is None:
+            self.sync_combat_selection()
+        self.focus="combat_auto"
 
     def pan_combat(self,delta):
         last=max(0,self.game.combat.rows-VISIBLE_ROWS)
@@ -1395,6 +1408,14 @@ class App:
             self.focus="combat_fire"
 
     def after_combat_action(self,event):
+        battle=self.game.combat
+        ship=battle.ship(event.get("ship_id"))
+        if self.combat_auto and ship is not None and ship.owner==PLAYER:
+            self.combat_ship_id=ship.id
+            if event.get("target_id") is not None:
+                self.combat_target_id=event["target_id"]
+        if battle.status!="active":
+            self.combat_auto=False
         self.combat_animation=CombatAnimation.from_action(self.game.combat,event)
         self.combat_last_update=self.time
         if self.combat_animation:
@@ -1406,7 +1427,8 @@ class App:
             self.sync_combat_selection()
         self.combat_ai_due=self.time+.4
         self.save_game(autosave=True)
-        self.focus="combat_end_turn"
+        self.focus=("combat_continue" if battle.status!="active" and not self.combat_animation
+                    else "combat_auto" if self.combat_auto else "combat_end_turn")
 
     def move_combat_ship(self,x,y):
         if not self.combat_input_ready():
@@ -1463,15 +1485,18 @@ class App:
         self.combat_last_update=self.time
         if self.screen!="combat" or self.dialog or self.game is None or self.game.combat is None:
             return
+        if self.game.combat.status!="active":
+            self.combat_auto=False
         if self.combat_animation:
             self.combat_animation.elapsed+=delta
             if self.combat_animation.finished:
                 self.combat_animation=None
                 self.sync_combat_selection()
                 self.combat_ai_due=self.time+.35
-                self.focus="combat_continue" if self.game.combat.status!="active" else "combat_end_turn"
+                self.focus=("combat_continue" if self.game.combat.status!="active"
+                            else "combat_auto" if self.combat_auto else "combat_end_turn")
             return
-        if (self.game.combat.status=="active" and self.game.combat.active_owner!=PLAYER
+        if (self.game.combat.status=="active" and (self.combat_auto or self.game.combat.active_owner!=PLAYER)
                 and self.time>=self.combat_ai_due):
             self.after_combat_action(self.game.combat_ai_action())
 
@@ -1959,7 +1984,9 @@ class App:
             elif self.screen=="result" and event.key==pg.K_n:
                 self.open_news()
             elif self.screen=="combat":
-                if event.key==pg.K_e:
+                if event.key==pg.K_a:
+                    self.toggle_combat_auto()
+                elif event.key==pg.K_e:
                     self.combat_action("end_turn")
                 elif event.key==pg.K_n:
                     self.next_combat_ship()
