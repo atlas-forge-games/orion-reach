@@ -135,9 +135,9 @@ class ProductionTests(unittest.TestCase):
         self.assertEqual(game.to_dict(), before)
 
     def test_buying_a_gate_starts_its_five_turn_charge_without_skipping_time(self):
-        from orion.research import BRANCHES, branch_tiers, choices
+        from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
         self.game.credits = self.game.resources = 2000
-        self.game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+500
+        self.game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+TECHNOLOGIES["ascension_theory"].cost
         for branch in BRANCHES:
             for tier in branch_tiers(branch):
                 self.game.choose_research(choices(branch, tier)[0].id)

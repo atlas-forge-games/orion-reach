@@ -169,7 +169,7 @@ class ResearchOverviewTests(unittest.TestCase):
 
     def test_ascension_is_selectable_from_tenth_field_and_exhausted_tree_does_not_prompt(self):
         game = self.app.game
-        game.research = 10000
+        game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+TECHNOLOGIES["ascension_theory"].cost
         for branch in BRANCHES:
             for tier in branch_tiers(branch):
                 game.choose_research(choices(branch, tier)[0].id)

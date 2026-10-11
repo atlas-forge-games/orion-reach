@@ -12,6 +12,7 @@ from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loado
 from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, distance_ly, travel_turns
 from . import combat as combat_rules
 from . import victory as victory_rules
+from . import council as council_rules
 from . import exploration as exploration_rules
 from . import population as population_rules
 from . import monsters as monster_rules
@@ -637,6 +638,7 @@ class GameState:
     observer_events: list[observer_rules.Observation] = field(default_factory=list)
     next_observer_event_id: int = 1
     observer_news_read: int = 0
+    council: council_rules.CouncilState = field(default_factory=council_rules.CouncilState)
 
     @property
     def is_observer(self):
@@ -732,6 +734,8 @@ class GameState:
             return "This campaign has ended. Start a new campaign to play again."
         if self.combat is not None:
             return "Resolve the current battle before issuing strategic orders."
+        if self.council.pending:
+            return "Resolve the Galactic Council vote before issuing strategic orders."
         if self.is_observer and owner == PLAYER:
             return observer_rules.READ_ONLY
         return None
@@ -740,10 +744,19 @@ class GameState:
         if self.strategy_error(owner):
             raise RuleError(self.strategy_error(owner))
 
-    def check_victory(self):
+    def check_victory(self, *, convene=True):
         if self.result is None and self.combat is None:
             self.result = victory_rules.current_result(self)
+            if self.result is None and convene:
+                council_rules.convene_due(self)
+                self.result = victory_rules.current_result(self)
         return self.result
+
+    def council_vote(self, candidate):
+        council_rules.cast_vote(self, candidate)
+
+    def council_ruling(self, accept):
+        council_rules.accept_ruling(self, accept)
 
     def headquarters(self, owner=PLAYER):
         empire = self._empire(owner)
@@ -808,7 +821,10 @@ class GameState:
         if self.combat is None or self.combat.status == "active":
             raise RuleError("Finish the battle before returning to the system.")
         system_id = self.combat.system_id
+        player_battle = PLAYER in self.combat.sides
         self.combat = None
+        if player_battle:
+            self.check_victory()
         return system_id
 
     def can_repair(self, ship):
@@ -1542,8 +1558,10 @@ class GameState:
         tomb_rules.advance(self, alerts, ground_battles)
         exploration_rules.refresh(self)
         monster_rules.intercept(self)
-        self.check_victory()
+        self.check_victory(convene=False)
         combat_rules.intercept(self)
+        council_rules.schedule(self)
+        self.check_victory()
         return TurnReport(income, research, completed, arrivals,
                           [discovered.name] if discovered else [], alerts, exploration, population, ground_battles, resource_rates.get(PLAYER, 0))
 
@@ -1551,7 +1569,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=31):
+    def from_dict(cls, data, *, version=32):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1697,6 +1715,7 @@ class GameState:
             if version >= 8 and data["combat"] is not None:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
+                council_rules.load(game, data, version)
                 game.result = victory_rules.validate(game, data["result"])
             if version >= 10:
                 if type(data["fog_of_war"]) is not bool:

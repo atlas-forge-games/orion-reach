@@ -12,6 +12,7 @@ from .legacy_research import LEGACY_TECHNOLOGIES, validate_legacy
 TIERS = tuple(range(1, 9))
 TIER_NAMES = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
 TIER_COSTS = (40, 100, 120, 220, 360, 540, 760, 1040)
+ASCENSION_COST = 5000
 # Campaigns begun before the arsenal expansion retain their scientific goal.
 LEGACY_TIER_LIMITS = dict(zip(
     ("construction", "power", "physics", "fields", "materials", "biology", "computers", "society", "starships"),
@@ -49,7 +50,7 @@ class Technology:
 
     @property
     def cost(self):
-        return 500 if self.id == "ascension_theory" else TIER_COSTS[self.tier-1]
+        return ASCENSION_COST if self.id == "ascension_theory" else TIER_COSTS[self.tier-1]
 
 
 def tech(identifier, branch, tier, name, description, **effects):
@@ -180,6 +181,8 @@ class ResearchState:
     def project_cost(self):
         if self.active is None:
             return 0
+        if self.active == "ascension_theory":
+            return ASCENSION_COST
         return LEGACY_TECHNOLOGIES[self.active][2] if self.legacy_active else TECHNOLOGIES[self.active].cost
 
     def has_unlock(self, identifier):
@@ -266,7 +269,7 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=31):
+    def from_dict(cls, data, *, version=32):
         keys = {"completed", "active", "progress"}
         if version >= 28:
             keys |= {"legacy_count", "legacy_active"}
@@ -300,10 +303,17 @@ class ResearchState:
             state.completed.append(identifier)
         if type(progress) is not int or progress < 0:
             raise ValueError("Invalid research progress")
+        if version < 32 and active == "ascension_theory" and progress >= 500:
+            raise ValueError("Invalid pre-council Ascension progress")
         if legacy_active:
             if active is None or count != len(completed):
                 raise ValueError("Invalid legacy project")
-            validate_legacy(completed, active, progress)
+            if active == "ascension_theory" and version >= 32:
+                validate_legacy(completed, active, 0)
+                if progress >= ASCENSION_COST:
+                    raise ValueError("Invalid legacy Ascension progress")
+            else:
+                validate_legacy(completed, active, progress)
         elif active is None:
             if progress != 0:
                 raise ValueError("Progress without a project")

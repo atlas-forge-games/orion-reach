@@ -16,7 +16,7 @@ from orion import combat, exploration, monsters
 from orion.empires import PLAYER, RIVAL, RIVAL_IDS, empire_color
 from orion.model import GALAXY_SIZES, GameState, SaveError, Ship, new_game
 from orion.production import GATE_CHARGE_TURNS
-from orion.research import BRANCHES, branch_tiers, choices
+from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
 from orion.victory import gate_blocked
 
 
@@ -185,7 +185,7 @@ class IndependentEmpireTests(unittest.TestCase):
                 tech = choices(branch, tier)[0]
                 game._empire(owner).research += tech.cost
                 game.choose_research(tech.id, owner=owner)
-        game._empire(owner).research += 500
+        game._empire(owner).research += TECHNOLOGIES["ascension_theory"].cost
         game.choose_research("ascension_theory", owner=owner)
         system, planet = game.headquarters(owner)
         add_ships(game, system.id, "rival_2", ["scout"])

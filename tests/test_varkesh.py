@@ -522,7 +522,7 @@ class SlaveSaveTests(unittest.TestCase):
             original = path.read_bytes()
             self.assertEqual(store.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
-            self.assertEqual(json.loads(original)["version"], 31)
+            self.assertEqual(json.loads(original)["version"], 32)
 
 
 class VarkeshInterfaceTests(unittest.TestCase):

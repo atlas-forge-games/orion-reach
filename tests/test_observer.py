@@ -18,6 +18,7 @@ from orion.model import GameState, RuleError, SaveError, Ship, new_game
 from orion.observer import MAX_EVENTS
 from orion.races import RACES, SETUP_RACES
 from orion.storage import Storage
+from orion.research import TECHNOLOGIES
 from orion.ui import text_image
 from orion.victory import current_result
 
@@ -193,7 +194,7 @@ class ObserverRulesTests(unittest.TestCase):
                     technology = choices(branch, tier)[0]
                     game._empire(owner).research += technology.cost
                     game.choose_research(technology.id, owner=owner)
-            game._empire(owner).research += 500
+            game._empire(owner).research += TECHNOLOGIES["ascension_theory"].cost
             game.choose_research("ascension_theory", owner=owner)
             world = game.headquarters(owner)[1]
             world.ascension_gate, world.gate_charge = True, 5

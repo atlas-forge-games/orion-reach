@@ -21,6 +21,7 @@ from .empire_view import draw_empire
 from .rival_view import draw_rival
 from .diplomacy_view import draw_diplomacy
 from .contact_view import draw_contact
+from .council_view import draw_council
 from . import first_contact
 from .personalities import personality
 from .research_view import draw_research, draw_technology_info
@@ -57,7 +58,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 
 
 class App:
@@ -153,6 +154,8 @@ class App:
             screen="result"
         elif self.game and self.game.combat is not None and screen in GAME_SCREENS and screen!="contact":
             screen="combat"
+        elif self.game and self.game.council.pending and screen in GAME_SCREENS:
+            screen="council"
         elif screen in ("combat","result"):
             screen="galaxy"
         if screen=="ground" and not self.ground_reports and self.ground_target is None:
@@ -213,6 +216,9 @@ class App:
             self.focus="objectives_back"
         if screen=="result":
             self.focus="result_menu"
+        if screen=="council":
+            election=self.game.council.election
+            self.focus="council_abstain" if election and election.status=="voting" else "council_accept" if self.game.council.pending else "council_back"
         if screen=="ground":
             self.focus="ground_continue" if self.ground_reports else "ground_launch"
         if screen=="combat":
@@ -711,7 +717,7 @@ class App:
         if not self.needs_research_choice():
             self.research_prompt_pending=False
             return
-        if (self.screen not in GAME_SCREENS or self.screen in ("contact","combat","ground","result")
+        if (self.screen not in GAME_SCREENS or self.screen in ("contact","combat","ground","result","council")
                 or (self.screen=="news" and not allow_news)
                 or self.dialog or self.game.combat is not None or self.ground_reports
                 or first_contact.pending(self.game)):
@@ -879,7 +885,7 @@ class App:
 
     def show_first_contact(self, return_screen=None):
         pending=first_contact.pending(self.game)
-        if not pending or self.screen=="contact" or self.game.result is not None:
+        if not pending or self.screen=="contact" or self.game.result is not None or self.game.council.pending:
             return False
         self.contact_return=return_screen or self.screen
         self.contact_owner=pending[0]
@@ -917,6 +923,28 @@ class App:
 
     def draw_contact(self):
         draw_contact(self)
+
+    def open_council(self):
+        self.go("council")
+
+    def cast_council_vote(self,candidate):
+        try:
+            self.game.council_vote(candidate)
+            self.go("council")
+            self.save_game(autosave=True)
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def decide_council(self,accept):
+        try:
+            self.game.council_ruling(accept)
+            self.go("result" if self.game.result else "news")
+            self.save_game(autosave=True)
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def draw_council(self):
+        draw_council(self)
 
     def close_diplomacy(self):
         self.game.selected_system,self.game.selected_planet=self.diplomacy_return_selection
@@ -1130,6 +1158,9 @@ class App:
             self.go("combat")
             self.toast("Resolve the battle before advancing the campaign.",True)
             return
+        if self.game.council.pending:
+            self.go("council")
+            return
         # An unissued map order is a UI selection, never an automatic next-turn order.
         self.clear_worker_selection()
         self.close_fleet_popup()
@@ -1155,6 +1186,8 @@ class App:
         elif self.game.combat is not None:
             self.reset_combat_view()
             self.go("combat")
+        elif self.game.council.pending:
+            self.go("council")
         elif new_news:
             self.news_page=0
             if not self.show_first_contact("news"):
@@ -1771,7 +1804,7 @@ class App:
                 self.close_objectives()
             elif self.screen=="result":
                 self.to_menu()
-            elif self.screen=="combat":
+            elif self.screen in ("combat","council"):
                 self.pause()
             elif self.screen=="ground":
                 self.close_ground()
@@ -1814,7 +1847,7 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected:
                 self.activate(selected)
-        elif self.screen in ("combat","ground","result","contact") and not self.dialog:
+        elif self.screen in ("combat","ground","result","contact","council") and not self.dialog:
             if event.key==pg.K_F5:
                 self.save_game()
             elif self.screen=="result" and event.key==pg.K_n:
@@ -1910,15 +1943,15 @@ class App:
         emblem(self.canvas,77,64,.62)
         text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
-        if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","ground","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","ground","result","council"):
             self.button("open_empire","Empire",(998,31,179,64),self.open_empire,"command",icon="empire",shortcut="I")
-        if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","ground","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","ground","result","council"):
             self.button("open_fleets","Fleets",(807,31,177,64),self.open_fleets,"command",icon="fleets",shortcut="F")
-        if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat","ground","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("diplomacy","combat","ground","result","council"):
             self.button("open_diplomacy","Diplomacy",(590,31,203,64),self.open_diplomacy,"command",icon="diplomacy",shortcut="D")
-        if self.screen in GAME_SCREENS and self.screen not in ("research","combat","ground","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("research","combat","ground","result","council"):
             self.button("open_research","Research",(395,31,181,64),self.open_research,"command",icon="research",shortcut="R")
-        if self.screen in GAME_SCREENS and self.screen not in ("combat","ground","result"):
+        if self.screen in GAME_SCREENS and self.screen not in ("combat","ground","result","council"):
             self.button("open_objectives","Objectives",(1191,31,185,64),self.open_objectives,"command",icon="objectives",shortcut="V")
         else:
             text(self.canvas,f"PROTOTYPE  /  {__version__.rsplit('.',1)[0]}",(1376,58),11,MUTED,"mono",right=True)
@@ -2228,7 +2261,7 @@ class App:
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,387))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Choose a race, build an empire, research technologies, and negotiate with an expanding AI rival. Fight fleet battles and invade colonies, or build the Ascension Gate to win through science.",
+        paragraph(self.canvas,"Lead an empire, research technologies and negotiate with rival civilizations. Fight fleet battles and invade colonies. Win by conquest, build the Ascension Gate, or win a Galactic Council election.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
         paragraph(self.canvas,"Food shipments, more empires, shields and advanced weapons. Assign colony workers to farming, industry, research or mining, manage construction, and grow toward each world's population limit.",

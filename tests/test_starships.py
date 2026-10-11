@@ -320,7 +320,7 @@ class LegacyHullTests(unittest.TestCase):
             self.assertEqual(game.planet_at(0, 2).construction_queue[0].design.kind, "battleship")
             if game.combat is None:
                 self.assertEqual((game.technology.active, game.technology.progress), ("ascension_theory", 123))
-                game.research = 500
+                game.research = TECHNOLOGIES["ascension_theory"].cost
                 game.advance_research()
                 self.assertIn("ascension_theory", game.technology.completed)
                 game.save_design("Still available", "cruiser", ["laser"])

@@ -110,7 +110,7 @@ class AIRulesTests(unittest.TestCase):
                 place_near(game, frontier.id, anchor=home)
                 expected_credits = game.credits
                 # Farms also use construction time before the scientific endgame.
-                for _ in range(300):  # The expanded arsenal adds nine tiers before Ascension.
+                for _ in range(330):  # The expanded arsenal plus 5,000-RP Ascension takes this seed through turn 311.
                     if game.result is not None:
                         break
                     expected_credits += game.empire_rates[0]

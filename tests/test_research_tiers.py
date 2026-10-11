@@ -142,7 +142,7 @@ class LegacyResearchTests(unittest.TestCase):
             self.assertEqual(storage.load(storage.save(game))[0], game)
             game.research = 90
             self.assertEqual(game.advance_research().id, "electronic_countermeasures")
-            game.opponent.research = 355
+            game.opponent.research = game.opponent.technology.project_cost-game.opponent.technology.progress
             self.assertEqual(game.advance_research("rival").id, "ascension_theory")
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
             self.assertEqual(source.read_bytes(), original)

@@ -142,7 +142,9 @@ def draw_observer(app):
     text(surface, f"PAGE {app.observer_page+1} / {last+1} · {len(rows)} RECORDS", (86, 713), 11, MUTED, "mono")
     app.button("observer_previous", "← Prev", (1081, 704, 139, 36), lambda: app.change_observer_page(-1), enabled=app.observer_page>0)
     app.button("observer_next", "Next →", (1233, 704, 143, 36), lambda: app.change_observer_page(1), enabled=app.observer_page<last)
-    note = ("Conquest: the last empire with colonies wins. Science: charge an Ascension Gate for five turns." if app.observer_tab == "objectives" else
+    if app.observer_tab == "objectives":
+        app.button("observer_council", "Galactic Council →", (1081, 753, 295, 39), app.open_council)
+    note = ("Win by conquest, Ascension, or a council vote. One colonized world gives one vote." if app.observer_tab == "objectives" else
             "Click a fleet to inspect its ships and route." if app.observer_tab == "fleets" else
             "The Observer has no diplomatic relationships and cannot affect negotiations." if app.observer_tab == "diplomacy" else
             "Click an empire to inspect its economy, colonies and recent activity.")

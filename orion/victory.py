@@ -182,6 +182,9 @@ def current_result(game):
     if ascended:
         # Production is simultaneous: two gates finishing together is a draw.
         return CampaignResult(next(iter(ascended)) if len(ascended) == 1 else None, "science", game.turn)
+    election = game.council.election
+    if election is not None and election.status == "accepted":
+        return CampaignResult(election.winner, "council", game.turn)
     return None
 
 
@@ -205,7 +208,7 @@ def validate(game, data):
         return None
     if (not isinstance(data, dict) or set(data) != {"winner", "condition", "turn"}
             or data["winner"] not in (*game.owners, None)
-            or data["condition"] not in ("conquest", "science", "elimination")
+            or data["condition"] not in ("conquest", "science", "elimination", "council")
             or not _integer(data["turn"], game.turn, game.turn)):
         raise ValueError("Invalid campaign result")
     result = CampaignResult(**data)

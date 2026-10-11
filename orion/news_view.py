@@ -13,7 +13,7 @@ def draw_news(app):
                (64, 124, 280, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "A chronicle of the galaxy" if game.is_observer else "Dispatches from the frontier", (64, 189), 40, INK, "title")
-    text(surface, "Empire activity, battles, raids and awakenings · latest 240 activity entries" if game.is_observer else "Frontier reports and hostile sensor contacts · newest first", (66, 250), 15, MUTED)
+    text(surface, "Empire activity, council elections, battles and awakenings" if game.is_observer else "Council elections, frontier reports and hostile sensor contacts · newest first", (66, 250), 15, MUTED)
     rows = news.entries(game)
     last = max(0, (len(rows)-1)//NEWS_PER_PAGE)
     app.news_page = min(max(0, app.news_page), last)
@@ -36,7 +36,7 @@ def draw_news(app):
     if not rows:
         panel(surface, (64, 294, 1312, 393))
         text(surface, "No news reports", (101, 354), 32, INK, "title")
-        paragraph(surface, "Known tomb-world awakenings, visible raids and newly detected hostile fleets appear here. These reports remain with your campaign.",
+        paragraph(surface, "Council elections, known tomb-world awakenings, visible raids and newly detected hostile fleets appear here. These reports remain with your campaign.",
                   (103, 423), 1010, 19, MUTED, 31)
         text(surface, "Dormant vaults are hidden. Keep exploring the galaxy.", (103, 554), 16, GOLD)
     text(surface, f"PAGE {app.news_page+1} / {last+1} · {len(rows)} REPORTS", (65, 798), 11, MUTED, "mono")

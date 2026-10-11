@@ -29,6 +29,8 @@ def entries(game):
              for r in game.sensor_reports if r.observer == "player"]
     rows += [NewsEntry(e.turn, None, None, "EMPIRE ACTIVITY", game.empire_name_for(e.owner), e.message, e.id)
              for e in game.observer_events]
+    rows += [NewsEntry(e.turn, None, None, "GALACTIC COUNCIL", "The Galactic Council", e.message, e.id)
+             for e in game.council.events]
     return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id if n.system_id is not None else -1,
                                       n.planet_id if n.planet_id is not None else -1), reverse=True)
 
@@ -36,7 +38,8 @@ def entries(game):
 def unread_count(game):
     return (tomb_worlds.unread_count(game)+sum(r.id > game.raid_news_read for r in raiding.news(game))+
             sum(r.observer == "player" and r.id > game.sensor_news_read for r in game.sensor_reports)+
-            sum(e.id > game.observer_news_read for e in game.observer_events))
+            sum(e.id > game.observer_news_read for e in game.observer_events)+
+            sum(e.id > game.council.news_read for e in game.council.events))
 
 
 def mark_read(game):
@@ -44,3 +47,4 @@ def mark_read(game):
     game.raid_news_read = game.next_raid_id-1
     game.sensor_news_read = game.next_sensor_report_id-1
     game.observer_news_read = game.next_observer_event_id-1
+    game.council.news_read = game.council.next_event_id-1

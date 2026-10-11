@@ -6,6 +6,7 @@ import pygame as pg
 from .building_art import draw_building_art, load_building_art
 from .production import ASCENSION_GATE, GATE_CHARGE_TURNS
 from .research import TECHNOLOGIES
+from .council_view import council_summary
 from .victory import colonies, gate_blocked, gate_site
 from .exploration import known_rival_colonies
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
@@ -40,45 +41,54 @@ def draw_objectives(app):
     app.button("objectives_back", "← Back · V", (64, 124, 195, 46), app.close_objectives, "ghost")
     app.button("objectives_galaxy", "Galaxy map", (274, 124, 182, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
-    text(surface, "Two paths to victory", (64, 190), 43, INK, "title")
-    text(surface, "Conquer every rival's colonies or lead your civilization through the Ascension Gate.", (66, 251), 14, MUTED)
+    text(surface, "Three paths to victory", (64, 190), 43, INK, "title")
+    text(surface, "Conquer the galaxy, complete Ascension, or be elected Emperor of the Universe.", (66, 251), 14, MUTED)
 
-    panel(surface, (64, 286, 623, 284))
+    panel(surface, (64, 286, 410, 284))
     text(surface, "01 / CONQUEST", (88, 309), 11, GOLD, "mono", 2)
     own, rival = len(colonies(game, "player")), sum(len(colonies(game, owner)) for owner in game.opponents)
     conquest = (f"{len(known_rival_colonies(game))} known rival colonies" if game.fog_of_war else
-                f"{rival} rival {'colony remains' if rival == 1 else 'colonies remain'}")
+                f"{rival} rival colonies remain")
     text(surface, conquest if game.opponent else "No rival in this campaign",
-         (87, 344), 29, INK, "title")
-    text(surface, f"Your empire controls {own} {'colony' if own == 1 else 'colonies'}.", (89, 389), 14, CYAN)
-    paragraph(surface, "Build barracks, then troop transports (8 troops each). Clear enemy ships from orbit and plan an invasion from the planet overview. "
-              "Garrisons and fortifications strengthen colony defence.",
-              (89, 424), 566, 14, MUTED, 23)
-    text(surface, "Losing every colony ends an empire, even if its ships survive.", (89, 540), 12, GOLD)
+         (87, 344), 23, INK, "title")
+    text(surface, f"Your empire controls {own} colonies.", (89, 384), 13, CYAN)
+    paragraph(surface, "Build troop transports, clear enemy ships and defenses from orbit, then invade. "
+              "The last empire with colonies wins.", (89, 421), 360, 14, MUTED, 23)
+    paragraph(surface, "Losing every colony eliminates an empire, even if its ships survive.",
+              (89, 515), 360, 12, GOLD, 18)
 
-    panel(surface, (709, 286, 667, 284))
-    text(surface, "02 / SCIENCE", (733, 309), 11, GOLD, "mono", 2)
-    text(surface, f"{state.finished_branches} / {len(state.required_branches)} branches completed", (732, 344), 29, INK, "title")
+    panel(surface, (486, 286, 450, 284))
+    text(surface, "02 / SCIENCE", (510, 309), 11, GOLD, "mono", 2)
+    text(surface, f"{state.finished_branches} / {len(state.required_branches)} branches completed", (509, 344), 23, INK, "title")
     goal = ("Original campaign goal retained; new arsenal tiers are optional." if state.legacy_arsenal else
             f"Complete every tier in all {len(state.required_branches)} required branches. Either choice counts.")
-    text(surface, goal, (734, 390), 13, MUTED)
-    progress(surface, (734, 418, 616, 4), state.finished_branches/len(state.required_branches))
+    paragraph(surface, goal, (511, 383), 397, 12, MUTED, 18)
+    progress(surface, (511, 428, 397, 4), state.finished_branches/len(state.required_branches))
     theory = TECHNOLOGIES["ascension_theory"]
     known = theory.id in state.completed
     active = state.active == theory.id
-    caption = ("Ascension Theory discovered. Your gate is unlocked." if known else
-               f"Ascension Theory: {state.progress} / {theory.cost} RP" if active else
-               f"Next: Ascension Theory · {theory.cost} RP · uses your normal research output")
-    text(surface, caption, (734, 444), 13, CYAN if known or active else MUTED)
+    caption = ("Ascension Theory discovered. Gate unlocked." if known else
+               f"Ascension Theory: {state.progress:,} / {theory.cost:,} RP" if active else
+               f"Ascension Theory costs {theory.cost:,} RP.")
+    text(surface, caption, (511, 451), 13, CYAN if known or active else MUTED)
     reason = game.research_error(theory.id)
     label = "Theory discovered" if known else "Researching theory" if active else "Research Ascension Theory"
-    app.button("research_ascension", label, (733, 490, 331, 44),
+    app.button("research_ascension", label, (510, 490, 264, 44),
                lambda: app.research_request(theory.id), enabled=reason is None)
-    app.technology_info_region(theory.id, (733, 437, 617, 44))
-    app.technology_info_region(theory.id, (733, 490, 331, 44))
-    app.button("objectives_research", "Research tree →", (1080, 490, 270, 44), app.open_research)
+    app.technology_info_region(theory.id, (510, 444, 400, 35))
+    app.technology_info_region(theory.id, (510, 490, 264, 44))
+    app.button("objectives_research", "Research →", (785, 490, 128, 44), app.open_research)
     if state.active and not active:
-        text(surface, "Switching research transfers all invested RP.", (734, 546), 11, MUTED)
+        text(surface, "Switching research transfers all invested RP.", (511, 546), 11, MUTED)
+
+    panel(surface, (948, 286, 428, 284))
+    text(surface, "03 / GALACTIC COUNCIL", (972, 309), 11, GOLD, "mono", 2)
+    text(surface, "Emperor of the Universe", (971, 344), 23, INK, "title")
+    paragraph(surface, "One colonized world gives one vote. Half of all votes, with a unique lead, elects the emperor. "
+              "Unsuccessful elections repeat every 50 turns.", (973, 384), 378, 13, MUTED, 20)
+    paragraph(surface, council_summary(game), (973, 452), 378, 12, CYAN, 17)
+    app.button("objectives_council", "View Galactic Council →", (972, 490, 380, 44), app.open_council)
+    text(surface, "You can defy a foreign emperor and face war.", (973, 546), 11, GOLD)
 
     panel(surface, (64, 590, 1312, 209))
     gate_icon(surface, (146, 682), 43)
@@ -150,13 +160,18 @@ def draw_result(app):
     if game.is_observer:
         title = "A shared ascension" if draw and result.condition == "science" else "Campaign complete"
     text(surface, title, (92, 187), 66, color, "title")
-    subtitle = "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
+    subtitle = "Council victory" if result.condition == "council" else "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
     text(surface, f"{subtitle.upper()}  /  YEAR {game.year}  /  TURN {result.turn}", (96, 280), 12, MUTED, "mono", 2)
     panel(surface, (92, 331, 1256, 225))
     if result.condition == "elimination":
         message = "Your final colony has fallen. Your empire has been eliminated; other civilizations still remain in the galaxy."
     elif draw:
         message = "Multiple empires completed the victory conditions together. The campaign ends in a draw."
+    elif result.condition == "council":
+        election = game.council.election
+        message = (f"{game.empire_name_for(result.winner)} was elected Emperor of the Universe with "
+                   f"{election.tally[result.winner]} of {election.total_votes} council votes. "
+                   "The galaxy recognizes its new ruler.")
     elif result.condition == "science":
         message = f"{game.empire_name_for(result.winner)} completed the Ascension Gate and charged it for five clear-orbit turns. A new age begins."
     else:

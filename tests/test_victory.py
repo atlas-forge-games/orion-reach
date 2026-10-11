@@ -37,7 +37,7 @@ def discover_branches(game, owner=PLAYER, option=0):
 
 def discover_theory(game, owner=PLAYER):
     discover_branches(game, owner)
-    game._empire(owner).research += 500
+    game._empire(owner).research += TECHNOLOGIES["ascension_theory"].cost
     game.choose_research("ascension_theory", owner=owner)
 
 
@@ -201,7 +201,7 @@ class ScienceRulesTests(unittest.TestCase):
                 game.choose_research("ascension_theory")
             discover_branches(game, option=option)
             self.assertEqual(game.technology.finished_branches, 9)
-            game.research = 513
+            game.research = TECHNOLOGIES["ascension_theory"].cost+13
             game.choose_research("ascension_theory")
             self.assertEqual(game.research, 13)
             self.assertEqual(len(game.technology.completed), 40)
@@ -434,7 +434,7 @@ class VictoryScreenTests(unittest.TestCase):
     def test_objectives_research_gate_confirmations_navigation_and_save(self):
         game = self.app.game
         discover_branches(game)
-        game.research, game.credits = 500, 500
+        game.research, game.credits = TECHNOLOGIES["ascension_theory"].cost, 500
         self.key(pg.K_v)
         self.assertEqual(self.app.screen, "objectives")
         self.click("research_ascension")

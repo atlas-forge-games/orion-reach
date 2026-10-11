@@ -1,11 +1,57 @@
-# Orion Reach — Python prototype 0.42.1
+# Orion Reach — Python prototype 0.43.0
 
-A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
+A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.43: the Galactic Council
+
+**Ascension Theory now costs 5,000 RP**, ten times its previous 500-RP cost.
+Research already invested is retained as the same number of points, including
+in older saves. Completed discoveries and existing gates remain valid. Gate
+construction still costs 500 Resources and 300 work, followed by five powered,
+clear-orbit charging turns.
+
+The **Galactic Council** adds a third victory path:
+
+- At the end of a turn, once **at least half of all solar systems are settled**,
+  the first election is called. A system counts once if any world in it has a
+  colony, including systems shared by several empires. Solo campaigns have no council.
+- Each surviving empire receives **one vote per colonized world**. Population,
+  slaves and uncolonized worlds do not add votes. A fresh census is taken at
+  every election, and every surviving empire is a candidate.
+- You cast your delegation's votes for one empire, including your own, or
+  abstain. AI ballots are visible. Computer empires back themselves unless a
+  larger empire has friendly relations (+25 or higher); then they support the
+  friend with the best relations, breaking equal preferences by colony count.
+- **At least half of all eligible votes**, rounded up, elects the
+  **Emperor of the Universe**, provided the candidate has a unique lead.
+  Abstentions remain in the denominator. An exact 50–50 tie elects nobody.
+- After an unsuccessful vote, another election occurs **50 turns later**, even
+  if settlement subsequently falls below half. The schedule ends once an emperor
+  is elected.
+- If you win, the game ends in a **council victory**. If another empire wins,
+  you may **accept** the ruling and end the campaign, or **defy** it. Defiance
+  ends all treaties with surviving AI empires and sets their relations with you
+  to **−100**: every one declares war. Elections cease, and the campaign
+  continues toward conquest or Ascension.
+
+The voting screen opens automatically and pauses strategic orders until you
+vote or decide the ruling. Battles already in progress finish before voting.
+Council membership establishes diplomatic contact and reveals public vote
+counts without revealing unsurveyed planets or fleet locations. Election news,
+ballots, outcomes and pending choices are saved. Observer campaigns resolve
+elections automatically and can inspect the council from their Objectives tab.
+
+**Existing campaigns:** the council begins checking the settlement threshold on
+the next completed turn. Already finished campaigns keep their result. Current
+saves use format 32; older saves load without modifying the original file.
+
+![Galactic Council vote](screenshots/council_vote.png)
+![Three victory paths](screenshots/council_objectives.png)
 
 ## New in v0.42.1: Varkesh warlords
 
@@ -371,7 +417,7 @@ replace earlier upgrade levels rather than adding them twice. Targeting upgrades
 work the same way. See **Research and discovery** below for every pairing.
 
 Scientific victory now requires completing every tier in all eight branches
-before Ascension Theory: **26 discoveries**, then the 500-RP capstone in Objectives.
+before Ascension Theory: **26 discoveries**, then the 5,000-RP capstone in Objectives.
 The AI follows the same sequence and exclusive choices.
 
 Save format **28** preserves all old discoveries, even when an old campaign
@@ -2128,7 +2174,7 @@ or production; its result and consumed transports are saved immediately by the U
 
 1. Complete **every tier in all nine branches**: 30 discoveries in a new campaign. Older campaigns retain their eight-branch goal. Every
    combination of exclusive technology choices can reach this victory path.
-2. In **Objectives**, choose **Ascension Theory** for **500 RP**. It uses the
+2. In **Objectives**, choose **Ascension Theory** for **5,000 RP**. It uses the
    existing one-project research system: stored points apply immediately, then
    normal research income contributes until completion.
 3. Choose one of your colonies in Objectives and build the **Ascension Gate**:
@@ -2304,7 +2350,7 @@ Start a new campaign to play with fog enabled. Fleet grouping is derived from
 existing ship data.
 Pre-combat saves gain full ship hulls and no
 active battle. v0.10 ship health, active battles and tactical turns are preserved.
-Older campaigns gain both victory paths with no existing gate or result.
+Older campaigns gain conquest and science with no existing gate or result, and gain council elections from v0.43.
 Research from v0.9 is preserved. Each empire starts with an empty research
 tree when upgrading from v0.8 or earlier; saved points can be spent immediately.
 v0.6 ownership and the rival economy are retained,
@@ -2314,11 +2360,12 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 31**, adding weapon recharge, graviton slowing, repair reserves,
+**format version 32**, adding council schedules, ballots, decisions and news.
+They retain weapon recharge, graviton slowing, repair reserves,
 drone roles and preserved pre-arsenal science goals. They retain Observer campaigns
 and their activity journal, carrier deployments and old-campaign hull access,
 legacy research choices and original active
-project costs, together with Resource banks, miners, building power switches and
+project costs (except Ascension Theory, now 5,000 RP), together with Resource banks, miners, building power switches and
 construction Resource reservations alongside first-contact dates, defence health,
 sensor contacts/news, route modifiers,
 bombardment use and deterministic combat accuracy. Negative treasuries still support building maintenance debt. They retain slave population in worlds and surveys, private
@@ -2380,6 +2427,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/personalities.py` | Civilization attitudes, greetings and diplomatic/AI preferences |
 | `orion/first_contact.py` | Private confirmed contacts, introduction queue and legacy migration |
 | `orion/contact_view.py` | First-contact transmission and replay screen |
+| `orion/council.py` | Council formation, world-weighted elections, AI ballots, defiance and save validation |
+| `orion/council_view.py` | Council census, voting, results and the accept-or-defy screen |
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
 | `orion/research_view.py` | Ten-field overview, paired tiers, project progress and research controls |
 | `orion/combat.py` | Tactical positions, movement paths, weapons, side turns, AI, retreat and validation |
@@ -2439,6 +2488,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_combat.py` | Battles, losses, retreat, repair, strategic locks, migrations and combat UI |
 | `tests/test_tactical_combat.py` | Movement, weapon ranges/colours, AI orders, save upgrades, animation timing and large fleets |
 | `tests/test_monsters.py` | Guardians, prize economies, interception, retreat, fog, AI, save validation and tactical UI |
+| `tests/test_council.py` | Council thresholds, elections, war, saves, UI and 5,000-RP Ascension |
 | `tests/test_victory.py` | Invasion rules, both endings, AI conquest, gate blockades, saves and UI controls |
 | `tests/test_ground_combat.py` | Training, fortifications, invasions, casualties, capture, saves and battle-report controls |
 | `tests/test_tomb_worlds.py` | Generation, awakenings, Remnant emergence, fog, news, guardian coexistence, saves and UI flows |
