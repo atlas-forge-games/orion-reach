@@ -137,7 +137,17 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("advanced_flak", "starships", 5, "Advanced Flak Systems", "Unlock flak modules: 45% interception per module against torpedoes and drones, with a 75% shipboard cap. Fits any combat hull."),
     tech("bomber_drones", "starships", 6, "Bomber Drones", "Unlock bomber bays for carriers: slower drones deal 5 damage, doubled against cruisers, larger ships, bases and guardians. Vulnerable to interception. Requires a carrier hull."),
     tech("automated_damage_control", "starships", 6, "Automated Damage Control", "Unlock repair systems for any combat hull. Each repairs up to 3 hull at the start of a turn, with 12 hull of reserve per battle. Repairs only damage suffered in that battle."),
+    tech("cryogenic_fuel_tanks", "materials", 5, "Cryogenic Fuel Tanks", "+10 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not change travel speed.", fuel_range=10),
+    tech("automated_refineries", "materials", 5, "Automated Refineries", "+3 Resources per operational mining complex, regardless of mineral richness.", mine_resources=3),
+    tech("antimatter_fuel_tanks", "materials", 6, "Antimatter Fuel Tanks", "+15 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require Cryogenic Fuel Tanks.", fuel_range=15),
+    tech("molecular_shipbuilding", "materials", 6, "Molecular Shipbuilding", "New ship orders cost 15% fewer Resources. Already placed orders keep their price.", ship_discount=15),
+    tech("spatial_compression_tanks", "materials", 7, "Spatial-Compression Tanks", "+20 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require earlier tank choices.", fuel_range=20),
+    tech("nanostructured_materials", "materials", 7, "Nanostructured Materials", "+4 industry per colony, without additional workers or power consumption.", colony_industry=4),
 )}
+
+FUEL_TANK_TECHNOLOGIES = ("lightweight_alloys", "composite_structures", "cryogenic_fuel_tanks",
+                          "antimatter_fuel_tanks", "spatial_compression_tanks")
+FUEL_EXPANSION_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values() if t.branch == "materials" and t.tier >= 5)
 
 
 def branch_tiers(branch):
@@ -172,6 +182,8 @@ class ResearchState:
     # Earlier campaigns keep cruiser/battleship access and their eight-branch victory goal.
     legacy_starships: bool = False
     legacy_arsenal: bool = False
+    # Pre-v0.44 campaigns keep their original Ascension requirements.
+    legacy_fuel: bool = False
 
     @property
     def bonuses(self):
@@ -207,7 +219,8 @@ class ResearchState:
 
     def required_tiers(self, branch):
         return tuple(t for t in branch_tiers(branch)
-                     if not self.legacy_arsenal or t <= LEGACY_TIER_LIMITS[branch])
+                     if (not self.legacy_arsenal or t <= LEGACY_TIER_LIMITS[branch])
+                     and (not self.legacy_fuel or branch != "materials" or t <= 4))
 
     def next_tier(self, branch):
         if self.active and TECHNOLOGIES[self.active].branch == branch:
@@ -269,7 +282,7 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=32):
+    def from_dict(cls, data, *, version=33):
         keys = {"completed", "active", "progress"}
         if version >= 28:
             keys |= {"legacy_count", "legacy_active"}
@@ -277,14 +290,18 @@ class ResearchState:
             keys.add("legacy_starships")
         if version >= 31:
             keys.add("legacy_arsenal")
+        if version >= 33:
+            keys.add("legacy_fuel")
         if not isinstance(data, dict) or set(data) != keys:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
         if version < 28:
             validate_legacy(completed, active, progress)
-            return cls(completed.copy(), active, progress, len(completed), active is not None, True, True)
+            return cls(completed.copy(), active, progress, len(completed), active is not None, True, True, True)
         if not isinstance(completed, list) or len(completed) > len(TECHNOLOGIES):
             raise ValueError("Invalid discoveries")
+        if version < 33 and any(isinstance(t, str) and t in FUEL_EXPANSION_TECHNOLOGIES for t in (*completed, active)):
+            raise ValueError("Fuel technology is newer than this save format")
         count, legacy_active = data["legacy_count"], data["legacy_active"]
         if type(count) is not int or not 0 <= count <= len(completed) or type(legacy_active) is not bool:
             raise ValueError("Invalid legacy research")
@@ -295,8 +312,11 @@ class ResearchState:
         legacy_arsenal = data["legacy_arsenal"] if version >= 31 else True
         if type(legacy_arsenal) is not bool:
             raise ValueError("Invalid legacy scientific goal")
+        legacy_fuel = data["legacy_fuel"] if version >= 33 else True
+        if type(legacy_fuel) is not bool:
+            raise ValueError("Invalid legacy fuel research goal")
         state = cls(completed[:count], legacy_count=count, legacy_starships=legacy_starships,
-                    legacy_arsenal=legacy_arsenal)
+                    legacy_arsenal=legacy_arsenal, legacy_fuel=legacy_fuel)
         for identifier in completed[count:]:
             if state.choice_error(identifier):
                 raise ValueError("Invalid technology sequence")

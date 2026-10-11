@@ -7,6 +7,7 @@ from .empires import MAX_RIVALS
 from .race_art import draw_race_portrait
 from .races import SETUP_RACES as RACES
 from .personalities import PERSONALITIES
+from .victory import CONDITIONS, CONDITION_NAMES
 from .ui import GOLD, INK, MUTED, panel, paragraph, text
 
 
@@ -35,7 +36,7 @@ def draw_race_select(app):
     y = paragraph(surface, race.description, (914, 631), 436, 13, MUTED, 19)+12
     for trait in race.traits:
         y = paragraph(surface, "• "+trait, (914, y), 436, 12, race.color, 18)+5
-    text(surface, "Next: empire name, galaxy size, exploration and rival count.", (66, 835), 14, MUTED)
+    text(surface, "Next: galaxy options, rivals and victory conditions.", (66, 835), 14, MUTED)
     app.button("setup_next", "Continue → Galaxy options", (966, 815, 410, 57),
                lambda: app.go("setup"), "primary")
 
@@ -64,22 +65,34 @@ def draw_setup(app):
         if app.size == size:
             pg.draw.line(surface, GOLD, (x, 518), (x+306, 518), 2)
     app.button("fog_of_war", ("AI fog of war: " if observer else "Fog of war: ")+("ON" if app.fog_of_war else "OFF"),
-               (430, 546, 306, 47), app.toggle_fog_of_war)
+               (430, 534, 306, 43), app.toggle_fog_of_war)
     paragraph(surface, ("You see everything. Computer empires must explore." if app.fog_of_war else "You and every computer empire see the whole galaxy.") if observer else
               "Explore to reveal planets and fleets." if app.fog_of_war else "All systems and fleets are visible from the start.",
-              (761, 561), 595, 14, MUTED, 20)
-    text(surface, "COMPUTER EMPIRES" if observer else "NUMBER OF RIVALS", (430, 623), 11, GOLD, "mono", 1)
+              (761, 547), 595, 14, MUTED, 20)
+    text(surface, "COMPUTER EMPIRES" if observer else "NUMBER OF RIVALS", (430, 600), 11, GOLD, "mono", 1)
     for count in range(MAX_RIVALS+1):
         x = 430+count*160
         app.button(f"rival_count_{count}", "0 · Solo" if count == 0 else str(count),
-                   (x, 650, 146, 47), lambda n=count: app.choose_rival_count(n), enabled=not observer or count >= 2)
+                   (x, 622, 146, 43), lambda n=count: app.choose_rival_count(n), enabled=not observer or count >= 2)
         if app.rival_count == count:
-            pg.draw.line(surface, GOLD, (x, 697), (x+146, 697), 2)
-    paragraph(surface, "Choose 2–5 computer empires. Races are drawn without duplicates; The Observer never occupies an empire slot. Battles resolve automatically." if observer else
-              "Rival races are drawn randomly, without duplicates. Every empire starts in a different system, with its own fleet and economy.",
-              (431, 720), 912, 14, MUTED, 22)
-    text(surface, "Random starting locations across a rectangular galaxy.", (431, 781), 14, GOLD)
+            pg.draw.line(surface, GOLD, (x, 665), (x+146, 665), 2)
+    paragraph(surface, "Choose 2–5 computer empires. Random races and starting locations. Battles resolve automatically." if observer else
+              "Random rival races and starting locations. Every empire begins with its own fleet and economy.",
+              (431, 682), 930, 13, MUTED, 18)
+    text(surface, "VICTORY CONDITIONS", (430, 721), 11, GOLD, "mono", 1)
+    text(surface, "All off = open-ended play", (1376, 721), 12, MUTED, right=True)
+    captions = ("Last surviving empire with colonies", "Research and activate an Ascension Gate", "Elect an emperor through colony votes")
+    for i, condition in enumerate(CONDITIONS):
+        x = 430+i*320
+        enabled = condition in app.victory_conditions
+        app.button("victory_"+condition, f"{CONDITION_NAMES[condition]}: {'ON' if enabled else 'OFF'}",
+                   (x, 745, 306, 43), lambda c=condition: app.toggle_victory_condition(c))
+        if enabled:
+            pg.draw.line(surface, GOLD, (x, 788), (x+306, 788), 2)
+        text(surface, captions[i], (x+2, 798), 11, MUTED)
     starting = ("Start: 2 scouts, 1 frigate, 2 troop transports · Range: 10.5 ly" if race.id == "varkesh" else
                 "Start: two scouts and one colony ship · Base fuel range: 7 ly")
-    text(surface, "Watch. Advance turns. Save and return whenever you like." if observer else starting, (65, 842), 13, MUTED)
+    footer = ("No victory limit. Losing all your colonies still ends your campaign." if not app.victory_conditions and not observer else
+              "Watch. Advance turns. Save and return whenever you like." if observer else starting)
+    text(surface, footer, (65, 842), 13, MUTED)
     app.button("launch", "Begin observation" if observer else "Begin expedition", (966, 831, 410, 48), app.start_game, "primary")

@@ -77,7 +77,8 @@ MODULES = {
 }
 
 ARSENAL_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values()
-                               if t.branch in LEGACY_TIER_LIMITS and t.tier > LEGACY_TIER_LIMITS[t.branch])
+                               if t.branch in LEGACY_TIER_LIMITS and t.tier > LEGACY_TIER_LIMITS[t.branch]
+                               and any(module.technology == t.id for module in MODULES.values()))
 
 
 def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_hulls=False):

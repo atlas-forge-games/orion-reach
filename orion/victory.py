@@ -6,6 +6,19 @@ from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, TROOP_STRE
 from .ground_combat import GroundRound, forces, resolve
 from .population import liberate
 
+CONDITIONS = ("conquest", "science", "council")
+CONDITION_NAMES = {"conquest": "Conquest", "science": "Science", "council": "Galactic Council"}
+
+
+def parse_conditions(values):
+    """Keep setup and save options explicit, unique and in a stable order."""
+    if (not isinstance(values, (list, tuple))
+            or any(not isinstance(value, str) or value not in CONDITIONS for value in values)
+            or len(set(values)) != len(values)):
+        raise ValueError("Choose valid victory conditions.")
+    return tuple(condition for condition in CONDITIONS if condition in values)
+
+
 @dataclass(frozen=True)
 class CampaignResult:
     winner: str | None
@@ -149,6 +162,8 @@ def gate_blocked(game, system_id, owner):
 def gate_error(game, system_id, planet_id, owner="player"):
     if game.strategy_error(owner):
         return game.strategy_error(owner)
+    if "science" not in game.victory_conditions:
+        return "Science victory is disabled for this campaign."
     planet = game.planet_at(system_id, planet_id)
     if planet.owner != owner:
         return "Choose one of your colonies."
@@ -163,6 +178,8 @@ def gate_error(game, system_id, planet_id, owner="player"):
 
 def advance_gates(game, eligible):
     """Charge only gates that existed at turn start; arrivals can blockade them."""
+    if "science" not in game.victory_conditions:
+        return
     for system_id, planet_id, owner in eligible:
         planet = game.planet_at(system_id, planet_id)
         if (planet.owner == owner and planet.ascension_gate
@@ -173,17 +190,17 @@ def advance_gates(game, eligible):
 def current_result(game):
     if game.opponents:
         alive = [owner for owner in game.owners if colonies(game, owner)]
-        if len(alive) < 2:
+        if "conquest" in game.victory_conditions and len(alive) < 2:
             return CampaignResult(alive[0] if alive else None, "conquest", game.turn)
         if not game.is_observer and "player" not in alive:
             return CampaignResult(None, "elimination", game.turn)
     ascended = {p.owner for s in game.systems for p in s.worlds
                 if p.ascension_gate and p.gate_charge == GATE_CHARGE_TURNS}
-    if ascended:
+    if "science" in game.victory_conditions and ascended:
         # Production is simultaneous: two gates finishing together is a draw.
         return CampaignResult(next(iter(ascended)) if len(ascended) == 1 else None, "science", game.turn)
     election = game.council.election
-    if election is not None and election.status == "accepted":
+    if "council" in game.victory_conditions and election is not None and election.status == "accepted":
         return CampaignResult(election.winner, "council", game.turn)
     return None
 
@@ -192,6 +209,9 @@ def validate(game, data):
     """Validate terminal outcomes and projects against actual campaign state."""
     from .model import _integer
     for owner in game.owners:
+        research = game.research_state(owner)
+        if "science" not in game.victory_conditions and (research.active == "ascension_theory" or "ascension_theory" in research.completed):
+            raise ValueError("Disabled science victory cannot have Ascension research")
         sites = []
         for system, planet in colonies(game, owner):
             queued = [p for p in planet.construction_queue if p.item_id == ASCENSION_GATE.id]
@@ -199,7 +219,8 @@ def validate(game, data):
                 raise ValueError("Duplicate Ascension Gate")
             if queued or planet.ascension_gate:
                 sites.append((system, planet))
-        if len(sites) > 1 or (sites and "ascension_theory" not in game.research_state(owner).completed):
+        if (len(sites) > 1 or (sites and ("science" not in game.victory_conditions
+                                       or "ascension_theory" not in game.research_state(owner).completed))):
             raise ValueError("Gate does not match research or empire limit")
     expected = current_result(game)
     if data is None:

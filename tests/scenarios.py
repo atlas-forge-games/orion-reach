@@ -88,6 +88,7 @@ def legacy_economy(game):
         state.legacy_active = state.active is not None
         state.legacy_starships = True
         state.legacy_arsenal = True
+        state.legacy_fuel = True
     for system in game.systems:
         for planet in system.worlds:
             planet.miners = 0
@@ -107,6 +108,7 @@ def legacy_research_payload(data):
     """Represent research in pre-v28 fixtures using their real three-field schema."""
     if isinstance(data, dict):
         if {"completed", "active", "progress", "legacy_count", "legacy_active"} <= set(data):
+            data.pop("legacy_fuel", None)
             data.pop("legacy_arsenal", None)
             data.pop("legacy_starships", None)
             data.pop("legacy_count")

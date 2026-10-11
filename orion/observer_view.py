@@ -11,7 +11,7 @@ from .personalities import PERSONALITIES
 from .race_art import draw_race_portrait
 from .races import RACES, OBSERVER
 from .research import TECHNOLOGIES
-from .victory import colonies, gate_site
+from .victory import CONDITION_NAMES, colonies, gate_site
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, shorten, text
 
 TABS = {"empires": "Empires", "diplomacy": "Diplomacy", "research": "Research",
@@ -107,6 +107,9 @@ def report_rows(app):
                           f"{state.finished_branches}/{len(state.required_branches)}",
                           site[1].name if site else "Not built", f"{site[1].gate_charge}/5" if site and site[1].ascension_gate else "Building" if site else "—")
                 detail = "Ascension Theory discovered" if "ascension_theory" in state.completed else "Complete every research branch, discover Ascension Theory, then build and charge a gate."
+                if "science" not in game.victory_conditions:
+                    values = (*values[:4], "Disabled", "—")
+                    detail = "Science victory is disabled for every empire in this campaign."
             rows.append((values, detail, color, lambda oid=owner: app.open_observed_empire(oid)))
     return columns, rows
 
@@ -143,8 +146,10 @@ def draw_observer(app):
     app.button("observer_previous", "← Prev", (1081, 704, 139, 36), lambda: app.change_observer_page(-1), enabled=app.observer_page>0)
     app.button("observer_next", "Next →", (1233, 704, 143, 36), lambda: app.change_observer_page(1), enabled=app.observer_page<last)
     if app.observer_tab == "objectives":
-        app.button("observer_council", "Galactic Council →", (1081, 753, 295, 39), app.open_council)
-    note = ("Win by conquest, Ascension, or a council vote. One colonized world gives one vote." if app.observer_tab == "objectives" else
+        app.button("observer_council", "Galactic Council →", (1081, 753, 295, 39), app.open_council,
+                   enabled="council" in game.victory_conditions)
+    victories = "Enabled victories: "+" · ".join(CONDITION_NAMES[c] for c in game.victory_conditions) if game.victory_conditions else "Open-ended observation: no victory conditions are enabled."
+    note = (victories if app.observer_tab == "objectives" else
             "Click a fleet to inspect its ships and route." if app.observer_tab == "fleets" else
             "The Observer has no diplomatic relationships and cannot affect negotiations." if app.observer_tab == "diplomacy" else
             "Click an empire to inspect its economy, colonies and recent activity.")

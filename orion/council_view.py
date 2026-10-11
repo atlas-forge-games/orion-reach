@@ -7,6 +7,8 @@ from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, te
 
 
 def council_summary(game):
+    if "council" not in game.victory_conditions:
+        return "Galactic Council victory is disabled for this campaign."
     state = game.council
     if not state.formed_turn:
         return "Forms when half the solar systems have a colony."
@@ -31,7 +33,7 @@ def draw_council(app):
     text(surface, f"TURN {game.turn:03}", (1376, 152), 12, GOLD, "mono", right=True)
     panel(surface, (64, 225, 1312, 82))
     if election is None:
-        text(surface, "The council has not convened yet.", (88, 243), 23, GOLD)
+        text(surface, "The council has not convened yet." if "council" in game.victory_conditions else "Council disabled in galaxy setup.", (88, 243), 23, GOLD)
         text(surface, council_summary(game), (89, 279), 13, MUTED)
         paragraph(surface, f"The first election opens after at least half the galaxy's solar systems are settled. "
                   f"One colony is enough to count a system as settled. If nobody wins, the council votes again after {ELECTION_INTERVAL} turns.",
@@ -40,7 +42,7 @@ def draw_council(app):
                   "Abstentions still count toward the total; an exact 50–50 tie elects nobody. "
                   "You may refuse a foreign emperor, continuing the campaign at war with every surviving computer empire.",
                   (88, 496), 1170, 19, MUTED, 31)
-        if not game.fog_of_war or game.is_observer:
+        if "council" in game.victory_conditions and (not game.fog_of_war or game.is_observer):
             text(surface, f"{settled_systems(game)} / {len(game.systems)} systems settled", (88, 695), 21, CYAN)
     else:
         title = (f"Your delegation controls {election.weights['player']} votes. Choose an empire below." if election.status == "voting" else

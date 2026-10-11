@@ -394,6 +394,7 @@ class GuardianSaveTests(unittest.TestCase):
         for owner in expected.owners:
             expected.research_state(owner).legacy_starships = True
             expected.research_state(owner).legacy_arsenal = True
+            expected.research_state(owner).legacy_fuel = True
         expected.combat.accuracy = False
         expected.combat.shots_fired = 0
         self.assertEqual(GameState.from_dict(legacy_research_payload(legacy), version=16), expected)

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.43.0
+# Orion Reach — Python prototype 0.44.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,46 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.44: victory options and advanced fuel tanks
+
+The **second new-game screen**, immediately after choosing a race, now lets you
+toggle **Conquest**, **Science**, and **Galactic Council** independently. All
+three are on by default. The choices apply to every empire and are saved with
+the campaign, including Observer games. Objectives shows which conditions are
+enabled. Turn them all off for open-ended play; losing every colony still ends
+a human campaign.
+
+- With Conquest off, defeating the final rival does not end the campaign.
+- With Science off, Ascension Theory, gate construction and gate charging are
+  disabled. All other research remains available to humans and AI.
+- With Galactic Council off, no council forms and no elections occur.
+
+**Three new paired tiers** extend Materials & Chemistry without removing any
+previous technologies. Complete each tier to unlock the next; choose one of its
+two alternatives. Skipping a tank does not prevent researching a later tank.
+
+| Tier | Fuel tank | Range added | Alternative | RP |
+| --- | --- | ---: | --- | ---: |
+| V | Cryogenic Fuel Tanks | +10 ly | Automated Refineries: +3 Resources per operational mine | 360 |
+| VI | Antimatter Fuel Tanks | +15 ly | Molecular Shipbuilding: new ships cost 15% fewer Resources | 540 |
+| VII | Spatial-Compression Tanks | +20 ly | Nanostructured Materials: +4 industry per colony | 760 |
+
+Tank bonuses add to the existing Lightweight Alloys (+10 ly), Composite
+Structures (+15 ly) and Deep-Space Logistics (+5 ly) upgrades. They automatically
+extend the range of **all existing and future ships** from your owned colonies;
+no refit or ship-design slot is needed. They change range, not travel speed or
+voyages already underway. The Varkesh's 50% range bonus applies afterward. AI
+empires can prioritize the new tanks when their explored frontier is exhausted.
+
+**Save compatibility:** older campaigns keep all three victories enabled and
+retain their previous Ascension requirements, invested RP, discoveries, gates
+and council ballots. The new tiers are optional for their science goal. New
+campaigns must complete the three additional tiers before Ascension Theory.
+Save format is now 33; loading never rewrites an older save file.
+
+![Victory conditions in galaxy setup](screenshots/setup_victory_options.png)
+![Advanced fuel research](screenshots/fuel_tanks_tier_5.png)
 
 ## New in v0.43: the Galactic Council
 
@@ -48,7 +88,7 @@ elections automatically and can inspect the council from their Objectives tab.
 
 **Existing campaigns:** the council begins checking the settlement threshold on
 the next completed turn. Already finished campaigns keep their result. Current
-saves use format 32; older saves load without modifying the original file.
+saves from v0.43 use format 32; older saves load without modifying the original file.
 
 ![Galactic Council vote](screenshots/council_vote.png)
 ![Three victory paths](screenshots/council_objectives.png)

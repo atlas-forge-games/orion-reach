@@ -224,10 +224,12 @@ class ObserverRulesTests(unittest.TestCase):
         game = new_game(seed=2408, with_tombs=False)
         for owner in game.owners:
             game.research_state(owner).legacy_arsenal = True
+            game.research_state(owner).legacy_fuel = True
         data = game.to_dict()
         for empire in [data, data["opponent"], *data["other_opponents"].values()]:
             if empire:
                 empire["technology"].pop("legacy_arsenal")
+                empire["technology"].pop("legacy_fuel")
         for key in ("observer_events", "next_observer_event_id", "observer_news_read"):
             del data[key]
         restored = GameState.from_dict(data, version=29)

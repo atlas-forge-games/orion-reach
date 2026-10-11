@@ -68,6 +68,8 @@ def settled_systems(game):
 
 def schedule(game):
     """Check the formation threshold at the end of a completed strategic turn."""
+    if "council" not in game.victory_conditions:
+        return
     state = game.council
     if (not state.formed_turn and game.result is None and len(world_votes(game)) >= 2
             and 2*settled_systems(game) >= len(game.systems)):
@@ -92,7 +94,7 @@ def convene_due(game):
     """Wait for tactical battles to finish before freezing this election's census."""
     from .first_contact import establish
     state = game.council
-    if (game.result is not None or game.combat is not None or state.pending
+    if ("council" not in game.victory_conditions or game.result is not None or game.combat is not None or state.pending
             or not state.next_vote_turn or game.turn < state.next_vote_turn):
         return
     weights = world_votes(game)
@@ -128,7 +130,7 @@ def resolve(game):
 def cast_vote(game, candidate):
     from .model import RuleError
     election = game.council.election
-    if (game.is_observer or game.result is not None or game.combat is not None or election is None
+    if ("council" not in game.victory_conditions or game.is_observer or game.result is not None or game.combat is not None or election is None
             or election.status != "voting" or "player" not in election.weights):
         raise RuleError("No council election is waiting for your vote.")
     if candidate is not None and (not isinstance(candidate, str) or candidate not in election.weights):
@@ -142,7 +144,7 @@ def accept_ruling(game, accept):
     from .model import RuleError
     from .first_contact import establish
     state, election = game.council, game.council.election
-    if (type(accept) is not bool or game.is_observer or game.result is not None or game.combat is not None
+    if ("council" not in game.victory_conditions or type(accept) is not bool or game.is_observer or game.result is not None or game.combat is not None
             or election is None or election.status != "decision"):
         raise RuleError("No council ruling is waiting for your decision.")
     if accept:
@@ -178,6 +180,8 @@ def load(game, data, version):
     formed, next_turn = row["formed_turn"], row["next_vote_turn"]
     if not _integer(formed, 0, game.turn) or not _integer(next_turn, 0, game.turn+ELECTION_INTERVAL):
         raise ValueError("Invalid election schedule")
+    if formed and "council" not in game.victory_conditions:
+        raise ValueError("A disabled council cannot have elections")
     state = CouncilState(formed, next_turn)
     if not _integer(row["next_event_id"], 1, 1_000_000_000) or not _integer(row["news_read"], 0, row["next_event_id"]-1):
         raise ValueError("Invalid council news cursor")

@@ -110,7 +110,7 @@ class ArsenalResearchTests(unittest.TestCase):
                 self.assertEqual(len(choices(branch, tier)), 2)
         for branch in BRANCHES:
             discover(game, [choices(branch, branch_tiers(branch)[-1])[0].id])
-        self.assertEqual(len(game.technology.completed), 39)
+        self.assertEqual(len(game.technology.completed), sum(len(branch_tiers(b)) for b in BRANCHES))
         self.assertIsNone(game.research_error("ascension_theory"))
         self.assertEqual(round_trip(game), game)
 

@@ -7,7 +7,7 @@ from .economy import energy_report
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, SHIP_TYPES, TROOP_STRENGTH
 from .races import RACES
-from .research import BRANCHES, TIERS, choices
+from .research import BRANCHES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
@@ -109,7 +109,7 @@ def research_choice(game, owner=RIVAL):
     raid_targets = known_enemy_colonies(game, owner) if raiding.is_varkesh(game, owner) else []
     if ((unknown and not any(game.within_fuel_range(s.id, owner) for s in unknown))
             or (raid_targets and not any(game.within_fuel_range(s.id, owner) for s, _ in raid_targets))):
-        for identifier in ("lightweight_alloys", "composite_structures"):
+        for identifier in FUEL_TANK_TECHNOLOGIES:
             if game.research_error(identifier, owner=owner) is None:
                 game.choose_research(identifier, owner=owner)
                 return
@@ -145,7 +145,8 @@ def research_choice(game, owner=RIVAL):
     for tier in TIERS:
         for branch in branches:
             options = choices(branch, tier)
-            if state.legacy_arsenal and "ascension_theory" not in state.completed and tier not in state.required_tiers(branch):
+            if ("science" in game.victory_conditions and "ascension_theory" not in state.completed
+                    and tier not in state.required_tiers(branch)):
                 continue
             if tier <= 2 and branch != "starships":
                 index = tuple(BRANCHES).index(branch)
@@ -449,7 +450,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     recover_power(game, owner)
     recover_budget(game, owner)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
-    if "ascension_theory" in game._empire(owner).technology.completed and not gate_site(game, owner):
+    if ("science" in game.victory_conditions and "ascension_theory" in game._empire(owner).technology.completed
+            and not gate_site(game, owner)):
         for system, planet in colonies:
             if game.gate_error(system.id, planet.id, owner=owner) is None:
                 game.queue_gate(system.id, planet.id, owner=owner)

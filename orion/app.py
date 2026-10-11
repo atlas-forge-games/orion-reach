@@ -29,7 +29,7 @@ from .research import BRANCHES, TECHNOLOGIES, branch_tiers
 from .combat import retreat_destination
 from .combat_view import VISIBLE_ROWS, draw_combat
 from .combat_effects import CombatAnimation
-from .victory import colonies
+from .victory import CONDITIONS, colonies
 from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
 from .news_view import NEWS_PER_PAGE, draw_news
@@ -106,6 +106,7 @@ class App:
         self.observer_page=0
         self.rival_id=RIVAL
         self.fog_of_war=True
+        self.victory_conditions=CONDITIONS
         self.field=None
         self.select_all=False
         self.settings_return="menu"
@@ -708,7 +709,8 @@ class App:
     def needs_research_choice(self):
         return (self.game is not None and not self.game.is_observer and self.game.result is None
                 and self.game.technology.active is None
-                and any(self.game.technology.status(t)=="available" for t in TECHNOLOGIES))
+                and any(self.game.technology.status(t)=="available"
+                        and (t!="ascension_theory" or "science" in self.game.victory_conditions) for t in TECHNOLOGIES))
 
     def prompt_idle_research(self, *, allow_news=False):
         """Show the turn's reminder once, after battles, greetings and news."""
@@ -1067,7 +1069,8 @@ class App:
     def start_game(self):
         try:
             self.game=new_game(self.empire,self.size,int(self.seed) if self.seed else None,
-                               race_id=self.race_id,rival_count=self.rival_count,fog_of_war=self.fog_of_war)
+                               race_id=self.race_id,rival_count=self.rival_count,fog_of_war=self.fog_of_war,
+                               victory_conditions=self.victory_conditions)
         except (ValueError,SaveError) as exc:
             self.toast(str(exc),True)
             return
@@ -1082,6 +1085,11 @@ class App:
 
     def toggle_fog_of_war(self):
         self.fog_of_war=not self.fog_of_war
+
+    def toggle_victory_condition(self,condition):
+        self.victory_conditions=tuple(c for c in CONDITIONS if (c in self.victory_conditions) != (c==condition))
+        self.field=None
+        pg.key.stop_text_input()
 
     def open_exploration(self):
         if self.screen=="exploration":

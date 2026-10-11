@@ -258,7 +258,7 @@ class Opponent:
     resources: int = economy.STARTING_RESOURCES
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=31):
+    def from_dict(cls, data, systems, turn, *, version=33):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -286,7 +286,7 @@ class Opponent:
         race_id = data["race_id"] if version >= 6 else "kharuun"
         if not isinstance(race_id, str) or race_id not in RACES:
             raise ValueError
-        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True)
+        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True, legacy_fuel=True)
         resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
         if not _integer(resources, 0, 1_000_000_000):
             raise ValueError("Invalid resource stockpile")
@@ -639,6 +639,7 @@ class GameState:
     next_observer_event_id: int = 1
     observer_news_read: int = 0
     council: council_rules.CouncilState = field(default_factory=council_rules.CouncilState)
+    victory_conditions: tuple[str, ...] = victory_rules.CONDITIONS
 
     @property
     def is_observer(self):
@@ -846,6 +847,8 @@ class GameState:
     def research_error(self, identifier, *, owner=PLAYER):
         if self.strategy_error(owner):
             return self.strategy_error(owner)
+        if identifier == "ascension_theory" and "science" not in self.victory_conditions:
+            return "Science victory is disabled for this campaign."
         return self.research_state(owner).choice_error(identifier)
 
     def choose_research(self, identifier, *, owner=PLAYER):
@@ -1569,7 +1572,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=32):
+    def from_dict(cls, data, *, version=33):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1652,10 +1655,12 @@ class GameState:
                     raise ValueError
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
-            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True)
+            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True, legacy_fuel=True)
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
+            if version >= 33:
+                game.victory_conditions = victory_rules.parse_conditions(data["victory_conditions"])
             game.resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
             if not _integer(game.resources, 0, 1_000_000_000):
                 raise ValueError("Invalid resource stockpile")
@@ -1738,7 +1743,7 @@ class GameState:
 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
              race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
-             rival_count=None, random_starts=True, with_tombs=True):
+             rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if type(fog_of_war) is not bool:
@@ -1757,6 +1762,10 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         raise SaveError(f"Choose between 0 and {MAX_RIVALS} rivals.")
     if type(random_starts) is not bool:
         raise SaveError("Random starts must be on or off.")
+    try:
+        victory_conditions = victory_rules.parse_conditions(victory_conditions)
+    except ValueError as exc:
+        raise SaveError(str(exc)) from exc
     if seed is None:
         seed = random.SystemRandom().randrange(1_000_000_000)
     if not _integer(seed, 0, 999_999_999):
@@ -1785,7 +1794,7 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
     for system in systems:
         system.worlds = generate_planets(system, seed, player_home=not observer)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
-                     race_id=race_id, fog_of_war=fog_of_war)
+                     race_id=race_id, fog_of_war=fog_of_war, victory_conditions=victory_conditions)
     if observer:
         game.credits = game.resources = 0
     else:

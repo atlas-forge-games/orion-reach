@@ -254,6 +254,9 @@ class CouncilSaveTests(unittest.TestCase):
         game = scenario()
         data = game.to_dict()
         data.pop("council")
+        for empire in [data, data["opponent"], *data["other_opponents"].values()]:
+            if empire:
+                empire["technology"].pop("legacy_fuel")
         restored = GameState.from_dict(data, version=31)
         self.assertEqual(restored.council, council.CouncilState())
         convene(restored)
@@ -306,6 +309,8 @@ class AscensionCostTests(unittest.TestCase):
         game.choose_research('ascension_theory')
         data = game.to_dict()
         data.pop('council')
+        data['technology'].pop('legacy_fuel')
+        data['technology']['completed'] = [t for t in data['technology']['completed'] if TECHNOLOGIES[t].branch != 'materials' or TECHNOLOGIES[t].tier <= 4]
         restored = GameState.from_dict(data, version=31)
         self.assertEqual(restored.technology.progress, 499)
         self.assertEqual(restored.technology.project_cost, 5000)
