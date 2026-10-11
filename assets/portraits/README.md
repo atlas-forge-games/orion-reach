@@ -1,8 +1,10 @@
 # Orion Reach — race portraits v1
 
-Eleven race portraits and one Observer portrait generated with the built-in image-generation tool.
+Eleven race portraits and one Observer portrait. The Varkesh use the supplied
+warlord illustration; the other portraits were generated with the built-in
+image-generation tool.
 The game uses these portraits on the New Game race cards and the Diplomacy
-screen, including your own empire's profile. Extract updates into the repository
+and first-contact screens, including your own empire's profile. Extract updates into the repository
 root to place the files under assets/portraits/.
 
 | Race | Portrait file |
@@ -20,17 +22,26 @@ root to place the files under assets/portraits/.
 | The Remnant | remnant-v1.png |
 | The Observer (spectator mode) | observer-v1.png |
 
-Each file is the unmodified generated PNG, with an opaque dark background.
+Each file is an unmodified PNG; supplied artwork is preserved as provided.
 The renderer preserves their aspect ratio and caches loaded and scaled images.
 Missing or unreadable images fall back to the matching procedural race emblem.
 To replace a portrait, keep its filename and restart the game. The filename stem
 before `-v1` is the stable race ID. The eight additions use the selected final
-portraits: Lithar are irregular living stones, Varkesh are crablike raiders,
+portraits: Lithar are irregular living stones, Varkesh are tusked warlords in
+battered armor beneath red clan banners,
 Wanderers are mothlike navigators, Xenonflora are branching plant organisms,
 Nexus are linked floating machines, Aetheri are loops of luminous energy,
 the Concord are symbiotic organisms, and the Remnant is a hooded humanoid
 survivor with a proud, patient, melancholy expression. Earlier portrait drafts
 are not included in the game.
+
+## Varkesh portrait update — v0.42.1
+
+`varkesh-v1.png` is the user-supplied **Brutaler Alien-Kriegsherr mit roten
+Bannern.png**, copied byte-for-byte. The old filename remains the stable asset
+path, so new games and existing campaigns immediately use the new portrait after
+restarting the game. No crop, rescaling, recoloring or generated edit is baked
+into the asset; the existing renderer fits it to each screen at runtime.
 
 ## Generation prompts
 

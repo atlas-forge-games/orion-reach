@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from .races import RACES
 from . import first_contact
-from .personalities import envoy_gain, gift_gain, personality
+from .personalities import diplomatic_reply, envoy_gain, gift_gain, personality
 
 ENVOY_COST, ENVOY_RELATIONS, ENVOY_COOLDOWN = 10, 8, 3
 GIFT_COST, GIFT_RELATIONS, GIFT_COOLDOWN = 50, 15, 5
@@ -136,6 +136,7 @@ def take_action(game, action, target="rival"):
     if error:
         raise RuleError(error)
     state, rival = game.diplomacy_between("player", target), game._empire(target)
+    outcome = action
     if action == "envoy":
         game.credits -= ENVOY_COST
         gain = envoy_gain(game, "player", target)
@@ -156,8 +157,10 @@ def take_action(game, action, target="rival"):
         title = "Trade pact" if action == "trade" else "Research agreement"
         if state.relations >= threshold:
             setattr(state, f"{action}_active", True)
+            outcome = f"{action}_accepted"
             message = f"{title} accepted. Benefits begin on the next End Turn."
         else:
+            outcome = f"{action}_declined"
             message = f"{title} declined. {rival.name} requires relations of {threshold:+}; currently {state.relations:+}."
     else:
         setattr(state, f"{action[4:]}_active", False)
@@ -167,6 +170,9 @@ def take_action(game, action, target="rival"):
         title = "Trade pact" if action == "end_trade" else "Research agreement"
         message = f"{title} ended. Relations -{before-state.relations}; its benefits stop immediately."
     state.record(game.turn, message)
+    reply = diplomatic_reply(game, target, outcome)
+    if reply:
+        state.record(game.turn, f'“{reply}”')
     return message
 
 
@@ -180,6 +186,11 @@ def advance_diplomacy(game):
             if state.relations < 0 and (state.trade_active or state.research_active):
                 state.trade_active = state.research_active = False
                 state.record(game.turn+1, f"{game.empire_name_for(second)} ended remaining agreements because relations fell below 0.")
+                # A foreign clan replies; never put words in the player's mouth.
+                for speaker in (first, second):
+                    reply = diplomatic_reply(game, speaker, "agreements_ended") if speaker != "player" else None
+                    if reply:
+                        state.record(game.turn+1, f'“{reply}”')
             state.improve(int(state.trade_active)+int(state.research_active))
             # A wary peace can thaw. Wars still require active diplomacy to end.
             intervals = (personality(game, first).forgiveness, personality(game, second).forgiveness)

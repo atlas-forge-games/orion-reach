@@ -40,9 +40,9 @@ PERSONALITIES = {
         "We have endured the passing of suns. Tread gently upon our worlds, and we shall endure beside you.",
         envoy=-2, gift=-3, breach=25, forgiveness=20, protective=True),
     "varkesh": Personality(
-        "Aggressive · Opportunistic · Intimidating",
-        "Raid vulnerable neighbours, build fleets early and respect resistance. Active agreements buy protection from raids.",
-        "Show us your strength, stranger. We would rather discover it here than above your homeworld.",
+        "Brutal · Predatory · Intimidating",
+        "Strike at weak colonies for slaves and plunder. Respect strength; active agreements stay their raiding fleets.",
+        "We are the Varkesh. Your wealth will fill our vaults. Your people will fill our slave holds. Resist, and your worlds will burn.",
         envoy=-3, gift=3, breach=10, forgiveness=6, fleet_bonus=2, military_turn=6),
     "wanderers": Personality(
         "Friendly · Independent · Adventurous",
@@ -75,6 +75,26 @@ PERSONALITIES = {
         "You name these stars as though they have never belonged to anyone. We remember otherwise.",
         envoy=-2, gift=-4, breach=25, forgiveness=20, fleet_bonus=1, conquest_ratio=150, protective=True),
 }
+
+
+DIPLOMATIC_REPLIES = {
+    "varkesh": {
+        "envoy": "Your envoy may speak. Our raiders are harder to persuade.",
+        "gift": "Tribute. Good. Your wealth is more useful than your excuses.",
+        "trade_accepted": "Our pact holds. Break it, and we will collect in chains.",
+        "trade_declined": "You have earned nothing. Our raiders will name their price.",
+        "research_accepted": "Share your knowledge. We will forge it into weapons.",
+        "research_declined": "You want our secrets? Prove you are worth more than a slave.",
+        "end_trade": "Your pact is ash. Guard your vaults. We are coming for them.",
+        "end_research": "Remember what we taught you. The next lesson will hurt.",
+        "agreements_ended": "Your promises are worthless. The clans owe you no restraint.",
+    },
+}
+
+
+def diplomatic_reply(game, owner, outcome):
+    """Optional in-character reply, separate from the action's rules summary."""
+    return DIPLOMATIC_REPLIES.get(game._empire(owner).race_id, {}).get(outcome)
 
 
 def personality(game, owner):

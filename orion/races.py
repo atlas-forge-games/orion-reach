@@ -72,8 +72,8 @@ RACES = {
         research_priority=("materials", "construction", "biology"),
         home_system="Tharok", homeworld="Durath", home_neighbors=("Keld", "Ormun", "Voldrak")),
     "varkesh": RaceSpec(
-        "varkesh", "Varkesh", "Raiding clans",
-        "Fast raiding fleets bring plunder and captive labor back to a single crowded stronghold.",
+        "varkesh", "Varkesh", "Brutal raiding clans",
+        "Armored warlords rule through fear, plunder rival worlds and drag captives back to a single fortified stronghold.",
         "Varkesh Clans", (216, 127, 89), 40, 50,
         effects=(("ship_discount", 20), ("capacity_percent", 50), ("research_percent", -20),
                  ("ship_speed_percent", 50), ("fuel_range_percent", 50)),

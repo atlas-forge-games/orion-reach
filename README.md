@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.42.0
+# Orion Reach — Python prototype 0.42.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,23 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.42.1: Varkesh warlords
+
+The Varkesh now use the supplied portrait of a tusked, armored warlord beneath
+red clan banners. It appears in race selection, setup, first contact and
+diplomacy, including existing campaigns after restarting the game.
+
+Their disposition is **Brutal · Predatory · Intimidating**. A threatening
+first-contact transmission and new replies to envoys, gifts, accepted/rejected
+treaties and broken agreements give them a consistent raider voice. Replies
+appear in **Recent exchanges**, alongside the exact costs and diplomatic
+outcomes. Gifts are described as tribute; they retain their ordinary effect on
+relations. Existing racial abilities, AI behavior and treaty rules are unchanged.
+The update requires no save migration. Replay their first-contact greeting from
+Diplomacy to hear the new introduction in an existing campaign.
+
+![Varkesh first contact](screenshots/varkesh_warlord_contact.png)
 
 ## New in v0.42: the expanded combat arsenal
 
@@ -518,7 +535,7 @@ personality-adjusted effects before you commit the action.
 | Kharuun | Practical, honourable, reserved | Value reliable trade and remember damaged trust. |
 | Aelari | Curious, cooperative, cautious | Welcome envoys, favour research and planetary protection. |
 | Lithar | Patient, territorial, steadfast | Build defences and forgive very slowly. |
-| Varkesh | Aggressive, opportunistic, intimidating | Build fleets early and raid neighbours without active agreements. |
+| Varkesh | Brutal, predatory, intimidating | Build fleets early and raid neighbours without active agreements. |
 | Wanderers | Friendly, independent, adventurous | Welcome exchange and reconcile quickly. |
 | Xenonflora | Protective, communal, watchful | Fortify living communities and react strongly to broken agreements. |
 | Nexus | Calculating, unemotional, methodical | Value material exchange and assess favourable opportunities for conquest. |
