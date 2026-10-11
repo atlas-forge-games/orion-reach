@@ -8,7 +8,7 @@ import random
 from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
-from .designs import HULLS, MAX_DESIGNS, ShipDesign, loadout_error
+from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loadout_error
 from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, distance_ly, travel_turns
 from . import combat as combat_rules
 from . import victory as victory_rules
@@ -175,7 +175,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=30):
+    def from_dict(cls, data, systems, *, version=31):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -257,7 +257,7 @@ class Opponent:
     resources: int = economy.STARTING_RESOURCES
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=30):
+    def from_dict(cls, data, systems, turn, *, version=31):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -285,7 +285,7 @@ class Opponent:
         race_id = data["race_id"] if version >= 6 else "kharuun"
         if not isinstance(race_id, str) or race_id not in RACES:
             raise ValueError
-        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True)
+        technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True)
         resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
         if not _integer(resources, 0, 1_000_000_000):
             raise ValueError("Invalid resource stockpile")
@@ -422,7 +422,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=30):
+    def from_dict(cls, data, expected_id, *, version=31):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -697,8 +697,17 @@ class GameState:
         self.designs = [design if d.id == identifier else d for d in self.designs] if self.design_for(identifier) else self.designs+[design]
         return design
 
-    def project_spec(self, identifier):
-        return self.design_for(identifier) or PROJECTS[identifier]
+    def production_design(self, identifier, owner=PLAYER):
+        if owner == PLAYER:
+            return self.design_for(identifier)
+        state = self.research_state(owner)
+        if identifier in HULLS and ARSENAL_TECHNOLOGIES.intersection(state.completed):
+            from .auto_designs import auto_design
+            return auto_design(identifier, tuple(sorted(state.completed)), state.legacy_starships)
+        return None
+
+    def project_spec(self, identifier, owner=PLAYER):
+        return self.production_design(identifier, owner) or PROJECTS[identifier]
 
     def ship_attack(self, ship):
         return ship.design.damage if ship.design else self.beam_for(ship.kind, ship.owner).damage
@@ -777,8 +786,8 @@ class GameState:
     def combat_fire(self, ship_id, target_id, owner=PLAYER):
         return combat_rules.fire(self, ship_id, target_id, owner)
 
-    def combat_launch_drones(self, ship_id, owner=PLAYER):
-        return combat_rules.launch_drones(self, ship_id, owner)
+    def combat_launch_drones(self, ship_id, owner=PLAYER, role=None):
+        return combat_rules.launch_drones(self, ship_id, owner, role)
 
     def combat_hold(self, ship_id, owner=PLAYER):
         return combat_rules.hold(self, ship_id, owner)
@@ -969,7 +978,7 @@ class GameState:
             return ASCENSION_GATE.resource_cost
         key = "building_discount" if item_id in BUILDINGS else "ship_discount"
         discount = self.bonuses_for(owner).get(key, 0)
-        return max(1, math.ceil(self.project_spec(item_id).resource_cost*(100-discount)/100))
+        return max(1, math.ceil(self.project_spec(item_id, owner).resource_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER):
         bonus, radius, slow = navigation.route_modifiers(self, origin, destination, owner)
@@ -1260,7 +1269,8 @@ class GameState:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         price = self.project_price(kind, owner)
-        planet.construction_queue.append(ConstructionProject(kind, resource_cost=price, design=self.design_for(kind)))
+        design = self.production_design(kind, owner)
+        planet.construction_queue.append(ConstructionProject(design.id if design else kind, resource_cost=price, design=design))
 
     def ship_at(self, ship_id, *, owner=PLAYER):
         ship = next((s for s in self.ships if type(ship_id) is int and s.id == ship_id), None)
@@ -1541,7 +1551,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=30):
+    def from_dict(cls, data, *, version=31):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1624,7 +1634,7 @@ class GameState:
                     raise ValueError
             else:
                 diplomacy = make_contact(data["turn"], opponent.name, opponent.race_id) if opponent else None
-            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True)
+            technology = ResearchState.from_dict(data["technology"], version=version) if version >= 7 else ResearchState(legacy_starships=True, legacy_arsenal=True)
             game = cls(campaign, data["empire_name"], size, data["seed"],
                        data["turn"], data["year"], data["credits"], systems, selected, planet,
                        research, ships, next_ship, opponent, race_id, diplomacy, technology)
@@ -1656,11 +1666,23 @@ class GameState:
                 if ([d.id for d in game.designs] != [f"design_{i+1}" for i in range(len(game.designs))]
                         or len({d.name.casefold() for d in game.designs}) != len(game.designs)):
                     raise ValueError("Duplicate ship designs")
-                snapshots = game.designs+[s.design for s in ships if s.design and s.owner == PLAYER]
-                snapshots += [p.design for s in systems for w in s.worlds if w.owner == PLAYER for p in w.construction_queue if p.design]
                 if any(loadout_error(d.kind, d.modules, technology.completed,
-                                     legacy_hulls=technology.legacy_starships) for d in snapshots):
-                    raise ValueError("Undiscovered ship equipment")
+                                     legacy_hulls=technology.legacy_starships) for d in game.designs):
+                    raise ValueError("Undiscovered blueprint equipment")
+                # Occupation preserves paid ship orders and their immutable
+                # blueprints. Their technology may belong to a former owner;
+                # inheriting a hull does not unlock new copies in the designer.
+                research_states = [game.research_state(owner) for owner in game.owners]
+                from .designs import MODULES
+                snapshots = [(s.owner, s.design) for s in ships if s.design]
+                snapshots += [(world.owner, q.design) for system in systems for world in system.worlds
+                              for q in world.construction_queue if q.design]
+                for owner, design in snapshots:
+                    new_equipment = any(MODULES[m].technology in ARSENAL_TECHNOLOGIES for m in design.modules)
+                    if (owner == PLAYER or new_equipment) and not any(
+                            loadout_error(design.kind, design.modules, state.completed,
+                                          legacy_hulls=state.legacy_starships) is None for state in research_states):
+                        raise ValueError("Undiscovered ship equipment")
             if version >= 22:
                 game.tomb_worlds = tomb_rules.parse(data["tomb_worlds"], game)
                 if not _integer(data["news_read_turn"], 0, game.turn):

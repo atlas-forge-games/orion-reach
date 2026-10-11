@@ -59,7 +59,9 @@ def draw_objectives(app):
     panel(surface, (709, 286, 667, 284))
     text(surface, "02 / SCIENCE", (733, 309), 11, GOLD, "mono", 2)
     text(surface, f"{state.finished_branches} / {len(state.required_branches)} branches completed", (732, 344), 29, INK, "title")
-    text(surface, f"Complete every tier in all {len(state.required_branches)} required branches. Either choice counts.", (734, 390), 13, MUTED)
+    goal = ("Original campaign goal retained; new arsenal tiers are optional." if state.legacy_arsenal else
+            f"Complete every tier in all {len(state.required_branches)} required branches. Either choice counts.")
+    text(surface, goal, (734, 390), 13, MUTED)
     progress(surface, (734, 418, 616, 4), state.finished_branches/len(state.required_branches))
     theory = TECHNOLOGIES["ascension_theory"]
     known = theory.id in state.completed

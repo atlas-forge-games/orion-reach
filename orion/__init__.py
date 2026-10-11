@@ -1,3 +1,3 @@
 """Orion Reach: a small, extensible space strategy prototype."""
 
-__version__ = "0.41.2"
+__version__ = "0.42.0"

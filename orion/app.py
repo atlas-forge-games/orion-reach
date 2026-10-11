@@ -1301,12 +1301,14 @@ class App:
             event={"kind":action}
             if action=="fire":
                 target=self.game.combat.ship(self.combat_target_id)
+                ship=self.game.combat.ship(self.combat_ship_id)
+                weapons=tuple(dict.fromkeys(w for w,_ in ship.volley(target))) if ship and target else ()
                 shields=target.shields if target else 0
                 damage=self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
                 event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage,
-                             missed=damage==0 and target.shields==shields)
+                             missed=damage==0 and target.shields==shields,weapons=weapons)
             elif action=="launch":
-                drones=self.game.combat_launch_drones(self.combat_ship_id)
+                drones=self.game.combat_launch_drones(self.combat_ship_id,role=getattr(self,"combat_drone_role",None))
                 event.update(ship_id=self.combat_ship_id,drone_ids=drones)
             elif action=="hold":
                 self.game.combat_hold(self.combat_ship_id)
@@ -1423,6 +1425,8 @@ class App:
         self.design_name=""
         self.design_kind="frigate"
         self.design_modules=["laser","armor"]
+        self.design_module_filter="all"
+        self.design_module_page=0
 
     def load_design(self,design):
         self.design_id,self.design_name,self.design_kind=design.id,design.name,design.kind
@@ -1442,6 +1446,22 @@ class App:
 
     def design_page_change(self,delta):
         self.design_page=max(0,min(max(0,(len(self.game.designs)-1)//7),self.design_page+delta))
+
+    def filter_design_modules(self,category):
+        self.design_module_filter=category
+        self.design_module_page=0
+
+    def design_module_page_change(self,delta):
+        self.design_module_page=max(0,self.design_module_page+delta)
+
+    def auto_fit_design(self):
+        from .auto_designs import auto_design
+        state=self.game.technology
+        design=auto_design(self.design_kind,tuple(sorted(state.completed)),state.legacy_starships)
+        if design:
+            self.design_modules=list(design.modules)
+        else:
+            self.toast("Research this hull before fitting its equipment.",True)
 
     def design_colony(self):
         colonies=[(s,p) for s in self.game.systems for p in s.worlds if p.owner==PLAYER]

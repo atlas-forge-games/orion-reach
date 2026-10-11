@@ -221,7 +221,12 @@ class ObserverRulesTests(unittest.TestCase):
 
     def test_v039_saves_remain_normal_player_campaigns(self):
         game = new_game(seed=2408, with_tombs=False)
+        for owner in game.owners:
+            game.research_state(owner).legacy_arsenal = True
         data = game.to_dict()
+        for empire in [data, data["opponent"], *data["other_opponents"].values()]:
+            if empire:
+                empire["technology"].pop("legacy_arsenal")
         for key in ("observer_events", "next_observer_event_id", "observer_news_read"):
             del data[key]
         restored = GameState.from_dict(data, version=29)

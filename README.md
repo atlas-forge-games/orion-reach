@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.41.2
+# Orion Reach — Python prototype 0.42.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,118 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.42: the expanded combat arsenal
+
+**18 research technologies** add eleven weapons, specialized shields, armor,
+flak, damage control, and interceptor/bomber bays. All previous technologies and
+their research costs remain. Research still offers **two exclusive choices at
+each sequential tier**, with immediate selection, transferable unfinished RP,
+and right-click technology information.
+
+| Field and tier | First choice | Alternative | RP |
+| --- | --- | --- | ---: |
+| Physics V | Pulse Beams | Plasma Beams | 360 |
+| Physics VI | Ion Beams | Graviton Beams | 540 |
+| Physics VII | Particle Beams | Heavy Beam Mounts | 760 |
+| Physics VIII | Phased Beams | Disruptor Beams | 1,040 |
+| Materials III | Fusion Torpedoes | Reinforced Armor | 120 |
+| Materials IV | MIRV Torpedoes | Antimatter Torpedoes | 220 |
+| Force Fields V | Regenerative Shields | Hardened Shields | 360 |
+| Starship Engineering V | Interceptor Drones | Advanced Flak Systems | 360 |
+| Starship Engineering VI | Bomber Drones | Automated Damage Control | 540 |
+
+Both drone tiers offer an alternative useful without a carrier. Researching a
+drone technology does not unlock a carrier hull that was skipped earlier.
+Advanced modules are independent unlocks: for example, hardened shields do not
+require the earlier radiation-shield choice.
+
+### Weapon choices
+
+Damage below is the total damage of **one module** before accuracy, interception,
+and shields. Each pulse or MIRV projectile rolls its own hit chance.
+
+| Weapon | Damage | Range | Weapon spaces | Special effect |
+| --- | ---: | ---: | ---: | --- |
+| Pulse cannon | 2 × 4 | 6 | 1 | +15 percentage points of base accuracy; usual 95% final cap |
+| Plasma cannon | 24 | 4 | 2 | Strong close-range fire |
+| Ion cannon | 8 | 6 | 2 | Up to 32 shield damage; amplification never spills into hull damage |
+| Graviton beam | 16 | 6 | 2 | Hit slows the target by one cell through its next combat turn |
+| Particle lance | 20 | 10 | 3 | Long-range artillery |
+| Heavy beam battery | 30 | 9 | 4 | Large, powerful beam mount |
+| Phased beam | 16 | 7 | 2 | 50% of damage bypasses ship shields |
+| Disruptor | 40 | 5 | 3 | One full combat turn of recharge after firing |
+| Fusion launcher | 18 | 9 | 2 | Stronger torpedo warhead |
+| MIRV launcher | 3 × 7 | 8 | 3 | Ignores half of interception |
+| Antimatter launcher | 36 | 9 | 3 | One full combat turn of reload after firing |
+
+Graviton slowing applies on a hit even if shields absorb the damage, never
+stacks, and never reduces a moving ship below one cell. Stations remain immobile.
+Recharge also applies after a miss; other ready weapons can still fire. New
+torpedoes benefit from Advanced Torpedo Guidance and remain subject to point
+defense. Beam precision applies to the new beams. Ion amplification also affects
+planetary shields during bombardment; phased penetration applies only to ship
+shields. Strategic bombardment retains its once-per-ship, per-turn limit.
+
+![Weapon effects](screenshots/arsenal_weapons.png)
+
+### Defense and carrier equipment
+
+- **Reinforced armor:** +14 hull per defense space, with the same one-cell
+  movement penalty as ordinary armor (minimum one).
+- **Regenerative shield:** 8 capacity per module; restores 2 shield points at
+  the start of each owning fleet's combat turn, up to the ship's total capacity.
+- **Hardened shield:** 12 capacity per module; while shields remain, reduces
+  phased penetration by 75%. Hardening does not stack.
+- **Advanced flak:** 45% interception per defense space, with a 75% shipboard
+  cap when flak is fitted. Ordinary point defense retains its 60% cap.
+- **Automated damage control:** one support space; repairs up to 3 hull per
+  owning turn, with a finite reserve of 12 hull per module per battle. It cannot
+  repair beyond the hull with which the ship entered battle or revive a wreck.
+- **Interceptor bays:** carriers launch fast, six-cell drones with 2 damage
+  against ships and 8 against other drones. Each interceptor protects other
+  friendly ships within two cells with +20% interception, capped at +40% from
+  escorts. Combined shipboard and escort interception is capped at 90%.
+- **Bomber bays:** carriers launch slower, three-cell drones with 5 damage,
+  doubled against cruisers, larger warships, bases and guardians. Flak and point
+  defense counter them. Both new drone types have weapon range 3.
+
+Each bay supports two active drones and four launches per battle, tracked
+separately for assault, interceptor and bomber roles. Mixed carriers can choose
+the drone type beside the Launch button. Launching spends the carrier's weapon
+action; drones act immediately and shut down if their carrier is destroyed.
+
+![Mixed carrier](screenshots/arsenal_drones.png)
+
+### Designer, AI, and saved games
+
+The designer now has **All equipment / Weapons / Defense / Support** filters,
+equipment pages, and **Auto fit** using researched modules and ordinary hull
+limits. Right-click a technology-gated module for its research information.
+Save the resulting blueprint and queue it at a colony. Existing ships and
+construction orders keep their equipment; the new research unlocks modules
+for new designs. AI empires also build legal researched blueprints and pay
+their full discounted Resource and production costs.
+Captured colonies retain paid ship orders and their equipment, without granting
+the conqueror those technologies or permission to create new copies.
+
+Physics now displays all eight tiers without clipping. Combat shows ready
+weapons, recharge, graviton slowing, repair reserves, and carrier role selection.
+Beam and torpedo families have distinct original procedural animations.
+
+Save format **31** stores weapon recharge, slowing, repairs and drone roles.
+Older saves retain discoveries, research progress, fleets and battles. Their
+original Ascension tier requirements are preserved; the new arsenal tiers are
+optional for their scientific victory. New campaigns require one choice from
+all **39 tiers** before Ascension Theory. There are **79 technologies** in total.
+
+Run `python tools/preview_arsenal.py` to recreate all five previews. The arsenal
+tests include authentic v0.41.2 saves, deterministic battle continuation,
+research unlocks, production costs, defenses, drones, and interface navigation.
+
+![Arsenal research](screenshots/arsenal_research.png)
+
+![Ship designer](screenshots/arsenal_designer.png)
 
 ## New in v0.41.2: support-ship artwork
 
@@ -1378,8 +1490,8 @@ lab in a colony to start producing points. Research agreements and discovered
 technologies can also provide research income.
 
 - Choose a branch, then one of the two technologies in its first tier.
-  Tiers **I / II / III / IV / V** cost **40 / 100 / 120 / 220 / 360 RP**.
-  All nine branches are available from the start and contain two to five tiers.
+  Tiers **I–VIII** cost **40 / 100 / 120 / 220 / 360 / 540 / 760 / 1,040 RP**.
+  All nine branches are available from the start and contain two to eight tiers.
   Completing a tier unlocks both choices at the next tier in that branch.
 - Left-click starts research immediately. You can switch unfinished projects,
   transferring all invested RP to the new choice. The alternative is excluded
@@ -1416,13 +1528,19 @@ The longer branches continue with these pairs. A dash marks a branch's end.
 | --- | --- | --- | --- |
 | Construction | Advanced Fortifications / Orbital Defense Systems | — | — |
 | Power & Propulsion | Fusion Power / Colonial Navigation Network | Jump Gates / Field Stabilization | — |
-| Physics | Precision Beam Optics / Electronic Countermeasures | Siege Weapons / Advanced Torpedo Guidance | — |
-| Force Fields | Planetary Shielding / Gravity-Well Generators | Barrier Fields / Subspace Interdiction | — |
+| Physics | Precision Beam Optics / Electronic Countermeasures | Siege Weapons / Advanced Torpedo Guidance | Pulse Beams / Plasma Beams |
+| Force Fields | Planetary Shielding / Gravity-Well Generators | Barrier Fields / Subspace Interdiction | Regenerative Shields / Hardened Shields |
+| Materials & Chemistry | Fusion Torpedoes / Reinforced Armor | MIRV Torpedoes / Antimatter Torpedoes | — |
 | Computers | Deep-Space Radar / Targeting Computers | Long-Range Sensors / Predictive Fire Control | Subspace Scanners / Quantum Targeting |
-| Starship Engineering | Battleship Hulls / Drone Carriers | Titan Hulls / Mass Ship Production | — |
+| Starship Engineering | Battleship Hulls / Drone Carriers | Titan Hulls / Mass Ship Production | Interceptor Drones / Advanced Flak Systems |
 
-All 60 branch options have effects on existing game systems, described on their cards.
-A new campaign can discover one technology in each of 30 tiers, then **Ascension
+Physics continues through tiers VI–VIII: Ion / Graviton Beams, Particle Beams /
+Heavy Beam Mounts, and Phased / Disruptor Beams. Starship Engineering VI offers
+Bomber Drones / Automated Damage Control. See the v0.42 tables above for the
+equipment effects and RP costs.
+
+All 78 branch options have effects on existing game systems, described on their cards.
+A new campaign can discover one technology in each of 39 tiers, then **Ascension
 Theory**, available in Objectives after completing every branch. Either choice
 in each tier qualifies. Higher upgrades work without their earlier version:
 for example, Targeting Computers can be followed by Long-Range Sensors, which
@@ -2179,7 +2297,10 @@ are preserved. v0.3/v0.4 building queues, progress, planets and research are
 preserved, and those campaigns start with no ships. v0.1's missing planets are
 generated deterministically; v0.1/v0.2 start with empty production and zero research.
 Music preferences are stored separately from campaigns. New saves use
-**format version 30**, adding Observer campaigns and their activity journal, with carrier drone deployments and old-campaign hull access, while retaining legacy research choices and original active
+**format version 31**, adding weapon recharge, graviton slowing, repair reserves,
+drone roles and preserved pre-arsenal science goals. They retain Observer campaigns
+and their activity journal, carrier deployments and old-campaign hull access,
+legacy research choices and original active
 project costs, together with Resource banks, miners, building power switches and
 construction Resource reservations alongside first-contact dates, defence health,
 sensor contacts/news, route modifiers,
@@ -2320,6 +2441,15 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.42 passes **692 automated checks**, including **28 new arsenal checks**.
+These cover every module unlock and construction path, paired research,
+beam and torpedo damage, reload timing, graviton slowing, shield counters,
+finite repairs and drone reserves, escort interception, AI blueprints and
+captured production orders. Authentic v0.41.2 saves preserve active projects,
+battles and both active/completed Ascension states. Advanced battles replay
+identically after saving and loading. All five new previews were rendered and
+inspected; the eight-tier research row and equipment pages stay on screen.
 
 v0.41.2 passes **48 focused ship and fleet checks**. All ten ship PNGs match
 their manifest hashes, dimensions and alpha bounds. The three new support

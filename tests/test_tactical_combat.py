@@ -180,7 +180,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 30)
+        self.assertEqual(SAVE_VERSION, 31)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()

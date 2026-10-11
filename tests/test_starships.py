@@ -102,7 +102,8 @@ class HullResearchTests(unittest.TestCase):
                 research(game, choices(branch, tier)[0].id)
         self.assertEqual(game.technology.finished_branches, 8)
         self.assertIsNotNone(game.research_error("ascension_theory"))
-        research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "titan_hulls", "ascension_theory")
+        research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "titan_hulls",
+                 "interceptor_drones", "bomber_drones", "ascension_theory")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_ai_researches_and_selects_buildable_advanced_ships(self):

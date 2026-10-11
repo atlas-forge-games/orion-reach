@@ -30,7 +30,7 @@ class CombatAnimation:
             ship, target = battle.ship(action["ship_id"]), battle.ship(action["target_id"])
             return cls("fire", ship.id, (ship.position, target.position), target.id,
                        ship.weapon, action["damage"], target.hull == 0,
-                       weapons=tuple(dict.fromkeys(w for w, _ in ship.volley(target))), missed=action.get("missed", False))
+                       weapons=tuple(action.get("weapons", dict.fromkeys(w for w, _ in ship.volley(target)))), missed=action.get("missed", False))
         return None
 
     @property
@@ -59,25 +59,25 @@ class CombatAnimation:
         origin, target = (project(p) for p in self.path)
         if self.missed:
             target = (target[0]+18, target[1]-25)
-        color = BEAMS[self.weapon].color
+        color = BEAMS[(self.weapons or (self.weapon,))[0]].color
         age = self.elapsed
         for index, weapon in enumerate(self.weapons or (self.weapon,)):
             shade = BEAMS[weapon].color
             if age < .34:
-                reach = min(1, age/(.18 if weapon in ("torpedo", "missile") else .1))
+                spec = BEAMS[weapon]
+                reach = min(1, age/(.18 if spec.projectile else .1))
                 start = (origin[0], origin[1]+index*4)
                 tip = (round(start[0]+(target[0]-start[0])*reach),
                        round(start[1]+(target[1]-start[1])*reach))
-                if weapon in ("torpedo", "missile"):
-                    tail = (round(tip[0]+(start[0]-tip[0])*.08), round(tip[1]+(start[1]-tip[1])*.08))
-                    pg.draw.line(surface, shade, tail, tip, 4)
-                    pg.draw.circle(surface, INK, tip, 4)
+                if spec.projectile:
+                    for warhead in range(spec.shots):
+                        spread = (warhead-(spec.shots-1)/2)*14*math.sin(reach*math.pi)
+                        head = (tip[0], round(tip[1]+spread))
+                        tail = (round(head[0]+(start[0]-head[0])*.08), round(head[1]+(start[1]-head[1])*.08))
+                        pg.draw.line(surface, shade, tail, head, 4)
+                        pg.draw.circle(surface, INK, head, 4)
                 else:
-                    pg.draw.line(surface, tuple(round(c*.22) for c in shade), start, tip, 11)
-                    pg.draw.line(surface, shade, start, tip, 5)
-                    pg.draw.line(surface, (255, 245, 232), start, tip, 2)
-                    pg.draw.circle(surface, shade, start, 7)
-                    pg.draw.circle(surface, INK, start, 3)
+                    self.draw_beam(surface, weapon, start, tip, shade, age)
         if age >= .18:
             impact = age-.18
             if self.destroyed:
@@ -88,6 +88,37 @@ class CombatAnimation:
                 if impact < .15:
                     pg.draw.circle(surface, (255, 226, 164), target, max(2, round(12*(1-impact/.15))))
             text(surface, "MISS" if self.missed else f"−{self.damage}" if self.damage else "SHIELD", (target[0]+22, target[1]-22-round(impact*22)), 19, color, "mono")
+
+    @staticmethod
+    def draw_beam(surface, weapon, start, tip, shade, age):
+        """Distinct procedural silhouettes, readable even at battlefield scale."""
+        point = lambda fraction: (round(start[0]+(tip[0]-start[0])*fraction),
+                                  round(start[1]+(tip[1]-start[1])*fraction))
+        if weapon == "ion":
+            points = [point(i/14) for i in range(15)]
+            points = [(x, y+round(math.sin(i*2.4+age*45)*7) if 0 < i < 14 else y)
+                      for i, (x, y) in enumerate(points)]
+            pg.draw.lines(surface, (20, 63, 106), False, points, 10)
+            pg.draw.lines(surface, shade, False, points, 3)
+            pg.draw.lines(surface, INK, False, points, 1)
+        elif weapon in ("pulse", "phased"):
+            segments = 8 if weapon == "pulse" else 17
+            for i in range(segments):
+                a = min(1, (i+age*5 % 1)/segments)
+                b = min(1, a+.6/segments)
+                pg.draw.line(surface, shade, point(a), point(b), 5 if weapon == "pulse" else 2)
+        else:
+            width = 10 if weapon in ("plasma", "heavy_beam", "disruptor") else 2 if weapon == "particle" else 5
+            pg.draw.line(surface, tuple(round(c*.22) for c in shade), start, tip, width+7)
+            pg.draw.line(surface, shade, start, tip, width)
+            pg.draw.line(surface, (255, 245, 232), start, tip, 1 if weapon == "particle" else 2)
+        if weapon in ("graviton", "disruptor"):
+            for i in range(1, 8):
+                center = point((i/8+age*.9) % 1)
+                radius = 5+round(4*math.sin(i+age*20)**2)
+                pg.draw.ellipse(surface, shade, (center[0]-radius//2, center[1]-radius, radius, radius*2), 2)
+        pg.draw.circle(surface, shade, start, 7)
+        pg.draw.circle(surface, INK, start, 3)
 
     def draw_explosion(self, surface, center, age):
         """Flash, fireball, shock ring and deterministic drifting debris."""

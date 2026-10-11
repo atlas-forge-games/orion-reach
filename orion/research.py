@@ -9,8 +9,13 @@ from .economy import active_buildings
 from .legacy_research import LEGACY_TECHNOLOGIES, validate_legacy
 
 
-TIERS = (1, 2, 3, 4, 5)
-TIER_NAMES = ("I", "II", "III", "IV", "V")
+TIERS = tuple(range(1, 9))
+TIER_NAMES = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
+TIER_COSTS = (40, 100, 120, 220, 360, 540, 760, 1040)
+# Campaigns begun before the arsenal expansion retain their scientific goal.
+LEGACY_TIER_LIMITS = dict(zip(
+    ("construction", "power", "physics", "fields", "materials", "biology", "computers", "society", "starships"),
+    (3, 4, 4, 4, 2, 2, 5, 2, 4)))
 
 
 @dataclass(frozen=True)
@@ -44,7 +49,7 @@ class Technology:
 
     @property
     def cost(self):
-        return 500 if self.id == "ascension_theory" else (40, 100, 120, 220, 360)[self.tier-1]
+        return 500 if self.id == "ascension_theory" else TIER_COSTS[self.tier-1]
 
 
 def tech(identifier, branch, tier, name, description, **effects):
@@ -113,6 +118,24 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("drone_carriers", "starships", 3, "Drone Carriers", "Unlock carrier hulls and drone bays. Each bay supports two active drones and four launches per battle. Battleships are the alternative choice."),
     tech("titan_hulls", "starships", 4, "Titan Hulls", "Unlock titans: massive capital ships with eighteen module spaces. Does not unlock skipped hull classes."),
     tech("mass_ship_production", "starships", 4, "Mass Ship Production", "New ships cost 20% fewer Resources. Does not unlock titans.", ship_discount=20),
+    tech("pulse_beams", "physics", 5, "Pulse Beams", "Unlock pulse cannons: two accurate 4-damage shots, range 6. Compact weapons for fighting small ships and drones."),
+    tech("plasma_beams", "physics", 5, "Plasma Beams", "Unlock plasma cannons: 24 damage, range 4. High close-range damage in two weapon spaces."),
+    tech("ion_beams", "physics", 6, "Ion Beams", "Unlock ion cannons: 8 hull damage or up to 32 shield damage, range 6. Extra shield damage does not spill into hull damage."),
+    tech("graviton_beams", "physics", 6, "Graviton Beams", "Unlock graviton beams: 16 damage, range 6. A hit slows the target by one cell through its next turn; does not stack or reduce movement below one."),
+    tech("particle_beams", "physics", 7, "Particle Beams", "Unlock particle lances: 20 damage, range 10, using three weapon spaces. Long-range fleet artillery."),
+    tech("heavy_beam_mounts", "physics", 7, "Heavy Beam Mounts", "Unlock heavy beam batteries: 30 damage, range 9, using four weapon spaces. Large mounts for capital ships."),
+    tech("phased_beams", "physics", 8, "Phased Beams", "Unlock phased beams: 16 damage, range 7. Half the damage bypasses ship shields. Hardened shields reduce this penetration."),
+    tech("disruptor_beams", "physics", 8, "Disruptor Beams", "Unlock disruptors: 40 damage, range 5, using three weapon spaces. Must recharge for one full combat turn after firing."),
+    tech("fusion_torpedoes", "materials", 3, "Fusion Torpedoes", "Unlock fusion launchers: 18 damage, range 9. Benefits from torpedo guidance; vulnerable to point defense."),
+    tech("reinforced_armor", "materials", 3, "Reinforced Armor", "Unlock reinforced armor plates: +14 hull in one defense space, with -1 tactical movement (minimum one)."),
+    tech("mirv_torpedoes", "materials", 4, "MIRV Torpedoes", "Unlock MIRV launchers: three 7-damage warheads, range 8. Each rolls separately and ignores half of enemy interception."),
+    tech("antimatter_torpedoes", "materials", 4, "Antimatter Torpedoes", "Unlock antimatter launchers: 36 damage, range 9. Must reload for one full combat turn; vulnerable to point defense."),
+    tech("regenerative_shields", "fields", 5, "Regenerative Shields", "Unlock regenerating shield modules: +8 capacity, restoring 2 shield points at the start of each ship's turn. Less capacity than ordinary shields."),
+    tech("hardened_shields", "fields", 5, "Hardened Shields", "Unlock hardened shield modules: +12 capacity. While shields remain, reduce phased penetration by 75%. Hardening does not stack."),
+    tech("interceptor_drones", "starships", 5, "Interceptor Drones", "Unlock interceptor bays for carriers: fast drones deal 8 damage to drones, 2 to other targets. Each nearby interceptor adds 20% fleet interception within two cells (maximum 40%). Requires a carrier hull."),
+    tech("advanced_flak", "starships", 5, "Advanced Flak Systems", "Unlock flak modules: 45% interception per module against torpedoes and drones, with a 75% shipboard cap. Fits any combat hull."),
+    tech("bomber_drones", "starships", 6, "Bomber Drones", "Unlock bomber bays for carriers: slower drones deal 5 damage, doubled against cruisers, larger ships, bases and guardians. Vulnerable to interception. Requires a carrier hull."),
+    tech("automated_damage_control", "starships", 6, "Automated Damage Control", "Unlock repair systems for any combat hull. Each repairs up to 3 hull at the start of a turn, with 12 hull of reserve per battle. Repairs only damage suffered in that battle."),
 )}
 
 
@@ -147,6 +170,7 @@ class ResearchState:
     legacy_active: bool = False
     # Earlier campaigns keep cruiser/battleship access and their eight-branch victory goal.
     legacy_starships: bool = False
+    legacy_arsenal: bool = False
 
     @property
     def bonuses(self):
@@ -178,6 +202,10 @@ class ResearchState:
     def completed_tiers(self, branch):
         return {TECHNOLOGIES[t].tier for t in self.completed if TECHNOLOGIES[t].branch == branch}
 
+    def required_tiers(self, branch):
+        return tuple(t for t in branch_tiers(branch)
+                     if not self.legacy_arsenal or t <= LEGACY_TIER_LIMITS[branch])
+
     def next_tier(self, branch):
         if self.active and TECHNOLOGIES[self.active].branch == branch:
             return TECHNOLOGIES[self.active].tier
@@ -202,7 +230,7 @@ class ResearchState:
 
     @property
     def finished_branches(self):
-        return sum(set(branch_tiers(branch)) <= self.completed_tiers(branch) for branch in self.required_branches)
+        return sum(set(self.required_tiers(branch)) <= self.completed_tiers(branch) for branch in self.required_branches)
 
     def choice_error(self, identifier):
         if not isinstance(identifier, str) or identifier not in TECHNOLOGIES:
@@ -238,18 +266,20 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=29):
+    def from_dict(cls, data, *, version=31):
         keys = {"completed", "active", "progress"}
         if version >= 28:
             keys |= {"legacy_count", "legacy_active"}
         if version >= 29:
             keys.add("legacy_starships")
+        if version >= 31:
+            keys.add("legacy_arsenal")
         if not isinstance(data, dict) or set(data) != keys:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
         if version < 28:
             validate_legacy(completed, active, progress)
-            return cls(completed.copy(), active, progress, len(completed), active is not None, True)
+            return cls(completed.copy(), active, progress, len(completed), active is not None, True, True)
         if not isinstance(completed, list) or len(completed) > len(TECHNOLOGIES):
             raise ValueError("Invalid discoveries")
         count, legacy_active = data["legacy_count"], data["legacy_active"]
@@ -259,7 +289,11 @@ class ResearchState:
         legacy_starships = data["legacy_starships"] if version >= 29 else True
         if type(legacy_starships) is not bool:
             raise ValueError("Invalid legacy hull access")
-        state = cls(completed[:count], legacy_count=count, legacy_starships=legacy_starships)
+        legacy_arsenal = data["legacy_arsenal"] if version >= 31 else True
+        if type(legacy_arsenal) is not bool:
+            raise ValueError("Invalid legacy scientific goal")
+        state = cls(completed[:count], legacy_count=count, legacy_starships=legacy_starships,
+                    legacy_arsenal=legacy_arsenal)
         for identifier in completed[count:]:
             if state.choice_error(identifier):
                 raise ValueError("Invalid technology sequence")

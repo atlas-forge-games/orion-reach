@@ -137,7 +137,7 @@ class ProductionTests(unittest.TestCase):
     def test_buying_a_gate_starts_its_five_turn_charge_without_skipping_time(self):
         from orion.research import BRANCHES, branch_tiers, choices
         self.game.credits = self.game.resources = 2000
-        self.game.research = 4000
+        self.game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+500
         for branch in BRANCHES:
             for tier in branch_tiers(branch):
                 self.game.choose_research(choices(branch, tier)[0].id)
@@ -239,7 +239,7 @@ class WorkforceSaveTests(unittest.TestCase):
             expected["diplomacy"]["introduced"] = True  # Old confirmed contacts do not replay introductions.
             for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
                 state = empire["technology"]
-                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True)
+                state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True, legacy_arsenal=True)
             self.assertEqual(restored.to_dict(), expected)
             restored.move_worker(0, 2, "workers", "scientists")
             resumed = store.load(store.save(restored))[0]

@@ -188,17 +188,21 @@ def draw_branch_detail(app):
     text(surface, branch.name, (408, 414), 25, INK, "title")
     text(surface, f"{len(tiers)} TIERS", (1375, 428), 10, FAINT, "mono", right=True)
     text(surface, shorten(branch.description, 950, 13), (409, 452), 13, MUTED)
+    pitch = min(196, 968/len(tiers))
     for tier in tiers:
-        x = 408+(tier-1)*196
+        x = round(408+(tier-1)*pitch)
+        width = round(pitch)-10
         options = choices(branch.id, tier)
         completed = tier in state.completed_tiers(branch.id)
         active = state.active in {t.id for t in options}
         available = any(state.status(t.id) == "available" for t in options)
         label = "Complete" if completed else "Researching" if active else "Available" if available else "Locked"
-        app.button(f"research_tier_{tier}", f"{TIER_NAMES[tier-1]} · {label}", (x, 482, 184, 40),
-                   lambda t=tier: app.select_research_tier(t), "primary" if tier == selected_tier else "normal")
+        if len(tiers) > 5:
+            label = "Done" if completed else "Active" if active else "Open" if available else "Locked"
+        app.button(f"research_tier_{tier}", f"{TIER_NAMES[tier-1]} · {label}", (x, 482, width, 40),
+                   lambda t=tier: app.select_research_tier(t), "tab_active" if tier == selected_tier else "tab")
         if tier < tiers[-1]:
-            pg.draw.line(surface, LINE, (x+184, 501), (x+194, 501), 2)
+            pg.draw.line(surface, LINE, (x+width, 501), (x+round(pitch)-2, 501), 2)
 
     text(surface, f"TIER {TIER_NAMES[selected_tier-1]} / CHOOSE ONE", (409, 539), 10, GOLD, "mono", 1)
     for index, technology in enumerate(choices(branch.id, selected_tier)):
@@ -209,7 +213,9 @@ def draw_branch_detail(app):
         app.technology_info_region(technology.id, (x, y, 472, 236))
         text(surface, technology.name, (x+18, y+18), 20, MUTED if status == "excluded" else INK)
         hull = next((kind for kind, tech in HULL_TECHNOLOGIES.items() if tech == technology.id), None)
-        paragraph(surface, technology.description, (x+19, y+59), 318 if hull else 432, 14, MUTED, 22)
+        detail_width = 318 if hull else 432
+        size = 13 if len(wrapped_lines(technology.description, detail_width, 14)) > 4 else 14
+        paragraph(surface, technology.description, (x+19, y+59), detail_width, size, MUTED, 20)
         if hull:
             ship_icon(surface, (x+397, y+101), 1.35, kind=hull)
         label = {"discovered": "Discovered", "active": "Researching", "excluded": "Not chosen",

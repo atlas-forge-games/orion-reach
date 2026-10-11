@@ -27,9 +27,12 @@ def queue_estimates(game, planet, additional=None):
                             construction_queue=[replace(q) for q in p.construction_queue])) for sid, p in colonies]
     focus = worlds[target][1]
     if additional is not None:
-        project = (replace(additional) if isinstance(additional, ConstructionProject) else
-                   ConstructionProject(additional, resource_cost=game.project_price(additional, planet.owner),
-                                       design=game.design_for(additional)))
+        if isinstance(additional, ConstructionProject):
+            project = replace(additional)
+        else:
+            design = game.production_design(additional, planet.owner)
+            project = ConstructionProject(design.id if design else additional,
+                                          resource_cost=game.project_price(additional, planet.owner), design=design)
         focus.construction_queue.append(project)
     estimates = []
     count = len(focus.construction_queue)

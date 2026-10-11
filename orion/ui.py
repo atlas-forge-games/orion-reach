@@ -125,7 +125,14 @@ class Button:
             if active and self.enabled:
                 pg.draw.rect(surface,GOLD,r,1,border_radius=4)
             return
-        if self.style=="primary":
+        if self.style in ("tab", "tab_active"):
+            selected=self.style=="tab_active"
+            panel(surface,r,(27,43,51) if selected or active else PANEL,GOLD if selected or active else LINE)
+            size=11 if r.h < 24 else 13
+            label=shorten(self.label,r.w-12,size)
+            shade=GOLD if selected or active else color
+            text(surface,label,(r.centerx-font(size).size(label)[0]//2,r.centery-font(size).get_height()//2),size,shade)
+        elif self.style=="primary":
             pg.draw.rect(surface,(233,205,153) if active else GOLD,r,border_radius=2)
             if r.h < 48:
                 text(surface,shorten(self.label,r.w-55,14),(r.x+14,r.y+(r.h-21)//2),14,(17,27,32))

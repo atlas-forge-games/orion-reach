@@ -6,7 +6,7 @@ import pygame as pg
 from .designs import HULLS, MODULES, ShipDesign, loadout_error
 from .fleet_art import ship_icon
 from .research import TECHNOLOGIES
-from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
+from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text, wrapped_lines
 
 
 def draft(app):
@@ -55,17 +55,33 @@ def draw_designer(app):
     text(surface, f"CAPACITY {used}/{hull.capacity}", (369, 313), 12, CYAN, "mono")
     text(surface, f"Limits: weapons {hull.weapon} · defense {hull.defense} · support {hull.support}", (946, 314), 11, MUTED, right=True)
     text(surface, "Category limits share the total capacity. Unused space is allowed.", (369, 337), 11, MUTED)
-    for index, (identifier, module) in enumerate(MODULES.items()):
-        y = 358+index*44
+    categories = (("all", "All equipment"), ("weapon", "Weapons"), ("defense", "Defense"), ("support", "Support"))
+    for index, (category, label) in enumerate(categories):
+        app.button("design_filter_"+category, label, (369+index*146, 358, 137, 29),
+                   lambda c=category: app.filter_design_modules(c),
+                   "tab_active" if category == app.design_module_filter else "tab")
+    equipment = [(identifier, module) for identifier, module in MODULES.items()
+                 if app.design_module_filter == "all" or module.category == app.design_module_filter]
+    module_last = max(0, (len(equipment)-1)//8)
+    app.design_module_page = min(app.design_module_page, module_last)
+    for index, (identifier, module) in enumerate(equipment[app.design_module_page*8:app.design_module_page*8+8]):
+        y = 400+index*44
         locked = module.technology and module.technology not in game.technology.completed
         text(surface, module.name, (369, y), 16, MUTED if locked else INK)
         text(surface, f"{module.space} {module.category} · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
         detail = f"Requires {TECHNOLOGIES[module.technology].name}" if locked else module.description
         text(surface, shorten(detail, 424, 11), (369, y+26), 11, MUTED if locked else CYAN)
+        if module.technology:
+            app.technology_info_region(module.technology, (369, y, 425, 43))
         app.button("design_remove_"+identifier, "−", (802, y, 37, 36), lambda m=identifier: app.change_design_module(m, -1), enabled=identifier in design.modules)
         text(surface, str(design.modules.count(identifier)), (854, y+10), 14, INK)
         addition = loadout_error(design.kind, [*design.modules, identifier], game.technology.completed, require_weapon=False, legacy_hulls=game.technology.legacy_starships)
         app.button("design_add_"+identifier, "+", (895, y, 48, 36), lambda m=identifier: app.change_design_module(m, 1), enabled=addition is None)
+    app.button("design_modules_prev", "←", (369, 761, 47, 29), lambda: app.design_module_page_change(-1), enabled=app.design_module_page > 0)
+    text(surface, f"{app.design_module_page+1} / {module_last+1}", (440, 770), 11, MUTED)
+    app.button("design_modules_next", "→", (506, 761, 47, 29), lambda: app.design_module_page_change(1), enabled=app.design_module_page < module_last)
+    text(surface, "Right-click for technology info", (574, 770), 10, MUTED)
+    app.button("design_auto_fit", "Auto fit", (825, 758, 118, 34), app.auto_fit_design)
 
     panel(surface, (984, 214, 392, 589))
     app.input_box("design_name", "BLUEPRINT NAME", app.design_name, (1002, 255, 356, 55), "Name your ship")
@@ -85,7 +101,9 @@ def draw_designer(app):
         text(surface, label, (1003, y), 13, MUTED)
         text(surface, value, (1357, y), 13, CYAN, right=True)
     caption = " · ".join(f"{count}× {MODULES[m].name}" for m, count in Counter(design.modules).items()) or "No modules fitted."
-    paragraph(surface, caption, (1003, 660), 350, 12, INK, 20)
+    lines = wrapped_lines(caption, 350, 12)
+    for index, line in enumerate(lines[:3]):
+        text(surface, shorten(line+(' …' if index == 2 and len(lines) > 3 else ''), 350, 12), (1003, 654+index*18), 12, INK)
     reason = error or ("Name this design before saving." if not design.name else "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
     paragraph(surface, reason, (1003, 718), 350, 12, GOLD if not error else RED, 20)
     text(surface, "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)

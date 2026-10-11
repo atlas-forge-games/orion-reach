@@ -130,12 +130,23 @@ def research_choice(game, owner=RIVAL):
         "barrier_fields" if military else "subspace_interdiction",
         "precision_beam_optics" if military else "electronic_countermeasures",
         "siege_weapons" if military else "torpedo_guidance",
+        "plasma_beams" if military else "pulse_beams",
+        "graviton_beams" if military else "ion_beams",
+        "heavy_beam_mounts" if military else "particle_beams",
+        "disruptor_beams" if military else "phased_beams",
+        "fusion_torpedoes" if military else "reinforced_armor",
+        "antimatter_torpedoes" if military else "mirv_torpedoes",
+        "hardened_shields" if military else "regenerative_shields",
+        "interceptor_drones" if state.hull_unlocked("carrier") and not military else "advanced_flak",
+        "bomber_drones" if state.hull_unlocked("carrier") and not military else "automated_damage_control",
         *( ("targeting_computers", "predictive_fire_control", "quantum_targeting") if military
            else ("deep_space_radar", "long_range_sensors", "subspace_scanners") ),
     }
     for tier in TIERS:
         for branch in branches:
             options = choices(branch, tier)
+            if state.legacy_arsenal and "ascension_theory" not in state.completed and tier not in state.required_tiers(branch):
+                continue
             if tier <= 2 and branch != "starships":
                 index = tuple(BRANCHES).index(branch)
                 options = sorted(options, key=lambda t: t != options[preferences[tier-1][index]])
@@ -158,7 +169,7 @@ def warship_choice(game, owner):
         fleet = [s for s in game.ships_owned_by(owner) if game.military_strength(s)]
         if sum(s.drone_bays > 0 for s in fleet)*3 <= len(fleet):
             return "carrier"
-    return max(available, key=lambda kind: SHIP_TYPES[kind].hull+3*SHIP_TYPES[kind].damage,
+    return max(available, key=lambda kind: game.project_spec(kind, owner).hull+3*game.project_spec(kind, owner).damage,
                default="frigate")
 
 

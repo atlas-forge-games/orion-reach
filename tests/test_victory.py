@@ -204,7 +204,7 @@ class ScienceRulesTests(unittest.TestCase):
             game.research = 513
             game.choose_research("ascension_theory")
             self.assertEqual(game.research, 13)
-            self.assertEqual(len(game.technology.completed), 31)
+            self.assertEqual(len(game.technology.completed), 40)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_gate_is_a_unique_shared_queue_project_with_fixed_cost_and_no_slot(self):

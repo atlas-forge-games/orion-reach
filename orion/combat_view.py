@@ -7,7 +7,7 @@ import random
 
 import pygame as pg
 
-from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination
+from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination, interception
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .monsters import MONSTER, MONSTERS
@@ -52,9 +52,9 @@ def draw_battlefield(app):
     if selected and player_turn and battle.can_fire(selected):
         for x in range(BOARD_COLUMNS):
             for y in range(camera, min(battle.rows, camera+VISIBLE_ROWS)):
-                if math.dist((x, y), selected.position) <= selected.weapon_range:
+                if math.dist((x, y), selected.position) <= selected.ready_range:
                     pg.draw.rect(surface, (19, 20, 34), (BOARD.x+x*CELL, BOARD.y+(y-camera)*CELL, CELL, CELL))
-        pg.draw.circle(surface, (78, 48, 63), project(selected.position), selected.weapon_range*CELL, 1)
+        pg.draw.circle(surface, (78, 48, 63), project(selected.position), selected.ready_range*CELL, 1)
     for (x, y), path in paths.items():
         if camera <= y < camera+VISIBLE_ROWS:
             rect = pg.Rect(BOARD.x+x*CELL+1, BOARD.y+(y-camera)*CELL+1, CELL-2, CELL-2)
@@ -86,13 +86,16 @@ def draw_battlefield(app):
         box = pg.Rect(cx-CELL//2+3, cy-CELL//2+3, CELL-6, CELL-6)
         if is_selected or targetable or ship.id == app.combat_target_id:
             pg.draw.rect(surface, GOLD if is_selected else RED if targetable else FAINT, box, 1, border_radius=6)
-        ship_icon(surface, (cx, cy-3), .55, color, kind=ship.kind, facing=1 if ship.owner == PLAYER else -1)
+        icon_color = BEAMS[ship.weapon].color if ship.kind == "combat_drone" else color
+        ship_icon(surface, (cx, cy-3), .55, icon_color, kind=ship.kind, facing=1 if ship.owner == PLAYER else -1)
         hull = min(ship.max_hull, ship.hull+(effect.damage if before_impact else 0))
         pg.draw.rect(surface, LINE, (cx-18, cy+19, 36, 3))
         pg.draw.rect(surface, color, (cx-18, cy+19, round(36*hull/ship.max_hull), 3))
         if ship.design and ship.design.shields:
             pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.design.shields), 2))
         text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+        if ship.graviton_slow:
+            text(surface, "SLOW", (cx-16, cy+28), 7, BEAMS["graviton"].color, "mono")
         if ship.owner == PLAYER and ship.hull > 0:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship) or battle.can_launch(ship))):
                 pg.draw.circle(surface, CYAN if available else LINE, (cx+dx, cy-19), 2)
@@ -133,23 +136,29 @@ def draw_combat(app):
             text(surface, shorten(ship.name, 235, 21), (x, 235), 21, INK)
             text(surface, f"HULL  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
             if ship.design:
-                text(surface, f"SHIELDS {ship.shields}/{ship.design.shields} · PD {ship.design.interception}%", (x, 286), 10, MUTED, "mono")
-            for left, title, available, value in ((x, "MOVEMENT", battle.can_move(ship), f"{ship.movement} cells"),
+                text(surface, f"SHIELDS {ship.shields}/{ship.design.shields} · PD {interception(battle, ship)}%", (x, 286), 10, MUTED, "mono")
+            for left, title, available, value in ((x, "MOVEMENT", battle.can_move(ship), f"{ship.movement} cells"+(" · −1" if ship.graviton_slow else "")),
                                                    (1239, "LAUNCH / FIRE" if ship.drone_bays else "WEAPON", battle.can_fire(ship) or battle.can_launch(ship),
                                                     "Ready" if ship.damage or ship.drone_bays else "Unarmed")):
                 panel(surface, (left, 301, 149, 58))
                 text(surface, title, (left+10, 310), 9, MUTED, "mono")
-                text(surface, value if available else "Spent" if ship.damage or ship.drone_bays or title == "MOVEMENT" else "Unarmed",
+                recharging = title != "MOVEMENT" and ship.damage and not ship.ready_damage and ship.id not in battle.acted
+                text(surface, value if available else "Recharging" if recharging else "Spent" if ship.damage or ship.drone_bays or title == "MOVEMENT" else "Unarmed",
                      (left+10, 329), 15, CYAN if available else FAINT)
             beam = BEAMS[ship.weapon]
             pg.draw.line(surface, beam.color, (x, 383), (x+23, 383), 3)
             text(surface, "Drone bays" if ship.drone_bays and not ship.damage else "Weapon volley" if ship.design else beam.name, (x+34, 371), 17, beam.color)
-            text(surface, f"Up to {ship.damage} damage · Range {ship.weapon_range}" if ship.damage else "Launch drones or withdraw with your fleet." if ship.drone_bays else "Move or withdraw with your fleet.",
+            text(surface, f"Ready: {ship.ready_damage} damage · Range {ship.ready_range}" if ship.damage else "Launch drones or withdraw with your fleet." if ship.drone_bays else "Move or withdraw with your fleet.",
                  (x, 400), 12, MUTED)
             if ship.drone_bays:
                 text(surface, f"DRONES {len(battle.drones(ship))}/{ship.drone_bays*2} active · {ship.drone_reserve} reserve", (x, 420), 11, CYAN)
             elif ship.kind == "combat_drone":
                 text(surface, f"Control link: carrier {ship.carrier_id:03}", (x, 420), 11, CYAN)
+            elif ship.cooldowns:
+                names = ", ".join(BEAMS[w].name for w in ship.cooldowns)
+                text(surface, shorten("Recharging: "+names, 308, 11), (x, 420), 11, GOLD)
+            elif ship.design and (ship.design.repair_rate or ship.design.shield_regeneration):
+                text(surface, f"Repair reserve {ship.repair_remaining} · Shield regen +{ship.design.shield_regeneration}", (x, 420), 11, CYAN)
             elif ship.design:
                 text(surface, "Only weapons in range fire; one volley per turn.", (x, 420), 11, MUTED)
         else:
@@ -164,21 +173,32 @@ def draw_combat(app):
             caption += f"  ·  Distance {math.dist(ship.position, target.position):.1f}"
         text(surface, caption, (x, 503), 12, MUTED)
         can_fire = bool(player_turn and ship and target and action_error(game, PLAYER, ship.id, target.id) is None)
-        label = "Fire at target" if can_fire else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
+        label = "Fire at target" if can_fire else "Weapons recharging" if ship and ship.damage and not ship.ready_damage else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
         text(surface, "CHANCE · base + aim − range − evade · cap 95%" if battle.accuracy else "LEGACY BATTLE · Guaranteed hits", (x, 525), 9, GOLD)
         if ship and target and in_range(ship, target):
-            for index, (weapon, count) in enumerate(Counter(w for w, _ in ship.volley(target)).items()):
+            groups = list(Counter(w for w, _ in ship.volley(target)).items())
+            limit = 3 if ship.drone_bays else 4
+            for index, (weapon, count) in enumerate(groups[:limit]):
+                if index == limit-1 and len(groups) > limit:
+                    text(surface, f"+ {len(groups)-index} other weapon types in this volley", (x, 542+index*14), 10, MUTED)
+                    break
                 chance = accuracy_breakdown(game, ship, target, weapon)
-                shot_label = (f"{count}× {BEAMS[weapon].name}: {chance['chance']}%  "
+                shot_label = (f"{count*BEAMS[weapon].shots}× {BEAMS[weapon].name}: {chance['chance']}%  "
                          f"({chance['base']}+{chance['targeting']}−{chance['range']}−{chance['evasion']})")
                 text(surface, shot_label, (x, 542+index*14), 10, CYAN)
         else:
             text(surface, "Choose an enemy within weapon range.", (x, 546), 11, MUTED)
         if ship and ship.drone_bays:
-            text(surface, "Launch instead of firing · Drones act immediately", (x, 579), 10, MUTED)
+            roles = battle.available_drone_roles(ship)
+            if getattr(app, "combat_drone_role", None) not in roles:
+                app.combat_drone_role = next(iter(roles), None)
+            for index, role in enumerate(ship.drone_bay_counts):
+                app.button("combat_drone_"+role, role.title(), (x+index*103, 579, 97, 18),
+                           lambda r=role: setattr(app, "combat_drone_role", r),
+                           "tab_active" if role == app.combat_drone_role else "tab", enabled=player_turn and role in roles)
             app.button("combat_fire", "Fire guns", (x, 601, 130, 35), lambda: app.combat_action("fire"), enabled=can_fire)
             app.button("combat_launch", "Launch drones", (1220, 601, 168, 35), lambda: app.combat_action("launch"),
-                       enabled=bool(player_turn and battle.can_launch(ship)))
+                       enabled=bool(player_turn and battle.can_launch(ship, app.combat_drone_role)))
         else:
             app.button("combat_fire", label, (x, 601, 308, 35), lambda: app.combat_action("fire"), enabled=can_fire)
         app.button("combat_next", "Next ship · N", (x, 646, 149, 32), app.next_combat_ship, enabled=player_turn and bool(battle.ready(PLAYER)))

@@ -1,6 +1,7 @@
 """Planetary defense infrastructure and once-per-ship strategic bombardment."""
 
 from dataclasses import dataclass
+from fractions import Fraction
 from . import ground_combat, monsters
 from .navigation import hostile
 
@@ -87,7 +88,9 @@ def bombardment_attacks(game, system_id, owner="player"):
     attacks = []
     for ship in bombardment_fleet(game, system_id, owner):
         if ship.design:
-            attacks.extend((m.damage, 3 if m.weapon == "siege" else 1) for m in ship.design.specs if m.damage)
+            from .weapons import BEAMS
+            attacks.extend((m.damage, 3 if m.weapon == "siege" else BEAMS[m.weapon].shield_multiplier)
+                           for m in ship.design.specs if m.damage)
         else:
             from .combat import BEAMS, weapon_for
             damage = BEAMS[weapon_for(game, ship.kind, owner)].damage
@@ -102,14 +105,14 @@ def bombardment_power(game, system_id, owner="player"):
 
 def bombardment_forecast(game, system_id, planet_id, owner="player"):
     planet = game.planet_at(system_id, planet_id)
-    shield, ground_thirds = effective_shield(game, planet), 0
+    shield, ground_damage = effective_shield(game, planet), Fraction(0)
     for damage, multiplier in bombardment_attacks(game, system_id, owner):
         absorbed = min(shield, damage*multiplier)
         shield -= absorbed
-        # Keep fractional spillover exact: the siege bonus applies only to shields.
-        ground_thirds += damage*3-absorbed*(3//multiplier)
+        # Shield-specific siege/ion amplification never increases ground damage.
+        ground_damage += damage-Fraction(absorbed, multiplier)
     troops = ground_combat.forces(planet, game.bonuses_for(planet.owner))
-    return effective_shield(game, planet)-shield, min(troops.troops, ground_thirds//15)
+    return effective_shield(game, planet)-shield, min(troops.troops, ground_damage//5)
 
 
 @dataclass(frozen=True)
