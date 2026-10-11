@@ -827,7 +827,12 @@ class GameState:
         error = self.research_error(identifier, owner=owner)
         if error:
             raise RuleError(error)
-        self.research_state(owner).active = identifier
+        empire = self._empire(owner)
+        state = empire.technology
+        # Refund unfinished work once, then spend it at the new project's cost.
+        # Grandfathered costs belong only to the original legacy project.
+        empire.research += state.progress
+        state.active, state.progress, state.legacy_active = identifier, 0, False
         return self.advance_research(owner)
 
     def advance_research(self, owner=PLAYER):

@@ -31,14 +31,15 @@ def draw_observer_header(app):
              ("COLONIES", str(len(worlds)), "Across the whole galaxy"),
              ("POPULATION", f"{sum(p.workforce for p in worlds):,} B", "All inhabited worlds"),
              ("SHIPS", str(len(game.ships)), f"{sum(s.in_transit for s in game.ships)} in transit"),
-             ("TECHNOLOGIES", str(sum(len(game.research_state(o).completed) for o in game.owners)),
-              "Total empire discoveries"))
+             ("TECHNOLOGIES · R", str(sum(len(game.research_state(o).completed) for o in game.owners)),
+              "View research reports"))
     for rect, (label, value, caption) in zip(RESOURCE_RECTS, stats):
         x, y, w, h = rect
         panel(surface, rect, (9, 20, 29))
         text(surface, label, (x+16, y+12), 10, GOLD, "mono", 1)
         text(surface, value, (x+15, y+34), 28, OBSERVER.color, "mono")
         text(surface, caption, (x+16, y+78), 10, MUTED)
+    app.button("open_research", "", RESOURCE_RECTS[4], app.open_research, "hotspot")
     pg.draw.line(surface, LINE, (64, 129), (1376, 129))
     text(surface, shorten(game.empire_name, 590, 26, "title"), (64, 140), 26, INK, "title")
     text(surface, f"YEAR {game.year}   /   TURN {game.turn}", (718, 150), 12, CYAN, "mono")
@@ -118,6 +119,7 @@ def draw_observer(app):
     text(surface, "EVERY EMPIRE. EVERY DECISION.", (1376, 56), 11, OBSERVER.color, "mono", right=True)
     pg.draw.line(surface, LINE, (64, 107), (1376, 107))
     app.button("observer_back", "← Galaxy map · Esc", (64, 124, 270, 46), lambda: app.go("galaxy"), "ghost")
+    app.button("open_research", "Research · R", (354, 124, 190, 46), app.open_research, "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, f"Galaxy {TABS[app.observer_tab].lower()}", (64, 188), 40, INK, "title")
     text(surface, "Every civilization makes its own decisions. You observe the consequences.", (66, 245), 15, MUTED)

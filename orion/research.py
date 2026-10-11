@@ -193,9 +193,8 @@ class ResearchState:
             return "active"
         if identifier == "ascension_theory":
             return "available" if self.finished_branches == len(self.required_branches) else "locked"
-        committed = self.completed + ([self.active] if self.active else [])
         if any(TECHNOLOGIES[t].branch == technology.branch and
-               TECHNOLOGIES[t].tier == technology.tier for t in committed):
+               TECHNOLOGIES[t].tier == technology.tier for t in self.completed):
             return "excluded"
         if not set(range(1, technology.tier)) <= self.completed_tiers(technology.branch):
             return "locked"
@@ -209,6 +208,8 @@ class ResearchState:
         if not isinstance(identifier, str) or identifier not in TECHNOLOGIES:
             return "Unknown technology."
         status = self.status(identifier)
+        if status == "active":
+            return "This technology is already being researched."
         if status == "discovered":
             return "This technology has already been discovered."
         if status == "excluded":
@@ -217,12 +218,10 @@ class ResearchState:
             if identifier == "ascension_theory":
                 return f"Complete every tier in all {len(self.required_branches)} required research branches first."
             return "Complete the earlier tiers in this branch first."
-        if self.active:
-            return "Finish your current research project first."
         return None
 
     def spend(self, bank):
-        """Apply banked points to one committed project; retain all overflow."""
+        """Apply banked points to the current project; retain all overflow."""
         if self.active is None:
             return bank, None
         technology = TECHNOLOGIES[self.active]

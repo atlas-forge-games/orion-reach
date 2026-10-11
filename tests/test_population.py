@@ -322,6 +322,7 @@ class PopulationInterfaceTests(unittest.TestCase):
                 app.render()
             self.assertEqual((earth.population, earth.growth_progress), (9, 5))
             self.assertEqual(app.game.population_report(earth).produced, 16)
+            click("research_back")
             click("surface_hydroponic_farm")
             self.assertEqual((app.screen, app.colony_slot), ("colony", 0))
             restored, _ = app.storage.load(app.storage.save(app.game))

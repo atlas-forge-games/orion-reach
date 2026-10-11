@@ -72,9 +72,11 @@ def draw_objectives(app):
     label = "Theory discovered" if known else "Researching theory" if active else "Research Ascension Theory"
     app.button("research_ascension", label, (733, 490, 331, 44),
                lambda: app.research_request(theory.id), enabled=reason is None)
+    app.technology_info_region(theory.id, (733, 437, 617, 44))
+    app.technology_info_region(theory.id, (733, 490, 331, 44))
     app.button("objectives_research", "Research tree →", (1080, 490, 270, 44), app.open_research)
     if state.active and not active:
-        text(surface, "Finish your current research project first.", (734, 546), 11, MUTED)
+        text(surface, "Switching research transfers all invested RP.", (734, 546), 11, MUTED)
 
     panel(surface, (64, 590, 1312, 209))
     gate_icon(surface, (146, 682), 43)

@@ -285,6 +285,7 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.game.credits, 120)
         for _ in range(7):
             self.key(pg.K_e)
+        self.click("research_back")
         self.click("shipyard_fleets")
         self.assertEqual(len(self.app.game.ships), 1)
         target, planet = remote_world(self.app.game)
@@ -295,12 +296,14 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.click("send_course")
         self.assertEqual(self.app.screen, "fleets")
         self.key(pg.K_e)
+        self.click("research_back")
         self.key(pg.K_F5)
         path = next(p for p in self.app.storage.saves_dir.glob("*.json") if p.name != "autosave.json")
         self.app.load_game(path)
         self.key(pg.K_f)
         while self.app.game.ships[0].in_transit:
             self.key(pg.K_e)
+        self.click("research_back")
         self.click("ship_view_1")
         self.click(f"world_{planet.id}")
         self.click("colonize_planet")

@@ -575,6 +575,10 @@ class ExpansionInterfaceTests(unittest.TestCase):
         app.go("galaxy")
         app.open_research()
         app.render()
+        self.assertTrue(app.research_overview)
+        self.assertIn("research_choose_quantum_targeting", {b.key for b in app.buttons})
+        next(b for b in app.buttons if b.key == "research_show_active").action()
+        app.render()
         self.assertEqual(app.research_tier, 5)
         self.assertIn("research_choose_quantum_targeting", {b.key for b in app.buttons})
 

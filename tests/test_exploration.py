@@ -342,6 +342,7 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.click("build_scout")
         self.key(pg.K_e)
         self.key(pg.K_e)
+        self.click("research_back")
         self.key(pg.K_ESCAPE)
         self.click("planet_return")
         self.click("system_back")
@@ -351,6 +352,7 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.game.system_explored(target.id))
         while self.app.game.ships[0].has_course:
             self.key(pg.K_e)
+        self.click("research_back")
         self.assertTrue(self.app.game.system_explored(target.id))
         self.assertEqual(len(self.app.game.exploration.discoveries), 1)
         self.key(pg.K_x)

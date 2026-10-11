@@ -437,12 +437,8 @@ class VictoryScreenTests(unittest.TestCase):
         game.research, game.credits = 500, 500
         self.key(pg.K_v)
         self.assertEqual(self.app.screen, "objectives")
-        before = game.to_dict()
         self.click("research_ascension")
-        self.click("dialog_cancel")
-        self.assertEqual(game.to_dict(), before)
-        self.click("research_ascension")
-        self.click("dialog_ok")
+        self.assertIsNone(self.app.dialog)
         self.assertIn("ascension_theory", game.technology.completed)
         self.click("gate_build")
         self.click("dialog_cancel")

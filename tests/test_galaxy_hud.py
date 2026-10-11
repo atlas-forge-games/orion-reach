@@ -98,7 +98,7 @@ class GalaxyHudTests(unittest.TestCase):
         target.name = "Oberon"
         self.assertEqual([right-left for left, right, _ in label_bands(game, target)[1]], [14, 14, 14])
 
-    def test_bottom_controls_open_each_screen_at_multiple_window_sizes(self):
+    def test_dock_and_top_research_open_each_screen_at_multiple_window_sizes(self):
         routes = {"open_empire": "empire", "open_diplomacy": "diplomacy", "open_research": "research",
                   "open_fleets": "fleets", "open_objectives": "objectives", "open_news": "news"}
         for size in ((980, 900), (1280, 800), (1920, 1080)):
@@ -109,9 +109,10 @@ class GalaxyHudTests(unittest.TestCase):
             buttons = {b.key: b for b in self.app.buttons}
             self.assertNotIn("save", buttons)
             self.assertNotIn("open_exploration", buttons)
-            commands = [buttons[k] for k in (*routes, "pause", "end_turn")]
+            commands = [buttons[k] for k in (*routes, "pause", "end_turn") if k != "open_research"]
             self.assertEqual(buttons["end_turn"].rect, pg.Rect(1081, 813, 295, 61))
-            self.assertLess(buttons["open_research"].rect.right, buttons["pause"].rect.left)
+            self.assertLess(buttons["open_research"].rect.bottom, 130)
+            self.assertLess(buttons["open_diplomacy"].rect.right, buttons["pause"].rect.left)
             self.assertLess(buttons["pause"].rect.right, buttons["open_fleets"].rect.left)
             for i, button in enumerate(commands):
                 self.assertGreaterEqual(button.rect.top, 800)

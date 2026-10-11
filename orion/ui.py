@@ -58,18 +58,24 @@ def shorten(value, width, size=18, family="sans"):
     return value+"…"
 
 
-def paragraph(surface, value, pos, width, size=18, color=MUTED, leading=30):
-    x,y=pos
+def wrapped_lines(value, width, size=18):
+    lines=[]
     line=""
     for word in value.split():
         attempt=(line+" "+word).strip()
         if font(size).size(attempt)[0] > width and line:
-            text(surface,line,(x,y),size,color)
-            y+=leading
+            lines.append(line)
             line=word
         else:
             line=attempt
     if line:
+        lines.append(line)
+    return lines
+
+
+def paragraph(surface, value, pos, width, size=18, color=MUTED, leading=30):
+    x,y=pos
+    for line in wrapped_lines(value,width,size):
         text(surface,line,(x,y),size,color)
         y+=leading
     return y

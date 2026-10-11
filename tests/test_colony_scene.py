@@ -95,6 +95,7 @@ class SceneInterfaceTests(unittest.TestCase):
             self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_e, mod=0))
             self.app.render()
         self.assertEqual(self.app.game.systems[0].worlds[2].buildings, ["factory"])
+        self.click("research_back")
         self.click("surface_factory")
         self.click("demolish_building")
         self.click("dialog_ok")

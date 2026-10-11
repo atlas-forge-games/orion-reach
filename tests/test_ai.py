@@ -326,6 +326,7 @@ class AIInterfaceTests(unittest.TestCase):
         restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(restored, self.app.game)
         self.click("rival_end_turn")
+        self.click("research_back")
         rival = self.app.game.opponent
         home = self.app.game.planet_at(rival.home_system, rival.home_planet)
         self.assertEqual(home.construction_queue[0].progress, home.workers)

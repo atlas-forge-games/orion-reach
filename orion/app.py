@@ -23,8 +23,8 @@ from .diplomacy_view import draw_diplomacy
 from .contact_view import draw_contact
 from . import first_contact
 from .personalities import personality
-from .research_view import draw_research
-from .research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
+from .research_view import draw_research, draw_technology_info
+from .research import BRANCHES, TECHNOLOGIES, branch_tiers
 from .combat import retreat_destination
 from .combat_view import VISIBLE_ROWS, draw_combat
 from .combat_effects import CombatAnimation
@@ -52,7 +52,7 @@ from .galaxy_labels import draw_system_label
 from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
-                 arrow, emblem, font, panel, paragraph, shorten, text, text_image)
+                 arrow, emblem, font, panel, paragraph, shorten, text, text_image, wrapped_lines)
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
@@ -82,6 +82,7 @@ class App:
         self.screen="menu" if capture or skip_intro else "splash"
         self.game=None
         self.buttons=[]
+        self.technology_regions=[]
         self.focus=None
         self.keyboard_mode=False
         self.mouse=(-1,-1)
@@ -171,6 +172,7 @@ class App:
         self.screen=screen
         self.clear_worker_selection()
         self.buttons=[]
+        self.technology_regions=[]
         self.focus=None
         self.pressed=None
         self.field=None
@@ -231,6 +233,7 @@ class App:
             self.load_page=0
         if screen=="splash":
             self.splash_started=self.time
+        self.prompt_idle_research()
 
     def update_splash(self):
         if (self.screen=="splash" and not self.dialog
@@ -610,6 +613,8 @@ class App:
         self.research_return_selection=(0,None)
         self.research_branch="construction"
         self.research_tier=1
+        self.research_overview=True
+        self.research_prompt_pending=False
         self.objectives_return="galaxy"
         self.gate_colony_index=0
 
@@ -690,16 +695,43 @@ class App:
         elif self.screen in GAME_SCREENS:
             self.research_return=self.screen
             self.research_return_selection=(self.game.selected_system,self.game.selected_planet)
+            self.research_overview=True
+            self.research_prompt_pending=False
             self.go("research")
-            self.select_research_branch(self.research_branch)
-            if self.game.technology.active and TECHNOLOGIES[self.game.technology.active].branch in BRANCHES:
-                self.show_research_technology(self.game.technology.active)
+
+    def needs_research_choice(self):
+        return (self.game is not None and not self.game.is_observer and self.game.result is None
+                and self.game.technology.active is None
+                and any(self.game.technology.status(t)=="available" for t in TECHNOLOGIES))
+
+    def prompt_idle_research(self, *, allow_news=False):
+        """Show the turn's reminder once, after battles, greetings and news."""
+        if not self.research_prompt_pending:
+            return
+        if not self.needs_research_choice():
+            self.research_prompt_pending=False
+            return
+        if (self.screen not in GAME_SCREENS or self.screen in ("contact","combat","ground","result")
+                or (self.screen=="news" and not allow_news)
+                or self.dialog or self.game.combat is not None or self.ground_reports
+                or first_contact.pending(self.game)):
+            return
+        self.research_prompt_pending=False
+        if self.screen=="research":
+            self.show_research_overview()
+        else:
+            self.open_research()
+
+    def show_research_overview(self):
+        self.research_overview=True
+        self.focus=f"research_branch_{self.research_branch}"
 
     def close_research(self):
         self.game.selected_system,self.game.selected_planet=self.research_return_selection
         self.go(self.research_return)
 
     def select_research_branch(self,identifier):
+        self.research_overview=False
         self.research_branch=identifier
         self.research_tier=self.game.technology.next_tier(identifier)
         self.focus=f"research_branch_{identifier}"
@@ -709,7 +741,8 @@ class App:
         self.focus=f"research_tier_{self.research_tier}"
 
     def change_research_tier(self,delta):
-        self.select_research_tier(self.research_tier+delta)
+        if not self.research_overview:
+            self.select_research_tier(self.research_tier+delta)
 
     def show_research_technology(self,identifier):
         technology=TECHNOLOGIES[identifier]
@@ -725,21 +758,30 @@ class App:
             self.toast(error,True)
             return
         technology=TECHNOLOGIES[identifier]
-        alternative=next((t for t in choices(technology.branch,technology.tier) if t.id!=identifier),None)
-        def choose():
-            try:
-                discovered=self.game.choose_research(identifier)
-                if discovered:
-                    self.research_tier=self.game.technology.next_tier(self.research_branch)
-                if self.save_game(autosave=True):
-                    self.toast(f"Discovered {discovered.name}." if discovered else f"Research started: {technology.name}.")
-            except RuleError as exc:
-                self.toast(exc,True)
-        body=(f"Research {technology.name} for {technology.cost} RP. {alternative.name} becomes unavailable. "
-              "This choice is permanent; banked points are applied immediately." if alternative else
-              f"Research {technology.name} for {technology.cost} RP. {technology.description} "
-              "Banked points are applied immediately; your research output supplies the rest.")
-        self.confirm("Commit to this technology?",body,"Start research",choose)
+        transferred=self.game.technology.progress
+        try:
+            discovered=self.game.choose_research(identifier)
+            if discovered:
+                self.research_tier=self.game.technology.next_tier(self.research_branch)
+            if self.save_game(autosave=True):
+                message=f"Discovered {discovered.name}." if discovered else f"Research started: {technology.name}."
+                if transferred:
+                    message+=f" {transferred} RP transferred."
+                self.toast(message)
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def technology_info_region(self,identifier,rect):
+        self.technology_regions.append((identifier,pg.Rect(rect)))
+
+    def show_technology_info(self,identifier):
+        if self.dialog or identifier not in TECHNOLOGIES:
+            return
+        self.dialog={"technology":identifier,"return_focus":self.focus}
+        self.focus="dialog_close"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
 
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
@@ -1099,6 +1141,7 @@ class App:
                 alive=sum(bool(self.game.colony_systems(o)) for o in self.game.owners)
                 self.toast(f"Turn {self.game.turn} · {alive} empires remain · Galaxy updated · Autosaved")
             return
+        self.research_prompt_pending=self.needs_research_choice()
         if report.discoveries:
             self.research_tier=self.game.technology.next_tier(self.research_branch)
         new_news=news_rules.unread_count(self.game)>0
@@ -1119,6 +1162,7 @@ class App:
         if self.screen=="empire":
             self.focus_empire_row()
         self.show_first_contact()
+        self.prompt_idle_research(allow_news=not new_news)
         if self.save_game(autosave=True):
             message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP · {report.resources:+} RES"
             if self.game.combat is not None:
@@ -1541,9 +1585,10 @@ class App:
         pg.key.stop_text_input()
 
     def cancel_dialog(self):
+        focus=self.dialog.get("return_focus") if self.dialog else None
         self.dialog=None
         self.buttons=[]
-        self.focus=None
+        self.focus=focus
 
     def accept_dialog(self):
         action=self.dialog["action"]
@@ -1595,6 +1640,17 @@ class App:
         if event.type==pg.MOUSEMOTION:
             self.mouse=self.logical_pos(event.pos)
             self.keyboard_mode=False
+        if event.type==pg.MOUSEBUTTONUP and event.button==3:
+            self.mouse=self.logical_pos(event.pos)
+            self.pressed=None
+            if self.dialog:
+                if "technology" in self.dialog:
+                    self.cancel_dialog()
+            else:
+                identifier=next((t for t,r in reversed(self.technology_regions) if r.collidepoint(self.mouse)),None)
+                if identifier:
+                    self.show_technology_info(identifier)
+            return
         if event.type in (pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP) and event.button==1:
             self.mouse=self.logical_pos(event.pos)
             self.keyboard_mode=False
@@ -2165,11 +2221,16 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
-        panel(self.canvas,(422,290,596,312),PANEL,GOLD)
-        text(self.canvas,self.dialog["title"],(454,321),29,INK,"title")
-        paragraph(self.canvas,self.dialog["body"],(454,374),526,16,MUTED,27)
-        self.button("dialog_cancel","Cancel",(454,505,180,57),self.cancel_dialog)
-        self.button("dialog_ok",self.dialog["label"],(650,505,336,57),self.accept_dialog,"primary")
+        if "technology" in self.dialog:
+            draw_technology_info(self,self.dialog["technology"])
+            return
+        height=max(312,199+27*len(wrapped_lines(self.dialog["body"],526,16)))
+        top=(SIZE[1]-height)//2
+        panel(self.canvas,(422,top,596,height),PANEL,GOLD)
+        text(self.canvas,self.dialog["title"],(454,top+31),29,INK,"title")
+        paragraph(self.canvas,self.dialog["body"],(454,top+84),526,16,MUTED,27)
+        self.button("dialog_cancel","Cancel",(454,top+height-97,180,57),self.cancel_dialog)
+        self.button("dialog_ok",self.dialog["label"],(650,top+height-97,336,57),self.accept_dialog,"primary")
 
     def render(self):
         if self.game and self.screen in ("planet","colony","shipyard","production"):
@@ -2180,6 +2241,7 @@ class App:
             elif self.screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
                 self.go("planet")
         self.buttons=[]
+        self.technology_regions=[]
         if self.screen!="splash":
             full=self.screen not in (*GAME_SCREENS,"pause")
             self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)

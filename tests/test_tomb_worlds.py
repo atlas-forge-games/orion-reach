@@ -412,6 +412,8 @@ class NewsInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "news")
         self.assertEqual(game.news_read_turn, 2)
         self.click("news_back")
+        self.assertEqual(self.app.screen, "research")
+        self.click("research_back")
         self.click("open_news")
         self.assertEqual(self.app.screen, "news")
         self.click("news_save")

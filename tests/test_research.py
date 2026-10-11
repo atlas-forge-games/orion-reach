@@ -51,12 +51,15 @@ class ResearchRulesTests(unittest.TestCase):
                     game.choose_research(invalid)
                 self.assertEqual(game.to_dict(), before)
             game.choose_research(first.id)
-            self.assertEqual(state.status(second.id), "excluded")
-            for invalid in (first.id, second.id, advanced[0].id):
+            self.assertEqual(state.status(second.id), "available")
+            for invalid in (first.id, advanced[0].id):
                 with self.assertRaises(RuleError):
                     game.choose_research(invalid)
+            game.choose_research(second.id)
+            game.choose_research(first.id)
             game.research = first.cost
             game.advance_research()
+            self.assertEqual(state.status(second.id), "excluded")
             self.assertEqual(state.status(advanced[0].id), "available")
             discover(game, advanced[1].id)
             self.assertEqual(state.status(advanced[0].id), "excluded")
@@ -82,13 +85,12 @@ class ResearchRulesTests(unittest.TestCase):
         self.assertEqual(game.choose_research("orbital_assembly").name, "Orbital Assembly")
         self.assertEqual(game.research, 50)
 
-    def test_project_waits_for_laboratory_and_only_one_project_can_run(self):
+    def test_project_waits_for_laboratory_and_switch_replaces_the_active_project(self):
         game = new_game(seed=2408, with_ai=False)
         game.choose_research("ion_drives")
-        before = game.to_dict()
-        with self.assertRaisesRegex(RuleError, "current research"):
-            game.choose_research("civil_engineering")
-        self.assertEqual(game.to_dict(), before)
+        game.choose_research("civil_engineering")
+        self.assertEqual(game.technology.active, "civil_engineering")
+        self.assertEqual(game.technology.completed, [])
         game.queue_building(0, 2, "research_lab")
         for _ in range(5):
             game.advance_turn()
@@ -355,20 +357,19 @@ class ResearchScreenTests(unittest.TestCase):
         self.click("resume")
         self.assertEqual(self.app.screen, "research")
 
-    def test_confirmation_progress_exclusion_unlock_and_autosave_with_real_clicks(self):
+    def test_immediate_selection_switching_completion_and_autosave_with_real_clicks(self):
         game = self.app.game
         game.research = 37
         game.planet_at(0, 2).buildings = ["research_lab"]
         self.click("open_research")
-        before = game.to_dict()
         self.click("research_choose_civil_engineering")
-        self.assertIn("Automated Factories", self.app.dialog["body"])
-        self.click("dialog_cancel")
-        self.assertEqual(game.to_dict(), before)
-        self.click("research_choose_civil_engineering")
-        self.click("dialog_ok")
+        self.assertIsNone(self.app.dialog)
         self.assertEqual(game.technology.progress, 37)
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "research_choose_automated_factories").enabled)
+        self.assertTrue(next(b for b in self.app.buttons if b.key == "research_choose_automated_factories").enabled)
+        self.click("research_choose_automated_factories")
+        self.assertEqual(game.technology.progress, 37)
+        self.click("research_choose_civil_engineering")
+        self.assertEqual(game.technology.progress, 37)
         self.click("research_end_turn")
         self.assertIn("Discovered: Civil Engineering", self.app.notice)
         self.assertTrue(next(b for b in self.app.buttons if b.key == "research_choose_orbital_assembly").enabled)

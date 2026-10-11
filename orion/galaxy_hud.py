@@ -15,12 +15,14 @@ FOOD_GREEN = (157, 199, 132)
 NAVIGATION = (
     ("open_empire", "Empire", "open_empire", "empire", "I"),
     ("open_diplomacy", "Diplomacy", "open_diplomacy", "diplomacy", "D"),
-    ("open_research", "Research", "open_research", "research", "R"),
     ("pause", "Menu", "pause", "menu", "Esc"),
     ("open_fleets", "Fleets", "open_fleets", "fleets", "F"),
     ("open_objectives", "Objectives", "open_objectives", "objectives", "V"),
     ("open_news", "Turn news", "open_news", "news", "N"),
 )
+COMMAND_RECTS = ((64, 813, 204, 61), (280, 813, 204, 61),
+                 (496, 813, 132, 61), (640, 813, 132, 61),
+                 (784, 813, 132, 61), (928, 813, 132, 61))
 
 
 @lru_cache(maxsize=5)
@@ -65,9 +67,14 @@ def draw_galaxy_header(app):
                   f"{report.income:+,} CR net / turn", f"Upkeep {report.maintenance:,} CR/turn",
                   GOLD, detail_color=RED if report.income < 0 else MUTED)
     active = game.research_state().active
-    resource_card(surface, RESOURCE_RECTS[1], "research", "RESEARCH", f"{game.research:,} RP",
+    resource_card(surface, RESOURCE_RECTS[1], "research", "RESEARCH · R", f"{game.research:,} RP",
                   f"{report.research:+,} RP / turn",
                   TECHNOLOGIES[active].name if active else "No active project", CYAN)
+    app.button("open_research", "", RESOURCE_RECTS[1], app.open_research, "hotspot")
+    if active:
+        app.technology_info_region(active, RESOURCE_RECTS[1])
+    if active is None and any(game.technology.status(t)=="available" for t in TECHNOLOGIES):
+        pg.draw.rect(surface, GOLD, RESOURCE_RECTS[1], 1, border_radius=3)
     shortage = report.food_shortages
     food_note = f"{shortage} local shortage"+("s" if shortage != 1 else "") if shortage else "Local · All supplied"
     resource_card(surface, RESOURCE_RECTS[2], "food", "FOOD SURPLUS",
@@ -102,7 +109,7 @@ def draw_galaxy_commands(app):
         badge = (str(min(unread, 99))+("+" if unread > 99 else "")) if key == "open_news" and unread else ""
         if key == "pause" and (app.fleet_popup or app.map_order_ids or app.route_ship_id is not None or app.sensor_contact_id is not None):
             shortcut = "P"  # Escape closes the active map selection first.
-        app.button(key, label, (64+index*144, 813, 132, 61), getattr(app, method),
+        app.button(key, label, COMMAND_RECTS[index], getattr(app, method),
                    "command_dock", icon=icon, shortcut=shortcut, badge=badge)
     app.button("end_turn", "End turn", (1081, 813, 295, 61), app.advance_turn, "command_primary",
                subtitle=f"Turn {game.turn+1} · Year {game.year+1}", icon="turn", shortcut="E")

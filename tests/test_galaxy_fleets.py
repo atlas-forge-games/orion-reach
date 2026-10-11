@@ -263,6 +263,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.fleet_selected_ids)
         for _ in range(duration-1):
             self.key(pg.K_e)
+        self.click("research_back")
         self.assertEqual(self.app.screen, "galaxy")
         self.assertFalse(self.app.fleet_popup)
         self.click("map_fleet_1")
@@ -302,6 +303,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.fleet_selected_ids, {1, 3})
         self.assertEqual([s.id for s in self.app.viewed_fleet()], [1, 2, 3, 4])
         self.key(pg.K_e)
+        self.click("research_back")
         self.assertTrue(all(s.system_id == 0 for s in self.app.game.ships))
         self.assertEqual(self.app.screen, "galaxy")
         self.assertFalse(self.app.fleet_popup)

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.40.0
+# Orion Reach — Python prototype 0.41.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,59 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.41.1: immediate research selection and technology information
+
+- **Left-click** a technology to start or switch research immediately, without
+  a confirmation dialog. Only one project runs at a time.
+- Until discovery, you can switch to the other choice at the same tier or to
+  any available project in another field. **All invested RP transfers**, together
+  with your banked points. A cheaper project may finish immediately; surplus
+  points remain banked. Repeated switching never creates or loses points.
+- **Only discovery makes a choice permanent.** Its alternative is then excluded,
+  its effects take effect, and the next tier unlocks. An unfinished project does
+  not unlock later tiers.
+- **Right-click** any technology row or detail card to read its full effects,
+  cost, status, and RP transfer information. Locked, excluded, discovered and
+  active technologies can all be inspected. Right-click the active project or
+  the galaxy's Research card for the same information. Close with **Close**,
+  **Escape**, or another right-click; the panel never changes research.
+- Selection and switching autosave. Existing saves retain their progress and
+  discoveries. Old projects keep their original cost until you switch; the new
+  target uses its normal cost and receives every invested RP. Save format stays 30.
+
+![Technology information](screenshots/research_technology_info.png)
+
+## New in v0.41: research field overview
+
+Research now opens a **two-column, five-row overview** inspired by the MOO2
+research screen. Its ten panels contain the nine existing branches and the
+Ascension finale. Every existing technology, tier and cost is retained,
+including the original research goals of older campaigns.
+
+- Each field shows its current tier, two technology choices, RP cost and an
+  estimated time that accounts for banked points. Active and completed choices
+  are marked. Ascension remains locked until the required branches are complete.
+- Click a technology to select it; right-click to review its full effects and
+  alternative. Click a field heading to browse all of its tiers;
+  **All fields** returns to the overview. The active project also has a **View** button.
+- Click the **Research resource card at the top of the galaxy screen**, or press
+  **R**, to open research. Its border highlights when a project can be chosen.
+  The duplicate bottom Research button is removed; Empire and Diplomacy have
+  more space, and Menu, Fleets, Objectives, Turn news and End turn stay in place.
+- After **End turn**, an idle research program opens the field overview,
+  including when the previous project has just finished. Battles, first-contact
+  greetings and turn news are handled first. You can return without choosing;
+  points remain banked and the next turn reminds you again. A completed tree
+  does not trigger a reminder.
+- Observer campaigns never receive a player research prompt. Click
+  **Technologies** in the top bar, **Research** in the report header, or press
+  **R** to view computer empire research.
+
+Save format remains **30**. Run `python tools/preview_research_fields.py` to
+reproduce the overview, carrier tier, technology information and top-bar previews.
+
+![Research fields](screenshots/research_fields.png)
 
 ## New in v0.40: The Observer
 
@@ -18,7 +71,7 @@ civilizations are still selected from the original eleven races without duplicat
 - Click **End turn** (or **E**) to advance all computer empires. Space and ground
   battles resolve automatically. New reports do not interrupt the viewing screen.
 - Inspect global totals and read-only **Empires, Diplomacy, Research, Fleets and
-  Objectives** reports from the bottom command bar. Open a civilization for its
+  Objectives** reports from the command bar and research header. Open a civilization for its
   economy and colonies, or click a fleet or planet to inspect it.
 - Follow the latest **240 empire activity entries** in Turn news, alongside
   galaxy-wide tomb awakenings and raid reports. Unread indicators survive saves.
@@ -1307,9 +1360,11 @@ technologies can also provide research income.
   Tiers **I / II / III / IV / V** cost **40 / 100 / 120 / 220 / 360 RP**.
   All nine branches are available from the start and contain two to five tiers.
   Completing a tier unlocks both choices at the next tier in that branch.
-- Confirming commits to that technology permanently. Its alternative is
-  excluded, and the active project cannot be cancelled or switched. One
-  empire-wide project runs at a time. Browse other branches while it progresses.
+- Left-click starts research immediately. You can switch unfinished projects,
+  transferring all invested RP to the new choice. The alternative is excluded
+  only after discovery. One empire-wide project runs at a time.
+- Right-click any technology for full effects, cost, status and transfer details.
+  This also works on locked or already discovered technologies and changes no orders.
 - Banked points are applied immediately when you choose; a large bank can
   complete the project immediately. Otherwise, End Turn applies new research
   income. A project can wait at zero progress until you build a lab.
@@ -2024,11 +2079,13 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Browse fleet or shipyard queue pages | Page Up / Down, mouse wheel, or Previous / Next |
 | Inspect or add the AI opponent | Empire → Rival report |
 | Open / close Diplomacy | D, or the Diplomacy button while playing |
-| Open / close Research | R, or the Research button while playing |
+| Open / close Research | R, or click Research in the galaxy's top resource bar |
+| Select or switch a research project | Left-click an available technology; all invested RP transfers |
+| Inspect technology information | Right-click a technology; Escape, Close or right-click dismisses the panel |
 | Open / close victory objectives | V, or Objectives while playing |
 | Invade a rival colony | Troop transports in orbit → planet Overview → Invade colony |
 | Research Ascension Theory / build a gate | Objectives → research project / colony selector |
-| Browse research branches | Click a branch or use Left / Right on the Research screen |
+| Browse research fields and tiers | Click a field heading; All fields returns to the grid; Left / Right browses branches and Page Up / Down browses tiers in the detail view |
 | Start a fleet battle | Engage in Fleets or on the system overview |
 | Move in combat | Select your ship → click a highlighted empty cell |
 | Attack in combat | Select your ship → select an enemy → review chance → Fire at target |
@@ -2165,7 +2222,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/first_contact.py` | Private confirmed contacts, introduction queue and legacy migration |
 | `orion/contact_view.py` | First-contact transmission and replay screen |
 | `orion/research.py` | Technology definitions, exclusive choices, validation and yield bonuses |
-| `orion/research_view.py` | Branches, tiers, project progress and research controls |
+| `orion/research_view.py` | Ten-field overview, paired tiers, project progress and research controls |
 | `orion/combat.py` | Tactical positions, movement paths, weapons, side turns, AI, retreat and validation |
 | `orion/monsters.py` | Guardian generation, prize worlds, encounter knowledge and AI expeditions |
 | `orion/monster_art.py` | Procedural guardian illustrations and distinct galaxy-map symbols |
@@ -2229,6 +2286,8 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_varkesh.py` | Raids, movement, slave economy and mortality, liberation, AI, news, saves and controls |
 | `tests/test_power_plants.py` | Steady and backup generators, fuel dispatch, shared reserves, forecasts, research unlocks, saves and catalogue controls |
 | `tests/test_research_tiers.py` | Every paired research path, advanced unlocks, legacy discoveries and active costs, AI progression and tier controls |
+| `tests/test_research_overview.py` | Field selection, scaled pointer controls, idle reminders, battle/news priority, Observer exclusion and readable information |
+| `tests/test_research_switching.py` | RP conservation, cross-field switches, overflow, irreversible discoveries, old saves and right-click inspection |
 | `tests/test_worker_groups.py` | Atomic group transfers, scaled pointer boundaries, keyboard quantities, cancellation, captives and autosaves |
 | `tests/test_resources_energy.py` | Mining, shared supplies, local power, construction payments, authentic save upgrades and UI actions |
 | `tests/test_home_systems.py` | Civilization home names, unchanged generation, repeated races and survey privacy |
@@ -2240,6 +2299,20 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.41.1 passes **664 automated checks**, including **10 new checks** for RP
+conservation across repeated and cross-field switches, cheaper-project overflow,
+invalid orders, isolated empire balances, old project costs, save/resume,
+estimates, immediate mouse/keyboard selection, and read-only right-click details.
+The information panel, active field overview and carrier tier previews were
+inspected. The cumulative update package includes the v0.41 research redesign.
+
+v0.41 passes **654 automated checks**, including **12 research interface checks** for the ten-field overview, direct
+selection and cancellation, scaled mouse controls, full tier access, completion
+reminders, battle/greeting/news priority, return navigation, Observer and
+completed-tree exclusions, and long confirmation text. Existing interface
+scenarios now acknowledge the new reminder before continuing their workflows.
+The research, carrier-detail, confirmation and galaxy-bar previews were inspected.
 
 v0.40 passes **624 existing checks and 18 Observer checks** for isolated visibility, computer empire setup,
 blocked player orders, every AI taking its turn, automatic space and ground
