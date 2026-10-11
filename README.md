@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.41.1
+# Orion Reach — Python prototype 0.41.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and scientific victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,27 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.41.2: support-ship artwork
+
+The **troop transport**, **colony ship** and **scout** now have original
+transparent ship illustrations that match the ceramic armor, dark machinery,
+bronze fittings and cyan lights of the existing warships:
+
+- **Troop transport:** a broad armored hull with protected personnel modules.
+- **Colony ship:** rounded habitat pods, living-space windows and greenhouses.
+- **Scout:** a slender exploration hull with scanning dishes and survey optics.
+
+The figures appear throughout the existing shipyard, fleet, colony construction,
+exploration and tactical combat views. They retain their proportions when scaled
+and rotate to face the correct direction in battle. Existing save files work
+unchanged. Ship costs, capabilities and research requirements are unchanged.
+
+Original PNGs, generation prompts and asset hashes are in `assets/ships/`.
+Run `python tools/preview_support_ship_art.py` to reproduce the artwork catalogue
+and the shipyard, fleet and combat previews.
+
+![Support-ship artwork](screenshots/support_ship_art.png)
 
 ## New in v0.41.1: immediate research selection and technology information
 
@@ -2243,7 +2264,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `orion/galaxy_fleet_view.py` | Clickable map badges, compact ship selection popup and route previews |
 | `orion/exploration.py` | Survey snapshots, visibility, scout discoveries and validation |
 | `orion/exploration_view.py` | Exploration log, unknown systems and map intelligence |
-| `orion/fleet_art.py` | Procedural transport, frigate and scout drawings |
+| `orion/fleet_art.py` | Cached illustrations for all ten ship types, scaling, rotation and procedural fallbacks |
 | `orion/planet_art.py` | Cached, deterministic globe drawings for six environments |
 | `orion/model.py` | Game state and seeded generation; no pygame dependency |
 | `orion/storage.py` | Save validation, atomic writes, settings and data paths |
@@ -2299,6 +2320,12 @@ Shields, missiles and ship customization can follow. Bump the save version and a
 migrations when the data schema changes.
 
 ## Development checks
+
+v0.41.2 passes **48 focused ship and fleet checks**. All ten ship PNGs match
+their manifest hashes, dimensions and alpha bounds. The three new support
+ships were checked at eight sizes in all three orientations (72 combinations),
+including procedural fallbacks for missing artwork. The catalogue and actual
+shipyard, fleet and combat previews were inspected.
 
 v0.41.1 passes **664 automated checks**, including **10 new checks** for RP
 conservation across repeated and cross-field switches, cheaper-project overflow,

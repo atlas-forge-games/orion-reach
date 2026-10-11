@@ -1,4 +1,4 @@
-"""Cached ship illustrations and procedural civilian craft for every fleet view."""
+"""Cached ship illustrations with procedural fallbacks for every fleet view."""
 
 from functools import lru_cache
 import pygame as pg
@@ -7,7 +7,8 @@ from .ui import ASSETS, CYAN, INK
 from .monster_art import draw_monster
 from .monsters import MONSTERS
 
-SHIP_ART_IDS = ("frigate", "destroyer", "cruiser", "battleship", "carrier", "titan", "combat_drone")
+SHIP_ART_IDS = ("frigate", "destroyer", "cruiser", "battleship", "carrier", "titan", "combat_drone",
+                "troop_transport", "colony_ship", "scout")
 
 
 @lru_cache(maxsize=16)

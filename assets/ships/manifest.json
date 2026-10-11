@@ -103,5 +103,50 @@
       1156
     ],
     "sha256": "4954be7b6259a46f18153950d9d7dd90eb59fc08b985f0fe804ad1f32064e279"
+  },
+  {
+    "id": "troop_transport",
+    "file": "troop_transport-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      184,
+      26,
+      1071,
+      1219
+    ],
+    "sha256": "91bd710406ae80b14f6570e81831d5c86ea724d2939c5753faad1a74ebf9b8ce"
+  },
+  {
+    "id": "colony_ship",
+    "file": "colony_ship-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      118,
+      21,
+      1135,
+      1227
+    ],
+    "sha256": "48ad9093fadf77889d1f0c193b1350fe8d68e196995d53c3f32e265e5f0c7571"
+  },
+  {
+    "id": "scout",
+    "file": "scout-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      358,
+      17,
+      897,
+      1224
+    ],
+    "sha256": "3cb33ea1111f85bcba00d536f4283fdd0dd83d3ae5434620b796c0f296c18240"
   }
 ]
