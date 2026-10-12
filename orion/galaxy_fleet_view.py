@@ -11,7 +11,8 @@ from .model import PLAYER, RIVAL
 from .galaxy_labels import LABEL_FAMILY, LABEL_SIZE, system_label
 from . import monsters, navigation, black_holes
 from .black_hole_view import hit_rect
-from .production import SHIP_SPEED, SHIP_TYPES, TROOP_STRENGTH
+from .production import SHIP_TYPES
+from . import production as production_balance
 from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
@@ -32,7 +33,7 @@ def draw_fuel_range(app, map_rect):
         pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 19), ellipse)
         pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 90), ellipse, 1)
     app.canvas.blit(overlay, map_rect.topleft)
-    speed = 100*SHIP_SPEED*(1+game.ship_speed_bonus()/100)
+    speed = 100*production_balance.SHIP_SPEED*(1+game.ship_speed_bonus()/100)
     text(app.canvas, f"FUEL RANGE {game.fuel_range()} LY  ·  SPEED {speed:g} LY/TURN",
          (map_rect.right-18, map_rect.y+18), 10, CYAN, "mono", right=True)
 
@@ -342,7 +343,7 @@ def draw_fleet(app):
         ship_icon(surface, (139, y+31), .55, app.empire_color(first.owner), kind=ship.kind)
         text(surface, ship.name, (190, y+8), 19, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
-                f"{game.ship_attack(ship)} damage / volley" if ship.damage else f"{TROOP_STRENGTH} invasion attack · Unarmed"
+                f"{game.ship_attack(ship)} damage / volley" if ship.damage else f"{production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
                 if ship.kind == "troop_transport" else f"{game.starting_colonists(first.owner)} B colonists · Unarmed")
         if ship.drone_bays:
             role = f"{ship.drone_bays*2} active drones · {ship.drone_bays*4} launches/battle"

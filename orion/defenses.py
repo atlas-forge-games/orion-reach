@@ -6,6 +6,9 @@ from . import ground_combat, monsters
 from .navigation import hostile
 
 BASE_HULL = 40
+SHIELD_CAPACITY = 100
+SHIELD_RECOVERY = 25
+BASE_RECOVERY = 4
 
 
 def base_id(system_id, planet_id):
@@ -27,7 +30,7 @@ def bases(game, system_id, owner=None):
 
 
 def shield_capacity(game, planet):
-    return max(100, game.bonuses_for(planet.owner).get("shield_capacity", 0)) if "planetary_shield" in planet.buildings and planet.owner else 0
+    return max(SHIELD_CAPACITY, game.bonuses_for(planet.owner).get("shield_capacity", 0)) if "planetary_shield" in planet.buildings and planet.owner else 0
 
 
 def effective_shield(game, planet):
@@ -58,9 +61,9 @@ def advance(game):
                           for s in game.ships)
             if not blocked and planet.bombarded_turn < game.turn-1:
                 if game.building_operational(planet, "planetary_shield"):
-                    planet.shield_points = min(shield_capacity(game, planet), planet.shield_points+25)
+                    planet.shield_points = min(shield_capacity(game, planet), planet.shield_points+SHIELD_RECOVERY)
                 if game.building_operational(planet, "missile_base"):
-                    planet.battery_hull = min(BASE_HULL, (planet.battery_hull or BASE_HULL)+4)
+                    planet.battery_hull = min(BASE_HULL, (planet.battery_hull or BASE_HULL)+BASE_RECOVERY)
 
 
 def bombardment_fleet(game, system_id, owner):

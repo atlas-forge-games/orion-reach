@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from .buildings import BUILDINGS
-from .council import ELECTION_INTERVAL
+from . import council as council_balance
 from .designs import HULLS, MODULES
 from .encyclopedia_artifacts import ARTIFACT_CONCEPTS
 from .personalities import PERSONALITIES
-from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, SHIP_TYPES, TROOP_STRENGTH
+from .production import ASCENSION_GATE, SHIP_TYPES
+from . import production as production_balance
 from .races import SETUP_RACES
 from .research import BRANCHES, TECHNOLOGIES, TIER_NAMES, ResearchState
 
@@ -112,7 +113,7 @@ def guides():
             ("REFERENCE CATALOG", "The encyclopedia lists the complete public technology catalog, including technologies you have not researched. Reading an entry never selects or unlocks it."),
         )),
         Article("travel", "ships", "Fleet movement and fuel", "Range is different from speed", (
-            ("RANGE", f"The base fuel range is {BASE_FUEL_RANGE} light-years from an owned colony. Scouts do not extend that supply range. Civilization traits and researched fuel tanks can extend it."),
+            ("RANGE", f"The base fuel range is {production_balance.BASE_FUEL_RANGE} light-years from an owned colony. Scouts do not extend that supply range. Civilization traits and researched fuel tanks can extend it."),
             ("SPEED", "Drive research reduces voyage time. Fuel tanks extend reach without speeding up a voyage. Navigation networks and jump gates can improve travel between your colonies; enemy interdiction can slow an approach."),
             ("ORDERS", "Click a fleet marker, select ships, then choose a destination. Queued departures can be changed before End turn. Ships already in transit continue their ordered voyage."),
         )),
@@ -126,7 +127,7 @@ def guides():
             ("DESIGNS", "Research unlocks hulls and modules for new designs. Each hull has a total capacity and separate weapon, defense and support limits. Existing ships retain their blueprints."),
         )),
         Article("ground_combat", "combat", "Ground combat and raiding", "Transport troops and colony defenses", (
-            ("INVASION", f"Clear hostile orbital defenses and bring troop transports. Each transport supplies {TROOP_STRENGTH} invasion attack before modifiers. Defenders include colony militia and trained garrison troops."),
+            ("INVASION", f"Clear hostile orbital defenses and bring troop transports. Each transport supplies {production_balance.TROOP_STRENGTH} invasion attack before modifiers. Defenders include colony militia and trained garrison troops."),
             ("DEFENSE", "Barracks train garrisons; defensive buildings improve resistance. Planetary shields also protect against attacks from orbit. Inspect the invasion preview before committing troops."),
             ("VARKESH RAIDS", "A successful Varkesh raid steals credits and enslaves population instead of establishing a new colony. Their slaves work at their homeworld and suffer attrition."),
         )),
@@ -138,8 +139,8 @@ def guides():
         Article("victory", "affairs", "Victory conditions", "Conquest, science and the council", (
             ("CAMPAIGN SETUP", "Choose enabled victories on the second new-game screen. Turn all off for open-ended play. A human empire is still defeated if it loses all colonies."),
             ("CONQUEST", "When conquest is enabled, the last empire with colonies wins. Objectives summarizes your progress."),
-            ("SCIENCE", f"Complete the required research, discover Ascension Theory ({TECHNOLOGIES['ascension_theory'].cost:,} RP), then build and charge an Ascension Gate. Its base cost is {ASCENSION_GATE.resource_cost} Resources and {ASCENSION_GATE.work_cost} work. Charging requires {GATE_CHARGE_TURNS} powered turns with a clear orbit. Older campaigns can retain earlier research requirements."),
-            ("GALACTIC COUNCIL", f"When at least half the systems are settled and two empires remain, the enabled council can form. Each colonized world gives one vote. At least half the eligible votes and a unique lead elect an emperor; a tie elects nobody. Unsuccessful votes repeat every {ELECTION_INTERVAL} turns."),
+            ("SCIENCE", f"Complete the required research, discover Ascension Theory ({TECHNOLOGIES['ascension_theory'].cost:,} RP), then build and charge an Ascension Gate. Its base cost is {ASCENSION_GATE.resource_cost} Resources and {ASCENSION_GATE.work_cost} work. Charging requires {production_balance.GATE_CHARGE_TURNS} powered turns with a clear orbit. Older campaigns can retain earlier research requirements."),
+            ("GALACTIC COUNCIL", f"When at least half the systems are settled and two empires remain, the enabled council can form. Each colonized world gives one vote. At least half the eligible votes and a unique lead elect an emperor; a tie elects nobody. Unsuccessful votes repeat every {council_balance.ELECTION_INTERVAL} turns."),
             ("DEFIANCE", "If another empire wins the election, the human player can accept or defy the ruling. Defiance ends treaties and makes all surviving computer empires declare war."),
         )),
         Article("tombs", "affairs", "Tomb worlds", "The Remnant awakens", (

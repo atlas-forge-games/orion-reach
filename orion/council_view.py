@@ -1,6 +1,7 @@
 """Galactic Council census, public ballots and the accept-or-defy decision."""
 
-from .council import ELECTION_INTERVAL, settled_systems, solar_systems
+from .council import settled_systems, solar_systems
+from . import council as council_balance
 from .race_art import draw_race_portrait
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
@@ -35,7 +36,7 @@ def draw_council(app):
         text(surface, "The council has not convened yet." if "council" in game.victory_conditions else "Council disabled in galaxy setup.", (88, 243), 23, GOLD)
         text(surface, council_summary(game), (89, 279), 13, MUTED)
         paragraph(surface, f"The first election opens after at least half the galaxy's solar systems are settled. "
-                  f"One colony is enough to count a system as settled. If nobody wins, the council votes again after {ELECTION_INTERVAL} turns.",
+                  f"One colony is enough to count a system as settled. If nobody wins, the council votes again after {council_balance.ELECTION_INTERVAL} turns.",
                   (88, 357), 1170, 22, INK, 35)
         paragraph(surface, "A candidate must receive at least half of all eligible votes and hold a unique lead. "
                   "Abstentions still count toward the total; an exact 50–50 tie elects nobody. "

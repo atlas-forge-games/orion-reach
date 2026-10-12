@@ -43,7 +43,7 @@ from .setup_view import draw_race_select, draw_setup
 from .races import SETUP_RACES as RACES
 from .observer_view import draw_observer, draw_observer_header
 from .empires import PLAYER_PALETTES, empire_color
-from .diplomacy import BREAK_PENALTY, OFFER_COOLDOWN
+from . import diplomacy as diplomacy_balance
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
 from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects
@@ -1053,7 +1053,7 @@ class App:
         if action in ("end_trade","end_research"):
             title="trade pact" if action=="end_trade" else "research agreement"
             self.confirm(f"End the {title}?",
-                         f"Its benefits stop immediately for both empires. Relations fall by {personality(self.game,target).breach} and new treaty offers wait {OFFER_COOLDOWN} turns. "
+                         f"Its benefits stop immediately for both empires. Relations fall by {personality(self.game,target).breach} and new treaty offers wait {diplomacy_balance.OFFER_COOLDOWN} turns. "
                          "If relations fall below zero, the rival ends other agreements on the next End Turn.",
                          "End agreement",perform)
         else:

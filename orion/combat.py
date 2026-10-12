@@ -14,7 +14,8 @@ from .empires import EMPIRE_IDS
 from .monsters import MONSTER, MONSTERS, alive_at, at as guardian_at, observe, known_status, commit_battle_result
 
 BASE_SPEC = ShipSpec("missile_base", "Missile base", 100, 60, hull=40, damage=10)
-DRONE_SPEC = ShipSpec("combat_drone", "Combat drone", 0, 0, hull=6, damage=3)
+DRONE_HULL = 6
+DRONE_SPEC = ShipSpec("combat_drone", "Combat drone", 0, 0, hull=DRONE_HULL, damage=3)
 DRONE_ID_BASE = -1_000_000
 DRONES_PER_BAY = 2
 LAUNCHES_PER_BAY = 4
@@ -123,7 +124,7 @@ class CombatShip:
     @property
     def ready_weapons(self):
         if self.design:
-            scanner = self.design.modules.count("scanner")
+            scanner = sum(m.range_bonus for m in self.design.specs)
             return tuple((m.weapon, m.damage, m.range+scanner) for m in self.design.specs
                          if m.damage and m.weapon not in self.cooldowns)
         return ((self.weapon, self.damage, self.weapon_range),) if self.damage and self.weapon not in self.cooldowns else ()
@@ -212,7 +213,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=31):
+    def from_dict(cls, data, game, *, version=36):
         from .model import _integer, _name
         if version < 25 and isinstance(data, dict):
             data = {**data, "accuracy": False, "shots_fired": 0}

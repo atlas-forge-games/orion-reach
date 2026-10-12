@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from .buildings import BUILDINGS, MINERAL_FACTORS
 
 STARTING_RESOURCES = 120
+STARTING_CREDITS = 120
+STARTING_POPULATION = 8
+MINER_RESOURCES = 2
 BASE_EXTRACTION = 2
 BASE_ENERGY = 12
 GATE_ENERGY = 10
@@ -120,7 +123,7 @@ def operational(planet, identifier, bonuses=None):
 
 def miner_output(planet, bonuses=None):
     extra = sum(BUILDINGS[b].resources_per_miner for b in active_buildings(planet, bonuses))
-    return (2+extra)*MINERAL_FACTORS[planet.richness]
+    return (MINER_RESOURCES+extra)*MINERAL_FACTORS[planet.richness]
 
 
 def mining_output(planet, bonuses=None):

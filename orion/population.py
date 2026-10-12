@@ -10,11 +10,17 @@ BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Vo
 FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Tundra": 2, "Barren": 1, "Volcanic": 1, "Gaia": 3}
 WORKER_ROLES = ("farmers", "workers", "scientists", "miners")
 GROWTH_THRESHOLD = 100
+GROWTH_LIMIT = 25
+GAIA_GROWTH_LIMIT = 35
+GROWTH_PER_FOOD = 5
+ASSEMBLY_GROWTH_LIMIT = 25
+GROWTH_PER_INDUSTRY = 5
+GAIA_CAPACITY = 4
 LUSH_BIOMES = ("Terran", "Ocean", "Gaia")
 
 
 def population_capacity(planet, bonuses=None):
-    base = POPULATION_LIMITS[planet.size] + (4 if planet.biome == "Gaia" else 0)
+    base = POPULATION_LIMITS[planet.size] + (GAIA_CAPACITY if planet.biome == "Gaia" else 0)
     return base*(100+(bonuses or {}).get("capacity_percent", 0))//100
 
 
@@ -86,10 +92,10 @@ class PopulationReport:
         if not self.colonized or not 0 < self.population < self.capacity:
             return 0
         if self.assembly:
-            return min(25, 5*self.assembly_industry)
+            return min(ASSEMBLY_GROWTH_LIMIT, GROWTH_PER_INDUSTRY*self.assembly_industry)
         if self.passive_growth:
             return self.passive_growth
-        base = max(0, min(self.growth_limit, 5*self.balance))
+        base = max(0, min(self.growth_limit, GROWTH_PER_FOOD*self.balance))
         return max(1, base*self.growth_percent//100) if base else 0
 
     @property
@@ -120,7 +126,7 @@ class PopulationReport:
         turns = self.turns_to_growth
         if turns is not None:
             prefix = f"Assembly: {self.assembly_industry} industry · " if self.assembly else ""
-            return f"{prefix}{self.progress}% · +1 B in {turns} {'turn' if turns == 1 else 'turns'}"
+            return f"{prefix}{self.progress*100//GROWTH_THRESHOLD}% · +1 B in {turns} {'turn' if turns == 1 else 'turns'}"
         return self.status
 
 
@@ -142,7 +148,7 @@ def report(planet, bonuses=None):
         from .research import gross_colony_yields
         reserved = assembly_work(planet, gross_colony_yields(planet, bonuses)[0], bonuses)
     return PopulationReport(planet.population, population_capacity(planet, bonuses), produced,
-                            planet.growth_progress, planet.colonized, 35 if planet.biome == "Gaia" else 25,
+                            planet.growth_progress, planet.colonized, GAIA_GROWTH_LIMIT if planet.biome == "Gaia" else GROWTH_LIMIT,
                             food_required(planet.workforce, bonuses), growth,
                             bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0))
 
@@ -157,8 +163,8 @@ def advance(planet, start):
     planet.growth_progress += start.growth_rate
     if planet.growth_progress < GROWTH_THRESHOLD:
         return False
-    planet.population += 1
-    planet.growth_progress -= GROWTH_THRESHOLD
+    gained, planet.growth_progress = divmod(planet.growth_progress, GROWTH_THRESHOLD)
+    planet.population = min(start.capacity, planet.population+gained)
     if planet.population >= start.capacity:
         planet.growth_progress = 0
     return True

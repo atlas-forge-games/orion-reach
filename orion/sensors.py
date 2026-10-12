@@ -9,6 +9,7 @@ from .navigation import hostile, position
 from . import black_holes
 
 CONTACT_LIFETIME = 20
+ARRAY_RANGE = 5
 MAX_CONTACTS_PER_EMPIRE = 200
 MAX_REPORTS = 200
 
@@ -47,7 +48,7 @@ def centers(game, owner="player"):
     radius = game.bonuses_for(owner).get("sensor_range", 0)
     if not radius:
         return []
-    return [(s, radius+(5 if any(p.owner == owner and game.building_operational(p, "sensor_array") for p in s.worlds) else 0))
+    return [(s, radius+(ARRAY_RANGE if any(p.owner == owner and game.building_operational(p, "sensor_array") for p in s.worlds) else 0))
             for s in game.colony_systems(owner)]
 
 

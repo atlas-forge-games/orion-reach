@@ -13,6 +13,9 @@ TIERS = tuple(range(1, 9))
 TIER_NAMES = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
 TIER_COSTS = (40, 100, 120, 220, 360, 540, 760, 1040)
 ASCENSION_COST = 5000
+WORKER_INDUSTRY = 1
+SCIENTIST_RESEARCH = 2
+POPULATION_INCOME = 1
 # Campaigns begun before the arsenal expansion retain their scientific goal.
 LEGACY_TIER_LIMITS = dict(zip(
     ("construction", "power", "physics", "fields", "materials", "biology", "computers", "society", "starships"),
@@ -47,10 +50,12 @@ class Technology:
     name: str
     description: str
     effects: tuple[tuple[str, int], ...]
+    cost_override: int = 0  # Zero uses the tier's shared cost.
+    order: int = 0
 
     @property
     def cost(self):
-        return ASCENSION_COST if self.id == "ascension_theory" else TIER_COSTS[self.tier-1]
+        return self.cost_override or (ASCENSION_COST if self.id == "ascension_theory" else TIER_COSTS[self.tier-1])
 
 
 def tech(identifier, branch, tier, name, description, **effects):
@@ -160,7 +165,7 @@ def branch_tiers(branch):
 
 
 def choices(branch, tier):
-    return tuple(t for t in TECHNOLOGIES.values() if t.branch == branch and t.tier == tier)
+    return tuple(sorted((t for t in TECHNOLOGIES.values() if t.branch == branch and t.tier == tier), key=lambda t: t.order))
 
 
 @lru_cache(maxsize=512)
@@ -201,7 +206,7 @@ class ResearchState:
         if self.active is None:
             return 0
         if self.active == "ascension_theory":
-            return ASCENSION_COST
+            return TECHNOLOGIES[self.active].cost
         return LEGACY_TECHNOLOGIES[self.active][2] if self.legacy_active else TECHNOLOGIES[self.active].cost
 
     def has_unlock(self, identifier):
@@ -291,7 +296,7 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=34):
+    def from_dict(cls, data, *, version=36):
         keys = {"completed", "active", "progress"}
         if version >= 28:
             keys |= {"legacy_count", "legacy_active"}
@@ -378,9 +383,9 @@ def gross_colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
     staff = workforce_bonuses(planet, bonuses)
-    industry = max(1, planet.workers)+int(planet.workers*staff.industry)+bonuses.get("colony_industry", 0)
-    income = planet.workforce+int(planet.workforce*staff.income)+bonuses.get("colony_income", 0)
-    research = (2+staff.research)*planet.scientists+bonuses.get("colony_research", 0)
+    industry = max(1, WORKER_INDUSTRY*planet.workers)+int(planet.workers*staff.industry)+bonuses.get("colony_industry", 0)
+    income = POPULATION_INCOME*planet.workforce+int(planet.workforce*staff.income)+bonuses.get("colony_income", 0)
+    research = (SCIENTIST_RESEARCH+staff.research)*planet.scientists+bonuses.get("colony_research", 0)
     for identifier in active_buildings(planet, bonuses):
         extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
         industry, income, research = industry+extra[0], income+extra[1], research+extra[2]

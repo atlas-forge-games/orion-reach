@@ -4,7 +4,8 @@ import math
 import pygame as pg
 
 from .building_art import draw_building_art, load_building_art
-from .production import ASCENSION_GATE, GATE_CHARGE_TURNS
+from .production import ASCENSION_GATE
+from . import production as production_balance
 from .research import TECHNOLOGIES
 from .council_view import council_summary
 from .victory import CONDITION_NAMES, colonies, gate_blocked, gate_site
@@ -122,9 +123,9 @@ def draw_objectives(app):
             if planet.ascension_gate:
                 blocked = gate_blocked(game, system.id, "player")
                 powered = game.planet_energy(planet).gate_powered
-                caption = f"Charging {planet.gate_charge} / {GATE_CHARGE_TURNS} turns" + (" · Paused: needs 10 energy" if not powered else " · Paused by opposing ships in orbit" if blocked else " · Powered, orbit clear")
+                caption = f"Charging {planet.gate_charge} / {production_balance.GATE_CHARGE_TURNS} turns" + (" · Paused: needs 10 energy" if not powered else " · Paused by opposing ships in orbit" if blocked else " · Powered, orbit clear")
                 text(surface, caption, (224, 678), 14, GOLD if blocked or not powered else CYAN)
-                progress(surface, (224, 707, 776, 5), planet.gate_charge/GATE_CHARGE_TURNS)
+                progress(surface, (224, 707, 776, 5), planet.gate_charge/production_balance.GATE_CHARGE_TURNS)
                 text(surface, "Charging requires 10 local energy and clear orbit. Capture destroys the gate.", (224, 734), 12, MUTED)
             else:
                 index, project = next((i, q) for i, q in enumerate(planet.construction_queue) if q.item_id == ASCENSION_GATE.id)

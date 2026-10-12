@@ -1,0 +1,75 @@
+Orion Reach v0.52.0 - Balance and research editor
+
+INSTALL
+Requires the v0.51.1 game. Extract this update into the existing folder that
+contains main.py. Replace the included files and keep all other files/assets.
+
+START
+Use the existing game environment:
+    python editor.py
+
+Save writes balance.json next to main.py. Start a new campaign with python
+main.py to test the balance. Existing campaigns retain their own settings.
+See docs/balance-editor.md for profile commands, field units and research moves.
+
+FEATURES
+259 entries and rule groups across 18 searchable catalogues.
+Editable buildings, ships, hulls, modules, weapons, races, research, guardians,
+AI personalities, economy/population rules, diplomacy, defenses and more.
+Drag research between branches and tiers; occupied slots swap.
+Edit research costs, effects, prerequisites, descriptions and branch order.
+Undo/redo, reset controls, validation, alternate profiles and .bak backups.
+
+COMPATIBILITY
+No new dependencies or artwork. Old saves load with standard balance.
+New saves use format 36 and include the campaign's balance profile.
+Research retains the existing nine branches, tiers 1-8 and up to two alternatives
+per tier. The editor changes current entities; new mechanics need Python code.
+
+VERIFICATION
+Full regression run: 811 tests passed.
+Final focused editor/profile run after refinements: 13 tests passed.
+Both editor views and the game planet screen rendered and visually inspected.
+Editor CLI export/validation and game startup checked.
+
+FILES
+README.md
+docs/balance-editor.md
+editor.py
+main.py
+orion/__init__.py
+orion/ai.py
+orion/app.py
+orion/balance.py
+orion/balance_document.py
+orion/balance_editor.py
+orion/combat.py
+orion/council_view.py
+orion/defenses.py
+orion/designs.py
+orion/diplomacy_view.py
+orion/economy.py
+orion/encyclopedia.py
+orion/exploration.py
+orion/fleet_views.py
+orion/galaxy_fleet_view.py
+orion/ground_view.py
+orion/model.py
+orion/navigation.py
+orion/planet_view.py
+orion/population.py
+orion/production.py
+orion/raiding.py
+orion/research.py
+orion/sensors.py
+orion/storage.py
+orion/victory.py
+orion/victory_view.py
+tests/test_balance_editor.py
+tests/test_building_economy.py
+tests/test_population.py
+tests/test_production_queue.py
+tests/test_starting_fleets.py
+tests/test_tactical_combat.py
+tests/test_varkesh.py
+UPDATE_v052.txt

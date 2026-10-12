@@ -2,9 +2,7 @@
 
 import pygame as pg
 
-from .diplomacy import (BREAK_PENALTY, ENVOY_COOLDOWN, ENVOY_COST, ENVOY_RELATIONS,
-                        GIFT_COOLDOWN, GIFT_COST, GIFT_RELATIONS, OFFER_COOLDOWN,
-                        RESEARCH_INCOME, TRADE_INCOME)
+from . import diplomacy as diplomacy_balance
 from .race_art import draw_race_portrait
 from .races import RACES
 from .personalities import PERSONALITIES, envoy_gain, gift_gain, personality
@@ -67,8 +65,8 @@ def draw_diplomacy(app):
         text(surface, "WARM  +100", (1348, 350), 9, FAINT, "mono", right=True)
 
         for action, title, x, unit, base, bonus in (
-            ("trade", "Trade pact", 427, "CR", TRADE_INCOME, "trade_bonus"),
-            ("research", "Research agreement", 912, "RP", RESEARCH_INCOME, "research_bonus"),
+            ("trade", "Trade pact", 427, "CR", diplomacy_balance.TRADE_INCOME, "trade_bonus"),
+            ("research", "Research agreement", 912, "RP", diplomacy_balance.RESEARCH_INCOME, "research_bonus"),
         ):
             panel(surface, (x, 397, 464, 155))
             active = getattr(state, f"{action}_active")
@@ -92,16 +90,16 @@ def draw_diplomacy(app):
                        lambda a=command: app.diplomatic_action(a), enabled=reason is None)
 
         for action, title, x, caption in (
-            ("envoy", f"Send envoy · {ENVOY_COST} CR", 427,
-             f"+{envoy_gain(game,'player',owner)} relations · Every {ENVOY_COOLDOWN} turns"),
-            ("gift", f"Gift {GIFT_COST} CR", 721,
-             f"+{gift_gain(game,owner)} relations · Every {GIFT_COOLDOWN} turns"),
+            ("envoy", f"Send envoy · {diplomacy_balance.ENVOY_COST} CR", 427,
+             f"+{envoy_gain(game,'player',owner)} relations · Every {diplomacy_balance.ENVOY_COOLDOWN} turns"),
+            ("gift", f"Gift {diplomacy_balance.GIFT_COST} CR", 721,
+             f"+{gift_gain(game,owner)} relations · Every {diplomacy_balance.GIFT_COOLDOWN} turns"),
         ):
             reason = game.diplomacy_error(action, owner)
             app.button(f"diplomacy_{action}", title, (x, 574, 278, 43),
                        lambda a=action: app.diplomatic_action(a), enabled=reason is None)
             text(surface, reason or caption, (x+1, 625), 11, GOLD if reason else MUTED)
-        paragraph(surface, f"Offers: {OFFER_COOLDOWN}-turn cooldown. Agreements end below 0 relations; rival fleets may attack below -30. Combat sets relations to -100.",
+        paragraph(surface, f"Offers: {diplomacy_balance.OFFER_COOLDOWN}-turn cooldown. Agreements end below 0 relations; rival fleets may attack below -30. Combat sets relations to -100.",
                   (1020, 574), 348, 12, MUTED, 20)
 
         panel(surface, (427, 651, 949, 127))

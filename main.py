@@ -25,6 +25,8 @@ VARKESH_PREVIEWS = ("varkesh_raid", "varkesh_result", "varkesh_home", "varkesh_n
 def main():
     parser = argparse.ArgumentParser(description="Orion Reach — Python space strategy prototype")
     parser.add_argument("--data-dir", type=Path, help="override the user save/settings directory")
+    parser.add_argument("--balance", type=Path, default=Path(__file__).resolve().parent / "balance.json",
+                        help="balance profile for new campaigns; defaults to balance.json next to main.py")
     parser.add_argument("--headless", action="store_true", help="use SDL's dummy video/audio drivers")
     parser.add_argument("--skip-intro", action="store_true", help="go straight to the menu without the studio splash")
     parser.add_argument("--screenshot", type=Path, help="render one screen to PNG, then exit")
@@ -38,6 +40,11 @@ def main():
         import pygame
     except ImportError:
         raise SystemExit("Install the dependency first: python -m pip install -r requirements.txt")
+    from orion import balance
+    try:
+        balance.configure(args.balance)
+    except balance.BalanceError as exc:
+        raise SystemExit(f"Balance profile error: {exc}\nCorrect or rename that JSON file, then reopen python editor.py.") from exc
     from orion.app import App
     app = App(args.data_dir, capture=bool(args.screenshot), skip_intro=args.skip_intro)
     try:

@@ -5,7 +5,7 @@ import pygame as pg
 
 from .colony_scene import landscape
 from .ground_combat import GroundForces, forces, resolve
-from .production import TROOP_STRENGTH
+from . import production as production_balance
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 from .victory import troop_transports
 from . import raiding
@@ -52,7 +52,7 @@ def draw_ground(app):
         captured, rounds, count = report.captured, report.rounds, report.transports
     else:
         count = len(troop_transports(game, sid))
-        attack, defence = count*TROOP_STRENGTH, forces(planet, game.bonuses_for(planet.owner))
+        attack, defence = count*production_balance.TROOP_STRENGTH, forces(planet, game.bonuses_for(planet.owner))
         outcome = resolve(attack, defence)
         attacker, defender = "player", planet.owner
         attack_left, defence_left = None, None
@@ -67,7 +67,7 @@ def draw_ground(app):
     text(surface, "BATTLE REPORT" if report else "RAID PLAN" if raid else "LANDING PLAN", (1376, 146), 12, GOLD, "mono", right=True)
     force_card(surface, 64, "AWAKENED REMNANT" if tomb else "RAIDING FORCE" if raid else "INVADING FORCE",
                game.empire_name_for(attacker) if attacker else "The Remnant", attack, attack_left,
-               f"{attack} troops emerged from buried vaults" if tomb else f"{count} transports × {TROOP_STRENGTH} troops", attack_color)
+               f"{attack} troops emerged from buried vaults" if tomb else f"{count} transports × {production_balance.TROOP_STRENGTH} troops", attack_color)
     force_card(surface, 776, "PLANETARY DEFENCE", game.empire_name_for(defender), defence.troops, defence_left,
                f"{defence.garrison} garrison + {defence.militia} militia · +{defence.defence_bonus}% firepower", defence_color)
     text(surface, "VS", (693, 287), 23, GOLD)

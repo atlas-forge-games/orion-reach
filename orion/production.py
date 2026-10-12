@@ -58,18 +58,21 @@ STARTING_COLONISTS = 1  # Billions, included in the ship cost in this prototype.
 REPAIR_PER_TURN = 4
 TROOP_STRENGTH = 8
 GATE_CHARGE_TURNS = 5
+TRADE_GOODS_PERCENT = 30
 
 
 def trade_goods_credits(industry):
-    """Convert 30% of available industry, flooring once per colony per turn."""
-    return max(0, industry)*3//10
+    """Convert the configured share of industry, flooring once per colony."""
+    return max(0, industry)*TRADE_GOODS_PERCENT//100
 
 
 def distance_ly(origin, destination):
     return 100*math.hypot((destination.x-origin.x)*1.4, destination.y-origin.y)
 
 
-def travel_turns(origin, destination, speed_bonus=0, *, cruise_speed=SHIP_SPEED):
+def travel_turns(origin, destination, speed_bonus=0, *, cruise_speed=None):
+    if cruise_speed is None:
+        cruise_speed = SHIP_SPEED
     if origin.id == destination.id:
         return 0
     return max(1, math.ceil(distance_ly(origin, destination)/(100*cruise_speed*(1+speed_bonus/100))-1e-10))

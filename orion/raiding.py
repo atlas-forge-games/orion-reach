@@ -73,7 +73,7 @@ def raid(game, system_id, planet_id, owner="player"):
     observers = [empire for empire in game.owners
                  if empire in (owner, defender) or game.system_visible(system_id, empire)]
     transports = victory.troop_transports(game, system_id, owner)
-    attack = len(transports)*victory.TROOP_STRENGTH
+    attack = len(transports)*victory.production_balance.TROOP_STRENGTH
     defending = ground_combat.forces(planet, game.bonuses_for(planet.owner))
     outcome = ground_combat.resolve(attack, defending)
     for ship in transports:

@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 
-from .production import ASCENSION_GATE, GATE_CHARGE_TURNS, MAX_QUEUE, TROOP_STRENGTH
+from .production import ASCENSION_GATE, MAX_QUEUE
+from . import production as production_balance
 from .ground_combat import GroundRound, forces, resolve
 from .population import liberate
 
@@ -57,7 +58,7 @@ def troop_transports(game, system_id, owner="player"):
 
 
 def invasion_strength(game, system_id, planet_id, owner="player"):
-    return (len(troop_transports(game, system_id, owner))*TROOP_STRENGTH,
+    return (len(troop_transports(game, system_id, owner))*production_balance.TROOP_STRENGTH,
             forces(game.planet_at(system_id, planet_id), game.bonuses_for(game.planet_at(system_id, planet_id).owner)).strength)
 
 
@@ -184,7 +185,7 @@ def advance_gates(game, eligible):
         planet = game.planet_at(system_id, planet_id)
         if (planet.owner == owner and planet.ascension_gate
                 and not gate_blocked(game, system_id, owner) and game.planet_energy(planet).gate_powered):
-            planet.gate_charge = min(GATE_CHARGE_TURNS, planet.gate_charge+1)
+            planet.gate_charge = min(production_balance.GATE_CHARGE_TURNS, planet.gate_charge+1)
 
 
 def current_result(game):
@@ -195,7 +196,7 @@ def current_result(game):
         if not game.is_observer and "player" not in alive:
             return CampaignResult(None, "elimination", game.turn)
     ascended = {p.owner for s in game.systems for p in s.worlds
-                if p.ascension_gate and p.gate_charge == GATE_CHARGE_TURNS}
+                if p.ascension_gate and p.gate_charge == production_balance.GATE_CHARGE_TURNS}
     if "science" in game.victory_conditions and ascended:
         # Production is simultaneous: two gates finishing together is a draw.
         return CampaignResult(next(iter(ascended)) if len(ascended) == 1 else None, "science", game.turn)

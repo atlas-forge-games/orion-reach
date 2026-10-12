@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.51.1
+# Orion Reach — Python prototype 0.52.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,36 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.52: standalone balance and research editor
+
+Launch the editor in the same environment as the game:
+
+```bash
+python editor.py
+```
+
+Browse searchable catalogues for buildings, standard ships, designer hulls,
+modules, weapons, races, guardians, AI personalities and global rules. Click
+a value to edit it; **Enter** applies the change. Costs, production, upkeep,
+population, starting resources, movement, diplomacy and other balance values
+are editable. **Undo**, **Redo**, **Reset item** and **Reset all** support experiments.
+
+In **Research tree**, drag a technology between branches and tiers. Dropping
+onto another technology swaps their positions. Double-click to edit its cost,
+effects, name or description. Research branches can also be reordered. The
+current game supports nine branches, eight possible tiers, and up to two
+alternatives per tier; validation catches gaps and overfilled tiers.
+
+**Save** writes `balance.json` beside `main.py`, with the previous file retained
+as `balance.json.bak`. **Save as** and **Open** manage alternate profiles. Start
+a **new campaign** to use the saved profile. Existing campaigns keep their own
+balance snapshot, including research order, in save format **36**. Older saves
+load with the standard rules. No additional dependencies are required.
+
+See [the editor guide](docs/balance-editor.md) for units, profiles, limits and
+command-line validation. This editor changes the existing game data; new game
+mechanics and new entity types still require Python changes.
 
 ## New in v0.51.1: compact empire stockpile
 

@@ -16,6 +16,7 @@ from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS, trade
 from .research import building_maintenance
 from .designs import HULLS
 from . import raiding, defenses, economy
+from . import production as production_balance, research as research_balance
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 GREEN = (154, 200, 133)
@@ -177,7 +178,7 @@ def workforce_panel(app, game, planet, live):
     benefits = game.bonuses_for(planet.owner) if live else {}
     staff = workforce_bonuses(planet, benefits)
     details = {"farmers": f"{farmer_output(planet, benefits)} food each" if needs_food else "food not required",
-               "workers": f"{1+staff.industry:g} base IND each", "scientists": f"{2+staff.research} base RP each",
+               "workers": f"{research_balance.WORKER_INDUSTRY+staff.industry:g} base IND each", "scientists": f"{research_balance.SCIENTIST_RESEARCH+staff.research} base RP each",
                "miners": f"{economy.miner_output(planet, benefits):g} RES each"}
     preview = None
     for role in WORKER_ROLES:
@@ -242,7 +243,7 @@ def construction_panel(app, game, system, planet, live):
         rate = trade_goods_credits(game.planet_yields(planet)[0]) if live else None
         text(surface, f"+{rate} CR / turn" if live else "Last observed", (1200, 134), 19, GOLD)
         text(surface, "Ongoing production", (1200, 171), 12, CYAN)
-        text(surface, "30% of industry, rounded down", (1090, 213), 12, MUTED)
+        text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, rounded down", (1090, 213), 12, MUTED)
         text(surface, f"{len(queue)} projects paused · Progress kept" if queue else "No resource cost or building slot", (1090, 236), 11, MUTED)
     elif queue and visible:
         project = queue[0]
@@ -322,13 +323,13 @@ def draw_planet_overview(app):
         panel(surface, (770, 321, 628, 45), (10, 23, 30))
         cap = str(defenses.shield_capacity(game, planet)) if live else "?"
         shield = f"SHIELD {planet.shield_points}/{cap}" if "planetary_shield" in planet.buildings else "NO SHIELD"
-        battery = f"MISSILE BASE {planet.battery_hull or 40}/40" if "missile_base" in planet.buildings else "NO BASE"
+        battery = f"MISSILE BASE {planet.battery_hull or defenses.BASE_HULL}/{defenses.BASE_HULL}" if "missile_base" in planet.buildings else "NO BASE"
         if live and "planetary_shield" in planet.buildings and not game.building_operational(planet, "planetary_shield"):
             shield += " OFFLINE"
         if live and "missile_base" in planet.buildings and not game.building_operational(planet, "missile_base"):
             battery += " OFFLINE"
         text(surface, shield+" · "+battery, (784, 327), 12, CYAN)
-        text(surface, "Peaceful recovery: +25 shield, +4 base hull/turn" if live else "Defense status at last survey", (784, 348), 11, MUTED)
+        text(surface, f"Peaceful recovery: +{defenses.SHIELD_RECOVERY} shield, +{defenses.BASE_RECOVERY} base hull/turn" if live else "Defense status at last survey", (784, 348), 11, MUTED)
     if planet.colonized:
         defence = forces(planet, game.bonuses_for(planet.owner) if live else {})
         caption = (f"{len(planet.buildings)} buildings · {len(planet.building_projects)} reserved / {planet.building_capacity} slots"
@@ -422,7 +423,7 @@ def draw_production(app):
     panel(surface, (40, 836, 876, 54))
     rate = trade_goods_credits(game.planet_yields(planet)[0])
     text(surface, f"Trade Goods · +{rate} CR / turn", (56, 844), 17, GOLD)
-    text(surface, "30% of industry, rounded down · Ongoing · Queued projects keep their progress", (56, 871), 11, MUTED)
+    text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, rounded down · Ongoing · Queued projects keep their progress", (56, 871), 11, MUTED)
     app.button("production_build_trade_goods", "Active" if planet.trade_goods else "Trade Goods", (718, 844, 182, 38),
                lambda: app.choose_production(TRADE_GOODS.id), enabled=not planet.trade_goods and game.project_error(sid, pid, TRADE_GOODS.id) is None)
     app.button("production_return", "Return to colony", (1122, 833, 278, 48), lambda: app.go("planet"), "primary")

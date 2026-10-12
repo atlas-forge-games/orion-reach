@@ -4,7 +4,8 @@ import pygame as pg
 
 from .colony_view import draw_planet_tabs, turn_label
 from .fleet_art import ship_icon
-from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES, TROOP_STRENGTH
+from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
+from . import production as production_balance
 from .model import PLAYER, RIVAL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
@@ -37,7 +38,7 @@ def draw_shipyard(app):
         ship_icon(surface, (112, y+44), 1.0, app.empire_color(PLAYER), kind=spec.id)
         text(surface, spec.name, (153, y+7), 23, INK, "title")
         description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
-                       if spec.id == "colony_ship" else f"{spec.hull} hull · {TROOP_STRENGTH} invasion attack · Unarmed"
+                       if spec.id == "colony_ship" else f"{spec.hull} hull · {production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
                        if spec.id == "troop_transport" else f"{spec.hull} hull · Surveys & discoveries · Unarmed"
                        if spec.id == "scout" else f"{spec.hull} hull · {game.beam_for(spec.id, planet.owner or PLAYER).damage} damage per shot")
         if spec.drone_bays:
@@ -129,7 +130,7 @@ def draw_fleets(app):
         text(surface, ship.name, (142, y+12), 18, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
-                f"{TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.ship_attack(ship)} damage / volley")
+                f"{production_balance.TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.ship_attack(ship)} damage / volley")
         if ship.drone_bays:
             role = f"{ship.drone_bays*2} active drones · {ship.drone_bays*4} launches/battle"
         text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)

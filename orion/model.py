@@ -9,7 +9,8 @@ from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
 from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loadout_error
-from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, TRADE_GOODS, distance_ly, travel_turns
+from .production import ASCENSION_GATE, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, SHIP_TYPES, TRADE_GOODS, distance_ly, travel_turns
+from . import production as production_balance
 from . import combat as combat_rules
 from . import victory as victory_rules
 from . import council as council_rules
@@ -141,7 +142,7 @@ class Ship:
     speed_bonus: int | float = 0  # Snapshot at departure; discoveries never alter a voyage in flight.
     hull: int | None = None
     departure_pending: bool = False
-    cruise_speed: float = SHIP_SPEED  # Snapshot so balance updates do not change saved flights.
+    cruise_speed: float = field(default_factory=lambda: production_balance.SHIP_SPEED)
     design: ShipDesign | None = None
     route_bonus: int = 0
     approach_range: float = 0.0
@@ -177,7 +178,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=31):
+    def from_dict(cls, data, systems, *, version=36):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
@@ -194,25 +195,27 @@ class Ship:
         speed_bonus = data["speed_bonus"] if version >= 7 else 0
         pending = data["departure_pending"] if version >= 14 else False
         cruise_speed = (data["cruise_speed"] if version >= 15 else
-                        data.get("cruise_speed", LEGACY_SHIP_SPEED if destination is not None else SHIP_SPEED))
-        if type(cruise_speed) is not float or cruise_speed not in (SHIP_SPEED, LEGACY_SHIP_SPEED):
+                        data.get("cruise_speed", LEGACY_SHIP_SPEED if destination is not None else production_balance.SHIP_SPEED))
+        if type(cruise_speed) is not float or cruise_speed not in (production_balance.SHIP_SPEED, LEGACY_SHIP_SPEED):
             raise ValueError
         if type(pending) is not bool:
             raise ValueError
         speeds = (0, 25, 50, 75, 87.5, 125, 162.5) if version >= 23 else (0, 25, 50, 75)
-        if type(speed_bonus) not in (int, float) or speed_bonus not in speeds:
+        if (type(speed_bonus) not in (int, float) or not math.isfinite(speed_bonus)
+                or (not -99 < speed_bonus <= 2_000_000 if version >= 36 else speed_bonus not in speeds)):
             raise ValueError
         route = {key: data[key] if version >= 25 else default for key, default in
                  (("route_bonus", 0), ("approach_range", 0.0), ("approach_slow", 0), ("bombarded_turn", 0))}
-        if (type(route["route_bonus"]) is not int or route["route_bonus"] not in (0, 25, 50)
+        max_route, max_range, max_slow = navigation.modifier_limits()
+        if (type(route["route_bonus"]) is not int or (not 0 <= route["route_bonus"] <= max_route if version >= 36 else route["route_bonus"] not in (0, 25, 50))
                 or type(route["approach_range"]) not in (int, float) or not math.isfinite(route["approach_range"])
-                or not 0 <= route["approach_range"] <= 8
-                or type(route["approach_slow"]) not in (int, float) or route["approach_slow"] not in (0, 12.5, 20, 25, 40)
-                or bool(route["approach_slow"]) != bool(route["approach_range"])
+                or not 0 <= route["approach_range"] <= (max_range if version >= 36 else 8)
+                or type(route["approach_slow"]) not in (int, float) or (not math.isfinite(route["approach_slow"]) or not 0 <= route["approach_slow"] <= max_slow if version >= 36 else route["approach_slow"] not in (0, 12.5, 20, 25, 40))
+                or (version < 36 and bool(route["approach_slow"]) != bool(route["approach_range"]))
                 or not _integer(route["bombarded_turn"], 0, 1_000_000)):
             raise ValueError("Invalid voyage modifiers")
         if destination is None:
-            if (not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != SHIP_SPEED
+            if (not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != production_balance.SHIP_SPEED
                     or route["route_bonus"] or route["approach_range"] or route["approach_slow"]):
                 raise ValueError
         else:
@@ -251,15 +254,15 @@ class Opponent:
     name: str
     home_system: int
     home_planet: int
-    credits: int = 120
+    credits: int = field(default_factory=lambda: economy.STARTING_CREDITS)
     research: int = 0
     events: list[AIEvent] = field(default_factory=list)
     race_id: str = "kharuun"
     technology: ResearchState = field(default_factory=ResearchState)
-    resources: int = economy.STARTING_RESOURCES
+    resources: int = field(default_factory=lambda: economy.STARTING_RESOURCES)
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=34):
+    def from_dict(cls, data, systems, turn, *, version=36):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -434,7 +437,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=35):
+    def from_dict(cls, data, expected_id, *, version=36):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -455,7 +458,7 @@ class Planet:
             record["trade_goods"] = False
         if type(record["trade_goods"]) is not bool or (record["trade_goods"] and not data["colonized"]):
             raise ValueError("Invalid Trade Goods production mode")
-        for key, maximum in (("shield_points", 200), ("battery_hull", 40), ("bombarded_turn", 1_000_000)):
+        for key, maximum in (("shield_points", 1_000_000 if version >= 36 else 200), ("battery_hull", defense_rules.BASE_HULL if version >= 36 else 40), ("bombarded_turn", 1_000_000)):
             if version < 25:
                 record[key] = 0
             if not _integer(record[key], 0, maximum):
@@ -504,7 +507,7 @@ class Planet:
         if version < 9:
             record["ascension_gate"], record["gate_charge"] = False, 0
         if (type(record["ascension_gate"]) is not bool
-                or not _integer(record["gate_charge"], 0, GATE_CHARGE_TURNS)
+                or not _integer(record["gate_charge"], 0, production_balance.GATE_CHARGE_TURNS)
                 or (record["ascension_gate"] and not data["colonized"])
                 or (record["gate_charge"] and not record["ascension_gate"])):
             raise ValueError
@@ -588,7 +591,7 @@ def generate_planets(system, galaxy_seed, *, player_home=True):
         home = [
             Planet(0, "Mercury", "Barren", "Tiny", "Rich", "Low", .39),
             Planet(1, "Venus", "Volcanic", "Medium", "Average", "Normal", .72),
-            Planet(2, "Earth", "Terran", "Medium", "Average", "Normal", 1.0, 8, True, owner=PLAYER, farmers=2),
+            Planet(2, "Earth", "Terran", "Medium", "Average", "Normal", 1.0, economy.STARTING_POPULATION, True, owner=PLAYER, farmers=min(2, economy.STARTING_POPULATION)),
             Planet(3, "Mars", "Desert", "Small", "Average", "Low", 1.52),
         ]
     else:
@@ -648,7 +651,7 @@ class GameState:
     sensor_reports: list[sensors.SensorReport] = field(default_factory=list)
     next_sensor_report_id: int = 1
     sensor_news_read: int = 0
-    resources: int = economy.STARTING_RESOURCES
+    resources: int = field(default_factory=lambda: economy.STARTING_RESOURCES)
 
     observer_events: list[observer_rules.Observation] = field(default_factory=list)
     next_observer_event_id: int = 1
@@ -1035,7 +1038,7 @@ class GameState:
 
     def fuel_range(self, owner=PLAYER):
         bonuses = self.bonuses_for(owner)
-        value = (BASE_FUEL_RANGE+bonuses.get("fuel_range", 0))*(100+bonuses.get("fuel_range_percent", 0))/100
+        value = (production_balance.BASE_FUEL_RANGE+bonuses.get("fuel_range", 0))*(100+bonuses.get("fuel_range_percent", 0))/100
         return int(value) if value.is_integer() else value
 
     def colony_systems(self, owner=PLAYER):
@@ -1063,7 +1066,7 @@ class GameState:
         return planet.habitability > 0 or bool(self.bonuses_for(owner).get(planet.biome.lower(), 0))
 
     def starting_colonists(self, owner=PLAYER):
-        return STARTING_COLONISTS+self.bonuses_for(owner).get("colonists", 0)
+        return production_balance.STARTING_COLONISTS+self.bonuses_for(owner).get("colonists", 0)
 
     def diplomacy_error(self, action, target=RIVAL):
         return action_error(self, action, target)
@@ -1145,10 +1148,11 @@ class GameState:
     def _place_opponent(self, owner, race_id, system, planet, name):
         name_home(self, system, planet, race_id)
         self._register_opponent(owner, race_id, system, planet, name)
-        planet.colonized, planet.owner, planet.population = True, owner, 8
+        planet.colonized, planet.owner, planet.population = True, owner, economy.STARTING_POPULATION
         planet.farmers, planet.scientists, planet.miners = 2, 0, 2
-        if not population_rules.food_required(8, self.bonuses_for(owner)):
+        if not population_rules.food_required(planet.population, self.bonuses_for(owner)):
             planet.farmers = 0
+        population_rules.clamp_workforce(planet)
         self._starting_fleet(owner, system.id)
         self.rival_event(f"Established its homeworld on {planet.name}.", turn=self.turn, owner=owner)
 
@@ -1386,7 +1390,7 @@ class GameState:
         ship.destination = None
         ship.turns_remaining = ship.travel_total = ship.speed_bonus = 0
         ship.departure_pending = False
-        ship.cruise_speed = SHIP_SPEED
+        ship.cruise_speed = production_balance.SHIP_SPEED
         ship.route_bonus, ship.approach_range, ship.approach_slow = 0, 0.0, 0
 
     def cancel_departures(self, ship_ids, *, owner=PLAYER):
@@ -1414,7 +1418,7 @@ class GameState:
         ship.speed_bonus = self.ship_speed_bonus(ship.owner)
         ship.route_bonus, ship.approach_range, ship.approach_slow = navigation.route_modifiers(
             self, self.systems[ship.system_id], self.systems[destination], ship.owner)
-        ship.cruise_speed = SHIP_SPEED
+        ship.cruise_speed = production_balance.SHIP_SPEED
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
         ship.departure_pending = pending
@@ -1606,11 +1610,11 @@ class GameState:
             self.advance_research(owner)
         for ship in self.ships:
             if ship.id in repairable and self.can_repair(ship):
-                ship.hull = min(ship.max_hull, ship.hull+REPAIR_PER_TURN)
+                ship.hull = min(ship.max_hull, ship.hull+production_balance.REPAIR_PER_TURN)
         victory_rules.advance_gates(self, gates)
         for owner in self.opponents:
             rival_gate = victory_rules.gate_site(self, owner)
-            if (rival_gate and rival_gate[1].gate_charge == GATE_CHARGE_TURNS-1
+            if (rival_gate and rival_gate[1].gate_charge == production_balance.GATE_CHARGE_TURNS-1
                     and not victory_rules.gate_blocked(self, rival_gate[0].id, owner)):
                 location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
                 alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
@@ -1629,7 +1633,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=35):
+    def from_dict(cls, data, *, version=36):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1798,12 +1802,13 @@ class GameState:
             observer_rules.load(game, data, version)
             if not black_holes.charted(game, game.systems[game.selected_system]):
                 game.selected_system, game.selected_planet = 0, None
-            return game
+            from .balance import tag_game
+            return tag_game(game)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise SaveError("This save contains invalid game data.") from exc
 
 
-def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
+def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
              race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
              rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS,
              with_black_holes=None):
@@ -1860,16 +1865,17 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
                                   rng.randint(0, 7), rng.choice(BIOMES[:-1]), rng.choice(RICHNESSES[:-1])))
     for system in systems:
         system.worlds = generate_planets(system, seed, player_home=not observer)
-    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, 120, systems,
+    game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, economy.STARTING_CREDITS, systems,
                      race_id=race_id, fog_of_war=fog_of_war, victory_conditions=victory_conditions)
     if observer:
         game.credits = game.resources = 0
     else:
         name_home(game, systems[0], systems[0].worlds[2], race_id)
         game.research = RACES[race_id].starting_research
-        if not population_rules.food_required(8, game.bonuses_for()):
+        if not population_rules.food_required(game.planet_at(0, 2).population, game.bonuses_for()):
             game.planet_at(0, 2).farmers = 0
         game.planet_at(0, 2).miners = 2
+        population_rules.clamp_workforce(game.planet_at(0, 2))
         game._starting_fleet(PLAYER, 0)
     if not observer and not random_starts and count_rivals <= 1:
         if count_rivals and game.opponent_start_error() is None:
@@ -1901,3 +1907,22 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
         tomb_rules.seed_worlds(game)
     exploration_rules.refresh(game)
     return game
+
+
+def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
+             race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
+             rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS,
+             with_black_holes=None):
+    from . import balance
+    previous = balance.active_profile()
+    try:
+        balance.prepare_new_game()
+        game = _create_game(empire_name, galaxy_size, seed, with_ai=with_ai, race_id=race_id,
+                            rival_race_id=rival_race_id, fog_of_war=fog_of_war,
+                            with_guardians=with_guardians, rival_count=rival_count,
+                            random_starts=random_starts, with_tombs=with_tombs,
+                            victory_conditions=victory_conditions, with_black_holes=with_black_holes)
+        return balance.tag_game(game)
+    except Exception:
+        balance.activate(previous)
+        raise

@@ -11,8 +11,9 @@ import tempfile
 
 from .model import GameState, SaveError
 from .empires import DEFAULT_PALETTE, PLAYER_PALETTES
+from . import balance
 
-SAVE_VERSION = 35
+SAVE_VERSION = 36
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE,
                     "galaxy_background": True}
@@ -83,7 +84,8 @@ class Storage:
     def save(self, state, autosave=False):
         payload = {"format": "orion-reach", "version": SAVE_VERSION,
                    "saved_at": datetime.now(timezone.utc).isoformat(),
-                   "autosave": bool(autosave), "game": state.to_dict()}
+                   "autosave": bool(autosave), "game": state.to_dict(),
+                   "balance": balance.profile_for(state)}
         # One autosave; manual saves are separate snapshots and never overwrite each other.
         name = "autosave.json" if autosave else f"save-{datetime.now(timezone.utc):%Y%m%d-%H%M%S-%f}-{state.campaign_id[:8]}.json"
         try:
@@ -93,7 +95,9 @@ class Storage:
         except (OSError, ValueError) as exc:
             raise SaveError("The game could not be saved. Check folder permissions or free space.") from exc
 
-    def load(self, path):
+    def load(self, path, *, activate_balance=True):
+        previous = balance.active_profile()
+        success = False
         try:
             path = Path(path)
             if path.stat().st_size > 12_000_000:
@@ -103,17 +107,24 @@ class Storage:
                 raise SaveError("This is not an Orion Reach save.")
             if type(data.get("version")) is not int or data["version"] not in range(1, SAVE_VERSION+1):
                 raise SaveError("This save uses an unsupported version.")
+            profile = data.get("balance") if data["version"] >= 36 else balance.default_profile()
+            balance.activate(profile)
             # Migrate older formats in memory; never rewrite a loaded source file.
             state = GameState.from_dict(data.get("game"), version=data["version"])
             stamp = data.get("saved_at", "")
             if not isinstance(stamp, str) or len(stamp) > 64:
                 raise SaveError("This save has an invalid timestamp.")
             datetime.fromisoformat(stamp)
+            balance.tag_game(state, profile)
+            success = True
             return state, data
         except SaveError:
             raise
         except (OSError, ValueError, TypeError, RecursionError) as exc:
             raise SaveError("This save is damaged or cannot be read.") from exc
+        finally:
+            if not success or not activate_balance:
+                balance.activate(previous)
 
     def list_saves(self):
         rows = []
@@ -124,7 +135,7 @@ class Storage:
             return [{"path": None, "error": "Save folder cannot be read."}]
         for path in paths:
             try:
-                state, meta = self.load(path)
+                state, meta = self.load(path, activate_balance=False)
                 rows.append({"path": path, "state": state, "meta": meta})
             except SaveError as exc:
                 rows.append({"path": path, "error": str(exc)})

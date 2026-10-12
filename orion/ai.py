@@ -5,7 +5,8 @@ from dataclasses import replace
 from .buildings import BUILDINGS
 from .economy import energy_report
 from .model import RIVAL, RICHNESSES
-from .production import PROJECTS, SHIP_TYPES, TROOP_STRENGTH
+from .production import PROJECTS, SHIP_TYPES
+from . import production as production_balance
 from .races import RACES
 from .research import BRANCHES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
@@ -313,7 +314,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
         escorts = [s for s in ships if not s.has_course and s.system_id == system.id]
         if not troops:
             continue
-        candidates = [(s, p) for s, p in worlds if resolve(len(troops)*TROOP_STRENGTH, forces(p, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {})).captured]
+        candidates = [(s, p) for s, p in worlds if resolve(len(troops)*production_balance.TROOP_STRENGTH, forces(p, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {})).captured]
         if game.foreign_fleet(system.id, owner):
             if raiding.is_varkesh(game, owner) and escorts:
                 for destination, planet in candidates:
@@ -375,7 +376,7 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
         for planet in system.worlds:
             if planet.owner not in hostile or game.bombardment_error(system.id, planet.id, owner) is not None:
                 continue
-            attack = len(troop_transports(game, system.id, owner))*TROOP_STRENGTH
+            attack = len(troop_transports(game, system.id, owner))*production_balance.TROOP_STRENGTH
             defending = forces(planet, game.bonuses_for(planet.owner))
             if defenses.effective_shield(game, planet) or (attack and not resolve(attack, defending).captured):
                 report = game.bombard(system.id, planet.id, owner)
@@ -480,7 +481,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     known_bases = max((sum("missile_base" in p.buildings for p in s.worlds if p.owner in hostile)
                        for s in (game.known_system(s.id, owner) for s in game.systems) if s), default=0)
     military_limit = max(military_limit, min(12, 3+known_bases*3) if known_bases else 0)
-    troop_limit = max((transports_needed(p, TROOP_STRENGTH, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {}) for s, p in known_enemy_colonies(game, owner)
+    troop_limit = max((transports_needed(p, production_balance.TROOP_STRENGTH, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {}) for s, p in known_enemy_colonies(game, owner)
                        if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
     unknown = sum(not game.system_explored(s.id, owner) for s in game.systems if s.kind != black_holes.KIND)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)

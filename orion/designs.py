@@ -1,6 +1,6 @@
 """Immutable ship blueprints. Existing orders and ships retain their own blueprint."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from .research import TECHNOLOGIES, LEGACY_TIER_LIMITS
 from .production import HULL_TECHNOLOGIES
 
@@ -43,6 +43,16 @@ class Module:
     weapon: str = "none"
     damage: int = 0
     range: int = 0
+    hull_bonus: int = 0
+    shields: int = 0
+    shield_regeneration: int = 0
+    shield_hardening: int = 0
+    repair_rate: int = 0
+    repair_capacity: int = 0
+    interception: int = 0
+    interception_cap: int = 0
+    movement_bonus: int = 0
+    range_bonus: int = 0
 
 
 MODULES = {
@@ -75,6 +85,19 @@ MODULES = {
     "interceptor_bay": Module("Interceptor bay", "support", 3, 45, 28, "Carrier · 2 active / 4 launches · protect allies within 2 cells", "interceptor_drones"),
     "bomber_bay": Module("Bomber bay", "support", 3, 48, 30, "Carrier · 2 active / 4 launches · double damage to capitals", "bomber_drones"),
 }
+
+for _identifier, _effects in {
+    "armor": {"hull_bonus": 8, "movement_bonus": -1},
+    "reinforced_armor": {"hull_bonus": 14, "movement_bonus": -1},
+    "shield": {"shields": 12},
+    "regenerative_shield": {"shields": 8, "shield_regeneration": 2},
+    "hardened_shield": {"shields": 12, "shield_hardening": 75},
+    "point_defense": {"interception": 30, "interception_cap": 60},
+    "flak": {"interception": 45, "interception_cap": 75},
+    "damage_control": {"repair_rate": 3, "repair_capacity": 12},
+    "engine": {"movement_bonus": 1}, "scanner": {"range_bonus": 1},
+}.items():
+    MODULES[_identifier] = replace(MODULES[_identifier], **_effects)
 
 ARSENAL_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values()
                                if t.branch in LEGACY_TIER_LIMITS and t.tier > LEGACY_TIER_LIMITS[t.branch]
@@ -123,37 +146,35 @@ class ShipDesign:
 
     @property
     def hull(self):
-        return HULLS[self.kind].hull+8*self.modules.count("armor")+14*self.modules.count("reinforced_armor")
+        return HULLS[self.kind].hull+sum(m.hull_bonus for m in self.specs)
 
     @property
     def shields(self):
-        return 12*(self.modules.count("shield")+self.modules.count("hardened_shield"))+8*self.modules.count("regenerative_shield")
+        return sum(m.shields for m in self.specs)
 
     @property
     def shield_regeneration(self):
-        return 2*self.modules.count("regenerative_shield")
+        return sum(m.shield_regeneration for m in self.specs)
 
     @property
     def shield_hardening(self):
-        return 75 if "hardened_shield" in self.modules else 0
+        return max((m.shield_hardening for m in self.specs), default=0)
 
     @property
     def repair_rate(self):
-        return 3*self.modules.count("damage_control")
+        return sum(m.repair_rate for m in self.specs)
 
     @property
     def repair_capacity(self):
-        return 12*self.modules.count("damage_control")
+        return sum(m.repair_capacity for m in self.specs)
 
     @property
     def interception(self):
-        return min(75 if "flak" in self.modules else 60,
-                   30*self.modules.count("point_defense")+45*self.modules.count("flak"))
+        return min(max((m.interception_cap for m in self.specs), default=0), sum(m.interception for m in self.specs))
 
     @property
     def movement(self):
-        return max(1, HULLS[self.kind].movement-self.modules.count("armor")
-                   -self.modules.count("reinforced_armor")+self.modules.count("engine"))
+        return max(1, HULLS[self.kind].movement+sum(m.movement_bonus for m in self.specs))
 
     @property
     def damage(self):
@@ -173,7 +194,7 @@ class ShipDesign:
 
     @property
     def weapon_range(self):
-        return max((m.range+self.modules.count("scanner") for m in self.specs if m.damage), default=0)
+        return max((m.range+sum(s.range_bonus for s in self.specs) for m in self.specs if m.damage), default=0)
 
     @property
     def resource_cost(self):
@@ -184,7 +205,7 @@ class ShipDesign:
         return HULLS[self.kind].work_cost+sum(m.work_cost for m in self.specs)
 
     def volley(self, distance):
-        return tuple(m for m in self.specs if m.damage and distance <= m.range+self.modules.count("scanner"))
+        return tuple(m for m in self.specs if m.damage and distance <= m.range+sum(s.range_bonus for s in self.specs))
 
     @classmethod
     def from_dict(cls, data):
