@@ -42,6 +42,13 @@ editable prose: update them to match your numerical changes. Art and stable IDs
 remain attached to their original entities. Special rules such as Varkesh
 raiding, drone-bay eligibility and relic mechanics remain implemented in Python.
 
+Every building is limited to one per planet, including queued orders. This is
+a fixed game rule. Older profiles retain a `unique` field for save compatibility;
+it is hidden in the editor and cannot enable duplicate building orders.
+The v0.52.1 standard research costs are four times the v0.52 defaults. Existing
+profile files and saved campaigns retain their own prices; use **Research costs**
+to change an existing profile, or **Reset all** to restore all current defaults.
+
 Standard ships' **Damage** field is their strategic attack rating/armed flag.
 Use **Weapons** to change their tactical shot damage and range. Designer ships
 use **Ship modules** for damage/range per fitted module and **Weapons** for shot

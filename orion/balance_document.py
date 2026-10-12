@@ -95,6 +95,8 @@ class BalanceDocument:
     def fields(self, section, identifier, query=''):
         rows = []
         for key,value in self.entry(section,identifier).items():
+            if section == 'buildings' and key == 'unique':
+                continue  # Legacy save metadata; one per planet is now a fixed rule.
             if key == 'effects':
                 rows.extend((('effects',effect),value.get(effect,0)) for effect in balance.effect_keys())
             elif isinstance(value,list):

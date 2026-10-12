@@ -5,7 +5,7 @@ import json
 import tempfile
 import unittest
 
-from orion.buildings import BUILDING_SLOTS
+from orion.buildings import BUILDINGS, BUILDING_SLOTS
 from orion.model import GameState, RuleError, SaveError
 from scenarios import empty_fleet_game as new_game
 from functools import partial
@@ -28,19 +28,19 @@ class ColonyRulesTests(unittest.TestCase):
                 game = new_game(seed=2408)
                 planet = game.systems[0].worlds[2]
                 planet.size = size
-                game.credits = 1000
-                for _ in range(capacity):
-                    game.queue_building(0, 2, "factory")
-                for _ in range(4):
-                    game.advance_turn()
-                self.assertEqual(len(planet.buildings), 1)
+                game.credits = game.resources = 1000
+                planet.buildings = list(BUILDINGS)[1:capacity]
+                game.queue_building(0, 2, "factory")
                 self.assertEqual(planet.free_slots, 0)
                 before = game.to_dict()
                 with self.assertRaisesRegex(RuleError, "slots"):
-                    game.queue_building(0, 2, "mine")
+                    game.queue_building(0, 2, "solar_array")
                 self.assertEqual(game.to_dict(), before)
-                game.demolish_building(0, 2, 0)
-                game.queue_building(0, 2, "mine")
+                game.buy_construction(0, 2)
+                self.assertEqual(len(planet.buildings), capacity)
+                self.assertEqual(planet.free_slots, 0)
+                game.demolish_building(0, 2, capacity-1)
+                game.queue_building(0, 2, "solar_array")
                 self.assertEqual(planet.used_slots, capacity)
 
     def test_rejected_orders_never_spend_credits_or_reserve_slots(self):
@@ -58,11 +58,11 @@ class ColonyRulesTests(unittest.TestCase):
         self.assertEqual((self.game.credits, self.game.resources), (0, 0))
 
     def test_forecast_overflow_and_factory_output_start_next_turn(self):
-        for building in ("factory", "factory", "mine"):
+        for building in ("factory", "trade_center", "mine"):
             self.game.queue_building(0, 2, building)
         before = self.game.to_dict()
         self.assertEqual(self.earth.queue_estimates(), [4, 6, 7])
-        self.assertEqual(self.earth.queue_estimates("research_lab"), [4, 6, 7, 8])
+        self.assertEqual(self.earth.queue_estimates("research_lab"), [4, 6, 7, 9])
         self.assertEqual(self.game.to_dict(), before)
         for _ in range(4):
             self.game.advance_turn()
@@ -71,14 +71,14 @@ class ColonyRulesTests(unittest.TestCase):
         self.game.advance_turn()
         self.assertEqual(self.earth.construction_queue[0].progress, 16)
         self.game.advance_turn()
-        self.assertEqual(self.earth.buildings, ["factory", "factory"])
+        self.assertEqual(self.earth.buildings, ["factory", "trade_center"])
         self.assertEqual(self.earth.construction_queue[0].progress, 8)
         report = self.game.advance_turn()
-        self.assertEqual(self.earth.buildings, ["factory", "factory", "mine"])
+        self.assertEqual(self.earth.buildings, ["factory", "trade_center", "mine"])
         self.assertEqual(self.earth.construction_queue, [])
-        self.assertEqual(report.income, 4)
-        self.assertEqual(self.earth.yields_per_turn, (26, 3, 0))
-        self.assertEqual(self.game.advance_turn().income, 3)
+        self.assertEqual(report.income, 13)
+        self.assertEqual(self.earth.yields_per_turn, (16, 12, 0))
+        self.assertEqual(self.game.advance_turn().income, 12)
 
     def test_cancel_refunds_unspent_work_and_releases_the_slot(self):
         self.game.queue_building(0, 2, "factory")

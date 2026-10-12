@@ -180,12 +180,12 @@ def world_quality(planet):
     return planet.habitability, planet.building_capacity, RICHNESSES.index(planet.richness), -planet.id
 
 
-def development_choice(planet, race_id="kharuun"):
-    for item in RACES[race_id].development:
-        if item not in planet.buildings:
+def development_choice(planet, race_id="kharuun", available=None):
+    existing = set(planet.buildings) | {q.item_id for q in planet.construction_queue}
+    for item in (*RACES[race_id].development, "factory", "trade_center", "research_lab", "mine"):
+        if item not in existing and (available is None or item in available):
             return item
-    # Keep adding a mix of industry, income and research on larger worlds.
-    return ("factory", "trade_center", "research_lab")[(len(planet.buildings)-4) % 3]
+    return None
 
 
 def projected_colony(planet, extra=None):
@@ -208,22 +208,28 @@ def projected_income(game, owner, extra=None):
 
 def steady_power_plant(game, planet, owner):
     """Choose the largest unlocked steady source the colony can maintain."""
+    existing = set(planet.buildings) | {q.item_id for q in planet.construction_queue}
     candidates = [b for b in BUILDINGS.values() if b.energy_output and not b.energy_per_resource
+                  and b.id not in existing
                   and (not b.technology or game.research_state(owner).has_unlock(b.technology))]
     income = game.planet_yields(projected_colony(planet))[1]
     affordable = [b for b in candidates if b.maintenance < income]
-    return max(affordable or [BUILDINGS["solar_array"]], key=lambda b: b.energy_output).id
+    fallback = [b for b in candidates if b.id == "solar_array"]
+    choice = max(affordable or fallback, key=lambda b: b.energy_output, default=None)
+    return choice.id if choice else None
 
 
 def queue_building(game, system, planet, item, owner):
     """Cover future upkeep before committing to more expensive infrastructure."""
+    if item is None or game.build_error(system.id, planet.id, item, owner=owner) is not None:
+        return False
     if (game.planet_yields(projected_colony(planet, item))[1] < 0
             or projected_income(game, owner, (system.id, planet.id, item)) < 1):
         item = "trade_center"
     future = projected_colony(planet, item)
     if energy_report(future, game.bonuses_for(owner)).balance < 0 and not BUILDINGS[item].energy_output:
         item = steady_power_plant(game, planet, owner)
-    if game.build_error(system.id, planet.id, item, owner=owner) is not None:
+    if item is None or game.build_error(system.id, planet.id, item, owner=owner) is not None:
         return False
     game.queue_building(system.id, planet.id, item, owner=owner)
     event(game, owner, f"Started {PROJECTS[item].name} on {planet.name}.")
@@ -273,13 +279,15 @@ def recover_power(game, owner):
         if queued is not None:
             game.prioritize_construction(system.id, planet.id, queued, owner=owner)
             continue
+        item = steady_power_plant(game, planet, owner)
+        if item is None:
+            continue
         if not planet.free_slots:
             disposable = [i for i, b in enumerate(planet.buildings) if b in ("research_lab", "factory", "trade_center")]
             if not disposable:
                 continue
             index = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
             game.demolish_building(system.id, planet.id, index, owner=owner)
-        item = steady_power_plant(game, planet, owner)
         if game.build_error(system.id, planet.id, item, owner=owner) is None:
             game.change_production(system.id, planet.id, item, owner=owner)
             event(game, owner, f"Restoring power on {planet.name} with {BUILDINGS[item].name}.")
@@ -498,8 +506,11 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         food = game.population_report(planet)
         farm_food = PROJECTS["hydroponic_farm"].food+planet.farmers*PROJECTS["hydroponic_farm"].food_per_farmer
         full_consumption = food_required(food.capacity+planet.slaves, game.bonuses_for(owner))
-        farms_needed = max(0, (full_consumption-food.produced+farm_food-1)//farm_food)
-        needs_food = food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
+        farm_tech = BUILDINGS["hydroponic_farm"].technology
+        farm_available = ("hydroponic_farm" not in planet.buildings and farm_food > 0
+                          and (not farm_tech or game.research_state(owner).has_unlock(farm_tech)))
+        farms_needed = int(farm_available and full_consumption > food.produced)
+        needs_food = farm_available and food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
                       or planet.farmers > 2
                       or 0 < planet.free_slots <= farms_needed)
         if needs_food and planet.free_slots == 0:
@@ -508,11 +519,11 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 index_to_remove = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
                 game.demolish_building(system.id, planet.id, index_to_remove, owner=owner)
         if needs_food and planet.free_slots > 0:
-            queue_building(game, system, planet, "hydroponic_farm", owner)
-            continue
+            if queue_building(game, system, planet, "hydroponic_farm", owner):
+                continue
         if planet.free_slots > 0 and "mine" not in planet.buildings and game.resources_for(owner) < 90 and planet.miners:
-            queue_building(game, system, planet, "mine", owner)
-            continue
+            if queue_building(game, system, planet, "mine", owner):
+                continue
         # Reserve local defence before peaceful development fills every slot.
         # The main shipyard needs barracks to recruit expeditionary troops.
         military_building = None
@@ -530,8 +541,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 slot = max(replaceable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
                 game.demolish_building(system.id, planet.id, slot, owner=owner)
         if military_building and planet.free_slots > 0:
-            queue_building(game, system, planet, military_building, owner)
-            continue
+            if queue_building(game, system, planet, military_building, owner):
+                continue
         infrastructure = []
         if hostile or nature.protective:
             infrastructure += ["missile_base", "planetary_shield", "interdictor"]
@@ -578,6 +589,9 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         elif infrastructure_item is not None:
             queue_building(game, system, planet, infrastructure_item, owner)
         elif planet.free_slots > 0:
-            item = development_choice(planet, game._empire(owner).race_id)
+            available = {b for b in BUILDINGS if game.build_error(system.id, planet.id, b, owner=owner) is None}
+            item = development_choice(planet, game._empire(owner).race_id, available)
             queue_building(game, system, planet, item, owner)
+        if not planet.construction_queue:
+            game.set_trade_goods(system.id, planet.id, owner=owner)
     return invasions

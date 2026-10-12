@@ -166,11 +166,12 @@ class RaceRulesTests(unittest.TestCase):
         game = solo("remnant")
         self.assertEqual(game.research, 80)
         game.choose_research("ion_drives")
-        self.assertIn("ion_drives", game.technology.completed)
+        self.assertEqual((game.technology.active, game.technology.progress), ("ion_drives", 80))
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             restored, _ = storage.load(storage.save(game))
         self.assertEqual(restored.research, game.research)
+        self.assertEqual(restored.technology.progress, 80)
         self.assertLess(restored.research, 80)
         game.set_workforce(0, 2, 2, 2)
         self.assertEqual(game.planet_yields(game.planet_at(0, 2)), (3, 8, 5))

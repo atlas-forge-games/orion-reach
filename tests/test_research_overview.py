@@ -106,7 +106,7 @@ class ResearchOverviewTests(unittest.TestCase):
         game.choose_research("civil_engineering")
         self.click("end_turn")
         self.assertEqual(self.app.screen, "galaxy")
-        game.technology.progress = 39
+        game.technology.progress = game.technology.project_cost-1
         self.click("end_turn")
         self.assertEqual(self.app.screen, "research")
         self.assertTrue(self.app.research_overview)

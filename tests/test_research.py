@@ -70,10 +70,10 @@ class ResearchRulesTests(unittest.TestCase):
         earth = game.planet_at(0, 2)
         earth.buildings = ["research_lab"]
         game.queue_building(0, 2, "factory")
-        game.research = 37
+        game.research = TECHNOLOGIES["civil_engineering"].cost-3
         credits = game.credits
         self.assertIsNone(game.choose_research("civil_engineering"))
-        self.assertEqual((game.research, game.technology.progress, game.credits), (0, 37, credits))
+        self.assertEqual((game.research, game.technology.progress, game.credits), (0, TECHNOLOGIES["civil_engineering"].cost-3, credits))
         report = game.advance_turn()
         self.assertEqual((report.research, report.discoveries), (4, ["Civil Engineering"]))
         self.assertEqual((game.research, game.technology.active, game.technology.progress), (1, None, 0))
@@ -81,7 +81,7 @@ class ResearchRulesTests(unittest.TestCase):
         self.assertEqual(game.planet_yields(earth)[0], 8)
         game.advance_turn()
         self.assertEqual((earth.construction_queue[0].progress, game.research), (14, 5))
-        game.research = 150
+        game.research = TECHNOLOGIES["orbital_assembly"].cost+50
         self.assertEqual(game.choose_research("orbital_assembly").name, "Orbital Assembly")
         self.assertEqual(game.research, 50)
 
@@ -122,17 +122,18 @@ class ResearchRulesTests(unittest.TestCase):
         game.credits = game.resources = 500
         earth = game.planet_at(0, 2)
         game.queue_building(0, 2, "factory")
-        game.queue_building(0, 2, "factory")
+        game.queue_building(0, 2, "trade_center")
         game.queue_ship(0, 2)
         before = game.to_dict()
-        self.assertEqual(game.queue_estimates(earth, "mine"), [4, 6, 7, 8])
+        forecast = game.queue_estimates(earth, "mine")
+        self.assertEqual(forecast[0], 4)
         self.assertEqual(game.to_dict(), before)
         game.queue_building(0, 2, "mine")
         actual = []
-        for turn in range(1, 10):
+        for turn in range(1, forecast[-1]+1):
             report = game.advance_turn()
             actual.extend([turn]*len(report.completed))
-        self.assertEqual(actual, [4, 6, 7, 8])
+        self.assertEqual(actual, forecast)
 
     def test_discounts_and_refunds_use_original_payment_even_after_discoveries(self):
         game = new_game(seed=2408, with_ai=False)
@@ -240,7 +241,7 @@ class ResearchSaveTests(unittest.TestCase):
             restored, _ = storage.load(path)
             self.assertEqual(restored, game)
             restored.choose_research("civil_engineering")
-            self.assertEqual((restored.research, restored.opponent.research), (83, 57))
+            self.assertEqual((restored.research, restored.technology.progress, restored.opponent.research), (0, 123, 57))
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
 
     def test_invalid_locks_prerequisites_progress_and_snapshot_costs_are_rejected(self):
@@ -359,17 +360,18 @@ class ResearchScreenTests(unittest.TestCase):
 
     def test_immediate_selection_switching_completion_and_autosave_with_real_clicks(self):
         game = self.app.game
-        game.research = 37
+        progress = TECHNOLOGIES["civil_engineering"].cost-3
+        game.research = progress
         game.planet_at(0, 2).buildings = ["research_lab"]
         self.click("open_research")
         self.click("research_choose_civil_engineering")
         self.assertIsNone(self.app.dialog)
-        self.assertEqual(game.technology.progress, 37)
+        self.assertEqual(game.technology.progress, progress)
         self.assertTrue(next(b for b in self.app.buttons if b.key == "research_choose_automated_factories").enabled)
         self.click("research_choose_automated_factories")
-        self.assertEqual(game.technology.progress, 37)
+        self.assertEqual(game.technology.progress, progress)
         self.click("research_choose_civil_engineering")
-        self.assertEqual(game.technology.progress, 37)
+        self.assertEqual(game.technology.progress, progress)
         self.click("research_end_turn")
         self.assertIn("Discovered: Civil Engineering", self.app.notice)
         self.assertTrue(next(b for b in self.app.buttons if b.key == "research_choose_orbital_assembly").enabled)

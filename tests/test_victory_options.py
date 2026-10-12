@@ -204,7 +204,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
         self.assertEqual((restored.technology.active, restored.technology.progress), ("ascension_theory", 1234))
         self.assertEqual(restored.technology.finished_branches, len(BRANCHES))
         self.assertIsNone(restored.research_error("cryogenic_fuel_tanks"))
-        restored.research = 5000-1234
+        restored.research = TECHNOLOGIES["ascension_theory"].cost-1234
         restored.advance_research()
         restored.headquarters()[1].ascension_gate = True
         restored.headquarters()[1].gate_charge = 3
@@ -262,7 +262,7 @@ class AdvancedFuelTests(unittest.TestCase):
         game = campaign()
         for identifier in ("deep_core_drills", "superconductors", "reinforced_armor", "mirv_torpedoes"):
             discover(game, identifier, "rival")
-        game.opponent.research = 360
+        game.opponent.research = TECHNOLOGIES["cryogenic_fuel_tanks"].cost
         with patch.object(GameState, "system_explored", return_value=False), patch.object(GameState, "within_fuel_range", return_value=False):
             ai.research_choice(game)
         self.assertIn("cryogenic_fuel_tanks", game.opponent.technology.completed)

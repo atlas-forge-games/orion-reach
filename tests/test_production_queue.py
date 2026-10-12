@@ -14,10 +14,11 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame as pg
 
 from orion.app import App
+from orion.buildings import BUILDINGS
 from orion.empire import colony_rows, summarize_empire
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
 from orion.production import MAX_QUEUE
-from orion.research import colony_yields
+from orion.research import TECHNOLOGIES, colony_yields
 from orion.storage import Storage
 from scenarios import empty_fleet_game
 
@@ -26,6 +27,53 @@ class TradeGoodsTests(unittest.TestCase):
     def setUp(self):
         self.game = empty_fleet_game(seed=2408, with_ai=False)
         self.planet = self.game.planet_at(0, 2)
+
+    def test_every_building_blocks_completed_queued_and_paused_duplicates(self):
+        self.game.technology.completed = list(TECHNOLOGIES)
+        for item in BUILDINGS:
+            with self.subTest(building=item):
+                self.planet.buildings.clear()
+                self.planet.construction_queue.clear()
+                self.game.queue_building(0, 2, item)
+                self.game.set_trade_goods(0, 2)
+                before = self.game.to_dict()
+                with self.assertRaisesRegex(RuleError, "Only one"):
+                    self.game.queue_project(0, 2, item)
+                self.assertEqual(self.game.to_dict(), before)
+                self.game.cancel_construction(0, 2, 0)
+                self.assertIsNone(self.game.build_error(0, 2, item))
+                self.planet.buildings.append(item)
+                before = self.game.to_dict()
+                with self.assertRaisesRegex(RuleError, "Only one"):
+                    self.game.queue_building(0, 2, item)
+                self.assertEqual(self.game.to_dict(), before)
+                self.game.demolish_building(0, 2, 0)
+                self.assertIsNone(self.game.build_error(0, 2, item))
+
+    def test_uniqueness_is_per_planet_applies_to_ai_and_does_not_limit_ships(self):
+        game = empty_fleet_game(seed=2408)
+        mars = game.planet_at(0, 3)
+        mars.colonized, mars.owner, mars.population = True, PLAYER, 1
+        home_system, home = game.headquarters(RIVAL)
+        for sid, pid, owner in ((0, 2, PLAYER), (0, 3, PLAYER), (home_system.id, home.id, RIVAL)):
+            game.queue_building(sid, pid, "factory", owner=owner)
+            with self.assertRaisesRegex(RuleError, "Only one"):
+                game.queue_building(sid, pid, "factory", owner=owner)
+            game.queue_ship(sid, pid, "scout", owner=owner)
+            game.queue_ship(sid, pid, "scout", owner=owner)
+        self.assertEqual(GameState.from_dict(game.to_dict()), game)
+
+    def test_old_duplicate_buildings_and_paid_orders_survive_save_loading(self):
+        self.planet.buildings = ["factory", "factory"]
+        from orion.model import ConstructionProject
+        self.planet.construction_queue = [ConstructionProject("mine", progress=3), ConstructionProject("mine")]
+        with tempfile.TemporaryDirectory() as folder:
+            storage = Storage(folder)
+            restored, _ = storage.load(storage.save(self.game))
+        self.assertEqual(restored, self.game)
+        for item in ("factory", "mine"):
+            with self.assertRaisesRegex(RuleError, "Only one"):
+                restored.queue_project(0, 2, item)
 
     def test_credits_floor_each_colonys_available_industry_without_bonus_scaling(self):
         self.planet.farmers = self.planet.scientists = self.planet.miners = 0
@@ -189,16 +237,58 @@ class ProductionInterfaceTests(unittest.TestCase):
     def test_multiple_clicks_append_and_reprioritize_without_leaving_picker(self):
         self.app.open_planet(2)
         self.click("planet_change")
-        for kind in ("factory", "mine", "factory"):
+        for kind in ("factory", "mine", "research_lab"):
             self.click("production_build_"+kind)
             self.assertEqual(self.app.screen, "production")
-        self.assertEqual([p.item_id for p in self.planet.construction_queue], ["factory", "mine", "factory"])
+        self.assertEqual([p.item_id for p in self.planet.construction_queue], ["factory", "mine", "research_lab"])
         self.click("production_priority_1")
         self.assertEqual(self.app.screen, "production")
         self.assertEqual(self.planet.construction_queue[0].item_id, "mine")
         self.click("production_return")
         self.assertFalse(self.planet.trade_goods)
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], self.game)
+
+    def catalogue(self):
+        self.app.catalog_page = 0
+        keys = set()
+        while True:
+            self.app.render()
+            keys.update(b.key.removeprefix("production_build_") for b in self.app.buttons
+                        if b.key.startswith("production_build_") and b.enabled)
+            if not next(b for b in self.app.buttons if b.key == "catalog_next").enabled:
+                break
+            self.click("catalog_next")
+        return keys
+
+    def test_picker_filters_research_slots_and_duplicates_and_restores_cancelled_choices(self):
+        from test_research_expansion import discover
+        self.app.open_planet(2)
+        self.click("planet_change")
+        self.assertIn("solar_array", self.catalogue())
+        self.assertNotIn("fusion_plant", self.catalogue())
+        self.game.research = self.game.technology.project_cost
+        self.game.advance_research()
+        discover(self.game, "fusion_power")
+        self.assertIn("fusion_plant", self.catalogue())
+        self.planet.buildings = ["mine"]
+        self.app.catalog_page = 0
+        self.click("production_build_factory")
+        self.assertNotIn("factory", self.catalogue())
+        self.assertNotIn("mine", self.catalogue())
+        self.click("production_cancel_0")
+        self.assertIn("factory", self.catalogue())
+        self.planet.buildings = list(BUILDINGS)[:self.planet.building_capacity]
+        self.assertFalse(self.catalogue() & BUILDINGS.keys())
+        self.assertIn("scout", self.catalogue())
+        self.assertIn("trade_goods", self.catalogue())
+        self.planet.buildings.clear()
+        for _ in range(MAX_QUEUE):
+            self.game.queue_ship(0, 2, "scout")
+        self.app.catalog_page = 99
+        self.assertEqual(self.catalogue(), {"trade_goods"})
+        self.assertEqual(self.app.catalog_page, 0)
+        self.click("production_cancel_0")
+        self.assertIn("factory", self.catalogue())
 
     def test_cancel_last_order_then_escape_defaults_to_trade_goods_and_autosaves(self):
         self.app.open_planet(2)

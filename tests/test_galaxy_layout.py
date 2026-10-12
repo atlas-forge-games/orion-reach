@@ -14,6 +14,7 @@ import pygame as pg
 from orion.model import GALAXY_SIZES, GameState, new_game
 from orion.production import distance_ly
 from orion.races import RACES
+from orion.research import TECHNOLOGIES
 
 
 class RectangularGalaxyTests(unittest.TestCase):
@@ -23,7 +24,7 @@ class RectangularGalaxyTests(unittest.TestCase):
             old_range = 50 if race == "wanderers" else 35
             multiplier = 1.5 if race == "varkesh" else 1
             self.assertEqual(game.fuel_range(), old_range/5*multiplier)
-            game.research += 140
+            game.research += sum(TECHNOLOGIES[t].cost for t in ("lightweight_alloys", "composite_structures"))
             game.choose_research("lightweight_alloys")
             self.assertEqual(game.fuel_range(), (old_range/5+10)*multiplier)
             game.choose_research("composite_structures")
@@ -69,10 +70,10 @@ class RectangularGalaxyTests(unittest.TestCase):
         for owner in game.opponents:
             scouting_orders(game, owner)
             self.assertTrue(all(not s.has_course for s in game.ships_owned_by(owner)))
-            game.opponents[owner].research += 40
+            game.opponents[owner].research += TECHNOLOGIES["lightweight_alloys"].cost
             research_choice(game, owner)
             self.assertIn("lightweight_alloys", game.research_state(owner).completed)
-        game.research += 140
+        game.research += sum(TECHNOLOGIES[t].cost for t in ("lightweight_alloys", "composite_structures"))
         game.choose_research("lightweight_alloys")
         game.choose_research("composite_structures")
         target = next(s for s in game.systems[1:] if game.within_fuel_range(s.id))

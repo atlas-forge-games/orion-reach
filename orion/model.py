@@ -1200,7 +1200,7 @@ class GameState:
         if technology and not self.research_state(owner).has_unlock(technology):
             from .research import TECHNOLOGIES
             return "Requires "+TECHNOLOGIES[technology].name+"."
-        if BUILDINGS[building_id].unique and (building_id in planet.buildings or
+        if (building_id in planet.buildings or
                 any(p.item_id == building_id for p in planet.construction_queue)):
             return "Only one of this building is allowed per colony."
         if len(planet.construction_queue) >= MAX_QUEUE:

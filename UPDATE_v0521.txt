@@ -1,0 +1,29 @@
+Orion Reach v0.52.1 - research pacing and available construction
+
+INSTALL
+Requires v0.52.0. Close the game/editor, extract this ZIP into your existing
+Orion Reach folder (beside main.py), and replace the matching files.
+Start normally with: python main.py
+This is an incremental update, not a standalone game.
+
+CHANGES
+- Standard research prices multiplied by four at every tier.
+  Tiers I-VIII: 160, 400, 480, 880, 1440, 2160, 3040, 4160 RP.
+  Ascension Theory: 20000 RP.
+- Planet construction catalogues show only eligible projects. Locked,
+  completed, queued and slot-blocked buildings are hidden immediately.
+- All buildings are one per planet, counting both completed buildings and
+  queued orders, including paused queues. This applies to players and AI.
+- Cancelling an order or demolishing the building permits building it again.
+  Ships remain repeatable. Trade Goods remains available.
+- Resources are still reserved when work starts; orders can wait for supplies.
+- AI development, farming and power choices respect the same building limit.
+
+SAVES AND EDITOR PROFILES
+Existing v0.52 saved campaigns and custom balance.json profiles retain their
+research prices. The higher standard prices apply to new default campaigns.
+To adjust an existing editor profile, open Research costs and enter the values
+above. Individual technology cost overrides continue to take precedence.
+Existing buildings and queued work are preserved, including older duplicates;
+no new duplicate orders can be placed. Save format 36 remains compatible.
+No dependencies or artwork are added. Nothing has been committed or pushed.

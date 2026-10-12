@@ -149,7 +149,7 @@ class LegacyResearchTests(unittest.TestCase):
 
     def test_relocated_active_research_keeps_its_original_remaining_cost(self):
         state = ResearchState.from_dict(self.cases["relocated_active"], version=27)
-        self.assertEqual(TECHNOLOGIES[state.active].cost, 220)
+        self.assertEqual(TECHNOLOGIES[state.active].cost, 880)
         self.assertEqual((state.progress, state.project_cost), (30, 120))
         state = ResearchState.from_dict(asdict(state))
         self.assertEqual(state.spend(89), (0, None))

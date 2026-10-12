@@ -161,7 +161,7 @@ def articles():
         if spec.workforce_text("Average"):
             sections.append(("WORKFORCE BONUS", spec.workforce_text("Average")))
         sections += [("RESEARCH REQUIRED", building_research(spec.technology)),
-                     ("NOTES", ("One per colony. " if spec.unique else "") + "Values use Average mineral richness, before empire bonuses. Benefits require the building to operate.")]
+                     ("NOTES", "One per colony, including queued orders. Values use Average mineral richness, before empire bonuses. Benefits require the building to operate.")]
         result.append(Article("building_"+spec.id, "buildings", spec.name, "Building · base values", tuple(sections)))
     for spec in sorted(TECHNOLOGIES.values(), key=lambda s: (s.branch, s.tier, s.name)):
         finale = spec.id == "ascension_theory"

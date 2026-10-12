@@ -125,7 +125,8 @@ class PopulationRulesTests(unittest.TestCase):
     def test_farming_technology_preserves_income_and_applies_food_next_turn(self):
         self.earth.population = 10
         self.earth.buildings = ["research_lab"]
-        self.game.research = 36
+        from orion.research import TECHNOLOGIES
+        self.game.research = TECHNOLOGIES["symbiotic_farming"].cost-4
         self.game.choose_research("symbiotic_farming")
         result = self.game.advance_turn()
         self.assertEqual(result.discoveries, ["Symbiotic Farming"])
@@ -136,7 +137,8 @@ class PopulationRulesTests(unittest.TestCase):
 
     def test_new_colonies_use_biology_colonists_and_begin_at_zero_progress(self):
         for tech in ("colony_biospheres", "colony_biogenesis", "radiation_shields"):
-            self.game.research += 100
+            from orion.research import TECHNOLOGIES
+            self.game.research += TECHNOLOGIES[tech].cost
             self.game.choose_research(tech)
         self.game.ships = [Ship(1, "colony_ship", 0)]
         self.game.next_ship_id = 2
@@ -176,7 +178,8 @@ class PopulationRulesTests(unittest.TestCase):
         sid, pid = game.opponent.home_system, game.opponent.home_planet
         home = game.planet_at(sid, pid)
         home.growth_progress, home.buildings = 65, ["hydroponic_farm"]
-        game.opponent.research = 40
+        from orion.research import TECHNOLOGIES
+        game.opponent.research = TECHNOLOGIES["symbiotic_farming"].cost
         game.choose_research("symbiotic_farming", owner=RIVAL)
         produced = game.population_report(home).produced
         game.ships = [Ship(i, "troop_transport", sid) for i in (1, 2)]

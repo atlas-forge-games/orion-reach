@@ -98,8 +98,8 @@ class ResourceRulesTests(unittest.TestCase):
         g.queue_building(0, 2, "factory")
         original = p.construction_queue[0]
         g.technology.completed = ["civil_engineering", "prefabricated_structures"]
-        g.change_production(0, 2, "factory")
-        self.assertEqual([q.resource_cost for q in p.construction_queue], [36, 45])
+        g.change_production(0, 2, "research_lab")
+        self.assertEqual([q.resource_cost for q in p.construction_queue], [40, 45])
         g.prioritize_construction(0, 2, 1)
         self.assertIs(p.construction_queue[0], original)
         g.advance_turn()
@@ -193,7 +193,8 @@ class EnergyRulesTests(unittest.TestCase):
     def test_power_research_unlocks_generator_and_improves_basic_supply(self):
         g, p = self.game, self.planet
         self.assertIsNotNone(g.build_error(0, 2, "fusion_plant"))
-        g.research = 500
+        from orion.research import TECHNOLOGIES
+        g.research = sum(TECHNOLOGIES[t].cost for t in ("compact_reactors", "fusion_drives", "fusion_power"))
         g.choose_research("compact_reactors")
         self.assertEqual(g.planet_energy(p).generated, 16)
         g.choose_research("fusion_drives")
@@ -223,7 +224,7 @@ class EnergyRulesTests(unittest.TestCase):
     def test_ai_restores_power_and_assigns_mining_without_cheating_resources(self):
         g = campaign(with_ai=True)
         system, p = g.headquarters("rival")
-        p.buildings = ["research_lab"]*8
+        p.buildings = ["factory", "mine", "trade_center", "research_lab", "hydroponic_farm", "barracks", "fortifications"]
         p.miners = 0
         g.opponent.resources = 0
         with patch("orion.ai.military_orders"):

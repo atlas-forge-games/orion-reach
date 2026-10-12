@@ -232,7 +232,7 @@ class PowerProgressionTests(unittest.TestCase):
 
 
 class PowerInterfaceTests(unittest.TestCase):
-    def test_power_tab_exposes_every_generator_and_locked_research(self):
+    def test_power_tab_shows_generators_only_after_research(self):
         from orion.app import App
         with tempfile.TemporaryDirectory() as folder:
             app = App(folder, capture=True)
@@ -245,8 +245,7 @@ class PowerInterfaceTests(unittest.TestCase):
             buttons = {b.key: b for b in app.buttons}
             self.assertTrue(buttons["build_solar_array"].enabled)
             for identifier in ("geothermal_plant", "fusion_plant", "thermal_plant", "singularity_plant"):
-                self.assertIn("build_"+identifier, buttons)
-                self.assertFalse(buttons["build_"+identifier].enabled)
+                self.assertNotIn("build_"+identifier, buttons)
             unlock(app.game, "compact_reactors", "fusion_grids")
             app.render()
             buttons = {b.key: b for b in app.buttons}

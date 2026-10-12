@@ -23,6 +23,7 @@ from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
 from scenarios import fixed_start_game as new_game
 from orion.production import BASE_FUEL_RANGE, LEGACY_SHIP_SPEED, SHIP_SPEED, distance_ly, travel_turns
 from orion.storage import Storage
+from orion.research import TECHNOLOGIES
 from scenarios import place_near, use_nearby_system
 
 
@@ -39,7 +40,7 @@ class FuelRulesTests(unittest.TestCase):
         nearby = place_near(game, 1, distance=7)
         self.assertEqual(game.travel_turns(game.systems[0], nearby), 4)
         self.assertEqual(BASE_FUEL_RANGE, 7)
-        game.research = 40
+        game.research = TECHNOLOGIES["ion_drives"].cost
         game.choose_research("ion_drives")
         self.assertEqual(game.fuel_range(), BASE_FUEL_RANGE)
 
@@ -83,7 +84,7 @@ class FuelRulesTests(unittest.TestCase):
         game = new_game(seed=2408)
         place_near(game, 1, distance=16)
         self.assertFalse(game.within_fuel_range(1))
-        game.research = 140
+        game.research = sum(TECHNOLOGIES[t].cost for t in ("lightweight_alloys", "composite_structures"))
         game.choose_research("lightweight_alloys")
         self.assertEqual(game.fuel_range(), 17)
         self.assertTrue(game.within_fuel_range(1))
@@ -129,7 +130,7 @@ class FuelRulesTests(unittest.TestCase):
                 game._clear_course(scout)
                 scout.system_id = system.id
                 refresh(game)
-        game.opponent.research = 40
+        game.opponent.research = TECHNOLOGIES["lightweight_alloys"].cost
         research_choice(game)
         self.assertIn("lightweight_alloys", game.opponent.technology.completed)
         self.assertEqual(game.fuel_range(RIVAL), 17)

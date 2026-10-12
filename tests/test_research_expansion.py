@@ -583,12 +583,17 @@ class ExpansionInterfaceTests(unittest.TestCase):
         self.assertIn("research_choose_quantum_targeting", {b.key for b in app.buttons})
 
     def test_new_buildings_are_accessible_in_colony_and_surface(self):
+        from orion.buildings import BUILDINGS
         app, planet = self.app, self.app.game.planet_at(0, 2)
         app.colony_build_page = 1
         buttons = self.render("colony")
         for identifier in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"):
-            self.assertIn("build_"+identifier, buttons)
+            self.assertNotIn("build_"+identifier, buttons)
+            research = "subspace_interdiction" if identifier == "interdictor" else BUILDINGS[identifier].technology
+            discover(app.game, research)
+            self.assertIn("build_"+identifier, self.render("colony"))
             install(app.game, planet, identifier)
+            self.assertNotIn("build_"+identifier, self.render("colony"))
         buttons = self.render("planet")
         self.assertTrue(all("surface_"+b in buttons for b in planet.buildings))
 

@@ -99,7 +99,7 @@ class BlackHoleRulesTests(unittest.TestCase):
         black_holes.report_mapping(game, "player")
         self.assertEqual(len(game.black_holes.events), 3)
         self.assertEqual([len(choices("computers", t)) for t in (6, 7)], [2, 2])
-        self.assertEqual([TECHNOLOGIES[k].cost for k in ("gravitic_mapping", "event_horizon_navigation")], [540, 760])
+        self.assertEqual([TECHNOLOGIES[k].cost for k in ("gravitic_mapping", "event_horizon_navigation")], [2160, 3040])
 
     def test_orders_are_atomic_and_unsafe_departure_can_be_cancelled(self):
         game = campaign()
@@ -129,7 +129,7 @@ class BlackHoleRulesTests(unittest.TestCase):
         game.choose_research("event_horizon_navigation")
         for index in range(turns):
             if index == turns-1:
-                game.research = 760
+                game.research = TECHNOLOGIES["event_horizon_navigation"].cost
             report = game.advance_turn()
         self.assertTrue(black_holes.can_explore(game))
         self.assertEqual([s.id for s in game.ships], [3])

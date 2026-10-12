@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.52.0
+# Orion Reach — Python prototype 0.52.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,30 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.52.1: research pacing and available construction
+
+Standard research costs are four times higher at every tier, including
+Ascension Theory: **160, 400, 480, 880, 1,440, 2,160, 3,040 and 4,160 RP**
+for tiers I–VIII, and **20,000 RP** for Ascension. These are the defaults for
+new campaigns and the balance editor. Saved v0.52 campaigns and existing
+custom profiles retain their chosen research prices.
+
+The planet production picker shows only projects that can be queued now.
+Unresearched buildings, completed buildings, already queued buildings and
+buildings without a free slot are hidden. Every building is limited to
+**one per planet**, including queued orders, for both players and AI. Cancelling
+its order or demolishing it makes it available again. Ships remain repeatable.
+Basic buildings without a research prerequisite remain available from the start.
+
+The list updates immediately without closing the screen. Trade Goods remains
+available, and Resources are still reserved when work starts, so you can plan
+ahead before the required Resources arrive. AI colonies choose other eligible
+buildings or Trade Goods instead of repeatedly ordering the same building.
+
+Existing saves retain their buildings and queued work, including duplicates
+ordered under earlier rules; new orders always enforce the one-per-planet limit.
+Save format 36 remains compatible. No new dependencies or artwork are required.
 
 ## New in v0.52: standalone balance and research editor
 

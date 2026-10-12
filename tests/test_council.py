@@ -288,8 +288,8 @@ class CouncilSaveTests(unittest.TestCase):
 
 
 class AscensionCostTests(unittest.TestCase):
-    def test_theory_cost_is_5000_and_preserves_unfinished_points(self):
-        self.assertEqual(TECHNOLOGIES['ascension_theory'].cost, 5000)
+    def test_theory_cost_is_20000_and_preserves_unfinished_points(self):
+        self.assertEqual(TECHNOLOGIES['ascension_theory'].cost, 20000)
         from test_victory import discover_branches
         game = new_game(seed=2408, with_ai=False, with_tombs=False)
         discover_branches(game)
@@ -315,7 +315,7 @@ class AscensionCostTests(unittest.TestCase):
         data['technology']['completed'] = [t for t in data['technology']['completed'] if (TECHNOLOGIES[t].branch != 'materials' or TECHNOLOGIES[t].tier <= 4) and (TECHNOLOGIES[t].branch != 'computers' or TECHNOLOGIES[t].tier <= 5)]
         restored = GameState.from_dict(data, version=31)
         self.assertEqual(restored.technology.progress, 499)
-        self.assertEqual(restored.technology.project_cost, 5000)
+        self.assertEqual(restored.technology.project_cost, ASCENSION_COST)
         data['technology']['progress'] = 500
         with self.assertRaises(SaveError):
             GameState.from_dict(data, version=31)
@@ -331,11 +331,11 @@ class AscensionCostTests(unittest.TestCase):
                 selected.append(key)
                 seen.add(tier)
         state = ResearchState.from_dict({'completed': selected, 'active': 'ascension_theory', 'progress': 123}, version=27)
-        self.assertEqual(state.project_cost, 5000)
+        self.assertEqual(state.project_cost, ASCENSION_COST)
         state.spend(600)
         from dataclasses import asdict
         restored = ResearchState.from_dict(asdict(state))
-        self.assertEqual((restored.progress, restored.project_cost), (723, 5000))
+        self.assertEqual((restored.progress, restored.project_cost), (723, ASCENSION_COST))
 
 
 class CouncilScreenTests(unittest.TestCase):

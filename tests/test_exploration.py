@@ -121,7 +121,8 @@ class ExplorationRulesTests(unittest.TestCase):
     def test_research_discovery_completes_active_project_and_preserves_overflow(self):
         game = new_game(seed=2408, with_ai=False)
         target = discovery_system(game, "ancient_archive")
-        game.research = 15
+        from orion.research import TECHNOLOGIES
+        game.research = TECHNOLOGIES["automated_factories"].cost-25
         game.choose_research("automated_factories")
         game.ships = [Ship(1, "scout", 0)]
         game.next_ship_id = 2

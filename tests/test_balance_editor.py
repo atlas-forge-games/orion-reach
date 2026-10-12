@@ -34,6 +34,29 @@ class BalanceTestCase(unittest.TestCase):
 
 
 class BalanceTests(BalanceTestCase):
+    def test_standard_research_prices_are_quadrupled_but_saved_profiles_keep_their_prices(self):
+        from orion.research import TECHNOLOGIES
+        old_costs = (40, 100, 120, 220, 360, 540, 760, 1040)
+        for tech in TECHNOLOGIES.values():
+            self.assertEqual(tech.cost, 20000 if tech.id == 'ascension_theory' else 4*old_costs[tech.tier-1])
+        old = balance.default_profile()
+        for entry in old['data']['research_costs'].values():
+            entry['cost'] //= 4
+        balance.activate(old)
+        g = game()
+        g.research = 39
+        g.choose_research('civil_engineering')
+        path = Storage(self.root).save(g)
+        balance.activate(balance.default_profile())
+        restored, _ = Storage(self.root).load(path)
+        self.assertEqual((restored.technology.progress, restored.technology.project_cost), (39, 40))
+        restored.research = 1
+        restored.advance_research()
+        self.assertIn('civil_engineering', restored.technology.completed)
+        doc = BalanceDocument(self.root/'new-profile.json')
+        self.assertEqual(doc.entry('research_costs', '1')['cost'], 160)
+        self.assertNotIn(('unique',), [path for path, _ in doc.fields('buildings', 'factory')])
+
     def test_defaults_and_catalogue_changes_reach_construction_races_and_modules(self):
         from orion.buildings import BUILDINGS
         from orion.production import PROJECTS, HULL_TECHNOLOGIES
@@ -152,7 +175,8 @@ class BalanceTests(BalanceTestCase):
         profile['data']['technologies']['ion_drives']['effects']['ship_speed']=33
         balance.activate(profile)
         g=game()
-        g.research=100
+        from orion.research import TECHNOLOGIES
+        g.research=TECHNOLOGIES['ion_drives'].cost
         g.choose_research('ion_drives')
         g.ships=[Ship(1,'scout',0)]
         g.next_ship_id=2
@@ -204,7 +228,8 @@ class BalanceTests(BalanceTestCase):
         doc.move_technology('fusion_drives','construction',1,0)
         balance.activate(doc.profile)
         g=game()
-        g.research=40
+        from orion.research import TECHNOLOGIES
+        g.research=TECHNOLOGIES['fusion_drives'].cost
         self.assertIsNotNone(g.choose_research('fusion_drives'))
         store=Storage(self.root)
         path=store.save(g)

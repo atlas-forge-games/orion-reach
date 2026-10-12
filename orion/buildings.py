@@ -21,6 +21,7 @@ class BuildingSpec:
     training: int = 0
     garrison_limit: int = 0
     defence_bonus: int = 0
+    # Retained for old save/profile validation. All new orders are one per colony.
     unique: bool = False
     industry_per_worker: float = 0
     research_per_scientist: int = 0

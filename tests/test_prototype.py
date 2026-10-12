@@ -411,15 +411,14 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(earth.used_slots,0)
         self.assertEqual(self.app.game.credits,credits)
 
-    def test_colony_controls_disable_for_uncolonized_full_and_unaffordable(self):
+    def test_colony_controls_hide_unavailable_buildings_but_allow_waiting_for_resources(self):
         self.app.game=new_game(seed=2408)
         self.app.open_system(0)
         self.app.open_planet(3)
         self.app.go("colony")
         self.app.render()
         before=self.app.game.to_dict()
-        self.assertTrue(all(not b.enabled for b in self.app.buttons if b.key.startswith("build_")))
-        self.click("build_factory")
+        self.assertFalse(any(b.key.startswith("build_") for b in self.app.buttons))
         self.assertEqual(self.app.game.to_dict(),before)
         self.key(pg.K_LEFT)
         self.assertEqual(self.app.game.selected_planet,2)
@@ -427,13 +426,13 @@ class InterfaceTests(unittest.TestCase):
         earth=self.app.game.systems[0].worlds[2]
         earth.size="Tiny"
         self.app.game.credits=1000
-        for _ in range(4):
-            self.click("build_mine")
+        for item in ("factory", "mine", "trade_center", "research_lab"):
+            self.click("build_"+item)
         self.assertEqual(len([b for b in self.app.buttons if b.key.startswith("colony_slot_")]),4)
-        self.assertTrue(all(not b.enabled for b in self.app.buttons if b.key.startswith("build_")))
+        self.assertFalse(any(b.key.startswith("build_") for b in self.app.buttons))
         before=self.app.game.to_dict()
-        self.click("build_factory")
         self.assertEqual(self.app.game.to_dict(),before)
+        self.click("colony_slot_0")
         self.click("cancel_construction")
         self.app.game.credits=self.app.game.resources=0
         self.app.render()

@@ -352,13 +352,16 @@ def draw_production(app):
     planet = game.planet_at(sid, pid)
     text(surface, shorten(f"{planet.name} · Choose production", 604, 35, "title"), (40, 28), 35, INK, "title")
     empire_stockpile(app, (676, 28, 724, 38))
-    text(surface, "Add projects in order. Click a queued project to build it first. Stay here to add as many as you need.", (40, 83), 15, MUTED)
+    text(surface, "Available projects only · One of each building per planet · Click a queued project to build it first.", (40, 83), 15, MUTED)
     identifiers = list(BUILDINGS)+list(SHIP_TYPES)
     if "ascension_theory" in game.technology.completed:
         identifiers.append(ASCENSION_GATE.id)
     identifiers.extend(d.id for d in game.designs)
+    identifiers = [item for item in identifiers if game.project_error(sid, pid, item) is None]
     catalog_pages = max(1, math.ceil(len(identifiers)/10))
     app.catalog_page = min(app.catalog_page, catalog_pages-1)
+    if not identifiers:
+        text(surface, "No construction projects available. Cancel an order or choose Trade Goods below.", (40, 135), 16, MUTED)
     for i, item_id in enumerate(identifiers[app.catalog_page*10:app.catalog_page*10+10]):
         spec = game.project_spec(item_id)
         design = game.design_for(item_id)

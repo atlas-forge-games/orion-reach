@@ -33,7 +33,7 @@ class ResearchSwitchingTests(unittest.TestCase):
             self.assertEqual((game.technology.progress, game.research), (29, 0))
             self.assertEqual(game.technology.completed, [])
             self.assertEqual(game.technology.bonuses, {})
-        game.research = 11
+        game.research = TECHNOLOGIES["civil_engineering"].cost-29
         game.advance_research()
         self.assertEqual(game.technology.completed, ["civil_engineering"])
         self.assertEqual(game.technology.status("automated_factories"), "excluded")
@@ -41,15 +41,15 @@ class ResearchSwitchingTests(unittest.TestCase):
 
     def test_switch_to_more_expensive_project_then_cheaper_project_banks_overflow(self):
         game = campaign()
-        game.research = 40
+        game.research = TECHNOLOGIES["civil_engineering"].cost
         game.choose_research("civil_engineering")
         game.research = 30
         game.choose_research("ion_drives")
         game.choose_research("orbital_assembly")
-        self.assertEqual((game.technology.progress, game.technology.project_cost), (30, 100))
-        game.research = 60
+        self.assertEqual((game.technology.progress, game.technology.project_cost), (30, TECHNOLOGIES["orbital_assembly"].cost))
+        game.research = TECHNOLOGIES["research_instruments"].cost+50-30
         game.choose_research("prefabricated_structures")
-        self.assertEqual(game.technology.progress, 90)
+        self.assertEqual(game.technology.progress, TECHNOLOGIES["research_instruments"].cost+50)
         self.assertEqual(game.choose_research("research_instruments").id, "research_instruments")
         self.assertEqual((game.research, game.technology.progress, game.technology.active), (50, 0, None))
         self.assertNotIn("prefabricated_structures", game.technology.completed)
@@ -67,7 +67,7 @@ class ResearchSwitchingTests(unittest.TestCase):
             with self.assertRaises(RuleError):
                 game.choose_research(invalid)
             self.assertEqual(game.to_dict(), before)
-        game.research = 23
+        game.research = TECHNOLOGIES["civil_engineering"].cost-17
         game.advance_research()
         game.research = 15
         game.choose_research("ion_drives")
@@ -95,7 +95,7 @@ class ResearchSwitchingTests(unittest.TestCase):
         before = GameState.from_dict(game.to_dict())
         self.assertEqual(before.technology.progress, 30)
         game.choose_research("civil_engineering")
-        self.assertEqual((game.technology.progress, game.technology.project_cost), (30, 40))
+        self.assertEqual((game.technology.progress, game.technology.project_cost), (30, TECHNOLOGIES["civil_engineering"].cost))
         self.assertFalse(game.technology.legacy_active)
         self.assertEqual(game.technology.legacy_count, 1)
         self.assertEqual(game.technology.completed, ["compact_reactors"])
@@ -104,7 +104,7 @@ class ResearchSwitchingTests(unittest.TestCase):
     def test_saved_switched_project_resumes_with_identical_progress_and_completion(self):
         game = campaign()
         game.headquarters()[1].scientists = 1
-        game.research = 31
+        game.research = TECHNOLOGIES["research_networks"].cost-9
         game.choose_research("civil_engineering")
         game.choose_research("research_networks")
         restored = GameState.from_dict(game.to_dict())
@@ -116,7 +116,7 @@ class ResearchSwitchingTests(unittest.TestCase):
 
     def test_estimates_include_transferred_work_and_banked_points(self):
         game = campaign()
-        game.research = 27
+        game.research = TECHNOLOGIES["ion_drives"].cost-13
         game.choose_research("ion_drives")
         game.research = 5
         self.assertEqual(project_eta(game, TECHNOLOGIES["civil_engineering"], 4), "2 turns")
@@ -166,7 +166,7 @@ class TechnologyInformationTests(unittest.TestCase):
 
     def test_right_click_can_inspect_active_available_discovered_excluded_and_locked_choices(self):
         game = self.app.game
-        game.research = 40
+        game.research = TECHNOLOGIES["civil_engineering"].cost
         game.choose_research("civil_engineering")
         game.research = 12
         game.choose_research("orbital_assembly")

@@ -76,7 +76,8 @@ class CombatRulesTests(unittest.TestCase):
         ship = game.ships[0]
         self.assertEqual((ship.kind, ship.hull, ship.damage, ship.owner), ("frigate", 20, 5, PLAYER))
         self.assertEqual(earth.buildings, [])
-        game.research = 140
+        from orion.research import TECHNOLOGIES
+        game.research = sum(TECHNOLOGIES[t].cost for t in ("civil_engineering", "orbital_assembly"))
         game.choose_research("civil_engineering")
         game.choose_research("orbital_assembly")
         self.assertEqual(game.project_price("frigate"), 48)
@@ -334,7 +335,8 @@ class CombatSaveTests(unittest.TestCase):
 
     def test_v7_migration_keeps_research_routes_and_orders_and_adds_full_hulls(self):
         game = new_game(seed=2408)
-        game.research = 53
+        from orion.research import TECHNOLOGIES
+        game.research = TECHNOLOGIES["civil_engineering"].cost+13
         game.choose_research("civil_engineering")
         game.choose_research("ion_drives")
         game.queue_building(0, 2, "factory")

@@ -43,7 +43,8 @@ class SceneDataTests(unittest.TestCase):
         game.credits = 1000
         game.queue_ship(0, 2)
         game.queue_building(0, 2, "mine")
-        game.queue_building(0, 2, "factory")
+        from orion.model import ConstructionProject
+        earth.construction_queue.append(ConstructionProject("factory"))  # Pre-v0.52.1 order.
         before = game.to_dict()
         items = {item.asset_id: item for item in scene_buildings(game, 0, earth)}
         self.assertEqual((items["factory"].completed, items["factory"].queued, items["factory"].slot), (2, 1, 1))

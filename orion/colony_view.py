@@ -5,7 +5,6 @@ import pygame as pg
 from .buildings import BUILDINGS, BUILDING_GROUPS, MINERAL_FACTORS
 from . import economy
 from .building_art import draw_building_art
-from .production import MAX_QUEUE
 from .model import PLAYER
 from .research import TECHNOLOGIES, building_maintenance
 from .planet_art import draw_planet
@@ -141,7 +140,10 @@ def draw_colony(app):
             text(surface, "Choose a building" if planet.colonized else "Colony required", (x+12, y+65), 10, FAINT)
         app.button(f"colony_slot_{index}", "", rect, lambda i=index: app.select_colony_slot(i), "hotspot")
 
-    page = [BUILDINGS[b] for b in BUILDING_GROUPS[app.colony_build_page]]
+    page = [BUILDINGS[b] for b in BUILDING_GROUPS[app.colony_build_page]
+            if game.build_error(system.id, planet.id, b) is None]
+    if not page:
+        text(surface, "No available buildings in this category.", (769, 427), 15, MUTED)
     for i, definition in enumerate(page):
         x, y = 751, 410+i*57
         panel(surface, (x, y, 625, 53))
@@ -158,22 +160,7 @@ def draw_colony(app):
             cost_line = f"{price} RES · {definition.work_cost} work · {upkeep} CR/turn · {unlock}"
         text(surface, shorten(cost_line, 410, 10), (x+70, y+38), 10, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
-        label = "Build"
-        hint = "1 slot"
-        if not planet.colonized:
-            label, hint = "Locked", "Uncolonized"
-        elif planet.owner != PLAYER:
-            label, hint = "Rival", "Survey only"
-        elif definition.technology and not game.research_state(planet.owner).has_unlock(definition.technology):
-            label, hint = "Research", "Tech required"
-        elif planet.free_slots <= 0:
-            label, hint = "Full", "No free slots"
-        elif len(planet.construction_queue) >= MAX_QUEUE:
-            label, hint = "Full", "Queue limit"
-        elif definition.unique and reason:
-            label, hint = "Built / queued", "1 per colony"
-        elif game.resources < price:
-            label, hint = "Queue", "Await resources"
+        label, hint = ("Queue", "Await resources") if game.resources < price else ("Build", "1 per colony")
         app.button(f"build_{definition.id}", label, (x+492, y+3, 117, 28),
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
         text(surface, hint, (x+510, y+36), 9, FAINT, "mono")
