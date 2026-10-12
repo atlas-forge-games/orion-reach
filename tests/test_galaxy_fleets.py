@@ -257,6 +257,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertTrue(all(not s.in_transit for s in self.app.game.ships))
 
     def test_transit_manifest_tracks_arrival_and_requires_fresh_selection(self):
+        self.app.game.set_trade_goods(0, 2)
         duration = self.app.game.send_ships([1, 2], 1)
         self.app.game.advance_turn()
         self.click("map_fleet_1")
@@ -293,6 +294,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
                 self.assertEqual(rect.collidelist(rects[:index]), -1)
 
     def test_clicking_origin_cancels_selected_departures_and_preserves_unselected_ships(self):
+        self.app.game.set_trade_goods(0, 2)
         from orion.app import MAP
         self.click("map_fleet_1")
         self.assertFalse(self.app.fleet_popup_rect.colliderect(MAP))

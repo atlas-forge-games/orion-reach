@@ -286,7 +286,9 @@ class ColonizationInterfaceTests(unittest.TestCase):
         for _ in range(7):
             self.key(pg.K_e)
         self.click("research_back")
-        self.click("shipyard_fleets")
+        self.assertEqual(self.app.screen, "planet")
+        self.click("planet_return")
+        self.key(pg.K_f)
         self.assertEqual(len(self.app.game.ships), 1)
         target, planet = remote_world(self.app.game)
         self.click("ship_send_1")

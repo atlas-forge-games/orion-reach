@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.50.1
+# Orion Reach — Python prototype 0.51.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,39 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.51: construction queues and Trade Goods
+
+The production picker stays open while you add buildings, ships or the
+Ascension Gate. **Queue** appends each project in the order selected. Click a
+queued project to make it current without closing the picker; cancellation and
+queue paging also keep the screen open. **Return to colony** or Escape finishes
+editing. Building limits, unique buildings and resource reservations still apply.
+
+**End Turn opens the overview of each owned colony without production orders**
+before advancing. Newly finished queues also open their colony overview; battles,
+council decisions, first contact, news and research reminders are handled first.
+Choose production or leave the colony to continue reviewing the remaining worlds.
+Colonies waiting for Resources already have an order and are not considered idle.
+
+**Trade Goods** is an ongoing production option, always available at the bottom
+of the picker. Each turn it converts **30% of available industry, rounded down
+per colony**, into credits: 9 industry earns 2 CR; 10 earns 3 CR. It needs no
+building slot, Resources, maintenance or research. The preview, colony income,
+empire budget and actual turn income include these credits. Industry already
+reserved for population assembly remains reserved.
+
+Leaving an empty building/production screen or an idle planet overview selects
+Trade Goods automatically and autosaves. Trade Goods continues until another
+order is chosen and does not trigger idle reminders. Selecting it manually
+pauses existing construction while preserving work and reserved Resources.
+Adding a project or clicking a queued project resumes construction. Trade Goods
+cannot be bought. A turn spent completing normal construction does not also
+earn a full turn of Trade Goods income.
+
+Existing saves load normally; new saves use format **35** to retain the mode.
+No dependencies or new artwork are required. Extract this update over the
+current installation and restart the game.
 
 ## New in v0.50.1: missile bases on their planets
 

@@ -506,6 +506,8 @@ class VictoryScreenTests(unittest.TestCase):
 
     def test_rival_science_victory_opens_defeat_screen_and_charge_survives_reload(self):
         game = self.app.game
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(game)
         discover_theory(game, RIVAL)
         planet = colonies(game, RIVAL)[0][1]
         planet.ascension_gate, planet.gate_charge = True, 4

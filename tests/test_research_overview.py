@@ -35,6 +35,8 @@ class ResearchOverviewTests(unittest.TestCase):
         game = empty_fleet_game(seed=2408, with_ai=kwargs.pop("with_ai", False),
                                 fog_of_war=False, **kwargs)
         game.headquarters()[1].scientists = 1
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(game)
         return game
 
     def click(self, key, mouse_button=1):

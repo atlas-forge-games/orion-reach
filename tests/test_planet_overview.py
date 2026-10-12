@@ -313,6 +313,8 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         self.click("planet_change")
         self.assertEqual(self.app.screen, "production")
         self.click("production_build_factory")
+        self.assertEqual(self.app.screen, "production")
+        self.click("production_return")
         self.assertEqual(self.app.screen, "planet")
         self.click("planet_buy")
         before = self.app.game.to_dict()
@@ -345,7 +347,7 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         self.click("production_next")
         self.click("production_priority_7")
         self.assertEqual(game.planet_at(0, 2).construction_queue[1].progress, 6)
-        self.click("planet_change")
+        self.assertEqual(self.app.screen, "production")
         self.click("production_cancel_0")
         self.assertEqual(game.planet_at(0, 2).construction_queue[0].progress, 6)
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], game)
@@ -366,6 +368,7 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         before = copy.deepcopy(system.worlds)
         self.click("planet_world_7")
         self.assertEqual((self.app.screen, self.app.game.selected_planet), ("planet", 7))
+        before[2].trade_goods = True
         self.assertEqual(system.worlds, before)
         self.assertFalse(any(b.key in ("planet_change", "planet_buy") for b in self.app.buttons))
 

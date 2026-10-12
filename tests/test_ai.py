@@ -316,6 +316,7 @@ class AIInterfaceTests(unittest.TestCase):
 
     def test_add_rival_to_old_campaign_and_advance_through_real_controls(self):
         self.app.game = new_game(seed=2408, with_ai=False)
+        self.app.game.set_trade_goods(0, 2)
         self.click("open_empire")
         self.click("empire_rival")
         self.assertEqual(self.app.screen, "rival")
@@ -330,7 +331,7 @@ class AIInterfaceTests(unittest.TestCase):
         rival = self.app.game.opponent
         home = self.app.game.planet_at(rival.home_system, rival.home_planet)
         self.assertEqual(home.construction_queue[0].progress, home.workers)
-        self.assertEqual(self.app.game.credits, 128)
+        self.assertEqual(self.app.game.credits, 129)
         self.click("rival_pause")
         self.click("resume")
         self.assertEqual(self.app.screen, "rival")

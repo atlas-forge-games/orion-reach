@@ -148,7 +148,7 @@ class App:
         self.notice_until=self.time+(7 if error else 4)
         self.notice_error=error
 
-    def go(self,screen):
+    def go(self,screen, *, idle_prompt=False):
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
         if self.game and self.game.is_observer:
@@ -178,6 +178,23 @@ class App:
             screen="planet"
         if screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
             screen="planet"
+        colony_screens=("planet","colony","shipyard","production")
+        # Keep the old location: planet/system navigation can change selection
+        # before go() runs. Reading Info, pausing, or choosing research is temporary.
+        location=(self.game.campaign_id,self.game.selected_system,self.game.selected_planet) if self.game else None
+        temporary=(screen not in GAME_SCREENS or screen in
+                   ("research","designer","exploration","empire","diplomacy","fleets","fleet","rival","objectives",
+                    "contact","news","ground","combat","council","result"))
+        if self.colony_visit and not temporary:
+            leaving=(screen not in colony_screens or self.colony_visit!=location)
+            closing_builder=self.screen in ("production","colony","shipyard") and screen=="planet" and not idle_prompt
+            if leaving or closing_builder:
+                self.default_idle_production(self.colony_visit)
+            if leaving:
+                self.idle_colony_review=None
+                self.colony_visit=None
+        if screen in colony_screens:
+            self.colony_visit=location
         if screen not in ("galaxy","pause","settings"):
             self.route_ship_id=None
             self.map_order_ids=()
@@ -250,6 +267,50 @@ class App:
         if screen=="splash":
             self.splash_started=self.time
         self.prompt_idle_research()
+        if not idle_prompt:
+            self.prompt_idle_colony()
+
+    def default_idle_production(self, location):
+        if not self.game or not location or location[0]!=self.game.campaign_id or self.game.strategy_error(PLAYER):
+            return False
+        _,sid,pid=location
+        if pid is None:
+            return False
+        planet=self.game.planet_at(sid,pid)
+        if planet.owner!=PLAYER or not planet.production_idle:
+            return False
+        self.game.set_trade_goods(sid,pid)
+        self.save_game(autosave=True)
+        return True
+
+    def collect_idle_colonies(self):
+        self.idle_colonies=[(s.id,p.id) for s in self.game.systems for p in s.worlds
+                            if p.owner==PLAYER and p.production_idle] if not self.game.is_observer else []
+
+    def prompt_idle_colony(self, *, force=False):
+        safe=("galaxy","system","empire","fleets","fleet")
+        if self.idle_colony_review is None or force:
+            safe+=("planet","production","colony","shipyard")
+        if force:
+            safe+=("diplomacy","objectives","exploration","rival")
+        if (not self.game or not self.idle_colonies or self.screen not in safe
+                or self.dialog or self.ground_reports or self.game.strategy_error(PLAYER)
+                or first_contact.pending(self.game)):
+            return False
+        while self.idle_colonies:
+            sid,pid=self.idle_colonies.pop(0)
+            planet=self.game.planet_at(sid,pid)
+            if planet.owner!=PLAYER or not planet.production_idle:
+                continue
+            self.game.selected_system,self.game.selected_planet=sid,pid
+            self.planet_return="galaxy"
+            self.colony_slot=None
+            self.production_page=self.catalog_page=0
+            self.go("planet",idle_prompt=True)
+            self.idle_colony_review=(self.game.campaign_id,sid,pid)
+            self.toast(f"{planet.name} needs production · Choose a project or leave to produce Trade Goods")
+            return True
+        return False
 
     def update_splash(self):
         if (self.screen=="splash" and not self.dialog
@@ -296,6 +357,9 @@ class App:
         self.focus=f"galaxy_world_{known.worlds[self.galaxy_planet_page*PLANETS_PER_PAGE].id}"
 
     def reset_fleet_view(self):
+        self.colony_visit=None
+        self.idle_colonies=[]
+        self.idle_colony_review=None
         self.planet_return="system"
         self.galaxy_planet_page=0
         self.galaxy_page_system=None
@@ -1251,6 +1315,12 @@ class App:
         if self.game.council.pending:
             self.go("council")
             return
+        location=(self.game.campaign_id,self.game.selected_system,self.game.selected_planet)
+        if self.screen in ("planet","production","colony","shipyard") and self.idle_colony_review==location:
+            self.default_idle_production(location)
+        self.collect_idle_colonies()
+        if self.prompt_idle_colony(force=True):
+            return
         # An unissued map order is a UI selection, never an automatic next-turn order.
         self.clear_worker_selection()
         self.close_fleet_popup()
@@ -1263,6 +1333,8 @@ class App:
                 self.toast(f"Turn {self.game.turn} · {alive} empires remain · Galaxy updated · Autosaved")
             return
         self.research_prompt_pending=self.needs_research_choice()
+        self.collect_idle_colonies()
+        self.idle_colony_review=None
         if report.discoveries:
             self.research_tier=self.game.technology.next_tier(self.research_branch)
         new_news=news_rules.unread_count(self.game)>0
@@ -1286,6 +1358,7 @@ class App:
             self.focus_empire_row()
         self.show_first_contact()
         self.prompt_idle_research(allow_news=not new_news)
+        self.prompt_idle_colony(force=True)
         if self.save_game(autosave=True):
             message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP · {report.resources:+} RES"
             if self.game.combat is not None:
@@ -1651,17 +1724,20 @@ class App:
 
     def choose_production(self,item_id):
         try:
-            self.game.change_production(self.game.selected_system,self.game.selected_planet,item_id)
-            self.go("planet")
+            self.game.queue_project(self.game.selected_system,self.game.selected_planet,item_id)
+            planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+            self.production_page=max(0,(len(planet.construction_queue)-1)//6)
             if self.save_game(autosave=True):
-                self.toast(f"Now building {self.game.project_spec(item_id).name} · Previous projects remain queued")
+                message=("Trade Goods selected · Queued projects keep their progress" if planet.trade_goods else
+                         f"{self.game.project_spec(item_id).name} added to queue · Choose another project or return to colony")
+                self.toast(message)
         except RuleError as exc:
             self.toast(exc,True)
 
     def prioritize_production(self,index):
         try:
             self.game.prioritize_construction(self.game.selected_system,self.game.selected_planet,index)
-            self.go("planet")
+            self.production_page=0
             self.save_game(autosave=True)
         except RuleError as exc:
             self.toast(exc,True)

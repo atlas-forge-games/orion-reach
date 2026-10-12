@@ -62,7 +62,8 @@ def draw_shipyard(app):
     panel(surface, (674, 306, 702, 487))
     text(surface, "SHARED CONSTRUCTION QUEUE", (697, 328), 11, GOLD, "mono", 1)
     text(surface, f"{len(planet.construction_queue)} / {MAX_QUEUE} projects", (1353, 328), 11, MUTED, "mono", right=True)
-    text(surface, "Ships and buildings use the same local industry.", (698, 355), 13, MUTED)
+    text(surface, "Trade Goods active · Queue a ship to resume construction." if planet.trade_goods else
+         "Ships and buildings use the same local industry.", (698, 355), 13, MUTED)
     last = max(0, (len(planet.construction_queue)-1)//QUEUE_PER_PAGE)
     app.shipyard_page = min(max(0, app.shipyard_page), last)
     start = app.shipyard_page*QUEUE_PER_PAGE
@@ -73,7 +74,7 @@ def draw_shipyard(app):
         panel(surface, (697, y, 656, 58), (8, 18, 26))
         text(surface, f"{index+1:02}", (711, y+12), 11, GOLD, "mono")
         text(surface, definition.name, (748, y+7), 16, INK)
-        text(surface, turn_label(estimates[index]), (1178, y+9), 12, CYAN, right=True)
+        text(surface, "Paused" if planet.trade_goods else turn_label(estimates[index]), (1178, y+9), 12, CYAN, right=True)
         detail = f"{project.progress}/{definition.work_cost} work · Refund {project.refund_text}"
         if index == 0:
             detail += " · "+game.construction_status(planet)
@@ -83,7 +84,7 @@ def draw_shipyard(app):
         pg.draw.rect(surface, LINE, (749, y+51, 429, 2))
         pg.draw.rect(surface, GOLD, (749, y+51, int(429*project.progress/definition.work_cost), 2))
     if not planet.construction_queue:
-        text(surface, "No projects queued.", (699, 419), 23, INK, "title")
+        text(surface, "Trade Goods · Ongoing" if planet.trade_goods else "No projects queued.", (699, 419), 23, INK, "title")
         message = ("The rival chooses its own projects when you end the turn."
                    if planet.owner not in (None, PLAYER) else
                    "Build ships here, or choose buildings in the Colony tab.")

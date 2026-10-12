@@ -490,6 +490,9 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         q.item_id == "scout" for _, p in colonies for q in p.construction_queue)
     for index, (system, planet) in enumerate(colonies):
         if planet.construction_queue:
+            if planet.trade_goods:
+                # A captured colony may have a paused queue from its former owner.
+                game.prioritize_construction(system.id, planet.id, 0, owner=owner)
             continue
         food = game.population_report(planet)
         farm_food = PROJECTS["hydroponic_farm"].food+planet.farmers*PROJECTS["hydroponic_farm"].food_per_farmer

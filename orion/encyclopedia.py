@@ -100,6 +100,8 @@ def guides():
         )),
         Article("construction", "economy", "Construction and upkeep", "Base costs and local production", (
             ("COSTS", "Orders enter a construction queue. A project spends its Resources when construction begins; insufficient Resources delay the work. Local industry completes the project over subsequent turns. Building slots limit how much a planet can accommodate."),
+            ("QUEUE EDITING", "Queue adds each project at the end and keeps the production screen open. Click an existing queued project to make it current. Return to colony or Escape finishes editing. End Turn opens colonies without production orders; leaving an empty colony or building screen selects Trade Goods."),
+            ("TRADE GOODS", "This ongoing production mode converts 30% of available industry to credits, rounded down separately for each colony each turn. It uses no Resources or building slots. Existing queued projects keep their progress while paused. Add a project or click one in the queue to resume construction. Trade Goods colonies do not trigger idle reminders."),
             ("ONGOING COSTS", "Buildings can require credit maintenance and energy after construction. A larger economy must support both the new building and the jobs it is intended to improve."),
             ("REFERENCE VALUES", "Catalog entries show base values. Racial traits, research, mineral richness and current operating conditions can change the results shown on a colony or in a shipyard."),
         )),

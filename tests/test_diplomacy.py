@@ -351,6 +351,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
 
     def test_real_actions_accept_trade_disable_repeats_and_confirm_termination(self):
         self.start()
+        self.app.game.set_trade_goods(0, 2)
         self.key(pg.K_d)
         self.click("diplomacy_envoy")
         self.click("diplomacy_gift")
@@ -366,7 +367,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.game.to_dict(), before)
         self.click("diplomacy_end_turn")
         self.click("research_back")
-        self.assertEqual(self.app.game.credits, 73)
+        self.assertEqual(self.app.game.credits, 74)
         self.click("diplomacy_end_trade")
         self.click("dialog_ok")
         self.assertFalse(self.app.game.diplomacy.trade_active)

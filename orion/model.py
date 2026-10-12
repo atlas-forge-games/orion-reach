@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
 from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loadout_error
-from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, distance_ly, travel_turns
+from .production import ASCENSION_GATE, BASE_FUEL_RANGE, GATE_CHARGE_TURNS, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, REPAIR_PER_TURN, SHIP_SPEED, SHIP_TYPES, STARTING_COLONISTS, TRADE_GOODS, distance_ly, travel_turns
 from . import combat as combat_rules
 from . import victory as victory_rules
 from . import council as council_rules
@@ -335,6 +335,11 @@ class Planet:
     bombarded_turn: int = 0
     miners: int = 0
     disabled_buildings: list[int] = field(default_factory=list)
+    trade_goods: bool = False
+
+    @property
+    def production_idle(self):
+        return self.colonized and not self.construction_queue and not self.trade_goods
 
     @property
     def workforce(self):
@@ -383,6 +388,8 @@ class Planet:
 
     def advance_construction(self, bonuses=None, *, projects=False, fund=None):
         """Use this turn's starting industry, carrying overflow into queued projects."""
+        if self.trade_goods:
+            return []
         work = colony_yields(self, bonuses or {})[0]
         completed = []
         while work > 0 and self.construction_queue:
@@ -408,9 +415,12 @@ class Planet:
         """Industry-only forecast; the campaign forecast also models material supply."""
         if not self.colonized:
             return []
+        if self.trade_goods and additional is None:
+            return [None]*len(self.construction_queue)
         forecast = replace(self, buildings=self.buildings.copy(),
                            construction_queue=[replace(p) for p in self.construction_queue])
         if additional is not None:
+            forecast.trade_goods = False
             forecast.construction_queue.append(replace(additional) if isinstance(additional, ConstructionProject) else ConstructionProject(additional))
         turns, estimates = 0, []
         while forecast.construction_queue:
@@ -424,7 +434,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=31):
+    def from_dict(cls, data, expected_id, *, version=35):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -441,6 +451,10 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 35:
+            record["trade_goods"] = False
+        if type(record["trade_goods"]) is not bool or (record["trade_goods"] and not data["colonized"]):
+            raise ValueError("Invalid Trade Goods production mode")
         for key, maximum in (("shield_points", 200), ("battery_hull", 40), ("bombarded_turn", 1_000_000)):
             if version < 25:
                 record[key] = 0
@@ -712,6 +726,8 @@ class GameState:
         return None
 
     def project_spec(self, identifier, owner=PLAYER):
+        if identifier == TRADE_GOODS.id:
+            return TRADE_GOODS
         return self.production_design(identifier, owner) or PROJECTS[identifier]
 
     def ship_attack(self, ship):
@@ -786,6 +802,7 @@ class GameState:
         if error:
             raise RuleError(error)
         self.planet_at(system_id, planet_id).construction_queue.append(ConstructionProject(ASCENSION_GATE.id))
+        self.planet_at(system_id, planet_id).trade_goods = False
 
     def fleet_at(self, system_id, owner=PLAYER):
         return [s for s in self.ships if s.owner == owner and not s.in_transit and s.system_id == system_id]
@@ -977,6 +994,8 @@ class GameState:
         return True
 
     def construction_status(self, planet):
+        if planet.trade_goods:
+            return "Trade Goods · ongoing"+(" · construction paused" if planet.construction_queue else "")
         if not planet.construction_queue:
             return "No project queued"
         missing = planet.construction_queue[0].needs_resources-self.resources_for(planet.owner)
@@ -996,6 +1015,8 @@ class GameState:
         exploration_rules.refresh(self)
 
     def project_price(self, item_id, owner=PLAYER):
+        if item_id == TRADE_GOODS.id:
+            return 0
         if item_id == ASCENSION_GATE.id:
             return ASCENSION_GATE.resource_cost
         key = "building_discount" if item_id in BUILDINGS else "ship_discount"
@@ -1191,10 +1212,17 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         price = self.project_price(building_id, owner)
         planet.construction_queue.append(ConstructionProject(building_id, resource_cost=price))
+        planet.trade_goods = False
 
     def project_error(self, system_id, planet_id, item_id, *, owner=PLAYER):
         if not isinstance(item_id, str):
             return "Unknown construction project."
+        if item_id == TRADE_GOODS.id:
+            if self.strategy_error(owner):
+                return self.strategy_error(owner)
+            if self.planet_at(system_id, planet_id).owner != owner:
+                return "You can only set production on your own colony."
+            return None
         if item_id in BUILDINGS:
             return self.build_error(system_id, planet_id, item_id, owner=owner)
         if item_id in SHIP_TYPES or self.design_for(item_id):
@@ -1203,17 +1231,32 @@ class GameState:
             return self.gate_error(system_id, planet_id, owner=owner)
         return "Unknown construction project."
 
-    def change_production(self, system_id, planet_id, item_id, *, owner=PLAYER):
-        """Start a new first project, retaining the previous queue and its paid work."""
+    def set_trade_goods(self, system_id, planet_id, *, owner=PLAYER):
+        """Produce credits continuously, preserving any paused construction."""
+        error = self.project_error(system_id, planet_id, TRADE_GOODS.id, owner=owner)
+        if error:
+            raise RuleError(error)
+        self.planet_at(system_id, planet_id).trade_goods = True
+
+    def queue_project(self, system_id, planet_id, item_id, *, owner=PLAYER):
+        """Append a finite order, or select the ongoing Trade Goods mode."""
         error = self.project_error(system_id, planet_id, item_id, owner=owner)
         if error:
             raise RuleError(error)
-        if item_id in BUILDINGS:
+        if item_id == TRADE_GOODS.id:
+            self.set_trade_goods(system_id, planet_id, owner=owner)
+        elif item_id in BUILDINGS:
             self.queue_building(system_id, planet_id, item_id, owner=owner)
         elif item_id in SHIP_TYPES or self.design_for(item_id):
             self.queue_ship(system_id, planet_id, item_id, owner=owner)
         else:
             self.queue_gate(system_id, planet_id, owner=owner)
+
+    def change_production(self, system_id, planet_id, item_id, *, owner=PLAYER):
+        """Start a new first project, retaining the previous queue and its paid work."""
+        self.queue_project(system_id, planet_id, item_id, owner=owner)
+        if item_id == TRADE_GOODS.id:
+            return
         queue = self.planet_at(system_id, planet_id).construction_queue
         queue.insert(0, queue.pop())
 
@@ -1224,9 +1267,11 @@ class GameState:
         if not _integer(index, 0, len(planet.construction_queue)-1):
             raise RuleError("Choose an existing queued project.")
         planet.construction_queue.insert(0, planet.construction_queue.pop(index))
+        planet.trade_goods = False
 
     def buy_construction_cost(self, system_id, planet_id):
-        queue = self.planet_at(system_id, planet_id).construction_queue
+        planet = self.planet_at(system_id, planet_id)
+        queue = [] if planet.trade_goods else planet.construction_queue
         return 2*queue[0].remaining_work if queue else 0
 
     def buy_construction_error(self, system_id, planet_id, *, owner=PLAYER):
@@ -1235,6 +1280,8 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if planet.owner != owner:
             return "You can only buy production on your own colony."
+        if planet.trade_goods:
+            return "Trade Goods are ongoing production and cannot be bought."
         if not planet.construction_queue:
             return "Choose a construction project first."
         if planet.construction_queue[0].needs_resources > self.resources_for(owner):
@@ -1293,6 +1340,7 @@ class GameState:
         price = self.project_price(kind, owner)
         design = self.production_design(kind, owner)
         planet.construction_queue.append(ConstructionProject(design.id if design else kind, resource_cost=price, design=design))
+        planet.trade_goods = False
 
     def ship_at(self, ship_id, *, owner=PLAYER):
         ship = next((s for s in self.ships if type(ship_id) is int and s.id == ship_id), None)
@@ -1529,7 +1577,7 @@ class GameState:
                             location = exploration_rules.gate_location(self, system.id, planet)
                             alerts.append(f"Rival gate completed at {location}: five charging turns remain")
         for planet, _ in population_start:
-            if planet.owner == PLAYER and planet.construction_queue and planet.construction_queue[0].needs_resources > self.resources:
+            if planet.owner == PLAYER and not planet.trade_goods and planet.construction_queue and planet.construction_queue[0].needs_resources > self.resources:
                 alerts.append(f"{planet.name}: {self.construction_status(planet)}")
         self.turn += 1
         self.year += 1
@@ -1581,7 +1629,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=34):
+    def from_dict(cls, data, *, version=35):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

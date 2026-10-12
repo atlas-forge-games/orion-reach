@@ -128,9 +128,9 @@ def draw_colony(app):
             queue_index, project = building_projects[index-len(planet.buildings)]
             definition = BUILDINGS[project.item_id]
             draw_building_art(surface, project.item_id, (x+6, y+5, 44, 34), alpha=130)
-            label = "BUILDING" if queue_index==0 else f"QUEUED {queue_index+1}"
+            label = "PAUSED" if planet.trade_goods else "BUILDING" if queue_index==0 else f"QUEUED {queue_index+1}"
             text(surface, label, (x+52, y+11), 8, GOLD, "mono")
-            text(surface, turn_label(estimates[queue_index]), (x+52, y+27), 10, MUTED)
+            text(surface, "Trade Goods active" if planet.trade_goods else turn_label(estimates[queue_index]), (x+52, y+27), 10, MUTED)
             text(surface, definition.name, (x+12, y+46), 13, INK)
             pg.draw.rect(surface, LINE, (x+12, y+72, 134, 3))
             pg.draw.rect(surface, GOLD, (x+12, y+72, int(134*project.progress/definition.work_cost), 3))

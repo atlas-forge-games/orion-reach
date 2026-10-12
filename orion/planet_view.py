@@ -12,7 +12,7 @@ from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .planet_art import draw_planet
 from .population import BASE_FOOD, WORKER_ROLES, farmer_output
-from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES
+from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS, trade_goods_credits
 from .research import building_maintenance
 from .designs import HULLS
 from . import raiding, defenses, economy
@@ -139,7 +139,7 @@ def workforce_panel(app, game, planet, live):
                ("food", "FOOD / USED", f"{food.produced} / {food.consumed}" if live else "—",
                 (f"{food.balance:+} surplus" if needs_food else "not required") if live else "last survey", RED if live and food.balance < 0 else GREEN),
                ("industry", "INDUSTRY", str(industry) if live else "—",
-                f"{food.assembly_industry} to assembly" if food and food.assembly_industry else "construction", CYAN),
+                f"{food.assembly_industry} to assembly" if food and food.assembly_industry else "Trade Goods" if planet.trade_goods else "construction", CYAN),
                ("research", "RESEARCH", f"+{research}" if live else "—", "research points", SCIENCE)]
     energy = game.planet_energy(planet) if live else None
     outputs += [("resources", "RESOURCES", f"{game.planet_resources(planet):+}" if live else "—",
@@ -214,7 +214,16 @@ def construction_panel(app, game, system, planet, live):
     text(surface, "CURRENT PROJECT", (1090, 66), 10, GOLD, "mono", 1)
     owned = live and planet.owner == PLAYER
     queue = planet.construction_queue
-    if queue and (owned or game.is_observer or not live or planet.owner not in game.opponents):
+    visible = owned or game.is_observer or not live or planet.owner not in game.opponents
+    if planet.trade_goods and visible:
+        text(surface, "Trade Goods", (1090, 91), 22, INK)
+        project_art(surface, "trade_center", (1095, 122, 93, 85))
+        rate = trade_goods_credits(game.planet_yields(planet)[0]) if live else None
+        text(surface, f"+{rate} CR / turn" if live else "Last observed", (1200, 134), 19, GOLD)
+        text(surface, "Ongoing production", (1200, 171), 12, CYAN)
+        text(surface, "30% of industry, rounded down", (1090, 213), 12, MUTED)
+        text(surface, f"{len(queue)} projects paused · Progress kept" if queue else "No resource cost or building slot", (1090, 236), 11, MUTED)
+    elif queue and visible:
         project = queue[0]
         spec = project.spec
         text(surface, shorten(spec.name, 307, 20), (1090, 91), 20, INK)
@@ -244,7 +253,7 @@ def construction_panel(app, game, system, planet, live):
     elif owned:
         cost = game.buy_construction_cost(system.id, planet.id)
         app.button("planet_change", "Change", (1090, 257, 146, 29), app.open_production)
-        app.button("planet_buy", f"Buy · {cost} CR" if queue else "Buy", (1246, 257, 154, 29), app.buy_production_request,
+        app.button("planet_buy", f"Buy · {cost} CR" if queue and not planet.trade_goods else "Buy", (1246, 257, 154, 29), app.buy_production_request,
                    enabled=game.buy_construction_error(system.id, planet.id) is None)
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
@@ -316,7 +325,7 @@ def draw_production(app):
     planet = game.planet_at(sid, pid)
     text(surface, shorten(f"{planet.name} · Choose production", 1030, 35, "title"), (40, 28), 35, INK, "title")
     text(surface, f"{game.resources:,} RES · {game.credits:,} CR", (1400, 45), 15, GOLD, "mono", right=True)
-    text(surface, "Start a new first project, or prioritize one in the queue. Paused projects keep their progress.", (40, 83), 15, MUTED)
+    text(surface, "Add projects in order. Click a queued project to build it first. Stay here to add as many as you need.", (40, 83), 15, MUTED)
     identifiers = list(BUILDINGS)+list(SHIP_TYPES)
     if "ascension_theory" in game.technology.completed:
         identifiers.append(ASCENSION_GATE.id)
@@ -348,7 +357,7 @@ def draw_production(app):
             text(surface, shorten(" · ".join(part for part in details if part), 325, 10), (x+85, y+78), 10, CYAN)
         else:
             text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
-        app.button("production_build_"+item_id, "Start", (x+312, y+85, 100, 26),
+        app.button("production_build_"+item_id, "Queue", (x+312, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen), enabled=reason is None)
         text(surface, shorten(reason or "Resources reserved when work starts", 294, 10), (x+13, y+94), 10, MUTED)
     app.button("catalog_previous", "←", (40, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page-1), enabled=app.catalog_page > 0)
@@ -358,6 +367,8 @@ def draw_production(app):
     panel(surface, (944, 125, 456, 660))
     queue = planet.construction_queue
     text(surface, f"CONSTRUCTION QUEUE · {len(queue)}/20", (960, 143), 12, GOLD, "mono")
+    if planet.trade_goods and queue:
+        text(surface, "TRADE GOODS ACTIVE · Click a project to resume", (960, 164), 10, CYAN)
     pages = max(1, math.ceil(len(queue)/6))
     app.production_page = min(app.production_page, pages-1)
     estimates = game.queue_estimates(planet)
@@ -369,14 +380,23 @@ def draw_production(app):
                             lambda index=i: app.prioritize_production(index), "hotspot")
         panel(surface, button.rect, (18, 32, 41), GOLD if app.is_active(button) else LINE)
         text(surface, shorten(f"{i+1}. {spec.name}", 340, 15), (974, y+9), 15, INK)
-        text(surface, f"{project.progress}/{spec.work_cost} work · {turn_label(estimates[i])}", (974, y+33), 11, CYAN)
-        text(surface, game.construction_status(planet) if i == 0 else "Click to make current", (974, y+52), 10, MUTED)
+        eta = "Paused" if planet.trade_goods else turn_label(estimates[i])
+        text(surface, f"{project.progress}/{spec.work_cost} work · {eta}", (974, y+33), 11, CYAN)
+        text(surface, "Click to resume construction" if planet.trade_goods else game.construction_status(planet) if i == 0 else "Click to make current", (974, y+52), 10, MUTED)
         app.button(f"production_cancel_{i}", "×", (1338, y, 46, 34), lambda index=i: app.cancel_construction(index))
         text(surface, project.refund_text, (1362, y+47), 10, MUTED, right=True)
     if not queue:
-        paragraph(surface, "Nothing queued. Choose a building or ship to begin production.", (971, 203), 393, 18, MUTED, 30)
+        message = (f"Trade Goods · +{trade_goods_credits(game.planet_yields(planet)[0])} CR each turn. Add a project to resume construction."
+                   if planet.trade_goods else "Nothing queued. Add buildings or ships here. Leaving an empty queue selects Trade Goods automatically.")
+        paragraph(surface, message, (971, 203), 393, 18, MUTED, 30)
     app.button("production_previous", "←", (960, 690, 68, 33), lambda: app.change_production_page(-1), enabled=app.production_page > 0)
     app.button("production_next", "→", (1316, 690, 68, 33), lambda: app.change_production_page(1), enabled=app.production_page < pages-1)
     text(surface, f"Page {app.production_page+1} / {pages}", (1116, 700), 12, MUTED)
     text(surface, "× refunds unused construction payments.", (960, 750), 12, MUTED)
+    panel(surface, (40, 836, 876, 54))
+    rate = trade_goods_credits(game.planet_yields(planet)[0])
+    text(surface, f"Trade Goods · +{rate} CR / turn", (56, 844), 17, GOLD)
+    text(surface, "30% of industry, rounded down · Ongoing · Queued projects keep their progress", (56, 871), 11, MUTED)
+    app.button("production_build_trade_goods", "Active" if planet.trade_goods else "Trade Goods", (718, 844, 182, 38),
+               lambda: app.choose_production(TRADE_GOODS.id), enabled=not planet.trade_goods and game.project_error(sid, pid, TRADE_GOODS.id) is None)
     app.button("production_return", "Return to colony", (1122, 833, 278, 48), lambda: app.go("planet"), "primary")

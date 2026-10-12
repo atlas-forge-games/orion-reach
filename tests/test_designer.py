@@ -281,7 +281,9 @@ class DesignerUITests(unittest.TestCase):
         while "production_build_design_1" not in {b.key for b in self.app.buttons}:
             self.click("catalog_next")
         self.click("production_build_design_1")
-        self.assertEqual(game.planet_at(0, 2).construction_queue[0].design, game.designs[0])
+        self.assertEqual(game.planet_at(0, 2).construction_queue[0].design, original)
+        self.assertEqual(game.planet_at(0, 2).construction_queue[-1].design, game.designs[0])
+        self.assertEqual(self.app.screen, "production")
         for screen in ("planet", "production", "shipyard", "empire", "designer"):
             self.app.go(screen)
             self.app.render()

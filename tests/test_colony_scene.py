@@ -83,6 +83,7 @@ class SceneInterfaceTests(unittest.TestCase):
         self.assertEqual(self.surface_keys(), {"surface_headquarters", "surface_shipyard"})
         self.click("planet_change")
         self.click("production_build_factory")
+        self.click("production_return")
         self.click("surface_factory")
         self.assertEqual(self.app.screen, "colony")
         self.assertEqual(self.app.colony_slot, 0)
@@ -91,6 +92,7 @@ class SceneInterfaceTests(unittest.TestCase):
         self.assertNotIn("surface_factory", self.surface_keys())
         self.click("planet_change")
         self.click("production_build_factory")
+        self.click("production_return")
         for _ in range(4):
             self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_e, mod=0))
             self.app.render()

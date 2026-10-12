@@ -365,6 +365,8 @@ class ContactInterfaceTests(unittest.TestCase):
     def test_pending_transmission_does_not_consume_news_and_reload_returns_to_it(self):
         from orion import news
         self.app.game = game = campaign(fog_of_war=True, with_ai=False)
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(game)
         game.tomb_worlds.append(tomb_worlds.TombWorld(0, 3))
         self.app.go("galaxy")
         with patch("orion.tomb_worlds.awakening_due", return_value=True):

@@ -1,0 +1,23 @@
+Orion Reach 0.51.0 - construction queues and Trade Goods
+
+Update for the current 0.50.1 installation (base commit 2df9fad).
+Close the game. Extract this ZIP into the folder containing main.py, allowing
+its matching files to be replaced. Keep the existing assets and other files.
+Restart normally with python main.py. This is an update, not a full installation.
+
+Quick check:
+1. Open a colony, choose Change, and queue Factory, Mining complex and Research
+   lab. All three should appear in order while the picker stays open.
+2. Click any queued project to make it current. The picker remains open.
+3. Choose Trade Goods. It keeps producing floor(0.30 * available industry)
+   credits each turn. Existing construction is paused and keeps its progress.
+4. Add a project or click a queued project to resume construction.
+5. Cancel every project and leave with Return to colony or Escape. Trade Goods
+   should become the current production automatically.
+6. An owned colony without production opens when ending a turn; finishing the
+   last queued project also opens its overview. Multiple idle colonies are
+   reviewed in sequence. Leave an empty colony to choose Trade Goods.
+
+Older saves load normally. New saves use format 35.
+Run the automated checks from the game folder:
+python -m unittest discover -s tests -q

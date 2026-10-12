@@ -364,6 +364,8 @@ class CouncilScreenTests(unittest.TestCase):
 
     def test_end_turn_opens_council_before_idle_research_and_survives_reload(self):
         self.app.game = scenario()
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(self.app.game)
         self.app.go('galaxy')
         with patch('orion.ai.run_ai', return_value=[]):
             self.app.advance_turn()

@@ -40,9 +40,9 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
     rows = [(system, planet) for system in game.systems
             for planet in system.worlds if planet.colonized and planet.owner == owner]
     if filter_by == "building":
-        rows = [(s, p) for s, p in rows if p.construction_queue]
+        rows = [(s, p) for s, p in rows if p.construction_queue and not p.trade_goods]
     elif filter_by == "idle":
-        rows = [(s, p) for s, p in rows if not p.construction_queue]
+        rows = [(s, p) for s, p in rows if p.production_idle]
     elif filter_by == "full":
         rows = [(s, p) for s, p in rows if p.free_slots == 0]
     elif filter_by == "power":
@@ -78,7 +78,7 @@ def summarize_empire(game, *, owner=PLAYER):
         used_slots=sum(p.used_slots for p in colonies),
         capacity=sum(p.building_capacity for p in colonies),
         projects=sum(len(p.construction_queue) for p in colonies),
-        idle=sum(not p.construction_queue for p in colonies),
+        idle=sum(p.production_idle for p in colonies),
         agreement_income=trade,
         agreement_research=research,
         food_produced=sum(r.produced for r in food),

@@ -332,6 +332,8 @@ class GroundInterfaceTests(unittest.TestCase):
 
     def test_ai_defeat_report_precedes_campaign_result_and_reload_is_committed(self):
         game = self.app.game
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(game)
         game.diplomacy.relations = -100
         add_transports(game, 0, 2, RIVAL)
         self.app.go("galaxy")
@@ -375,6 +377,8 @@ class GroundInterfaceTests(unittest.TestCase):
         for owner, sid in ((RIVAL, 0), ("rival_2", system.id)):
             game.diplomacy_between(PLAYER, owner).relations = -100
             add_transports(game, sid, 2, owner)
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(game)
         self.app.go("galaxy")
         self.key(pg.K_e)
         self.assertEqual(len(self.app.ground_reports), 2)

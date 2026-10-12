@@ -47,6 +47,8 @@ class SpecialProject:
 
 
 ASCENSION_GATE = SpecialProject("ascension_gate", "Ascension Gate", 500, 300, maintenance=5)
+# An ongoing production mode, not a finite construction project or building.
+TRADE_GOODS = SpecialProject("trade_goods", "Trade Goods", 0, 0)
 PROJECTS = {**BUILDINGS, **SHIP_TYPES, ASCENSION_GATE.id: ASCENSION_GATE}
 MAX_QUEUE = 20
 SHIP_SPEED = .02  # 2 light-years per turn; travel time depends on the generated distance.
@@ -56,6 +58,11 @@ STARTING_COLONISTS = 1  # Billions, included in the ship cost in this prototype.
 REPAIR_PER_TURN = 4
 TROOP_STRENGTH = 8
 GATE_CHARGE_TURNS = 5
+
+
+def trade_goods_credits(industry):
+    """Convert 30% of available industry, flooring once per colony per turn."""
+    return max(0, industry)*3//10
 
 
 def distance_ly(origin, destination):

@@ -408,5 +408,9 @@ def colony_maintenance(planet, bonuses=None):
 
 
 def colony_yields(planet, bonuses):
+    from .production import trade_goods_credits
     industry, income, research = gross_colony_yields(planet, bonuses)
-    return industry-assembly_work(planet, industry, bonuses), income-colony_maintenance(planet, bonuses), research
+    industry -= assembly_work(planet, industry, bonuses)
+    if planet.colonized and planet.trade_goods:
+        income += trade_goods_credits(industry)
+    return industry, income-colony_maintenance(planet, bonuses), research

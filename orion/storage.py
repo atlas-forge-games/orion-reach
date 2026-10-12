@@ -12,7 +12,7 @@ import tempfile
 from .model import GameState, SaveError
 from .empires import DEFAULT_PALETTE, PLAYER_PALETTES
 
-SAVE_VERSION = 34
+SAVE_VERSION = 35
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE,
                     "galaxy_background": True}

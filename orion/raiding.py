@@ -58,6 +58,7 @@ def abandon(planet):
     planet.buildings.clear()
     planet.disabled_buildings.clear()
     planet.construction_queue.clear()
+    planet.trade_goods = False
 
 
 def raid(game, system_id, planet_id, owner="player"):

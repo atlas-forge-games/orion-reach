@@ -32,6 +32,16 @@ def fixed_start_game(*args, **kwargs):
 new_game = fixed_start_game
 
 
+def set_idle_trade_goods(game):
+    """Choose ongoing production in UI scenarios testing other turn reminders."""
+    if not game.strategy_error("player"):
+        for system in game.systems:
+            for planet in system.worlds:
+                if planet.owner == "player" and planet.production_idle:
+                    game.set_trade_goods(system.id, planet.id)
+    return game
+
+
 def empty_fleet_game(*args, **kwargs):
     # Legacy and isolated economic scenarios predate system guardians.
     kwargs.setdefault("with_guardians", False)

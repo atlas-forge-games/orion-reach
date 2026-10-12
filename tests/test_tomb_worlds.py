@@ -403,6 +403,8 @@ class NewsInterfaceTests(unittest.TestCase):
         self.app.render()
 
     def advance(self):
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(self.app.game)
         with patch("orion.tomb_worlds.awakening_due", return_value=True), patch("orion.ai.run_ai", return_value=[]):
             self.key(pg.K_e)
 

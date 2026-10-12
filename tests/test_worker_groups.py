@@ -95,7 +95,7 @@ class GroupTransferInterfaceTests(unittest.TestCase):
         self.assertEqual((self.planet.scientists, self.planet.workers), (0, 8))
         self.assertEqual(sum(getattr(self.planet, r) for r in WORKER_ROLES), 12)
 
-    def test_same_row_escape_and_planet_switch_cancel_without_moving_or_saving(self):
+    def test_same_row_escape_and_planet_switch_cancel_without_moving_workers(self):
         before = self.app.game.to_dict()
         with patch.object(self.app, "save_game", wraps=self.app.save_game) as save:
             self.click_at(491, 224)
@@ -109,7 +109,8 @@ class GroupTransferInterfaceTests(unittest.TestCase):
             self.click_at(491, 224)
             self.app.open_planet(3)
             self.assertEqual((self.app.worker_source, self.app.worker_count), (None, 0))
-            save.assert_not_called()
+            save.assert_called_once_with(autosave=True)
+            self.assertTrue(self.planet.trade_goods)
         self.assertEqual((self.planet.farmers, self.planet.scientists), (2, 7))
 
     def test_keyboard_selects_and_adjusts_group_without_switching_planets(self):
@@ -148,6 +149,7 @@ class GroupTransferInterfaceTests(unittest.TestCase):
         self.assertEqual(loaded, self.app.game)
 
     def test_end_turn_clears_pending_group_before_population_can_change(self):
+        self.app.game.set_trade_goods(0, 2)
         self.click_at(491, 224)
         self.key(pg.K_e)
         self.assertEqual((self.app.worker_source, self.app.worker_count), (None, 0))

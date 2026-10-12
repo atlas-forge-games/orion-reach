@@ -190,6 +190,8 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(len(self.app.game.systems),24)
         self.assertEqual(self.app.game.seed,2026)
         self.assertEqual(self.app.game.empire_name,"Kies Federation")
+        from scenarios import set_idle_trade_goods
+        set_idle_trade_goods(self.app.game)
         self.key(pg.K_RIGHT)
         self.key(pg.K_e)
         self.assertEqual(self.app.game.turn,2)
@@ -396,7 +398,8 @@ class InterfaceTests(unittest.TestCase):
         self.click("research_back")
         self.assertEqual(earth.buildings,["factory"])
         self.assertEqual(earth.industry_per_turn,16)
-        self.click("colony_slot_0")
+        self.assertEqual(self.app.screen,"planet")
+        self.click("surface_factory")
         self.click("demolish_building")
         self.assertIsNotNone(self.app.dialog)
         self.click("dialog_cancel")

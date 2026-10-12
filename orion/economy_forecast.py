@@ -8,6 +8,8 @@ def queue_estimates(game, planet, additional=None):
     from .model import ConstructionProject
     if not planet.colonized:
         return []
+    if planet.trade_goods and additional is None:
+        return [None]*len(planet.construction_queue)
     colonies = [(s.id, p) for s in game.systems for p in s.worlds if p.owner == planet.owner]
     target = next((i for i, (_, p) in enumerate(colonies)
                    if p is planet or (p.id == planet.id and p.name == planet.name)), None)
@@ -27,6 +29,7 @@ def queue_estimates(game, planet, additional=None):
                             construction_queue=[replace(q) for q in p.construction_queue])) for sid, p in colonies]
     focus = worlds[target][1]
     if additional is not None:
+        focus.trade_goods = False
         if isinstance(additional, ConstructionProject):
             project = replace(additional)
         else:
