@@ -87,6 +87,27 @@ def worker_icon(surface, x, y, color):
     pg.draw.line(surface, color, (x, y+15), (x+4, y+22), 2)
 
 
+def empire_stockpile(app, rect):
+    """Keep the player's shared reserves distinct from this colony's yields."""
+    game, surface = app.game, app.canvas
+    rect = pg.Rect(rect)
+    panel(surface, rect)
+    text(surface, "EMPIRE", (rect.x+10, rect.y+6), 9, MUTED, "mono")
+    text(surface, "STOCKPILE", (rect.x+10, rect.y+21), 9, MUTED, "mono")
+    income, research = game.empire_rates
+    items = (("credits", "Credits", game.credits, income, GOLD),
+             ("resources", "Resources", game.resources, game.resource_rate(), ROLE_COLORS["miners"]),
+             ("research", "Research", game.research, research, SCIENCE))
+    width = (rect.w-100)//len(items)
+    for index, (kind, label, amount, rate, color) in enumerate(items):
+        x = rect.x+100+index*width
+        pg.draw.line(surface, LINE, (x, rect.y+6), (x, rect.bottom-6))
+        resource_icon(surface, kind, (x+15, rect.y+19), color, .45)
+        text(surface, f"{label} {amount:,}", (x+30, rect.y+3), 12, RED if amount < 0 else color)
+        text(surface, f"{rate:+,} / turn"+(" net" if kind != "research" else ""),
+             (x+30, rect.y+22), 9, RED if rate < 0 else MUTED)
+
+
 def project_art(surface, item_id, rect, design=None):
     rect = pg.Rect(rect)
     if item_id in BUILDINGS:
@@ -274,10 +295,15 @@ def draw_planet_overview(app):
     system = game.known_system(game.selected_system)
     planet = system.worlds[game.selected_planet]
     live = game.system_visible(system.id)
-    text(surface, shorten(f"Colony of {planet.name}" if planet.colonized else planet.name, 780, 28, "title"),
+    text(surface, shorten(f"Colony of {planet.name}" if planet.colonized else planet.name, 780 if game.is_observer else 460, 28, "title"),
          (24, 12), 28, INK, "title")
-    heading = f"TURN {game.turn} · YEAR {game.year}     "+("OBSERVER · READ ONLY" if game.is_observer else f"{game.resources:,} RES   ·   {game.credits:,} CR")
-    text(surface, heading, (1416, 22), 12, GOLD, "mono", right=True)
+    if game.is_observer:
+        text(surface, f"TURN {game.turn} · YEAR {game.year}     OBSERVER · READ ONLY",
+             (1416, 22), 12, GOLD, "mono", right=True)
+    else:
+        text(surface, f"TURN {game.turn}", (654, 12), 10, MUTED, "mono", right=True)
+        text(surface, f"YEAR {game.year}", (654, 29), 10, MUTED, "mono", right=True)
+        empire_stockpile(app, (676, 8, 740, 38))
     system_panel(app, game, system, planet, live)
     workforce_panel(app, game, planet, live)
     construction_panel(app, game, system, planet, live)
@@ -323,8 +349,8 @@ def draw_production(app):
     game, surface = app.game, app.canvas
     sid, pid = game.selected_system, game.selected_planet
     planet = game.planet_at(sid, pid)
-    text(surface, shorten(f"{planet.name} · Choose production", 1030, 35, "title"), (40, 28), 35, INK, "title")
-    text(surface, f"{game.resources:,} RES · {game.credits:,} CR", (1400, 45), 15, GOLD, "mono", right=True)
+    text(surface, shorten(f"{planet.name} · Choose production", 604, 35, "title"), (40, 28), 35, INK, "title")
+    empire_stockpile(app, (676, 28, 724, 38))
     text(surface, "Add projects in order. Click a queued project to build it first. Stay here to add as many as you need.", (40, 83), 15, MUTED)
     identifiers = list(BUILDINGS)+list(SHIP_TYPES)
     if "ascension_theory" in game.technology.completed:

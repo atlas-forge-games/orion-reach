@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.51.0
+# Orion Reach — Python prototype 0.51.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,19 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.51.1: compact empire stockpile
+
+The planet overview and production picker now show a small **Empire stockpile**
+strip at the top: total Credits, Resources and stored Research, each with its
+empire-wide change per turn. Credit income includes maintenance and Trade Goods;
+Resources show net mining after power-plant fuel. Debt and negative rates are
+highlighted. The values update immediately as you change production or workers,
+buy projects or cancel construction.
+
+The production cards below remain local to the selected colony, including food,
+industry and energy. The Observer keeps its read-only header. This is a display
+update; game rules and save format are unchanged.
 
 ## New in v0.51: construction queues and Trade Goods
 

@@ -1,0 +1,28 @@
+Orion Reach v0.51.1 - Empire stockpile display
+
+Requires the v0.51.0 construction queue and Trade Goods update.
+
+INSTALL
+Extract this ZIP into your existing Orion Reach folder (the folder containing
+main.py). Allow the included files to be replaced, then restart the game.
+Keep all other files. Existing saves work unchanged.
+
+CHANGES
+- Compact Empire stockpile strip at the top of the planet overview and
+  construction screen.
+- Shows total Credits, Resources and stored Research plus empire-wide rates.
+- Credit income includes upkeep and Trade Goods. Resource income is net of fuel.
+- Values refresh immediately after orders, purchases and worker changes.
+- Debt and negative income are highlighted.
+- Keeps colony production and the Observer header separate.
+
+VERIFIED
+35 existing planet overview and construction queue checks passed.
+Both screens rendered and inspected; large stockpile totals fit the strip.
+No game rules, save format, artwork or dependencies changed.
+
+FILES
+README.md
+orion/__init__.py
+orion/planet_view.py
+UPDATE_v0511.txt
