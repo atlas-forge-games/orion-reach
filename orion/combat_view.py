@@ -214,7 +214,7 @@ def draw_combat(app):
         text(surface, caption, (x, 503), 12, MUTED)
         can_fire = bool(player_turn and ship and target and action_error(game, PLAYER, ship.id, target.id) is None)
         label = "Fire at target" if can_fire else "Weapons recharging" if ship and ship.damage and not ship.ready_damage else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
-        text(surface, "CHANCE · base + aim − range − evade · cap 95%" if battle.accuracy else "LEGACY BATTLE · Guaranteed hits", (x, 525), 9, GOLD)
+        text(surface, "HIT CHANCE · aim − range − evade − tracking" if battle.accuracy else "LEGACY BATTLE · Guaranteed hits", (x, 525), 9, GOLD)
         if ship and target and in_range(ship, target):
             groups = list(Counter(w for w, _ in ship.volley(target)).items())
             limit = 3 if ship.drone_bays else 4
@@ -224,7 +224,7 @@ def draw_combat(app):
                     break
                 chance = accuracy_breakdown(game, ship, target, weapon)
                 shot_label = (f"{count*BEAMS[weapon].shots}× {BEAMS[weapon].name}: {chance['chance']}%  "
-                         f"({chance['base']}+{chance['targeting']}−{chance['range']}−{chance['evasion']})")
+                         f"(tracking −{chance['tracking']})")
                 text(surface, shot_label, (x, 542+index*14), 10, CYAN)
         else:
             text(surface, "Choose an enemy within weapon range.", (x, 546), 11, MUTED)

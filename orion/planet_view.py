@@ -346,6 +346,54 @@ def draw_planet_overview(app):
                (1210, 851, 206, 42), app.close_planet, "primary")
 
 
+def production_catalog(app, identifiers, *, x, width, page_field, key, title):
+    """An independently paged column, keeping buildings and ships in fixed places."""
+    game, surface = app.game, app.canvas
+    planet = game.planet_at(game.selected_system, game.selected_planet)
+    identifiers = [item for item in identifiers
+                   if game.project_error(game.selected_system, game.selected_planet, item) is None]
+    pages = max(1, math.ceil(len(identifiers)/5))
+    page = max(0, min(getattr(app, page_field), pages-1))
+    setattr(app, page_field, page)
+    text(surface, title, (x, 119), 12, GOLD, "mono", 1)
+    if not identifiers:
+        panel(surface, (x, 146, width, 631))
+        paragraph(surface, "No available "+title.lower()+". Research more options, or free a place in the queue.",
+                  (x+20, 180), width-40, 17, MUTED, 27)
+    for i, item_id in enumerate(identifiers[page*5:page*5+5]):
+        spec = game.project_spec(item_id)
+        design = game.design_for(item_id)
+        y = 146+i*128
+        panel(surface, (x, y, width, 119))
+        project_art(surface, item_id, (x+10, y+14, 65, 72), design)
+        text(surface, shorten(spec.name, width-100, 18), (x+85, y+12), 18, INK)
+        price = game.project_price(item_id)
+        upkeep = building_maintenance(item_id, game.bonuses_for()) if item_id in BUILDINGS else getattr(spec, "maintenance", 0)
+        cost = f"{price} RES · {spec.work_cost} work"+(f" · {upkeep} CR/turn" if upkeep else "")
+        text(surface, shorten(cost, width-100, 10), (x+85, y+42), 10, GOLD)
+        if item_id in BUILDINGS:
+            text(surface, shorten(compact_yields(game, spec, planet), width-100, 10), (x+85, y+62), 10, CYAN)
+            details = [spec.workforce_text(planet.richness)]
+            if spec.energy_use:
+                details.append(f"Uses {spec.energy_use} energy")
+            text(surface, shorten(" · ".join(part for part in details if part), width-100, 10), (x+85, y+78), 10, CYAN)
+        else:
+            detail = (f"{design.hull} hull · {design.damage} volley · {design.shields} shields" if design
+                      else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES
+                      else "Unlock a scientific victory")
+            if getattr(spec, "drone_bays", 0):
+                detail = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches"
+            text(surface, shorten(detail, width-100, 11), (x+85, y+64), 11, CYAN)
+        app.button("production_build_"+item_id, "Queue", (x+width-116, y+85, 100, 26),
+                   lambda chosen=item_id: app.choose_production(chosen))
+        text(surface, shorten("Resources reserved when work starts", width-139, 10), (x+13, y+94), 10, MUTED)
+    app.button(key+"_previous", "←", (x, 793, 64, 30),
+               lambda: setattr(app, page_field, page-1), enabled=page > 0)
+    text(surface, f"Page {page+1} / {pages}", (x+width//2-33, 801), 12, MUTED)
+    app.button(key+"_next", "→", (x+width-64, 793, 64, 30),
+               lambda: setattr(app, page_field, page+1), enabled=page < pages-1)
+
+
 def draw_production(app):
     game, surface = app.game, app.canvas
     sid, pid = game.selected_system, game.selected_planet
@@ -353,76 +401,43 @@ def draw_production(app):
     text(surface, shorten(f"{planet.name} · Choose production", 604, 35, "title"), (40, 28), 35, INK, "title")
     empire_stockpile(app, (676, 28, 724, 38))
     text(surface, "Available projects only · One of each building per planet · Click a queued project to build it first.", (40, 83), 15, MUTED)
-    identifiers = list(BUILDINGS)+list(SHIP_TYPES)
+    buildings = list(BUILDINGS)
     if "ascension_theory" in game.technology.completed:
-        identifiers.append(ASCENSION_GATE.id)
-    identifiers.extend(d.id for d in game.designs)
-    identifiers = [item for item in identifiers if game.project_error(sid, pid, item) is None]
-    catalog_pages = max(1, math.ceil(len(identifiers)/10))
-    app.catalog_page = min(app.catalog_page, catalog_pages-1)
-    if not identifiers:
-        text(surface, "No construction projects available. Cancel an order or choose Trade Goods below.", (40, 135), 16, MUTED)
-    for i, item_id in enumerate(identifiers[app.catalog_page*10:app.catalog_page*10+10]):
-        spec = game.project_spec(item_id)
-        design = game.design_for(item_id)
-        x, y = 40+(i%2)*446, 125+(i//2)*135
-        panel(surface, (x, y, 428, 120))
-        project_art(surface, item_id, (x+10, y+14, 65, 72), design)
-        text(surface, shorten(spec.name, 330, 18), (x+85, y+12), 18, INK)
-        price = game.project_price(item_id)
-        upkeep = building_maintenance(item_id, game.bonuses_for()) if item_id in BUILDINGS else getattr(spec, "maintenance", 0)
-        cost = f"{price} RES · {spec.work_cost} work"+(f" · {upkeep} CR/turn" if upkeep else "")
-        text(surface, cost, (x+85, y+42), 10, GOLD)
-        reason = game.project_error(sid, pid, item_id)
-        detail = building_effect(game, spec, planet) if item_id in BUILDINGS else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES else "Unlock a scientific victory"
-        if design:
-            detail = f"{HULLS[design.kind].name} · {design.hull} hull · {design.damage} volley · {design.shields} shields"
-        if getattr(spec, "drone_bays", 0):
-            detail = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
-        if item_id in BUILDINGS:
-            text(surface, shorten(compact_yields(game, spec, planet), 326, 10), (x+85, y+62), 10, CYAN)
-            details = [spec.workforce_text(planet.richness)]
-            if spec.energy_use:
-                details.append(f"Uses {spec.energy_use} energy")
-            text(surface, shorten(" · ".join(part for part in details if part), 325, 10), (x+85, y+78), 10, CYAN)
-        else:
-            text(surface, shorten(detail, 327, 11), (x+85, y+64), 11, CYAN)
-        app.button("production_build_"+item_id, "Queue", (x+312, y+85, 100, 26),
-                   lambda chosen=item_id: app.choose_production(chosen), enabled=reason is None)
-        text(surface, shorten(reason or "Resources reserved when work starts", 294, 10), (x+13, y+94), 10, MUTED)
-    app.button("catalog_previous", "←", (40, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page-1), enabled=app.catalog_page > 0)
-    text(surface, f"Projects {app.catalog_page+1} / {catalog_pages}", (120, 801), 12, MUTED)
-    app.button("catalog_next", "→", (334, 793, 64, 30), lambda: setattr(app, "catalog_page", app.catalog_page+1), enabled=app.catalog_page < catalog_pages-1)
-    app.button("production_designer", "Ship designer →", (620, 793, 294, 30), app.open_designer)
-    panel(surface, (944, 125, 456, 660))
+        buildings.append(ASCENSION_GATE.id)
+    production_catalog(app, buildings, x=40, width=428, page_field="catalog_page", key="catalog", title="BUILDINGS")
+    production_catalog(app, [*SHIP_TYPES, *(d.id for d in game.designs)], x=944, width=456,
+                       page_field="ship_catalog_page", key="ship_catalog", title="SHIPS")
+    app.button("production_designer", "Ship designer →", (1170, 108, 230, 30), app.open_designer)
+    panel(surface, (486, 146, 428, 631))
     queue = planet.construction_queue
-    text(surface, f"CONSTRUCTION QUEUE · {len(queue)}/20", (960, 143), 12, GOLD, "mono")
+    text(surface, f"CONSTRUCTION QUEUE · {len(queue)}/20", (502, 164), 12, GOLD, "mono")
     if planet.trade_goods and queue:
-        text(surface, "TRADE GOODS ACTIVE · Click a project to resume", (960, 164), 10, CYAN)
+        text(surface, "TRADE GOODS ACTIVE · Click a project to resume", (502, 187), 10, CYAN)
     pages = max(1, math.ceil(len(queue)/6))
     app.production_page = min(app.production_page, pages-1)
     estimates = game.queue_estimates(planet)
     for i in range(app.production_page*6, min(len(queue), (app.production_page+1)*6)):
         project = queue[i]
         spec = project.spec
-        y = 180+(i%6)*82
-        button = app.button(f"production_priority_{i}", "", (960, y, 370, 70),
+        y = 213+(i%6)*76
+        button = app.button(f"production_priority_{i}", "", (502, y, 330, 67),
                             lambda index=i: app.prioritize_production(index), "hotspot")
         panel(surface, button.rect, (18, 32, 41), GOLD if app.is_active(button) else LINE)
-        text(surface, shorten(f"{i+1}. {spec.name}", 340, 15), (974, y+9), 15, INK)
+        text(surface, shorten(f"{i+1}. {spec.name}", 304, 15), (515, y+8), 15, INK)
         eta = "Paused" if planet.trade_goods else turn_label(estimates[i])
-        text(surface, f"{project.progress}/{spec.work_cost} work · {eta}", (974, y+33), 11, CYAN)
-        text(surface, "Click to resume construction" if planet.trade_goods else game.construction_status(planet) if i == 0 else "Click to make current", (974, y+52), 10, MUTED)
-        app.button(f"production_cancel_{i}", "×", (1338, y, 46, 34), lambda index=i: app.cancel_construction(index))
-        text(surface, project.refund_text, (1362, y+47), 10, MUTED, right=True)
+        text(surface, f"{project.progress}/{spec.work_cost} work · {eta}", (515, y+30), 11, CYAN)
+        status = "Click to resume construction" if planet.trade_goods else game.construction_status(planet) if i == 0 else "Click to make current"
+        text(surface, shorten(status, 304, 10), (515, y+49), 10, MUTED)
+        app.button(f"production_cancel_{i}", "×", (842, y, 56, 32), lambda index=i: app.cancel_construction(index))
+        text(surface, shorten(project.refund_text, 64, 9), (898, y+47), 9, MUTED, right=True)
     if not queue:
         message = (f"Trade Goods · +{trade_goods_credits(game.planet_yields(planet)[0])} CR each turn. Add a project to resume construction."
-                   if planet.trade_goods else "Nothing queued. Add buildings or ships here. Leaving an empty queue selects Trade Goods automatically.")
-        paragraph(surface, message, (971, 203), 393, 18, MUTED, 30)
-    app.button("production_previous", "←", (960, 690, 68, 33), lambda: app.change_production_page(-1), enabled=app.production_page > 0)
-    app.button("production_next", "→", (1316, 690, 68, 33), lambda: app.change_production_page(1), enabled=app.production_page < pages-1)
-    text(surface, f"Page {app.production_page+1} / {pages}", (1116, 700), 12, MUTED)
-    text(surface, "× refunds unused construction payments.", (960, 750), 12, MUTED)
+                   if planet.trade_goods else "Nothing queued. Add buildings on the left or ships on the right. Leaving an empty queue selects Trade Goods automatically.")
+        paragraph(surface, message, (510, 224), 380, 18, MUTED, 30)
+    app.button("production_previous", "←", (502, 701, 64, 30), lambda: app.change_production_page(-1), enabled=app.production_page > 0)
+    app.button("production_next", "→", (834, 701, 64, 30), lambda: app.change_production_page(1), enabled=app.production_page < pages-1)
+    text(surface, f"Page {app.production_page+1} / {pages}", (667, 709), 12, MUTED)
+    text(surface, "× refunds unused construction payments.", (502, 748), 11, MUTED)
     panel(surface, (40, 836, 876, 54))
     rate = trade_goods_credits(game.planet_yields(planet)[0])
     text(surface, f"Trade Goods · +{rate} CR / turn", (56, 844), 17, GOLD)

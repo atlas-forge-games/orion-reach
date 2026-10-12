@@ -48,24 +48,25 @@ def discover(game, identifiers, owner="player"):
             game.choose_research(identifier, owner=owner)
 
 
-def equip(game, modules, *, owner="player", kind="battleship", identifier="design_1"):
+def equip(game, modules, *, owner="player", kind="battleship", identifier="design_1", fit_version=2):
     technologies = [MODULES[m].technology for m in modules if MODULES[m].technology]
     technologies += [{"frigate": "modular_spaceframes", "destroyer": "destroyer_hulls",
                       "cruiser": "cruiser_hulls", "battleship": "battleship_hulls",
                       "carrier": "drone_carriers", "titan": "titan_hulls"}[kind]]
     discover(game, technologies, owner)
-    error = loadout_error(kind, modules, game.research_state(owner).completed)
+    error = loadout_error(kind, modules, game.research_state(owner).completed, fit_version=fit_version)
     assert error is None, error
-    design = ShipDesign(identifier, "Test "+kind, kind, tuple(modules))
+    design = ShipDesign(identifier, "Test "+kind, kind, tuple(modules), fit_version=fit_version)
     if owner == "player":
         game.designs.append(design)
     return design
 
 
-def duel(weapons, defense=("laser",), *, kind="battleship", enemy_kind="titan"):
+def duel(weapons, defense=("laser",), *, kind="battleship", enemy_kind="titan", fit_version=1):
     game = campaign()
-    left = equip(game, weapons, kind=kind)
-    right = equip(game, defense, owner="rival", kind=enemy_kind)
+    # Base-effect regressions retain legacy fits; v0.53 tests exercise scaled fits.
+    left = equip(game, weapons, kind=kind, fit_version=fit_version)
+    right = equip(game, defense, owner="rival", kind=enemy_kind, fit_version=fit_version)
     game.ships = [Ship(1, kind, 0, design=left), Ship(2, enemy_kind, 0, owner="rival", design=right)]
     game.next_ship_id = 3
     game.start_combat(0)
@@ -268,7 +269,7 @@ class ArsenalCombatTests(unittest.TestCase):
 
     def test_ion_bombardment_bonus_stays_on_shields(self):
         game = campaign()
-        design = equip(game, ["ion"], kind="cruiser")
+        design = equip(game, ["ion"], kind="cruiser", fit_version=1)
         system, world = game.headquarters("rival")
         discover(game, ["planetary_shielding"], "rival")
         world.buildings.append("planetary_shield")

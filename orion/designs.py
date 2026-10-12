@@ -1,6 +1,7 @@
 """Immutable ship blueprints. Existing orders and ships retain their own blueprint."""
 
 from dataclasses import dataclass, replace
+from functools import lru_cache
 from .research import TECHNOLOGIES, LEGACY_TIER_LIMITS
 from .production import HULL_TECHNOLOGIES
 
@@ -19,16 +20,30 @@ class Hull:
     movement: int
     resource_cost: int
     work_cost: int
+    # The original capacities above only validate pre-v0.53 blueprints.
+    offensive_slots: int = 4
+    defensive_slots: int = 2
+    support_slots: int = 2
+    module_size: str = "small"
+    module_scale: int = 100
+    tracking_penalty: int = 0
 
 
 HULLS = {
-    "frigate": Hull("Frigate", 20, 4, 3, 2, 1, 4, 30, 18),
+    "frigate": Hull("Frigate", 20, 4, 3, 2, 1, 4, 30, 18, support_slots=1),
     "destroyer": Hull("Destroyer", 30, 6, 4, 3, 2, 4, 45, 27),
-    "cruiser": Hull("Cruiser", 42, 8, 5, 4, 2, 3, 70, 42),
-    "battleship": Hull("Battleship", 75, 12, 8, 6, 2, 2, 130, 78),
-    "carrier": Hull("Carrier", 55, 10, 3, 4, 6, 2, 100, 60),
-    "titan": Hull("Titan", 125, 18, 12, 9, 3, 1, 220, 132),
+    "cruiser": Hull("Cruiser", 42, 8, 5, 4, 2, 3, 70, 42, defensive_slots=3,
+                    module_size="medium", module_scale=200, tracking_penalty=30),
+    "battleship": Hull("Battleship", 75, 12, 8, 6, 2, 2, 130, 78, defensive_slots=3,
+                       module_size="heavy", module_scale=300, tracking_penalty=30),
+    "carrier": Hull("Carrier", 55, 10, 3, 4, 6, 2, 100, 60, support_slots=3,
+                    module_size="medium", module_scale=200, tracking_penalty=30),
+    "titan": Hull("Titan", 125, 18, 12, 9, 3, 1, 220, 132, defensive_slots=3,
+                  module_size="heavy", module_scale=400, tracking_penalty=35),
 }
+
+MODULE_SIZES = {"small": 1, "medium": 2, "heavy": 3}
+SLOT_FIELDS = {"weapon": "offensive_slots", "defense": "defensive_slots", "support": "support_slots"}
 
 
 @dataclass(frozen=True)
@@ -104,22 +119,42 @@ ARSENAL_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values()
                                and any(module.technology == t.id for module in MODULES.values()))
 
 
-def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_hulls=False):
+@lru_cache(maxsize=512)
+def fitted_module(kind, identifier, fit_version=2):
+    """One module occupies one category slot; its physical size follows the hull."""
+    module = MODULES[identifier]
+    if fit_version == 1:
+        return module
+    hull = HULLS[kind]
+    scaled = {key: max(1, (getattr(module, key)*hull.module_scale+99)//100) if getattr(module, key) else 0
+              for key in ("damage", "hull_bonus", "shields", "shield_regeneration",
+                          "repair_rate", "repair_capacity", "resource_cost", "work_cost")}
+    name = module.name.removeprefix("Heavy ") if identifier == "heavy_beam" else module.name
+    return replace(module, name=f"{hull.module_size.title()} {name}", space=1, **scaled)
+
+
+def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_hulls=False, fit_version=2):
     if not isinstance(kind, str) or kind not in HULLS:
         return "Choose a combat hull."
-    if not isinstance(modules, (tuple, list)) or len(modules) > max(h.capacity for h in HULLS.values()) or any(
+    if type(fit_version) is not int or fit_version not in (1, 2):
+        return "Unknown blueprint rules."
+    limit = max(max(h.capacity, h.offensive_slots+h.defensive_slots+h.support_slots) for h in HULLS.values())
+    if not isinstance(modules, (tuple, list)) or len(modules) > limit or any(
             not isinstance(m, str) or m not in MODULES for m in modules):
         return "Unknown or excessive modules."
     specs, hull = [MODULES[m] for m in modules], HULLS[kind]
-    if sum(m.space for m in specs) > hull.capacity:
+    if fit_version == 1 and sum(m.space for m in specs) > hull.capacity:
         return "The loadout exceeds this hull's total capacity."
     for category in ("weapon", "defense", "support"):
-        if sum(m.space for m in specs if m.category == category) > getattr(hull, category):
-            return f"This hull has insufficient {category} capacity."
+        used = sum(m.space if fit_version == 1 else 1 for m in specs if m.category == category)
+        if used > getattr(hull, category if fit_version == 1 else SLOT_FIELDS[category]):
+            return f"This hull has insufficient {category} {'capacity' if fit_version == 1 else 'slots'}."
     if modules.count("scanner") > 1:
         return "Only one combat scanner can be fitted."
     if any(m in DRONE_BAYS for m in modules) and kind != "carrier":
         return "Drone bays require a carrier hull."
+    if fit_version == 2 and sum(m in DRONE_BAYS for m in modules) > 2:
+        return "A carrier can fit at most two drone bays."
     if completed is not None:
         technology = HULL_TECHNOLOGIES[kind]
         if (technology and technology not in completed
@@ -139,10 +174,11 @@ class ShipDesign:
     name: str
     kind: str
     modules: tuple[str, ...]
+    fit_version: int = 2
 
     @property
     def specs(self):
-        return tuple(MODULES[m] for m in self.modules)
+        return tuple(fitted_module(self.kind, m, self.fit_version) for m in self.modules)
 
     @property
     def hull(self):
@@ -208,12 +244,15 @@ class ShipDesign:
         return tuple(m for m in self.specs if m.damage and distance <= m.range+sum(s.range_bonus for s in self.specs))
 
     @classmethod
-    def from_dict(cls, data):
-        if not isinstance(data, dict) or set(data) != {"id", "name", "kind", "modules"}:
+    def from_dict(cls, data, *, version=37):
+        current = {"id", "name", "kind", "modules", "fit_version"}
+        if not isinstance(data, dict) or set(data) not in (current, current-{"fit_version"} if version < 37 else current):
             raise ValueError("Invalid ship design")
         identifier, name = data["id"], data["name"]
+        fit_version = data.get("fit_version", 1)
         if (not isinstance(identifier, str) or identifier not in {f"design_{i}" for i in range(1, MAX_DESIGNS+1)}
                 or not isinstance(name, str) or not 1 <= len(name) <= 28 or name != name.strip()
-                or not all(c.isprintable() for c in name) or loadout_error(data["kind"], data["modules"])):
+                or not all(c.isprintable() for c in name)
+                or loadout_error(data["kind"], data["modules"], fit_version=fit_version)):
             raise ValueError("Invalid ship blueprint")
-        return cls(identifier, name, data["kind"], tuple(data["modules"]))
+        return cls(identifier, name, data["kind"], tuple(data["modules"]), fit_version)

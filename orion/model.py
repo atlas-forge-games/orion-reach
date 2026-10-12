@@ -178,10 +178,10 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=36):
+    def from_dict(cls, data, systems, *, version=37):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
-        design = ShipDesign.from_dict(data["design"]) if version >= 18 and data["design"] is not None else None
+        design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
         if (not isinstance(data["kind"], str) or data["kind"] not in (HULLS if design else SHIP_TYPES)
                 or (design and design.kind != data["kind"])):
             raise ValueError
@@ -262,7 +262,7 @@ class Opponent:
     resources: int = field(default_factory=lambda: economy.STARTING_RESOURCES)
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=36):
+    def from_dict(cls, data, systems, turn, *, version=37):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -437,7 +437,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=36):
+    def from_dict(cls, data, expected_id, *, version=37):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -535,7 +535,7 @@ class Planet:
                 item["item_id"] = item.pop("building_id")
                 if item["item_id"] not in BUILDINGS:
                     raise ValueError
-            design = ShipDesign.from_dict(item["design"]) if version >= 18 and item["design"] is not None else None
+            design = ShipDesign.from_dict(item["design"], version=version) if version >= 18 and item["design"] is not None else None
             item["design"] = design
             if (not isinstance(item["item_id"], str) or
                     (item["item_id"] != design.id if design else item["item_id"] not in PROJECTS)):
@@ -723,7 +723,7 @@ class GameState:
         if owner == PLAYER:
             return self.design_for(identifier)
         state = self.research_state(owner)
-        if identifier in HULLS and ARSENAL_TECHNOLOGIES.intersection(state.completed):
+        if identifier in HULLS:
             from .auto_designs import auto_design
             return auto_design(identifier, tuple(sorted(state.completed)), state.legacy_starships)
         return None
@@ -1320,7 +1320,7 @@ class GameState:
         if not isinstance(kind, str) or (kind not in SHIP_TYPES and design is None):
             return "Unknown ship type."
         if design and loadout_error(design.kind, design.modules, self.technology.completed,
-                                    legacy_hulls=self.technology.legacy_starships):
+                                    legacy_hulls=self.technology.legacy_starships, fit_version=design.fit_version):
             return "This design requires undiscovered technology."
         if not design and not self.research_state(owner).hull_unlocked(kind):
             return f"Requires {TECHNOLOGIES[SHIP_TYPES[kind].technology].name}."
@@ -1633,7 +1633,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=36):
+    def from_dict(cls, data, *, version=37):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1747,12 +1747,12 @@ class GameState:
             if version >= 18:
                 if not isinstance(data["designs"], list) or len(data["designs"]) > MAX_DESIGNS:
                     raise ValueError("Invalid design library")
-                game.designs = [ShipDesign.from_dict(d) for d in data["designs"]]
+                game.designs = [ShipDesign.from_dict(d, version=version) for d in data["designs"]]
                 if ([d.id for d in game.designs] != [f"design_{i+1}" for i in range(len(game.designs))]
                         or len({d.name.casefold() for d in game.designs}) != len(game.designs)):
                     raise ValueError("Duplicate ship designs")
                 if any(loadout_error(d.kind, d.modules, technology.completed,
-                                     legacy_hulls=technology.legacy_starships) for d in game.designs):
+                                     legacy_hulls=technology.legacy_starships, fit_version=d.fit_version) for d in game.designs):
                     raise ValueError("Undiscovered blueprint equipment")
                 # Occupation preserves paid ship orders and their immutable
                 # blueprints. Their technology may belong to a former owner;
@@ -1766,7 +1766,7 @@ class GameState:
                     new_equipment = any(MODULES[m].technology in ARSENAL_TECHNOLOGIES for m in design.modules)
                     if (owner == PLAYER or new_equipment) and not any(
                             loadout_error(design.kind, design.modules, state.completed,
-                                          legacy_hulls=state.legacy_starships) is None for state in research_states):
+                                          legacy_hulls=state.legacy_starships, fit_version=design.fit_version) is None for state in research_states):
                         raise ValueError("Undiscovered ship equipment")
             if version >= 22:
                 game.tomb_worlds = tomb_rules.parse(data["tomb_worlds"], game)

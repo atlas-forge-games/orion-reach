@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 1
+VERSION = 2
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'buildings': ('buildings', 'BUILDINGS'),
@@ -116,6 +116,9 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if field in ('offensive_slots', 'defensive_slots', 'support_slots'): return 1 if field == 'offensive_slots' else 0, 12
+    if field == 'module_scale': return 1, 1000
+    if field == 'tracking_penalty': return 0, 100
     if field == 'tier': return 1, 8
     if field in ('accuracy', 'shield_bypass', 'interception_piercing', 'shield_hardening', 'interception', 'interception_cap', 'TRADE_GOODS_PERCENT'): return 0, 100
     if field in ('work_cost', 'space', 'hull', 'DRONE_HULL', 'cost', 'shots', 'shield_multiplier', 'versus_drones', 'versus_capitals'): return 1, 100000
@@ -185,6 +188,9 @@ def validate(profile):
                         upper = 100 if effect in ('building_discount','ship_discount','assembly_percent','targeting_accuracy','torpedo_guidance','evasion','beam_precision') else 95 if effect == 'interdiction_slow' else 3 if effect == 'sensor_level' else 1000
                         if type(amount) is not int or not lower <= amount <= upper:
                             errors.append(path+'.'+effect+f': use a whole number from {lower} to {upper}.')
+                elif key == 'module_size':
+                    if type(value) is not str or value not in module('designs').MODULE_SIZES:
+                        errors.append(path+': choose small, medium or heavy.')
                 elif key in ('technology', 'branch', 'category', 'weapon') and (template is None or type(template) is str):
                     options = set(base['data']['technologies'])|{None} if key == 'technology' else set(base['branch_order'])|{'ascension'} if key == 'branch' else {'weapon','defense','support'} if key == 'category' else set(base['data']['weapons'])
                     if type(value) not in (str,type(None)) or value not in options:
@@ -261,6 +267,21 @@ def require_valid(profile):
         raise BalanceError('\n'.join(errors[:12]))
 
 
+def upgrade_profile(profile):
+    """Add slot/scaling controls without replacing any pre-existing balance values."""
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 1:
+        profile = deepcopy(profile)
+        hulls = profile.get('data', {}).get('hulls', {}) if isinstance(profile.get('data'), dict) else {}
+        if isinstance(hulls, dict):
+            for identifier, defaults in _defaults()['data']['hulls'].items():
+                if isinstance(hulls.get(identifier), dict):
+                    for key in ('offensive_slots', 'defensive_slots', 'support_slots',
+                                'module_size', 'module_scale', 'tracking_penalty'):
+                        hulls[identifier].setdefault(key, defaults[key])
+        profile['version'] = VERSION
+    return profile
+
+
 def read_profile(path=DEFAULT_PATH, *, missing_ok=False):
     path = Path(path).expanduser()
     if missing_ok and not path.exists():
@@ -274,7 +295,7 @@ def read_profile(path=DEFAULT_PATH, *, missing_ok=False):
                 if k in result: raise BalanceError('Duplicate profile field: '+k)
                 result[k] = v
             return result
-        profile = json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_pairs)
+        profile = upgrade_profile(json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_pairs))
         require_valid(profile)
         return profile
     except (OSError, ValueError, RecursionError) as exc:
@@ -312,6 +333,7 @@ def write_profile(path, profile, *, expected=None):
 
 def activate(profile):
     global _active
+    profile = upgrade_profile(profile)
     require_valid(profile)  # Validate everything before changing any catalogue.
     data = profile['data']
     for section, (owner, attribute) in CATALOGUES.items():
@@ -351,6 +373,7 @@ def activate(profile):
     r.ASCENSION_COST = data['research_costs']['ascension']['cost']
     r._bonuses.cache_clear()
     module('auto_designs').auto_design.cache_clear()
+    module('designs').fitted_module.cache_clear()
     w, c, d = module('weapons'), module('combat'), module('designs')
     w.DRONE_ROLES.update({key: tuple(v[k] for k in ('name','weapon','movement')) for key,v in data['drones'].items()})
     c.BASE_SPEC = replace(c.BASE_SPEC, hull=module('defenses').BASE_HULL,
@@ -390,7 +413,7 @@ def prepare_new_game():
 
 
 def tag_game(game, profile=None):
-    game._balance_profile = deepcopy(profile if profile is not None else active_profile())
+    game._balance_profile = deepcopy(upgrade_profile(profile) if profile is not None else active_profile())
     return game
 
 

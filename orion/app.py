@@ -126,6 +126,7 @@ class App:
         self.clear_worker_selection()
         self.production_page=0
         self.catalog_page=0
+        self.ship_catalog_page=0
         self.designer_return="fleets"
         self.design_campaign=None
         self.design_location=(0,2)
@@ -305,7 +306,7 @@ class App:
             self.game.selected_system,self.game.selected_planet=sid,pid
             self.planet_return="galaxy"
             self.colony_slot=None
-            self.production_page=self.catalog_page=0
+            self.production_page=self.catalog_page=self.ship_catalog_page=0
             self.go("planet",idle_prompt=True)
             self.idle_colony_review=(self.game.campaign_id,sid,pid)
             self.toast(f"{planet.name} needs production · Choose a project or leave to produce Trade Goods")
@@ -1328,9 +1329,7 @@ class App:
         if self.game.is_observer:
             if self.game.result is not None:
                 self.go("result")
-            if self.save_game(autosave=True):
-                alive=sum(bool(self.game.colony_systems(o)) for o in self.game.owners)
-                self.toast(f"Turn {self.game.turn} · {alive} empires remain · Galaxy updated · Autosaved")
+            self.save_game(autosave=True)
             return
         self.research_prompt_pending=self.needs_research_choice()
         self.collect_idle_colonies()
@@ -1359,25 +1358,7 @@ class App:
         self.show_first_contact()
         self.prompt_idle_research(allow_news=not new_news)
         self.prompt_idle_colony(force=True)
-        if self.save_game(autosave=True):
-            message=f"Turn {self.game.turn} · {report.income:+} CR net · +{report.research} RP · {report.resources:+} RES"
-            if self.game.combat is not None:
-                message+=" · Enemy fleet engaged at "+self.game.systems[self.game.combat.system_id].name
-            if report.discoveries:
-                message+=" · Discovered: "+", ".join(report.discoveries)
-            if report.completed:
-                message+=" · Completed: "+", ".join(report.completed)
-            if report.arrivals:
-                message+=" · Arrived: "+", ".join(report.arrivals)
-            if report.alerts:
-                message=" · ".join(report.alerts)+" · "+message
-            if report.exploration:
-                message=" · ".join(report.exploration)+" · Exploration log: X · "+message
-            if report.population:
-                message=" · ".join(report.population)+" · "+message
-            self.toast(message+" · Autosaved")
-            if report.completed or report.arrivals or report.discoveries or report.alerts or report.exploration or report.population:
-                self.notice_until=self.time+7
+        self.save_game(autosave=True)
 
     def reset_combat_view(self):
         self.combat_auto=False
@@ -1628,6 +1609,7 @@ class App:
     def open_production(self):
         self.production_page=0
         self.catalog_page=0
+        self.ship_catalog_page=0
         self.go("production")
 
     def open_designer(self):

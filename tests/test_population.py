@@ -273,7 +273,7 @@ class PopulationSaveTests(unittest.TestCase):
                 state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True, legacy_arsenal=True, legacy_fuel=True, legacy_black_holes=True)
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 36)
+        self.assertEqual(SAVE_VERSION, 37)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

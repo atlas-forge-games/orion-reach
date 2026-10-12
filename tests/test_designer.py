@@ -46,7 +46,7 @@ class DesignerRulesTests(unittest.TestCase):
     def test_capacity_category_limits_weapons_names_and_unlocks_are_enforced(self):
         game = scenario()
         bad = [("", "frigate", ["laser"]), ("A", "scout", ["laser"]),
-               ("A", "frigate", ["armor"]), ("A", "frigate", ["laser"]*4),
+               ("A", "frigate", ["armor"]), ("A", "frigate", ["laser"]*5),
                ("A", "frigate", ["laser", "armor", "point_defense", "armor"]),
                ("A", "cruiser", ["laser"]*5+["armor"]*4),
                ("A", "frigate", ["laser", "shield"]),
@@ -61,7 +61,7 @@ class DesignerRulesTests(unittest.TestCase):
             game.save_design("vanguard", "cruiser", ["laser"])
         game.technology.completed += ["radiation_shields", "ion_drives", "research_networks", "research_instruments", "quantum_optics"]
         design = game.save_design("Advanced", "battleship", ["quantum", "torpedo", "shield", "armor", "scanner", "engine"])
-        self.assertEqual((design.hull, design.shields, design.damage, design.weapon_range, design.movement), (83, 12, 24, 9, 2))
+        self.assertEqual((design.hull, design.shields, design.damage, design.weapon_range, design.movement), (99, 36, 72, 9, 2))
 
     def test_library_limit_allows_revising_an_existing_blueprint(self):
         game = scenario()
@@ -162,8 +162,8 @@ class DesignerCombatTests(unittest.TestCase):
         game = duel(defenses=())
         attacker, target = game.combat.ships
         target.x = 14  # Seven cells: only the torpedo can reach.
-        self.assertEqual(game.combat_fire(1, 2), 10)
-        self.assertEqual(target.hull, 32)
+        self.assertEqual(game.combat_fire(1, 2), 20)
+        self.assertEqual(target.hull, 22)
         with self.assertRaises(RuleError):
             game.combat_fire(1, 2)
         effect = CombatAnimation.from_action(game.combat, {"kind": "fire", "ship_id": 1, "target_id": 2, "damage": 10})
@@ -173,14 +173,14 @@ class DesignerCombatTests(unittest.TestCase):
     def test_shields_absorb_then_hull_takes_damage_and_point_defense_is_a_soft_counter(self):
         game = duel(weapons=("laser", "laser", "torpedo"))
         target = game.combat.ship(2)
-        self.assertEqual(game.combat_fire(1, 2), 5)  # 10 lasers + 7 torpedo - 12 shields.
-        self.assertEqual((target.hull, target.shields), (37, 0))
+        self.assertEqual(game.combat_fire(1, 2), 10)  # 20 lasers + 14 torpedo - 24 shields.
+        self.assertEqual((target.hull, target.shields), (32, 0))
         game.combat_end_turn()
         game.combat_end_turn(RIVAL)
         self.assertEqual(target.shields, 0)  # No per-turn regeneration.
-        self.assertEqual(game.combat_fire(1, 2), 17)
+        self.assertEqual(game.combat_fire(1, 2), 32)  # 34 damage, limited by remaining hull.
         game2 = duel(weapons=("torpedo",), defenses=("point_defense",)*3)
-        self.assertEqual(game2.combat_fire(1, 2), 4)  # Interception is capped at 60%.
+        self.assertEqual(game2.combat_fire(1, 2), 8)  # Interception is capped at 60%.
 
     def test_active_combat_save_replays_with_the_same_loadout_and_shields(self):
         game = duel()
@@ -205,7 +205,7 @@ class DesignerCombatTests(unittest.TestCase):
         game = new_game(seed=2408, with_ai=False)
         game.technology.completed = ["destroyer_hulls", "cruiser_hulls", "battleship_hulls"]
         guard = game.guardians[0]
-        design = game.save_design("Hunter", "battleship", ["torpedo"]*4+["armor"]*4)
+        design = game.save_design("Hunter", "battleship", ["torpedo"]*4+["armor"]*3)
         game.ships = [Ship(1, "battleship", guard.system_id, design=design)]
         game.next_ship_id = 2
         game.start_combat(guard.system_id)
@@ -279,7 +279,7 @@ class DesignerUITests(unittest.TestCase):
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], game)
         self.app.open_production()
         while "production_build_design_1" not in {b.key for b in self.app.buttons}:
-            self.click("catalog_next")
+            self.click("ship_catalog_next")
         self.click("production_build_design_1")
         self.assertEqual(game.planet_at(0, 2).construction_queue[0].design, original)
         self.assertEqual(game.planet_at(0, 2).construction_queue[-1].design, game.designs[0])
@@ -298,7 +298,7 @@ class DesignerUITests(unittest.TestCase):
         self.click("design_load_design_24")
         self.assertEqual(self.app.design_id, "design_24")
         self.click("design_hull_battleship")
-        for _ in range(7):
+        for _ in range(3):
             self.click("design_add_laser")
         self.assertFalse(next(b for b in self.app.buttons if b.key == "design_add_laser").enabled)
         self.app.game.selected_planet = None
@@ -309,8 +309,8 @@ class DesignerUITests(unittest.TestCase):
         self.app.game.selected_system, self.app.game.selected_planet = 0, 2
         self.app.open_production()
         self.app.render()
-        while next(b for b in self.app.buttons if b.key == "catalog_next").enabled:
-            self.click("catalog_next")
+        while next(b for b in self.app.buttons if b.key == "ship_catalog_next").enabled:
+            self.click("ship_catalog_next")
         self.click("production_build_design_24")
         self.assertEqual(self.app.game.planet_at(0, 2).construction_queue[0].design.id, "design_24")
 

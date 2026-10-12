@@ -3,7 +3,8 @@
 from collections import Counter
 import math
 import pygame as pg
-from .designs import HULLS, MODULES, ShipDesign, loadout_error
+from .designs import HULLS, MODULES, ShipDesign, fitted_module, loadout_error
+from .weapons import BEAMS
 from .fleet_art import ship_icon
 from .research import TECHNOLOGIES
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text, wrapped_lines
@@ -13,11 +14,37 @@ def draft(app):
     return ShipDesign(app.design_id or "design_1", app.design_name.strip(), app.design_kind, tuple(app.design_modules))
 
 
+def module_detail(identifier, module):
+    if module.damage:
+        beam = BEAMS[module.weapon]
+        parts = [f"{module.damage} volley", f"range {module.range}"]
+        if beam.shots > 1: parts.append(f"{beam.shots} shots")
+        if beam.projectile: parts.append("interceptable")
+        if beam.shield_multiplier > 1: parts.append(f"×{beam.shield_multiplier} vs shields")
+        if beam.shield_bypass: parts.append(f"{beam.shield_bypass}% shield bypass")
+        if beam.slows: parts.append("slows target")
+        if beam.reload: parts.append(f"reload {beam.reload} turn")
+        if module.weapon == "siege": parts.append("×3 vs bases")
+        return " · ".join(parts)
+    if module.hull_bonus:
+        return f"+{module.hull_bonus} hull · {module.movement_bonus:+} movement (minimum 1)"
+    if module.shields:
+        return (f"+{module.shields} shields"+(f" · regenerate {module.shield_regeneration}/turn" if module.shield_regeneration else "")
+                +(f" · {module.shield_hardening}% hardening" if module.shield_hardening else ""))
+    if module.repair_rate:
+        return f"Repair {module.repair_rate} hull/turn · {module.repair_capacity} reserve/battle"
+    if module.interception:
+        return f"{module.interception}% interception · cap {module.interception_cap}%"
+    if module.range_bonus: return f"+{module.range_bonus} range · one scanner per ship"
+    if module.movement_bonus: return f"{module.movement_bonus:+} tactical movement"
+    return module.description
+
+
 def draw_designer(app):
     game, surface = app.game, app.canvas
     app.chrome("SHIP DESIGNER")
     text(surface, "Ship designer", (64, 124), 36, INK, "title")
-    text(surface, "Research hulls to unlock them, fit modules, and save a blueprint for your colonies.", (66, 173), 15, MUTED)
+    text(surface, "Fit one module per slot. Larger hulls carry larger weapons: more damage, slower tracking against small targets.", (66, 173), 15, MUTED)
     design = draft(app)
     hull = HULLS[design.kind]
     error = loadout_error(design.kind, design.modules, game.technology.completed, legacy_hulls=game.technology.legacy_starships)
@@ -51,10 +78,14 @@ def draw_designer(app):
     for index, (kind, spec) in enumerate(HULLS.items()):
         app.button(f"design_hull_{kind}", spec.name, (368+(index%3)*196, 231+(index//3)*39, 184, 32),
                    lambda k=kind: app.choose_design_hull(k), "primary" if kind == design.kind else "normal")
-    used = sum(m.space for m in design.specs)
-    text(surface, f"CAPACITY {used}/{hull.capacity}", (369, 313), 12, CYAN, "mono")
-    text(surface, f"Limits: weapons {hull.weapon} · defense {hull.defense} · support {hull.support}", (946, 314), 11, MUTED, right=True)
-    text(surface, "Category limits share the total capacity. Unused space is allowed.", (369, 337), 11, MUTED)
+    counts = Counter(m.category for m in design.specs)
+    for index, (category, label, limit) in enumerate((("weapon", "OFFENSE", hull.offensive_slots),
+                                                   ("defense", "DEFENSE", hull.defensive_slots),
+                                                   ("support", "SUPPORT", hull.support_slots))):
+        text(surface, f"{label} {counts[category]}/{limit}", (369+index*196, 313), 12,
+             RED if counts[category] > limit else CYAN, "mono")
+    tracking = f"−{hull.tracking_penalty} aim per smaller target size" if hull.tracking_penalty else "Fast tracking"
+    text(surface, f"{hull.module_size.title()} modules · {hull.module_scale}% output / cost · {tracking}", (369, 337), 11, MUTED)
     categories = (("all", "All equipment"), ("weapon", "Weapons"), ("defense", "Defense"), ("support", "Support"))
     for index, (category, label) in enumerate(categories):
         app.button("design_filter_"+category, label, (369+index*146, 358, 137, 29),
@@ -65,11 +96,12 @@ def draw_designer(app):
     module_last = max(0, (len(equipment)-1)//8)
     app.design_module_page = min(app.design_module_page, module_last)
     for index, (identifier, module) in enumerate(equipment[app.design_module_page*8:app.design_module_page*8+8]):
+        module = fitted_module(design.kind, identifier)
         y = 400+index*44
         locked = module.technology and module.technology not in game.technology.completed
-        text(surface, module.name, (369, y), 16, MUTED if locked else INK)
-        text(surface, f"{module.space} {module.category} · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
-        detail = f"Requires {TECHNOLOGIES[module.technology].name}" if locked else module.description
+        text(surface, shorten(module.name, 290, 15), (369, y), 15, MUTED if locked else INK)
+        text(surface, f"1 slot · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
+        detail = f"Requires {TECHNOLOGIES[module.technology].name}" if locked else module_detail(identifier, module)
         text(surface, shorten(detail, 424, 11), (369, y+26), 11, MUTED if locked else CYAN)
         if module.technology:
             app.technology_info_region(module.technology, (369, y, 425, 43))
@@ -85,8 +117,8 @@ def draw_designer(app):
 
     panel(surface, (984, 214, 392, 589))
     app.input_box("design_name", "BLUEPRINT NAME", app.design_name, (1002, 255, 356, 55), "Name your ship")
-    ship_icon(surface, (1180, 391), 3.0, kind=design.kind, facing=1)
-    text(surface, hull.name.upper(), (1003, 329), 10, GOLD, "mono", 1)
+    ship_icon(surface, (1180, 391), 2.1, kind=design.kind, facing=1)
+    text(surface, f"{hull.name.upper()} · {hull.module_size.upper()} MODULES", (1003, 329), 10, GOLD, "mono", 1)
     text(surface, "LIVE PREVIEW", (1003, 444), 10, MUTED, "mono", 1)
     discount = game.bonuses_for().get("ship_discount", 0)
     cost = max(1, math.ceil(design.resource_cost*(100-discount)/100))
@@ -106,7 +138,8 @@ def draw_designer(app):
         text(surface, shorten(line+(' …' if index == 2 and len(lines) > 3 else ''), 350, 12), (1003, 654+index*18), 12, INK)
     reason = error or ("Name this design before saving." if not design.name else "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
     paragraph(surface, reason, (1003, 718), 350, 12, GOLD if not error else RED, 20)
-    text(surface, "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)
+    text(surface, "Legacy blueprint: saving refits it to slots. Existing ships and orders keep their equipment."
+         if saved and saved.fit_version == 1 else "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)
     app.button("designer_back", "← Return", (64, 847, 177, 36), lambda: app.go(app.designer_return), "ghost")
     app.button("design_copy", "Save as new", (746, 838, 216, 45), lambda: app.save_ship_design(copy=True), enabled=saved is not None and not error and bool(design.name))
     app.button("design_save", "Update" if saved else "Save design", (984, 838, 184, 45), app.save_ship_design, "primary", enabled=not error and bool(design.name) and not unchanged)

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.52.1
+# Orion Reach — Python prototype 0.53.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,55 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.53: construction columns and hull-sized modules
+
+The production screen keeps **buildings on the left, the construction queue in
+the middle and ships on the right**. Building and ship pages move independently;
+queueing, cancelling and reordering keep the screen open. The routine end-turn
+income/autosave banner is removed. Autosaves, error messages and the existing
+research, idle-colony, news and battle screens still work.
+
+New ship designs use **one module per category slot**. Every standard combat
+hull has **four offensive slots**; there is no shared space budget. All weapon
+technologies, including graviton beams, can fill these slots. The hull determines
+the module's size, output and cost:
+
+| Hull | Module size | Damage / module cost | Offensive / defensive / support slots |
+| --- | --- | --- | --- |
+| Frigate | Small | 100% | 4 / 2 / 1 |
+| Destroyer | Small | 100% | 4 / 2 / 2 |
+| Cruiser | Medium | 200% | 4 / 3 / 2 |
+| Carrier | Medium | 200% | 4 / 2 / 3 |
+| Battleship | Heavy | 300% | 4 / 3 / 2 |
+| Titan | Heavy | 400% | 4 / 3 / 2 |
+
+For example, four graviton beams deliver a raw volley of **64** on a frigate,
+**128** on a cruiser, **192** on a battleship and **256** on a Titan. Each weapon
+still makes its own hit roll. Larger weapons are less accurate against smaller
+targets: medium and battleship mounts lose 30 percentage points per smaller size
+class; Titan mounts lose 35. Heavy weapons have no size penalty against other
+heavy hulls, planetary bases or guardians. Small weapons retain fast tracking.
+Scouts and drones are even smaller targets. Range, evasion and research bonuses
+also affect the final chance, shown in combat; tracking can reduce it to 5%.
+
+Armor, shields and repair output scale with module size too. Weapon range,
+movement bonuses, percentage effects and drone counts do not scale. Carriers
+can fit at most two drone bays. The designer shows effective module statistics,
+slot counts and costs. Auto-fit and new AI warships use the same rules and pay
+the full cost; tactical AI forecasts include tracking. Standard ship presets
+remain available at their listed prices and fixed equipment ratings.
+
+The balance editor exposes **Offensive slots, Defensive slots, Support slots,
+Module size, Module scale and Tracking penalty** in Designer hulls. Module
+values are the small-size base values. Existing custom profiles gain these new
+controls while retaining all their earlier settings.
+
+Save format **37** loads older campaigns. Existing custom blueprints, built
+ships and queued orders retain their old capacity rules and statistics. Opening
+an old blueprint in the designer previews a refit; saving it applies the new
+slots and scale to future orders, without changing built ships or queued work.
+No additional dependencies or artwork are required.
 
 ## New in v0.52.1: research pacing and available construction
 

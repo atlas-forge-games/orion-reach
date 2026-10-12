@@ -1,0 +1,48 @@
+Orion Reach v0.53.0 - Construction columns and hull-sized modules
+
+INSTALL
+Requires the existing v0.52.1 game. This ZIP is an incremental update, not a
+standalone game. Close the game and editor, extract into the folder containing
+main.py, and replace the included files. Run python main.py as usual.
+No new dependencies or assets are needed. Start the editor with python editor.py.
+
+CONSTRUCTION
+Buildings are on the left, the construction queue is in the middle, and ships
+are on the right. Each catalogue has its own pages. Queue multiple projects,
+cancel them or change their priority without leaving the screen.
+The routine end-turn income/autosave banner is removed. Autosaving and error
+notifications continue. Research, idle-colony and battle prompts still work.
+
+SHIP DESIGNER
+Every module takes one slot. All six combat hulls have four offensive slots.
+The hull sets module size: frigate/destroyer small (100% output/cost),
+cruiser/carrier medium (200%), battleship heavy (300%), Titan heavy (400%).
+Four graviton beams therefore have raw volleys of 64/128/192/256 damage on
+frigate/cruiser/battleship/Titan, before hit rolls and defenses.
+
+Heavy weapons are powerful against capitals and bases, but track small ships
+poorly. Medium and battleship mounts lose 30 percentage points per smaller
+target class; Titan mounts lose 35. Tracking can reduce final hit chance to 5%.
+Small mounts have no tracking penalty. Tactical hit chances and AI damage
+forecasts both use these rules. New AI warships auto-fit researched equipment
+from the start and pay the full module cost.
+
+Armor, shield and repair output also scales; weapon range, movement bonuses,
+percentage effects and drone counts do not. Carriers can fit at most two bays.
+Standard preset ships remain available with their listed costs and ratings.
+
+BALANCE EDITOR AND SAVES
+Designer hulls exposes offensive/defensive/support slots, module size, module
+scale and tracking penalty. Ship modules contains the small-size base values.
+Profile format 1 is upgraded to format 2 without replacing earlier edits.
+Save format 37 loads older campaigns. Old custom designs, ships and queued work
+retain their previous equipment statistics and capacity rules. Saving an old
+blueprint in the designer refits future orders to the new slots and scaling;
+existing ships and queued work are preserved.
+
+VERIFICATION
+828 automated tests passed, including weapon effects, AI, save migration,
+production controls, and balance profiles. Construction, designer and editor
+screens were rendered and visually checked.
+
+See README.md and docs/balance-editor.md for the defaults and detailed rules.

@@ -124,7 +124,7 @@ def guides():
             ("TAKING CONTROL", "Choose Take control or press A again to resume manual orders. An action already underway finishes; spent movement and weapons stay spent. If it is the enemy's turn, wait for your next turn. Menus and this guide pause the battle. Auto combat stops at the result screen; new battles and loaded games start with manual control."),
             ("WEAPON CHOICES", "Beams, torpedoes and other weapons differ in damage, range, accuracy and special effects. Shields, armor and interception offer different defenses. Research and Ship equipment describe the available upgrades."),
             ("CARRIERS", "Carriers fitted with drone bays can launch drones. Bays limit active drones and launches per battle. Interceptor and bomber research unlock specialized drone types."),
-            ("DESIGNS", "Research unlocks hulls and modules for new designs. Each hull has a total capacity and separate weapon, defense and support limits. Existing ships retain their blueprints."),
+            ("DESIGNS", "Research unlocks hulls and modules for new designs. Each module fills one offensive, defensive or support slot. Hull size scales module output and cost. Large weapons track small targets poorly; bring small escorts. Existing ships retain their blueprints."),
         )),
         Article("ground_combat", "combat", "Ground combat and raiding", "Transport troops and colony defenses", (
             ("INVASION", f"Clear hostile orbital defenses and bring troop transports. Each transport supplies {production_balance.TROOP_STRENGTH} invasion attack before modifiers. Defenders include colony militia and trained garrison troops."),
@@ -184,14 +184,14 @@ def articles():
                     ("RESEARCH REQUIRED", technology_name(spec.technology))]
         if spec.id in HULLS:
             hull = HULLS[spec.id]
-            sections.append(("CUSTOM DESIGN CAPACITY", f"{hull.capacity} total module spaces\nWeapon limit: {hull.weapon} · Defense limit: {hull.defense} · Support limit: {hull.support}\nModule costs are added to the bare hull cost."))
+            sections.append(("CUSTOM DESIGN SLOTS", f"Offense: {hull.offensive_slots} · Defense: {hull.defensive_slots} · Support: {hull.support_slots}\n{hull.module_size.title()} modules: {hull.module_scale}% output and cost.\nTracking penalty: {hull.tracking_penalty} percentage points per smaller target size.\nModule costs are added to the bare hull cost."))
         if spec.id == "troop_transport":
             sections.append(("TRAINING REQUIRED", "The colony needs operational barracks to train transport troops."))
         sections.append(("NOTES", "Queue ships in an owned colony's shipyard. Research and racial bonuses can change new orders. Unlocking a later hull does not unlock classes skipped in earlier research tiers."))
         result.append(Article("ship_"+spec.id, "ships", spec.name, "Ship class", tuple(sections)))
     for identifier, spec in sorted(MODULES.items(), key=lambda item: (item[1].category, item[1].name)):
         result.append(Article("module_"+identifier, "equipment", spec.name, spec.category.title()+" module", (
-            ("EFFECT", spec.description), ("MODULE SPACE", f"{spec.space} {spec.category} space"+("s" if spec.space != 1 else "")),
+            ("EFFECT", spec.description), ("MODULE SLOT", f"One {spec.category} slot. Hull size scales damage, armor, shields, repair and cost; range and percentage effects stay unchanged."),
             ("BASE COST", f"{spec.resource_cost} Resources · {spec.work_cost} work, added to the blueprint"),
             ("RESEARCH REQUIRED", technology_name(spec.technology)),
         )))

@@ -8,7 +8,7 @@ import hashlib
 
 from .production import SHIP_TYPES, ShipSpec
 from . import defenses
-from .designs import HULLS, ShipDesign
+from .designs import HULLS, MODULE_SIZES, ShipDesign
 from .weapons import Beam, BEAMS, DRONE_ROLES, CAPITAL_TARGETS
 from .empires import EMPIRE_IDS
 from .monsters import MONSTER, MONSTERS, alive_at, at as guardian_at, observe, known_status, commit_battle_result
@@ -213,7 +213,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=36):
+    def from_dict(cls, data, game, *, version=37):
         from .model import _integer, _name
         if version < 25 and isinstance(data, dict):
             data = {**data, "accuracy": False, "shots_fired": 0}
@@ -270,7 +270,7 @@ class CombatState:
                     or (not drone and role is not None)):
                 raise ValueError("Invalid drone role")
             planet = defenses.base_planet(game, row["id"]) if station else None
-            design = ShipDesign.from_dict(row["design"]) if version >= 18 and row["design"] is not None else None
+            design = ShipDesign.from_dict(row["design"], version=version) if version >= 18 and row["design"] is not None else None
             if design and (monster or station or drone or design.kind != row["kind"]):
                 raise ValueError("Invalid battle blueprint")
             if ((not planet or (-row["id"]-10_000)//8 != data["system_id"]) if station else
@@ -716,7 +716,7 @@ def move(game, ship_id, x, y, owner="player"):
 
 def accuracy_breakdown(game, attacker, target, weapon):
     if game.combat is not None and not game.combat.accuracy:
-        return {"base": 100, "targeting": 0, "range": 0, "evasion": 0, "chance": 100}
+        return {"base": 100, "targeting": 0, "range": 0, "evasion": 0, "tracking": 0, "chance": 100}
     bonuses = game.bonuses_for(attacker.owner) if attacker.owner in game.owners else {}
     defense = game.bonuses_for(target.owner) if target.owner in game.owners else {}
     spec = BEAMS[weapon]
@@ -733,8 +733,16 @@ def accuracy_breakdown(game, attacker, target, weapon):
     if spec.projectile and bonuses.get("torpedo_guidance"):
         evasion //= 2
     targeting = bonuses.get("accuracy", 0)
+    tracking = 0
+    if attacker.kind in HULLS and (attacker.design is None or attacker.design.fit_version == 2):
+        hull = HULLS[attacker.kind]
+        target_size = (MODULE_SIZES[HULLS[target.kind].module_size] if target.kind in HULLS
+                       else 3 if target.kind == "missile_base" or target.kind in MONSTERS
+                       else 0 if target.kind in ("scout", "combat_drone") else 1)
+        tracking = max(0, MODULE_SIZES[hull.module_size]-target_size)*hull.tracking_penalty
     return {"base": base, "targeting": targeting, "range": penalty, "evasion": evasion,
-            "chance": max(10, min(95, base+targeting-penalty-evasion))}
+            "tracking": tracking,
+            "chance": max(5 if tracking else 10, min(95, base+targeting-penalty-evasion-tracking))}
 
 
 def shot_strengths(weapon, strength):

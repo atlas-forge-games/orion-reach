@@ -20,8 +20,8 @@ The editor includes 259 entries and rule groups across 18 catalogues:
 | --- | --- |
 | Buildings | Resource/work costs, upkeep, production, worker bonuses, energy, prerequisites |
 | Standard ships | Costs, hull, strategic attack rating, tactical movement, drone bays, prerequisites |
-| Designer hulls | Hull points, movement, space and category capacities |
-| Ship modules | Costs, space, damage/range, armor, shields, interception, repair and movement bonuses |
+| Designer hulls | Hull points, movement, category slots, module size/scale and tracking penalty |
+| Ship modules | Base costs, damage/range, armor, shields, interception, repair and movement bonuses |
 | Weapons | Damage, range, accuracy, shots, reload, shield effects, interception piercing |
 | Races | Economic/population modifiers, starting research, diplomacy, AI priorities and names |
 | Technologies | Branch, tier, alternative order, cost override, effects and descriptions |
@@ -92,9 +92,42 @@ points, with the game displaying progress as a percentage of the threshold.
 Higher growth can produce multiple population units in a turn, up to capacity.
 
 Safety limits preserve the game's existing capacities: 12 building slots per
-planet, 100 B normal population capacity, 24 spaces per designer hull and
+planet, 100 B normal population capacity, up to 12 slots per designer category and
 24–72 stars. New starting-population settings automatically keep worker
 assignments within the available population. Food-free races still need no farmers.
+
+## Hull-sized modules (v0.53)
+
+Every module uses one slot of its category. In **Designer hulls**, edit
+**Offensive slots**, **Defensive slots** and **Support slots** independently.
+The standard offensive count is four on every combat hull. There is no shared
+space budget; old capacity fields and module space are retained in JSON only
+for legacy blueprint compatibility and are hidden from the editor.
+
+**Module size** selects small, medium or heavy. It sets the target-size class.
+**Module scale** is a percentage: 200 doubles module damage, armor, shields,
+shield regeneration, repair output/reserve, resource cost and work. The scaled
+integer rounds up. Bare-hull costs and hull points are separate. Range, movement,
+interception percentages, hardening and drone counts stay at their base values.
+This lets you adjust damage scale independently of physical size.
+
+**Tracking penalty** removes that many percentage points of hit chance for each
+size class by which the attacking hull exceeds its target. For example, a heavy
+hull with penalty 30 loses 60 points against a small hull. Tiny scouts/drones
+are one class below small; bases and guardians are heavy. Small hulls default
+to zero penalty. Normal targeting, range and evasion still apply. Tracking can
+lower the final hit chance to 5%; the normal upper bound remains 95%.
+
+**Ship modules** stores small-size base output, not the resulting value for each
+hull. The designer displays the effective values for the currently selected hull.
+Weapon special effects remain in **Weapons**. New AI warships and Auto fit use
+the same slots, scaling and prerequisites. **Standard ships** continues to tune
+the fixed ship presets, separately from custom blueprints.
+
+Profile format 2 adds these fields when opening format 1 profiles and saves them
+on the next Save. Earlier prices, research order and other edits are preserved.
+Old blueprints retain unscaled modules and capacity rules until explicitly
+refitted in the designer; existing ships and orders keep their original fit.
 
 ## Profiles and campaigns
 

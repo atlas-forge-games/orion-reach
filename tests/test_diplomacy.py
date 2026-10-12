@@ -171,9 +171,9 @@ class DiplomacyRulesTests(unittest.TestCase):
     def test_each_rival_race_still_expands_and_develops(self):
         for race_id in RACES:
             game = new_game(seed=2408, rival_race_id=race_id)
-            # Quarter-speed Lithar growth now takes longer to fund expansion
-            # while supporting building maintenance and an initial research base.
-            turns = 100 if race_id == "lithar" else 70
+            # Lithar grow slowly; Varkesh and Remnants fund their fitted fleets
+            # before further expansion/research. All still develop over time.
+            turns = 100 if race_id in ("lithar", "varkesh", "remnant") else 70
             for _ in range(turns):
                 game.advance_turn()
             if race_id == "varkesh":
@@ -214,8 +214,19 @@ class DiplomacySaveTests(unittest.TestCase):
         game = new_game(seed=2408)
         for _ in range(20):
             game.advance_turn()
+        # v5 predates blueprints: construct a genuinely representable fixture.
+        from orion.production import SHIP_TYPES
+        for ship in game.ships:
+            ship.design = None
+            ship.hull = min(ship.hull, SHIP_TYPES[ship.kind].hull)
         for system in game.systems:
             for planet in system.worlds:
+                for project in planet.construction_queue:
+                    if project.design:
+                        project.item_id = project.design.kind
+                        project.design = None
+                        project.progress = min(project.progress, project.spec.work_cost-1)
+                        project.resource_cost = project.spec.resource_cost
                 planet.growth_progress = 0  # Legacy saves had no growth progress.
                 planet.garrison = planet.militia_losses = 0  # Or persistent ground forces.
                 planet.farmers, planet.scientists = min(2, planet.population), 0

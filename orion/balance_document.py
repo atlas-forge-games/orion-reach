@@ -97,6 +97,9 @@ class BalanceDocument:
         for key,value in self.entry(section,identifier).items():
             if section == 'buildings' and key == 'unique':
                 continue  # Legacy save metadata; one per planet is now a fixed rule.
+            if (section == 'hulls' and key in ('capacity', 'weapon', 'defense', 'support')
+                    or section == 'modules' and key == 'space'):
+                continue  # Only retained to validate legacy blueprints.
             if key == 'effects':
                 rows.extend((('effects',effect),value.get(effect,0)) for effect in balance.effect_keys())
             elif isinstance(value,list):
@@ -114,6 +117,7 @@ class BalanceDocument:
         if field == 'technology': return [(None,'Available from the start')]+[(k,v['name']) for k,v in data['technologies'].items()]
         if field == 'branch': return [(k,data['branches'][k]['name']) for k in self.profile['branch_order']]+[('ascension','Ascension finale')]
         if field == 'category': return [(v,v.title()) for v in ('weapon','defense','support')]
+        if field == 'module_size': return [(v,v.title()) for v in ('small','medium','heavy')]
         if field == 'weapon' and section not in ('hulls',): return [(k,v['name']) for k,v in data['weapons'].items()]
         if field == 'development': return [(k,v['name']) for k,v in data['buildings'].items()]
         if field == 'research_priority': return [(k,data['branches'][k]['name']) for k in self.profile['branch_order']]
