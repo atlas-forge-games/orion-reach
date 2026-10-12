@@ -704,7 +704,8 @@ class GameState:
         name = name.strip() if isinstance(name, str) else name
         if not _name(name):
             raise RuleError("Choose a name of 1–28 printable characters.")
-        error = loadout_error(kind, modules, self.technology.completed, legacy_hulls=self.technology.legacy_starships)
+        # Blueprints may plan future equipment. Research is enforced when ordering ships.
+        error = loadout_error(kind, modules)
         if error:
             raise RuleError(error)
         if identifier is not None and self.design_for(identifier) is None:
@@ -1319,9 +1320,11 @@ class GameState:
         design = self.design_for(kind) if isinstance(kind, str) and owner == PLAYER else None
         if not isinstance(kind, str) or (kind not in SHIP_TYPES and design is None):
             return "Unknown ship type."
-        if design and loadout_error(design.kind, design.modules, self.technology.completed,
-                                    legacy_hulls=self.technology.legacy_starships, fit_version=design.fit_version):
-            return "This design requires undiscovered technology."
+        if design:
+            error = loadout_error(design.kind, design.modules, self.technology.completed,
+                                  legacy_hulls=self.technology.legacy_starships, fit_version=design.fit_version)
+            if error:
+                return error
         if not design and not self.research_state(owner).hull_unlocked(kind):
             return f"Requires {TECHNOLOGIES[SHIP_TYPES[kind].technology].name}."
         if not planet.colonized:
@@ -1751,12 +1754,11 @@ class GameState:
                 if ([d.id for d in game.designs] != [f"design_{i+1}" for i in range(len(game.designs))]
                         or len({d.name.casefold() for d in game.designs}) != len(game.designs)):
                     raise ValueError("Duplicate ship designs")
-                if any(loadout_error(d.kind, d.modules, technology.completed,
-                                     legacy_hulls=technology.legacy_starships, fit_version=d.fit_version) for d in game.designs):
-                    raise ValueError("Undiscovered blueprint equipment")
+                # ShipDesign.from_dict validates the planned library's structure.
+                # Only actual ships and orders must already have researched equipment.
                 # Occupation preserves paid ship orders and their immutable
                 # blueprints. Their technology may belong to a former owner;
-                # inheriting a hull does not unlock new copies in the designer.
+                # inheriting a hull does not unlock construction of new copies.
                 research_states = [game.research_state(owner) for owner in game.owners]
                 from .designs import MODULES
                 snapshots = [(s.owner, s.design) for s in ships if s.design]

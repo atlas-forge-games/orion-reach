@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.53.0
+# Orion Reach — Python prototype 0.53.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,28 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.53.1: portraits, equipment details and future blueprints
+
+Aelari, Lithar and Remnant now use the three supplied portraits on race selection,
+diplomacy and first contact. Restart the game after installing the update.
+
+Right-click **any equipment row** in the ship designer, including the basic laser
+cannon, to see its effects, hull-scaled damage and cost, range, accuracy, tracking,
+special rules and research requirements. Detail pages use the campaign's active
+balance values; arrows show additional pages, and Escape or right-click closes.
+
+You can add and remove equipment, auto-fit, save and revise blueprints before
+researching their hull or modules. Slot limits and fitting rules still apply.
+Auto-fit previews the selected hull using known equipment and that hull's native
+equipment; other future modules can be added manually. **Planned** designs show
+the missing research and a button to view all requirements, including technologies
+excluded by an earlier choice. Construction unlocks automatically when every
+requirement is met. Existing ships and queued orders keep their equipment.
+
+Save format remains **37**. Earlier campaigns load normally, and planned designs
+survive saving and loading. AI construction still requires its own research.
+No new dependencies are needed.
 
 ## New in v0.53: construction columns and hull-sized modules
 

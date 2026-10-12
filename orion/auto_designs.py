@@ -3,12 +3,17 @@
 from functools import lru_cache
 
 from .designs import HULLS, ShipDesign, loadout_error
+from .production import HULL_TECHNOLOGIES
 
 
 @lru_cache(maxsize=512)
-def auto_design(kind, completed, legacy_hulls=False):
+def auto_design(kind, completed, legacy_hulls=False, *, planning=False):
     if kind not in HULLS:
         return None
+    if planning:
+        # Preview this hull and its native equipment; other choices still use
+        # known technologies. AI callers never opt into blueprint planning.
+        completed = (*completed, HULL_TECHNOLOGIES[kind])
     modules = []
 
     def add(identifier):

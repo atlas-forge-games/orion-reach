@@ -3,7 +3,7 @@
 from collections import Counter
 import math
 import pygame as pg
-from .designs import HULLS, MODULES, ShipDesign, fitted_module, loadout_error
+from .designs import HULLS, MODULES, ShipDesign, fitted_module, loadout_error, missing_research
 from .weapons import BEAMS
 from .fleet_art import ship_icon
 from .research import TECHNOLOGIES
@@ -47,7 +47,9 @@ def draw_designer(app):
     text(surface, "Fit one module per slot. Larger hulls carry larger weapons: more damage, slower tracking against small targets.", (66, 173), 15, MUTED)
     design = draft(app)
     hull = HULLS[design.kind]
-    error = loadout_error(design.kind, design.modules, game.technology.completed, legacy_hulls=game.technology.legacy_starships)
+    error = loadout_error(design.kind, design.modules)
+    missing = missing_research(design.kind, design.modules, game.technology.completed,
+                               legacy_hulls=game.technology.legacy_starships)
     saved = game.design_for(app.design_id)
     unchanged = saved == design
 
@@ -61,7 +63,10 @@ def draw_designer(app):
         b = app.button(f"design_load_{item.id}", "", (82, y, 232, 46), lambda d=item: app.load_design(d), "hotspot")
         panel(surface, b.rect, (16, 32, 43), GOLD if item.id == app.design_id else LINE)
         text(surface, shorten(item.name, 213, 16), (91, y+4), 16, INK)
-        text(surface, f"{HULLS[item.kind].name} · {game.project_price(item.id)} RES", (92, y+27), 10, MUTED)
+        planned = missing_research(item.kind, item.modules, game.technology.completed,
+                                   legacy_hulls=game.technology.legacy_starships)
+        label = f"{HULLS[item.kind].name} · {game.project_price(item.id)} RES"+(" · Planned" if planned else "")
+        text(surface, shorten(label, 213, 10), (92, y+27), 10, GOLD if planned else MUTED)
     if not game.designs:
         paragraph(surface, "Your saved blueprints appear here. Select one to revise its future production orders.", (83, 328), 231, 14, MUTED, 25)
     app.button("design_prev", "←", (82, 677, 54, 30), lambda: app.design_page_change(-1), enabled=app.design_page > 0)
@@ -101,18 +106,17 @@ def draw_designer(app):
         locked = module.technology and module.technology not in game.technology.completed
         text(surface, shorten(module.name, 290, 15), (369, y), 15, MUTED if locked else INK)
         text(surface, f"1 slot · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
-        detail = f"Requires {TECHNOLOGIES[module.technology].name}" if locked else module_detail(identifier, module)
+        detail = module_detail(identifier, module)
         text(surface, shorten(detail, 424, 11), (369, y+26), 11, MUTED if locked else CYAN)
-        if module.technology:
-            app.technology_info_region(module.technology, (369, y, 425, 43))
+        app.module_info_region(identifier, (369, y, 574, 43))
         app.button("design_remove_"+identifier, "−", (802, y, 37, 36), lambda m=identifier: app.change_design_module(m, -1), enabled=identifier in design.modules)
         text(surface, str(design.modules.count(identifier)), (854, y+10), 14, INK)
-        addition = loadout_error(design.kind, [*design.modules, identifier], game.technology.completed, require_weapon=False, legacy_hulls=game.technology.legacy_starships)
+        addition = loadout_error(design.kind, [*design.modules, identifier], require_weapon=False)
         app.button("design_add_"+identifier, "+", (895, y, 48, 36), lambda m=identifier: app.change_design_module(m, 1), enabled=addition is None)
     app.button("design_modules_prev", "←", (369, 761, 47, 29), lambda: app.design_module_page_change(-1), enabled=app.design_module_page > 0)
     text(surface, f"{app.design_module_page+1} / {module_last+1}", (440, 770), 11, MUTED)
     app.button("design_modules_next", "→", (506, 761, 47, 29), lambda: app.design_module_page_change(1), enabled=app.design_module_page < module_last)
-    text(surface, "Right-click for technology info", (574, 770), 10, MUTED)
+    text(surface, "Right-click equipment for details", (566, 770), 10, MUTED)
     app.button("design_auto_fit", "Auto fit", (825, 758, 118, 34), app.auto_fit_design)
 
     panel(surface, (984, 214, 392, 589))
@@ -136,8 +140,16 @@ def draw_designer(app):
     lines = wrapped_lines(caption, 350, 12)
     for index, line in enumerate(lines[:3]):
         text(surface, shorten(line+(' …' if index == 2 and len(lines) > 3 else ''), 350, 12), (1003, 654+index*18), 12, INK)
-    reason = error or ("Name this design before saving." if not design.name else "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
-    paragraph(surface, reason, (1003, 718), 350, 12, GOLD if not error else RED, 20)
+    if missing:
+        names = ", ".join(TECHNOLOGIES[t].name for t in missing)
+        reason = ("Planned · Save now; build after research." if not unchanged else "Planned · Research needed to build.")
+        text(surface, error or reason, (1003, 715), 12, RED if error else GOLD)
+        text(surface, shorten("Requires "+names, 350, 12), (1003, 737), 12, MUTED)
+        app.button("design_requirements", "View research requirements", (1003, 758, 350, 28),
+                   app.show_design_requirements, "ghost")
+    else:
+        reason = error or ("Name this design before saving." if not design.name else "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
+        paragraph(surface, reason, (1003, 718), 350, 12, GOLD if not error else RED, 20)
     text(surface, "Legacy blueprint: saving refits it to slots. Existing ships and orders keep their equipment."
          if saved and saved.fit_version == 1 else "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)
     app.button("designer_back", "← Return", (64, 847, 177, 36), lambda: app.go(app.designer_return), "ghost")

@@ -43,13 +43,12 @@ def duel(weapons=("laser", "torpedo"), defenses=("shield", "point_defense")):
 
 
 class DesignerRulesTests(unittest.TestCase):
-    def test_capacity_category_limits_weapons_names_and_unlocks_are_enforced(self):
+    def test_capacity_category_limits_weapons_and_names_are_enforced(self):
         game = scenario()
         bad = [("", "frigate", ["laser"]), ("A", "scout", ["laser"]),
                ("A", "frigate", ["armor"]), ("A", "frigate", ["laser"]*5),
                ("A", "frigate", ["laser", "armor", "point_defense", "armor"]),
                ("A", "cruiser", ["laser"]*5+["armor"]*4),
-               ("A", "frigate", ["laser", "shield"]),
                ("A", "cruiser", ["laser", "scanner", "scanner"])]
         for args in bad:
             before = game.to_dict()
@@ -227,7 +226,7 @@ class DesignerCombatTests(unittest.TestCase):
         row = copy.deepcopy(base); row["ships"][0]["design"]["modules"] = ["laser"]*12; invalid.append(row)
         row = copy.deepcopy(base); row["combat"]["ships"][0]["shields"] = 1; invalid.append(row)
         row = copy.deepcopy(base); row["combat"]["ships"][0]["design"]["name"] = "Forged"; invalid.append(row)
-        row = copy.deepcopy(base); row["designs"][0]["modules"] = ["quantum"]; invalid.append(row)
+        row = copy.deepcopy(base); row["designs"][0]["modules"] = ["unknown_module"]; invalid.append(row)
         row = copy.deepcopy(base); row["ships"][0]["kind"] = "battleship"; invalid.append(row)
         for data in invalid:
             with self.assertRaises(SaveError):
@@ -290,7 +289,7 @@ class DesignerUITests(unittest.TestCase):
 
     def test_locked_modules_capacity_and_library_pagination(self):
         self.click("fleets_designer")
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "design_add_shield").enabled)
+        self.assertTrue(next(b for b in self.app.buttons if b.key == "design_add_shield").enabled)
         for index in range(24):
             self.app.game.save_design(f"Plan {index}", "frigate", ["laser"])
         for _ in range(3):

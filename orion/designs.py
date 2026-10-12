@@ -133,6 +133,14 @@ def fitted_module(kind, identifier, fit_version=2):
     return replace(module, name=f"{hull.module_size.title()} {name}", space=1, **scaled)
 
 
+def missing_research(kind, modules, completed, *, legacy_hulls=False):
+    """Ordered research requirements for a structurally valid blueprint."""
+    hull_tech = HULL_TECHNOLOGIES[kind]
+    requirements = ([] if legacy_hulls and kind in ("cruiser", "battleship") else [hull_tech])
+    requirements += [MODULES[m].technology for m in modules]
+    return tuple(dict.fromkeys(t for t in requirements if t and t not in completed))
+
+
 def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_hulls=False, fit_version=2):
     if not isinstance(kind, str) or kind not in HULLS:
         return "Choose a combat hull."
@@ -156,13 +164,9 @@ def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_
     if fit_version == 2 and sum(m in DRONE_BAYS for m in modules) > 2:
         return "A carrier can fit at most two drone bays."
     if completed is not None:
-        technology = HULL_TECHNOLOGIES[kind]
-        if (technology and technology not in completed
-                and not (legacy_hulls and kind in ("cruiser", "battleship"))):
-            return f"Requires {TECHNOLOGIES[technology].name}."
-        for m in specs:
-            if m.technology and m.technology not in completed:
-                return f"Requires {TECHNOLOGIES[m.technology].name}."
+        missing = missing_research(kind, modules, completed, legacy_hulls=legacy_hulls)
+        if missing:
+            return f"Requires {TECHNOLOGIES[missing[0]].name}."
     if require_weapon and not any(m.damage for m in specs) and not any(m in DRONE_BAYS for m in modules):
         return "Fit at least one weapon or drone bay before saving."
     return None

@@ -1,0 +1,48 @@
+Orion Reach v0.53.1 — Portraits and ship designer planning
+
+INSTALL
+Requires the existing v0.53.0 game. This is an incremental update, not a
+standalone game. Close the game, extract this ZIP into the repository root
+(the directory containing main.py), and allow the included files to overwrite
+their older versions. Restart with python main.py.
+
+CHANGES
+- Aelari, Lithar and Remnant use the supplied new portraits. The PNGs are
+  preserved byte-for-byte under the existing asset filenames. Race selection,
+  diplomacy and first contact all use the replacement art after restarting.
+- Right-click any equipment row in the ship designer, including basic laser
+  cannons, to see fitting costs, actual hull-scaled statistics, range, accuracy,
+  tracking, special effects and research requirements. The arrows page through
+  longer details. Escape, Close or another right-click dismisses the popup.
+- Plan, edit, auto-fit and save blueprints with unresearched hulls and modules.
+  Adding and removing modules both work before research. Physical fitting
+  rules remain in force: slot counts, one scanner, carrier-only bays and the
+  two-bay maximum.
+- Planned designs display their missing research. View research requirements
+  lists every missing hull/module technology and indicates excluded choices.
+  Auto-fit previews the chosen hull using known modules and its native
+  equipment; other future modules can be selected manually.
+- Construction requires every hull and equipment technology, through the
+  designer, shipyard and colony production. A saved design becomes buildable
+  automatically after its requirements are discovered; no resave is needed.
+- Saved future plans survive loading. Existing ships and paid orders retain
+  their equipment, even when their library blueprint is revised into a plan.
+  AI construction continues to use only researched hulls and equipment.
+
+COMPATIBILITY
+Save format stays at 37; this version loads existing campaigns. The update
+adds no dependencies and does not change research costs or campaign balance.
+Keep the new game files when loading campaigns that contain future plans.
+Your save files, balance.json and local settings are not included or replaced.
+
+VERIFIED
+836 automated tests passed, including blueprint saving/loading, research
+construction gates, carrier editing, old save compatibility, AI and combat.
+An additional focused check confirmed that forged unresearched ships and
+construction orders are rejected specifically by the research validator.
+Rendered UI checked for all three portraits, planned carrier, research
+requirements, basic laser help and multi-page heavy graviton help.
+
+COMMIT (run yourself from the repository root after extracting)
+git add README.md assets/portraits/README.md assets/portraits/aelari-v1.png assets/portraits/lithar-v1.png assets/portraits/remnant-v1.png orion/__init__.py orion/app.py orion/auto_designs.py orion/designer_info.py orion/designer_view.py orion/designs.py orion/encyclopedia.py orion/model.py tests/test_arsenal.py tests/test_designer.py tests/test_designer_planning.py tests/test_starships.py UPDATE_v0531.txt
+git commit -m "Update race portraits and support future ship blueprints with detailed module help"

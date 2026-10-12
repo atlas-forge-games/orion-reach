@@ -49,20 +49,21 @@ def carrier_battle(*, enemy="frigate", custom=False, two=False):
 
 
 class HullResearchTests(unittest.TestCase):
-    def test_named_research_gates_designs_and_standard_construction_for_both_empires(self):
+    def test_named_research_gates_custom_and_standard_construction_for_both_empires(self):
         for owner in (PLAYER, RIVAL):
             game = campaign()
             sid, planet = game.headquarters(owner)
-            before = game.to_dict()
             for kind in HULLS:
                 if kind == "frigate":
                     continue
+                planned = game.save_design("Planned "+kind, kind, ["laser"]) if owner == PLAYER else None
+                before = game.to_dict()
                 with self.assertRaisesRegex(RuleError, "Requires"):
                     game.queue_ship(sid.id, planet.id, kind, owner=owner)
-                if owner == PLAYER:
+                if planned:
                     with self.assertRaisesRegex(RuleError, "Requires"):
-                        game.save_design(kind, kind, ["laser"])
-            self.assertEqual(game.to_dict(), before)
+                        game.queue_ship(sid.id, planet.id, planned.id)
+                self.assertEqual(game.to_dict(), before)
             research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "titan_hulls", owner=owner)
             for kind in ("destroyer", "cruiser", "carrier", "titan"):
                 game.queue_ship(sid.id, planet.id, kind, owner=owner)

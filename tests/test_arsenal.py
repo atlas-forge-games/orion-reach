@@ -427,8 +427,10 @@ class ArsenalSaveAndAITests(unittest.TestCase):
         game.buy_construction(system.id, frontier.id)
         self.assertEqual(game.ships[-1].design, original)
         self.assertEqual(round_trip(game), game)
+        planned = game.save_design("Stolen copy", original.kind, original.modules)
         with self.assertRaises(RuleError):
-            game.save_design("Stolen copy", original.kind, original.modules)
+            game.queue_ship(system.id, frontier.id, planned.id)
+        self.assertEqual(round_trip(game), game)
 
 
 class ArsenalUITests(unittest.TestCase):
@@ -464,13 +466,13 @@ class ArsenalUITests(unittest.TestCase):
         self.assertIn("plasma", app.design_modules)
         self.assertIsNone(loadout_error(app.design_kind, app.design_modules, app.game.technology.completed))
         app.filter_design_modules("weapon"); app.render()
-        identifier, rect = next((t, r) for t, r in app.technology_regions if t == "plasma_beams")
+        identifier, rect = next((m, r) for m, r in app.module_regions if m == "plasma")
         before = app.game.to_dict()
         app.present()
         v = app.viewport
         position = (round(v.x+rect.centerx*v.w/1440), round(v.y+rect.centery*v.h/900))
         app.handle_event(pg.event.Event(pg.MOUSEBUTTONUP, {"button": 3, "pos": position}))
-        self.assertEqual(app.dialog["technology"], identifier)
+        self.assertEqual(app.dialog["module"], identifier)
         self.assertEqual(app.game.to_dict(), before)
 
     def test_recharging_weapon_animation_keeps_fired_weapon_snapshot(self):

@@ -39,6 +39,7 @@ from .sensor_view import draw_coverage, draw_contacts, draw_contact_panel
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
 from .designer_view import draft, draw_designer
+from .designer_info import draw_designer_info
 from .setup_view import draw_race_select, draw_setup
 from .races import SETUP_RACES as RACES
 from .observer_view import draw_observer, draw_observer_header
@@ -87,6 +88,7 @@ class App:
         self.game=None
         self.buttons=[]
         self.technology_regions=[]
+        self.module_regions=[]
         self.focus=None
         self.keyboard_mode=False
         self.mouse=(-1,-1)
@@ -880,6 +882,25 @@ class App:
         self.pressed=None
         self.buttons=[]
 
+    def module_info_region(self,identifier,rect):
+        self.module_regions.append((identifier,pg.Rect(rect)))
+
+    def show_designer_info(self,**details):
+        if self.dialog:
+            return
+        self.dialog={"designer_info":True,"kind":self.design_kind,"info_page":0,
+                     "return_focus":self.focus,**details}
+        self.focus="dialog_close"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
+
+    def show_design_requirements(self):
+        self.show_designer_info(modules=tuple(self.design_modules))
+
+    def change_designer_info_page(self,delta):
+        self.dialog["info_page"]=max(0,self.dialog["info_page"]+delta)
+
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
         self.empire_page=min(max(0,self.empire_page),max(0,(len(rows)-1)//COLONIES_PER_PAGE))
@@ -1644,7 +1665,7 @@ class App:
         if amount<0:
             if identifier in self.design_modules:
                 self.design_modules.remove(identifier)
-        elif not loadout_error(self.design_kind,[*self.design_modules,identifier],self.game.technology.completed,require_weapon=False,legacy_hulls=self.game.technology.legacy_starships):
+        elif not loadout_error(self.design_kind,[*self.design_modules,identifier],require_weapon=False):
             self.design_modules.append(identifier)
 
     def design_page_change(self,delta):
@@ -1660,11 +1681,11 @@ class App:
     def auto_fit_design(self):
         from .auto_designs import auto_design
         state=self.game.technology
-        design=auto_design(self.design_kind,tuple(sorted(state.completed)),state.legacy_starships)
+        design=auto_design(self.design_kind,tuple(sorted(state.completed)),state.legacy_starships,planning=True)
         if design:
             self.design_modules=list(design.modules)
         else:
-            self.toast("Research this hull before fitting its equipment.",True)
+            self.toast("No valid loadout fits this hull's slots.",True)
 
     def design_colony(self):
         colonies=[(s,p) for s in self.game.systems for p in s.worlds if p.owner==PLAYER]
@@ -1870,12 +1891,16 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog:
                     self.cancel_dialog()
             else:
-                identifier=next((t for t,r in reversed(self.technology_regions) if r.collidepoint(self.mouse)),None)
-                if identifier:
-                    self.show_technology_info(identifier)
+                module=next((m for m,r in reversed(self.module_regions) if r.collidepoint(self.mouse)),None) if self.screen=="designer" else None
+                if module:
+                    self.show_designer_info(module=module)
+                else:
+                    identifier=next((t for t,r in reversed(self.technology_regions) if r.collidepoint(self.mouse)),None)
+                    if identifier:
+                        self.show_technology_info(identifier)
             return
         if event.type in (pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP) and event.button==1:
             self.mouse=self.logical_pos(event.pos)
@@ -2000,7 +2025,7 @@ class App:
             else:
                 self.go("menu")
             return
-        if self.field:
+        if self.field and not self.dialog:
             if event.key==pg.K_a and event.mod & (pg.KMOD_CTRL|pg.KMOD_META):
                 self.select_all=True
             elif event.key==pg.K_BACKSPACE:
@@ -2489,6 +2514,9 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        if "designer_info" in self.dialog:
+            draw_designer_info(self)
+            return
         if "technology" in self.dialog:
             draw_technology_info(self,self.dialog["technology"])
             return
@@ -2510,6 +2538,7 @@ class App:
                 self.go("planet")
         self.buttons=[]
         self.technology_regions=[]
+        self.module_regions=[]
         if self.screen!="splash":
             full=self.screen not in (*GAME_SCREENS,"pause")
             self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)

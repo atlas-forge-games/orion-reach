@@ -1,8 +1,8 @@
 # Orion Reach — race portraits v1
 
-Eleven race portraits and one Observer portrait. The Varkesh use the supplied
-warlord illustration; the other portraits were generated with the built-in
-image-generation tool.
+Eleven race portraits and one Observer portrait. Aelari, Lithar, Remnant and
+Varkesh use supplied illustrations; the remaining portraits were generated with
+the built-in image-generation tool.
 The game uses these portraits on the New Game race cards and the Diplomacy
 and first-contact screens, including your own empire's profile. Extract updates into the repository
 root to place the files under assets/portraits/.
@@ -26,14 +26,21 @@ Each file is an unmodified PNG; supplied artwork is preserved as provided.
 The renderer preserves their aspect ratio and caches loaded and scaled images.
 Missing or unreadable images fall back to the matching procedural race emblem.
 To replace a portrait, keep its filename and restart the game. The filename stem
-before `-v1` is the stable race ID. The eight additions use the selected final
-portraits: Lithar are irregular living stones, Varkesh are tusked warlords in
+before `-v1` is the stable race ID. The current portraits depict Aelari as a blue
+aquatic envoy, Lithar as jagged living stone with glowing amber seams, Varkesh as tusked warlords in
 battered armor beneath red clan banners,
 Wanderers are mothlike navigators, Xenonflora are branching plant organisms,
 Nexus are linked floating machines, Aetheri are loops of luminous energy,
-the Concord are symbiotic organisms, and the Remnant is a hooded humanoid
-survivor with a proud, patient, melancholy expression. Earlier portrait drafts
+the Concord are symbiotic organisms, and the Remnant is a purple humanoid
+survivor with an ornate circular gold headpiece. Earlier portrait drafts
 are not included in the game.
+
+## Aelari, Lithar and Remnant portrait update — v0.53.1
+
+The supplied `aelari.png`, `lithar.png` and `remnant.png` are copied byte-for-byte
+to their stable `-v1.png` paths. New and existing campaigns use the replacement
+art after restarting. No crop, rescaling, recoloring or generated edit is baked
+into the files; the existing renderer fits each portrait at runtime.
 
 ## Varkesh portrait update — v0.42.1
 
@@ -43,7 +50,10 @@ path, so new games and existing campaigns immediately use the new portrait after
 restarting the game. No crop, rescaling, recoloring or generated edit is baked
 into the asset; the existing renderer fits it to each screen at runtime.
 
-## Generation prompts
+## Original generation prompts
+
+These prompts document the original generated assets. The Aelari prompt below
+describes the superseded portrait, not the supplied v0.53.1 replacement.
 
 The Observer is an original pale, bald, watchful character in a dark suit and
 fedora, inspired by the quiet, mysterious mood of the Observers in *Fringe*.
