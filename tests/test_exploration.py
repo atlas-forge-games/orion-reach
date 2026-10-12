@@ -230,6 +230,7 @@ class ExplorationRulesTests(unittest.TestCase):
         self.assertEqual(sum(s.owner == PLAYER for s in game.exploration.surveys), 1)
 
     def test_old_v9_save_keeps_revealed_map_assets_and_original_file(self):
+        from scenarios import migrated_statistics
         game = new_game(seed=2408, fog_of_war=False)
         game.ships = [Ship(1, "frigate", 0, hull=13), Ship(2, "colony_ship", 0)]
         game.next_ship_id = 3
@@ -249,7 +250,7 @@ class ExplorationRulesTests(unittest.TestCase):
             path.write_text(json.dumps(payload))
             original = path.read_bytes()
             restored, _ = store.load(path)
-            self.assertEqual(restored, game)
+            self.assertEqual(restored, migrated_statistics(game))
             self.assertEqual(path.read_bytes(), original)
             self.assertFalse(restored.fog_of_war)
             self.assertEqual(json.loads(store.save(restored).read_text())["version"], SAVE_VERSION)

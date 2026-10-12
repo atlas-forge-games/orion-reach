@@ -659,6 +659,7 @@ class GameState:
     council: council_rules.CouncilState = field(default_factory=council_rules.CouncilState)
     victory_conditions: tuple[str, ...] = victory_rules.CONDITIONS
     black_holes: black_holes.BlackHoleState = field(default_factory=black_holes.BlackHoleState)
+    statistics: dict[str, list[list[int]]] = field(default_factory=dict)
 
     @property
     def is_observer(self):
@@ -1518,6 +1519,9 @@ class GameState:
             return TurnReport(0, 0, [])
         if combat_rules.intercept(self):
             return TurnReport(0, 0, [])
+        # Freeze the outgoing turn's live totals before AI orders and simulation.
+        from . import statistics as statistics_rules
+        statistics_rules.record(self)
         # End Turn commits existing orders before the AI plans against current positions.
         for ship in self.ships:
             ship.departure_pending = False
@@ -1629,6 +1633,7 @@ class GameState:
         combat_rules.intercept(self)
         council_rules.schedule(self)
         self.check_victory()
+        statistics_rules.record(self)
         return TurnReport(income, research, completed, arrivals,
                           [discovered.name] if discovered else [], alerts, exploration, population, ground_battles, resource_rates.get(PLAYER, 0))
 
@@ -1636,7 +1641,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=37):
+    def from_dict(cls, data, *, version=38):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1802,6 +1807,8 @@ class GameState:
             if version < 26:
                 first_contact.migrate(game)
             observer_rules.load(game, data, version)
+            from . import statistics as statistics_rules
+            statistics_rules.load(game, data, version)
             if not black_holes.charted(game, game.systems[game.selected_system]):
                 game.selected_system, game.selected_planet = 0, None
             from .balance import tag_game
@@ -1908,6 +1915,8 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
     if with_tombs:
         tomb_rules.seed_worlds(game)
     exploration_rules.refresh(game)
+    from . import statistics as statistics_rules
+    statistics_rules.record(game)
     return game
 
 

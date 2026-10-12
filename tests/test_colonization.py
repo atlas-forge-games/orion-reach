@@ -197,6 +197,7 @@ class ColonizationRulesTests(unittest.TestCase):
             self.assertEqual(store.load(store.save(restored))[0], restored)
 
     def test_v3_save_migrates_building_queue_without_rewriting_source(self):
+        from scenarios import migrated_statistics
         self.game.queue_building(0, 2, "factory")
         self.game.advance_turn()
         self.game.research = 12
@@ -216,7 +217,7 @@ class ColonizationRulesTests(unittest.TestCase):
             path.write_text(json.dumps(payload))
             original = path.read_bytes()
             restored, _ = store.load(path)
-            self.assertEqual(restored, self.game)
+            self.assertEqual(restored, migrated_statistics(self.game))
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(json.loads(store.save(restored).read_text())["version"], SAVE_VERSION)
 

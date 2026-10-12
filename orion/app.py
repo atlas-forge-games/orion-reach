@@ -20,6 +20,8 @@ from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
 from .empire_view import draw_empire
 from .rival_view import draw_rival
 from .diplomacy_view import draw_diplomacy
+from .statistics_view import draw_statistics
+from .statistics import METRICS as STATISTIC_METRICS
 from .contact_view import draw_contact
 from .council_view import draw_council
 from . import first_contact
@@ -62,7 +64,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 
 
 class App:
@@ -186,7 +188,7 @@ class App:
         # before go() runs. Reading Info, pausing, or choosing research is temporary.
         location=(self.game.campaign_id,self.game.selected_system,self.game.selected_planet) if self.game else None
         temporary=(screen not in GAME_SCREENS or screen in
-                   ("research","designer","exploration","empire","diplomacy","fleets","fleet","rival","objectives",
+                   ("research","designer","exploration","empire","diplomacy","statistics","fleets","fleet","rival","objectives",
                     "contact","news","ground","combat","council","result"))
         if self.colony_visit and not temporary:
             leaving=(screen not in colony_screens or self.colony_visit!=location)
@@ -240,6 +242,8 @@ class App:
             self.focus="rival_back" if self.game.opponent else "add_rival"
         if screen=="diplomacy":
             self.focus="diplomacy_back"
+        if screen=="statistics":
+            self.focus="statistics_back"
         if screen=="research":
             self.focus=f"research_branch_{self.research_branch}"
         if screen=="objectives":
@@ -295,7 +299,7 @@ class App:
         if self.idle_colony_review is None or force:
             safe+=("planet","production","colony","shipyard")
         if force:
-            safe+=("diplomacy","objectives","exploration","rival")
+            safe+=("diplomacy","statistics","objectives","exploration","rival")
         if (not self.game or not self.idle_colonies or self.screen not in safe
                 or self.dialog or self.ground_reports or self.game.strategy_error(PLAYER)
                 or first_contact.pending(self.game)):
@@ -707,6 +711,10 @@ class App:
         self.rival_return="empire"
         self.diplomacy_return="galaxy"
         self.diplomacy_return_selection=(0,None)
+        self.statistics_metric="population"
+        self.statistics_range=0
+        self.statistics_hidden=set()
+        self.statistics_cursor_turn=None
         self.research_return="galaxy"
         self.research_return_selection=(0,None)
         self.research_branch="construction"
@@ -979,6 +987,25 @@ class App:
         self.observer_page=0
         self.go("observer")
 
+    def open_statistics(self):
+        self.go("statistics")
+
+    def close_statistics(self):
+        self.go("observer" if self.game.is_observer else "diplomacy")
+
+    def set_statistics_metric(self,metric):
+        if metric in STATISTIC_METRICS:
+            self.statistics_metric=metric
+
+    def set_statistics_range(self,span):
+        self.statistics_range=span
+
+    def toggle_statistics_empire(self,owner):
+        if owner in self.statistics_hidden:
+            self.statistics_hidden.remove(owner)
+        else:
+            self.statistics_hidden.add(owner)
+
     def open_observed_empire(self,owner):
         self.rival_id=owner
         self.rival_return="observer"
@@ -990,6 +1017,8 @@ class App:
     def open_diplomacy(self):
         if self.screen=="diplomacy":
             self.close_diplomacy()
+        elif self.screen=="statistics":
+            self.close_statistics()
         elif self.screen in GAME_SCREENS:
             self.diplomacy_return=self.screen
             self.diplomacy_return_selection=(self.game.selected_system,self.game.selected_planet)
@@ -2006,6 +2035,8 @@ class App:
                 self.go(self.rival_return)
             elif self.screen=="diplomacy":
                 self.close_diplomacy()
+            elif self.screen=="statistics":
+                self.close_statistics()
             elif self.screen=="research":
                 self.close_research()
             elif self.screen=="objectives":
@@ -2089,7 +2120,7 @@ class App:
             elif event.key==pg.K_f:
                 self.open_fleets()
             elif event.key==pg.K_d:
-                self.open_diplomacy()
+                self.close_statistics() if self.screen=="statistics" else self.open_diplomacy()
             elif event.key==pg.K_r:
                 self.open_research()
             elif event.key==pg.K_v:
@@ -2456,6 +2487,9 @@ class App:
 
     def draw_diplomacy(self):
         draw_diplomacy(self)
+
+    def draw_statistics(self):
+        draw_statistics(self)
 
     def draw_research(self):
         draw_research(self)

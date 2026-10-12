@@ -234,6 +234,7 @@ class AIRulesTests(unittest.TestCase):
         self.assertEqual(game.to_dict(), before)
 
     def test_v4_migration_preserves_player_assets_and_waits_for_explicit_rival(self):
+        from scenarios import migrated_statistics
         game = new_game(seed=2408, with_ai=False)
         game.queue_ship(0, 2)
         for _ in range(7):
@@ -258,7 +259,7 @@ class AIRulesTests(unittest.TestCase):
             path.write_text(json.dumps(payload))
             before = path.read_bytes()
             restored, _ = storage.load(path)
-            self.assertEqual(restored, game)
+            self.assertEqual(restored, migrated_statistics(game))
             self.assertEqual(path.read_bytes(), before)
             restored.add_opponent()
             self.assertEqual(restored.ships_owned_by(PLAYER), game.ships)

@@ -271,9 +271,15 @@ class PopulationSaveTests(unittest.TestCase):
             for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
                 state = empire["technology"]
                 state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True, legacy_arsenal=True, legacy_fuel=True, legacy_black_holes=True)
+            from scenarios import migrated_statistics
+            history_source = copy.deepcopy(game)
+            for system in history_source.systems:
+                for planet in system.worlds:
+                    planet.farmers, planet.scientists = min(2, planet.population), 0
+            expected["statistics"] = migrated_statistics(history_source).statistics
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 37)
+        self.assertEqual(SAVE_VERSION, 38)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

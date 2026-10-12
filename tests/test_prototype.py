@@ -102,13 +102,17 @@ class PersistenceTests(unittest.TestCase):
         payload["version"]=1
         payload["game"].pop("selected_planet")
         payload["game"].pop("research")
+        payload["game"].pop("statistics")
         for system in payload["game"]["systems"]:
             system.pop("worlds")
         path.write_text(json.dumps(payload))
         before=path.read_bytes()
         migrated,_=self.store.load(path)
         self.assertEqual(path.read_bytes(),before)
-        self.assertEqual(migrated,old_game)
+        from orion.statistics import sample
+        expected=old_game.to_dict()
+        expected["statistics"]={owner:[sample(old_game,owner)] for owner in old_game.owners}
+        self.assertEqual(migrated.to_dict(),expected)
         self.assertEqual(migrated.systems[0].worlds[2].name,"Earth")
         self.assertTrue(migrated.systems[0].worlds[2].colonized)
         new_path=self.store.save(migrated)

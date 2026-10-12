@@ -213,6 +213,7 @@ class ResearchRulesTests(unittest.TestCase):
 
 class ResearchSaveTests(unittest.TestCase):
     def test_v6_migration_preserves_banks_orders_and_routes_and_spends_old_points(self):
+        from scenarios import migrated_statistics
         game = new_game(seed=2408)
         game.research, game.opponent.research = 123, 57
         game.queue_building(0, 2, "factory")
@@ -239,7 +240,7 @@ class ResearchSaveTests(unittest.TestCase):
                 ship.pop("speed_bonus")
             path.write_text(json.dumps(payload))
             restored, _ = storage.load(path)
-            self.assertEqual(restored, game)
+            self.assertEqual(restored, migrated_statistics(game))
             restored.choose_research("civil_engineering")
             self.assertEqual((restored.research, restored.technology.progress, restored.opponent.research), (0, 123, 57))
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)

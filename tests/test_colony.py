@@ -149,6 +149,7 @@ class ColonyRulesTests(unittest.TestCase):
             self.assertEqual(restored, self.game)
 
     def test_v2_migration_keeps_planets_and_does_not_rewrite_source(self):
+        from scenarios import migrated_statistics
         self.game.selected_planet = 2
         self.earth.population = 9
         self.earth.richness = "Rich"
@@ -166,7 +167,7 @@ class ColonyRulesTests(unittest.TestCase):
             path.write_text(json.dumps(payload))
             before = path.read_bytes()
             restored, _ = store.load(path)
-            self.assertEqual(restored, self.game)
+            self.assertEqual(restored, migrated_statistics(self.game))
             self.assertEqual(path.read_bytes(), before)
             new_path = store.save(restored)
             self.assertEqual(json.loads(new_path.read_text())["version"], SAVE_VERSION)

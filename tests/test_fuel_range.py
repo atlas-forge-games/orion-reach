@@ -156,6 +156,7 @@ class FuelRulesTests(unittest.TestCase):
 
 class TravelSaveTests(unittest.TestCase):
     def test_v14_fast_and_pending_voyages_keep_eta_and_can_be_cancelled_or_resumed(self):
+        from scenarios import migrated_statistics
         for pending in (False, True):
             game = new_game(seed=2408, with_ai=False, with_guardians=False)
             destination = max(game.systems, key=lambda s: game.supply_distance(s.id)).id
@@ -177,7 +178,7 @@ class TravelSaveTests(unittest.TestCase):
                 path.write_text(json.dumps(payload))
                 original = path.read_bytes()
                 restored, _ = storage.load(path)
-                self.assertEqual(restored, game)
+                self.assertEqual(restored, migrated_statistics(game))
                 self.assertEqual(path.read_bytes(), original)
                 self.assertEqual(storage.load(storage.save(restored))[0], restored)
                 if pending:

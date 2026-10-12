@@ -1,0 +1,46 @@
+Orion Reach v0.54.0 - Diplomacy statistics
+
+INSTALL
+Requires the existing v0.53.1 game. This is an incremental update.
+Close the game, extract this ZIP into the repository root (the directory
+containing main.py), and allow the included files to overwrite their older
+versions. Restart with python main.py.
+
+CHANGES
+- Open Diplomacy and select Statistics beside Rival Report.
+- Six graph tabs track population, industry, food production, mining
+  production, energy generation, and credits per turn across your empire.
+- Your own civilization is always visible. Other civilizations appear when
+  diplomatic contact is established, revealing their full recorded history.
+- New campaigns record every civilization from turn 1. Civilizations founded
+  later have no history before they exist. Earlier turns remain fixed; the
+  current turn's point updates as orders and worker assignments change.
+- Hover over the graph to see exact totals for a turn. Click a civilization
+  in the legend to show or hide its line. Choose All turns, Last 25, or Last
+  100 to change the displayed range. Negative credit income is supported.
+- Population includes enslaved inhabitants. Industry is production available
+  for construction and Trade Goods. Food and mining show gross production
+  before consumption and power-plant fuel use. Energy shows actual generation
+  across local grids. Credits show net income after maintenance, including
+  Trade Goods and diplomatic trade income.
+- Observer reports also provide Statistics for all civilizations.
+
+COMPATIBILITY
+Save format is now 38, with per-turn statistics retained across save/load.
+Existing campaigns load normally and start recording from their current
+turn: earlier versions did not save economic history, so earlier values
+cannot be reconstructed. The graph leaves that period blank and explains
+when records began. Keep v0.54.0 or newer to open format-38 saves.
+No additional dependencies are required. Save files and local settings
+are not included in this update.
+
+VERIFIED
+All 850 automated tests passed, including 14 new statistics tests covering
+turn history, contact visibility, actual economic totals, save/load, old
+save migration, later empires, observer mode, navigation and graph controls.
+Rendered screens were inspected for chart layout, hover values, negative
+income, a one-turn campaign and a migrated campaign with missing history.
+
+COMMIT (run yourself from the repository root after extracting)
+git add README.md orion/ tests/ UPDATE_v054.txt
+git commit -m "Add diplomacy statistics graphs with persistent turn history"

@@ -331,6 +331,7 @@ class NewsAndTurnTests(unittest.TestCase):
 
 class SaveTests(unittest.TestCase):
     def test_v21_load_keeps_existing_campaign_without_reseeding_tombs(self):
+        from scenarios import migrated_statistics
         game = scenario()
         for owner in game.owners:
             game.research_state(owner).legacy_starships = True
@@ -349,7 +350,7 @@ class SaveTests(unittest.TestCase):
                                         "saved_at": "2026-10-09T12:00:00+00:00", "game": data}), encoding="utf-8")
             before = path.read_bytes()
             loaded = storage.load(path)[0]
-            self.assertEqual(loaded, game)
+            self.assertEqual(loaded, migrated_statistics(game))
             self.assertFalse(loaded.tomb_worlds)
             self.assertEqual(path.read_bytes(), before)
             updated = storage.save(loaded)

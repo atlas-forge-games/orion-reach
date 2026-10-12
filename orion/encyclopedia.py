@@ -135,6 +135,7 @@ def guides():
             ("CONTACT", "Meeting another civilization unlocks its diplomatic channel and a greeting shaped by its attitude. Without fog of war, introductions can happen immediately."),
             ("RELATIONS", "Envoys and gifts can improve relations, subject to costs and cooldowns. Civilizations have different preferences and treaty requirements."),
             ("AGREEMENTS", "Trade and research pacts provide income while active. Attacking an empire breaks agreements and makes relations hostile. The diplomacy screen shows current terms and recent exchanges."),
+            ("STATISTICS", "The Statistics button beside Rival report graphs population, industry, food, mining, energy generation and net credits per turn. New campaigns record every turn from turn 1. Contact reveals the other empire's full recorded history. Hover to inspect values; click civilization names to hide or show lines. Older saves start recording at their load turn."),
         )),
         Article("victory", "affairs", "Victory conditions", "Conquest, science and the council", (
             ("CAMPAIGN SETUP", "Choose enabled victories on the second new-game screen. Turn all off for open-ended play. A human empire is still defeated if it loses all colonies."),

@@ -335,6 +335,7 @@ class VictorySaveTests(unittest.TestCase):
                 GameState.from_dict(data)
 
     def test_v8_upgrade_preserves_in_flight_ships_damaged_combat_and_research(self):
+        from scenarios import migrated_statistics
         game = new_game(seed=2408)
         game.choose_research("ion_drives")
         game.queue_building(0, 2, "factory")
@@ -372,7 +373,7 @@ class VictorySaveTests(unittest.TestCase):
             expected = copy.deepcopy(game)
             expected.combat.accuracy = False
             expected.combat.shots_fired = 0
-            self.assertEqual(restored, expected)
+            self.assertEqual(restored, migrated_statistics(expected))
             self.assertEqual(path.read_bytes(), original)
             restored.combat_ai_action()
             restored.combat_ai_action()

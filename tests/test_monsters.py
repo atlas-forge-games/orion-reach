@@ -383,6 +383,7 @@ class GuardianSaveTests(unittest.TestCase):
             self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
     def test_v16_guardians_remain_unchanged_when_loaded(self):
+        from scenarios import migrated_statistics
         game, _, _ = encounter()
         game.guardians = [g for g in game.guardians if g.kind in ("space_serpent", "crystal_guardian")]
         original = game.to_dict()
@@ -398,10 +399,11 @@ class GuardianSaveTests(unittest.TestCase):
             expected.research_state(owner).legacy_black_holes = True
         expected.combat.accuracy = False
         expected.combat.shots_fired = 0
-        self.assertEqual(GameState.from_dict(legacy_research_payload(legacy), version=16), expected)
+        self.assertEqual(GameState.from_dict(legacy_research_payload(legacy), version=16), migrated_statistics(expected))
         self.assertEqual(game.to_dict(), original)
 
     def test_v15_load_does_not_add_guardians_or_change_worlds_and_orders(self):
+        from scenarios import migrated_statistics
         game = new_game(seed=2408, with_guardians=False)
         place_near(game, 1)
         game.send_ship(1, 1)
@@ -416,7 +418,7 @@ class GuardianSaveTests(unittest.TestCase):
             path.write_text(json.dumps(payload))
             before = path.read_bytes()
             restored, _ = storage.load(path)
-            self.assertEqual(restored, game)
+            self.assertEqual(restored, migrated_statistics(game))
             self.assertEqual(restored.guardians, [])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)

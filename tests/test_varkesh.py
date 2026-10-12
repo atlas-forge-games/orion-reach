@@ -458,6 +458,7 @@ class RaidNewsAndAITests(unittest.TestCase):
 
 class SlaveSaveTests(unittest.TestCase):
     def test_old_v22_saves_preserve_fleets_populations_and_paid_orders(self):
+        from scenarios import migrated_statistics
         game = scenario()
         for owner in game.owners:
             game.research_state(owner).legacy_starships = True
@@ -477,7 +478,7 @@ class SlaveSaveTests(unittest.TestCase):
             for planet in survey["worlds"]:
                 planet.pop("slaves")
         loaded = GameState.from_dict(legacy_research_payload(data), version=22)
-        self.assertEqual(loaded, game)
+        self.assertEqual(loaded, migrated_statistics(game))
         self.assertEqual(loaded.planet_at(0, 2).construction_queue[0].progress, 17)
         self.assertFalse(loaded.raid_events)
         self.assertIn("cannot colonize", loaded.colonize_error(0, 3))
@@ -524,7 +525,7 @@ class SlaveSaveTests(unittest.TestCase):
             original = path.read_bytes()
             self.assertEqual(store.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
-            self.assertEqual(json.loads(original)["version"], 37)
+            self.assertEqual(json.loads(original)["version"], 38)
 
 
 class VarkeshInterfaceTests(unittest.TestCase):

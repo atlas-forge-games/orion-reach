@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.53.1
+# Orion Reach — Python prototype 0.54.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,31 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.54: diplomacy statistics from turn one
+
+Open **Diplomacy → Statistics**, beside Rival report, to compare civilizations
+over time. Six graph tabs show population, industry, food production, mining
+production, energy generation and net credits per turn. The horizontal axis is
+the campaign turn, starting at **turn 1** by default; each civilization has its
+own colored line. Hover over a turn to inspect exact values, click civilization
+names to hide or show lines, or focus on the last 25 or 100 turns.
+
+Your empire is always included. Foreign empires appear when contact is
+established, revealing their full recorded history back to turn 1. Their names,
+lines and totals stay hidden before contact. Newly created empires have records
+only from their founding turn. Observer campaigns can compare every empire.
+
+Population includes enslaved residents. Food and mining show gross production;
+energy shows actual generation across local grids. Credits show net income after
+maintenance, including agreements and Trade Goods. This is an economic history,
+not a treasury or resource-stockpile chart. Values reflect the active campaign's
+balance rules; the current point updates with orders and is fixed when advancing
+the turn. Historical points are preserved in saves.
+
+Save format **38** loads older campaigns. Since earlier versions did not store
+statistics, their history begins at the turn on which they are loaded. Missing
+earlier turns stay blank. No additional dependencies are required.
 
 ## New in v0.53.1: portraits, equipment details and future blueprints
 

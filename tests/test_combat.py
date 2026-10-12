@@ -334,6 +334,7 @@ class CombatSaveTests(unittest.TestCase):
             self.assertEqual(storage.load(storage.save(retreat))[0], retreat)
 
     def test_v7_migration_keeps_research_routes_and_orders_and_adds_full_hulls(self):
+        from scenarios import migrated_statistics
         game = new_game(seed=2408)
         from orion.research import TECHNOLOGIES
         game.research = TECHNOLOGIES["civil_engineering"].cost+13
@@ -357,7 +358,7 @@ class CombatSaveTests(unittest.TestCase):
                 ship.pop("hull")
             path.write_text(json.dumps(payload))
             restored, _ = storage.load(path)
-            self.assertEqual(restored, game)
+            self.assertEqual(restored, migrated_statistics(game))
             self.assertEqual(restored.ships[0].hull, 12)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
 

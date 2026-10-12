@@ -122,6 +122,7 @@ def draw_observer(app):
     pg.draw.line(surface, LINE, (64, 107), (1376, 107))
     app.button("observer_back", "← Galaxy map · Esc", (64, 124, 270, 46), lambda: app.go("galaxy"), "ghost")
     app.button("open_research", "Research · R", (354, 124, 190, 46), app.open_research, "ghost")
+    app.button("observer_statistics", "Statistics", (564, 124, 185, 46), app.open_statistics)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, f"Galaxy {TABS[app.observer_tab].lower()}", (64, 188), 40, INK, "title")
     text(surface, "Every civilization makes its own decisions. You observe the consequences.", (66, 245), 15, MUTED)

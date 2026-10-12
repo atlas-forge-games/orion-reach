@@ -117,6 +117,15 @@ def legacy_economy(game):
                 q["resource_cost"] = q["paid_resources"] = 0
 
 
+def migrated_statistics(game):
+    """Expected pre-v38 migration: start a new history at the loaded turn."""
+    import copy
+    from orion.statistics import sample
+    expected = copy.deepcopy(game)
+    expected.statistics = {owner: [sample(expected, owner)] for owner in expected.owners}
+    return expected
+
+
 def legacy_research_payload(data):
     """Represent research in pre-v28 fixtures using their real three-field schema."""
     if isinstance(data, dict):

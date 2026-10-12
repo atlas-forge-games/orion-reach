@@ -241,6 +241,12 @@ class WorkforceSaveTests(unittest.TestCase):
             for empire in [expected, expected["opponent"], *expected["other_opponents"].values()]:
                 state = empire["technology"]
                 state.update(legacy_count=len(state["completed"]), legacy_active=state["active"] is not None, legacy_starships=True, legacy_arsenal=True, legacy_fuel=True, legacy_black_holes=True)
+            from scenarios import migrated_statistics
+            history_source = copy.deepcopy(game)
+            for system in history_source.systems:
+                for planet in system.worlds:
+                    planet.farmers, planet.scientists = min(2, planet.population), 0
+            expected["statistics"] = migrated_statistics(history_source).statistics
             self.assertEqual(restored.to_dict(), expected)
             restored.move_worker(0, 2, "workers", "scientists")
             resumed = store.load(store.save(restored))[0]
