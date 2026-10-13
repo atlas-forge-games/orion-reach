@@ -694,6 +694,7 @@ class App:
             self.toast(exc,True)
 
     def colonize_request(self):
+        from .administration import settlement_preview
         system_id,planet_id=self.game.selected_system,self.game.selected_planet
         error=self.game.colonize_error(system_id,planet_id)
         if error:
@@ -711,7 +712,8 @@ class App:
             except RuleError as exc:
                 self.toast(exc,True)
         self.confirm(f"Settle {shorten(planet.name,370,29,'title')}?",
-                     f"Use {ship.name} to found a colony with {self.game.starting_colonists()} B inhabitants. The ship is consumed; the new colony can construct buildings and ships.",
+                     f"Use {ship.name} to found a colony with {self.game.starting_colonists()} B inhabitants. The ship is consumed. "
+                     +settlement_preview(self.game, system_id),
                      "Establish colony",settle)
 
     def outpost_request(self):

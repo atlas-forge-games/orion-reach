@@ -6,6 +6,7 @@ from functools import lru_cache
 from .buildings import BUILDINGS
 from . import council as council_balance
 from . import specialists as specialist_rules
+from . import administration as administration_rules
 from .designs import HULLS, MODULES
 from .encyclopedia_artifacts import ARTIFACT_CONCEPTS
 from .personalities import PERSONALITIES
@@ -51,6 +52,13 @@ def building_research(identifier):
 
 def guides():
     return (
+        Article("administration", "economy", "Administrative strain", "Empire size, integration and capital distance", (
+            ("SETTLED SYSTEMS", f"Every settled system beyond your first adds {administration_rules.SYSTEM_STRAIN}% strain to all your colonies. Multiple planets in one system count once. Outposts do not count. Losing your last colony in a system removes that system's contribution."),
+            ("INTEGRATION", f"Each newly settled or conquered system adds another {administration_rules.INTEGRATION_STRAIN}% empire-wide strain for {administration_rules.INTEGRATION_TURNS} production turns. Another planet in an already owned system does not restart integration. The founding capital and existing colonies in older saves begin integrated."),
+            ("LOCAL DISTANCE", f"Only planets in the distant system receive its distance penalty: {administration_rules.DISTANCE_STRAIN}% per {administration_rules.DISTANCE_UNIT_LY:g} light-years beyond the first {administration_rules.DISTANCE_UNIT_LY:g} ly from the capital. Distances are continuous, using the same physical scale as fleet travel. Outposts provide fuel, not administration. The capital is the system containing the headquarters palace; if lost, headquarters falls back to the first remaining colony in system/planet order, and returns to the original homeworld when recovered."),
+            ("PRODUCTION", f"Add size, integration and local distance, then cap the total at {administration_rules.MAX_STRAIN}%. Output sensitivities: research {administration_rules.RESEARCH_SENSITIVITY}%, credits {administration_rules.CREDITS_SENSITIVITY}%, industry {administration_rules.INDUSTRY_SENSITIVITY}%, mining {administration_rules.MINING_SENSITIVITY}% and food {administration_rules.FOOD_SENSITIVITY}%. Apply to positive colony production after bonuses, before upkeep, fuel use or food consumption. Whole-unit outputs round down; construction retains its existing minimum of one industry. Energy and maintenance are unchanged."),
+            ("TRADE AND INFORMATION", "Trade Goods convert reduced industry, then pay local credit strain; all production screens display the final payout. Diplomatic agreements, raid loot and one-time exploration rewards are not colony output and are unaffected. The planet overview displays the breakdown; the settlement confirmation previews expansion costs. Queue estimates include integration expiry. All civilizations follow the same initial rules; separate racial administration modifiers and reduction technologies are not part of this version."),
+        )),
         Article("specialists", "colonies", "Space Hubs and specialists", "Unique leaders and explorers", (
             ("RECRUIT", f"Build a Space Hub, then open Specialists from the Empire overview, your planet or the Hub building. An operational first Hub welcomes a leader and an explorer when available. Later arrivals are checked every {specialist_rules.VISIT_INTERVAL} turns per empire. Terran and Concord attract more visitors; Remnant, Nexus and Varkesh attract fewer. Additional Hubs do not multiply the arrival rate. Visitors depart after {specialist_rules.VISIT_DURATION} turns."),
             ("UNIQUE PEOPLE", f"The galaxy shares {len(specialist_rules.SPECIALISTS)} named characters with distinct starting skills. Each exists only once. You may employ {specialist_rules.MAX_EMPLOYED} at a time. Hiring costs the displayed fee; every hired turn costs the salary, even while in reserve. Salaries reduce net income and follow normal treasury debt rules. Dismissal ends the salary immediately, without refunding the fee. Experience is retained if another empire later hires the character."),

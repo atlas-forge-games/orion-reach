@@ -186,7 +186,11 @@ class PopulationRulesTests(unittest.TestCase):
         game.next_ship_id = 3
         self.assertTrue(game.invade(sid, pid).captured)
         self.assertEqual((home.population, home.growth_progress, home.buildings), (8, 65, ["hydroponic_farm"]))
-        self.assertEqual(game.population_report(home).produced, produced-2)
+        # The former owner's farming research is lost; local administration is
+        # then applied using the conqueror's capital and integration status.
+        from orion.population import report
+        self.assertEqual(report(home, dict(game.bonuses_for())).produced, produced-2)
+        self.assertEqual(game.population_report(home).produced, 12)
 
     def test_combat_and_finished_campaign_lock_growth(self):
         game = new_game(seed=2408)
@@ -279,7 +283,7 @@ class PopulationSaveTests(unittest.TestCase):
             expected["statistics"] = migrated_statistics(history_source).statistics
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 40)
+        self.assertEqual(SAVE_VERSION, 41)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

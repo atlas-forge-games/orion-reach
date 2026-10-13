@@ -136,13 +136,15 @@ def miner_output(planet, bonuses=None):
 
 
 def mining_output(planet, bonuses=None):
+    from .administration import reduced_output
     if not planet.colonized:
         return 0
     bonuses = local_bonuses(planet, bonuses)
     buildings = active_buildings(planet, bonuses)
     base = sum(BUILDINGS[b].resources for b in buildings)*MINERAL_FACTORS[planet.richness]
-    return (BASE_EXTRACTION+bonuses.get("colony_resources", 0)+int(base+planet.miners*miner_output(planet, bonuses))
-            +sum(facility_family(b) == "mine" for b in buildings)*bonuses.get("mine_resources", 0))
+    raw = (BASE_EXTRACTION+bonuses.get("colony_resources", 0)+int(base+planet.miners*miner_output(planet, bonuses))
+           +sum(facility_family(b) == "mine" for b in buildings)*bonuses.get("mine_resources", 0))
+    return reduced_output(raw, bonuses, "mining")
 
 
 def local_bonuses(planet, bonuses):

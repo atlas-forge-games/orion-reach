@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.58.0
+# Orion Reach — Python prototype 0.59.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,57 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.58: portraits and planetary outposts
+## New in v0.59: administrative strain
+
+Expansion now reduces colony efficiency through shared administration and local
+distance from the capital. The same rules apply to players and AI civilizations.
+
+- Each settled **system beyond the first adds 4 percentage points** of strain to
+  every colony. Multiple planets in one system count once; outposts do not count.
+- Each newly settled or conquered system adds another **4 points for eight
+  production turns**. Additional planets in an owned system do not restart its
+  timer. An empire's founding capital starts fully integrated.
+- Only planets in a distant system receive its distance strain:
+  **18 × max(0, distance in light-years / 7 − 1) percentage points**.
+  The first 7 ly are free; 10.5 ly adds 9 points, 14 ly adds 18, and 28 ly adds 54.
+  Outposts extend fuel range but do not change administrative distance.
+- Add the three components and cap total strain at **90%**. Research and colony
+  credit production receive the full penalty, industry and mining half, food a
+  quarter. Energy, upkeep, fuel demand, food consumption and salaries are unchanged.
+  Apply after output bonuses and before expenses. Whole-unit yields round down;
+  the existing minimum of one construction industry remains.
+- Trade Goods convert reduced industry and then pay credit strain. The UI shows
+  the actual payout. Diplomatic income, raid loot and one-time expedition rewards
+  are unaffected. Construction forecasts account for integration finishing.
+
+The **planet overview** shows empire, integration and local distance components,
+capital, light-year distance, output reductions and remaining integration turns.
+The settlement confirmation previews the shared cost and the target's total
+strain. The capital follows the existing headquarters palace: if the original
+homeworld is lost, the first remaining colony becomes headquarters; recovering
+the homeworld restores it. Losing the last colony in a system removes its strain
+and integration timer. Taking that system again begins a new integration period.
+
+AI empires use effective yields when allocating workers and budgeting. They
+secure an initial foothold, favor efficient locations, and consolidate while
+another system integrates or their income is negative. Race-specific strain
+modifiers and administrative reduction technologies are left for later balancing.
+
+Edit **Global rules → Administration** in `python editor.py` to change the rates,
+integration duration, light-year distance unit, cap or each output's sensitivity.
+Save format **41** and balance format **6** preserve the settings and timers.
+Older saves gain size/distance strain immediately, with their existing systems
+treated as fully integrated; old statistics are retained. Existing custom balance
+values are preserved while the new controls are added.
+
+Validation: **956 tests pass**, including 27 new administration and interface
+checks. Colony controls remain separate on both ordinary and fully developed
+planets. Run `python -m unittest discover -s tests -v` to reproduce the suite.
+
+![Local administration breakdown](screenshots/v059_frontier.png)
+![Expansion preview](screenshots/v059_settlement.png)
+
+## Previous update, v0.58: portraits and planetary outposts
 
 Mara Voss and Orun Basalt now have individual portraits in the specialist roster,
 character details and their assigned colony's overview.

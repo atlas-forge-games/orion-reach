@@ -129,7 +129,7 @@ class PowerDispatchTests(unittest.TestCase):
         g.resources = 1
         before = g.resources
         report = g.advance_turn()
-        self.assertEqual((g.resources-before, report.resources), (3, 3))
+        self.assertEqual((g.resources-before, report.resources), (1, 1))  # Mining strain precedes fuel use.
         self.assertEqual(GameState.from_dict(g.to_dict()), g)
 
     def test_enemy_resources_cannot_fund_your_backup(self):
@@ -190,6 +190,7 @@ class PowerProgressionTests(unittest.TestCase):
     def test_forecast_matches_fuel_limited_production_across_colonies(self):
         g = campaign()
         p = g.planet_at(0, 2)
+        p.miners = 1  # Strained passive extraction alone cannot fund both grids and new projects.
         p.buildings = ["research_lab", "research_lab", "factory", "factory", "thermal_plant"]
         system = next(s for s in g.systems[1:] if len(s.worlds) > 2)
         other = system.worlds[2]

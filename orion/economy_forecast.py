@@ -1,7 +1,7 @@
 """Construction forecasts share resources in the same order as real turns."""
 
 from dataclasses import replace
-from . import economy, population, raiding, specialists
+from . import economy, population, raiding, specialists, administration
 
 
 def queue_estimates(game, planet, additional=None):
@@ -20,7 +20,8 @@ def queue_estimates(game, planet, additional=None):
     # A cache is runtime-only, excluded from dataclass serialization. It is
     # invalidated by jobs, queues, power switches, research, bank or turn changes.
     signature = (repr(colonies), repr(base_bonuses), bank, game.turn, game.seed, repr(game.designs),
-                 repr(specialists.employed(game, planet.owner)))
+                 repr(specialists.employed(game, planet.owner)), repr(game.system_integration),
+                 tuple((s.id, s.x, s.y) for s in game.systems))
     if getattr(game, "_forecast_signature", None) != signature:
         game._forecast_signature, game._forecast_cache = signature, {}
     key = (target, repr(additional))
@@ -49,11 +50,13 @@ def queue_estimates(game, planet, additional=None):
         project.paid_resources = project.resource_cost
         return True
 
+    administration_context = administration.Context(game, planet.owner)
     for elapsed in range(1, 2001):
         if not focus.construction_queue:
             break
         dispatch = economy.dispatch_power([p for _, p in worlds], base_bonuses, bank)
-        local = {id(copy): specialists.colony_effects(game, original, elapsed-1)
+        local = {id(copy): {**specialists.colony_effects(game, original, elapsed-1),
+                           **administration_context.effects(copy, turns=elapsed-1)}
                  for (_, original), (_, copy) in zip(colonies, worlds)}
         bonuses = economy.PowerBonuses(base_bonuses, lambda p: dispatch[id(p)], lambda p: local[id(p)])
         bank += sum(economy.mining_output(p, bonuses)-dispatch[id(p)].fuel_used for _, p in worlds)

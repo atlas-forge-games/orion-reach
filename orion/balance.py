@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 5
+VERSION = 6
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'buildings': ('buildings', 'BUILDINGS'),
@@ -37,6 +37,9 @@ CATALOGUES = {
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'administration': ('administration', ('SYSTEM_STRAIN', 'INTEGRATION_STRAIN', 'INTEGRATION_TURNS',
+                         'DISTANCE_STRAIN', 'DISTANCE_UNIT_LY', 'MAX_STRAIN', 'RESEARCH_SENSITIVITY',
+                         'CREDITS_SENSITIVITY', 'INDUSTRY_SENSITIVITY', 'MINING_SENSITIVITY', 'FOOD_SENSITIVITY')),
     'outposts': ('outposts', ('OUTPOST_HULL', 'OUTPOST_RECOVERY')),
     'specialists': ('specialists', ('XP_PER_TURN', 'XP_PER_LEVEL', 'MAX_LEVEL', 'MAX_EMPLOYED', 'MAX_VISITORS', 'VISIT_INTERVAL', 'VISIT_DURATION', 'SURVEY_WORK', 'SOCIAL_VISIT_CHANCE', 'NORMAL_VISIT_CHANCE', 'ISOLATED_VISIT_CHANCE')),
     'economy': ('economy', ('STARTING_CREDITS', 'STARTING_RESOURCES', 'STARTING_POPULATION', 'BASE_EXTRACTION', 'MINER_RESOURCES', 'BASE_ENERGY', 'GATE_ENERGY')),
@@ -132,6 +135,10 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if field == 'DISTANCE_UNIT_LY': return .1, 200
+    if field == 'MAX_STRAIN': return 0, 99
+    if field in ('SYSTEM_STRAIN', 'INTEGRATION_STRAIN', 'DISTANCE_STRAIN') or field.endswith('_SENSITIVITY'): return 0, 100
+    if field == 'INTEGRATION_TURNS': return 0, 10000
     if field in ('SOCIAL_VISIT_CHANCE', 'NORMAL_VISIT_CHANCE', 'ISOLATED_VISIT_CHANCE'): return 0, 100
     if field in ('MAX_LEVEL', 'MAX_EMPLOYED', 'MAX_VISITORS'): return 1, 18
     if field in ('XP_PER_LEVEL', 'VISIT_INTERVAL', 'VISIT_DURATION', 'SURVEY_WORK', 'difficulty', 'work'): return 1, 10000
@@ -352,6 +359,12 @@ def upgrade_profile(profile):
                         colony['work_cost'] = 420
             if isinstance(data.get('rules'), dict):
                 data['rules'].setdefault('outposts', deepcopy(_defaults()['data']['rules']['outposts']))
+        profile['version'] = 5
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 5:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict) and isinstance(data.get('rules'), dict):
+            data['rules'].setdefault('administration', deepcopy(_defaults()['data']['rules']['administration']))
         profile['version'] = VERSION
     return profile
 

@@ -131,6 +131,26 @@ refitted in the designer; existing ships and orders keep their original fit.
 
 ## Profiles and campaigns
 
+### Administrative strain (v0.59)
+
+**Global rules → Administration** exposes system strain (4), integration strain
+(4), integration turns (8), distance strain (18), distance unit in light-years
+(7), total cap (90), and research/credits/industry/mining/food sensitivities
+(100/100/50/50/25). Rates and sensitivities are percentages; the distance unit
+accepts decimals. It is both the free radius around the capital and the length
+over which one distance-strain increment accumulates. Calculation is continuous.
+
+Set the two empire rates or the distance rate to zero to disable those individual
+contributions. A zero total cap disables all output penalties. Cap values stay
+below 100 and sensitivities at or below 100. Energy and maintenance are unaffected.
+All races use these shared defaults in this release. Integration also applies to
+conquest, with the same duration as peaceful settlement. Earlier profile formats
+are upgraded to format 6 without replacing custom ship costs or research layouts.
+Earlier campaigns have no acquisition timestamps, so existing systems begin
+integrated when loaded; permanent size and distance penalties apply immediately.
+
+### Saved profiles
+
 The default profile is `balance.json` beside the launch scripts, independent of
 the current working directory. The file is created on first Save; its absence
 means standard balance. A saved JSON profile is a complete snapshot of the

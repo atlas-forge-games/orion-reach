@@ -182,15 +182,33 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
     expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "geothermal_plant", "thermal_plant", "singularity_plant", *ADVANCED_FACILITIES) for item in items)
-    row_height = min(130, 400//max(1, (len(items)+4)//5))
-    for index, item in enumerate(items):
-        cx, bottom, width, height = ((88+index%5*188, row_height+33+index//5*row_height, 128, min(90, row_height-34)) if expanded else PLACEMENTS[item.asset_id])
+    def target_rect(placement):
+        cx, bottom, width, height = placement
         scale = min(rect.w/928, rect.h/473)
         cx, bottom = round(cx*rect.w/928), round(bottom*rect.h/473)
         width, height = round(width*scale), round(height*scale)
-        target = pg.Rect(rect.x+cx-width//2, rect.y+bottom-height, width, height)
+        return pg.Rect(rect.x+cx-width//2, rect.y+bottom-height, width, height)
+
+    def hit_rect(target):
         hit = target.inflate(24, 0)
         hit.h += 38
+        return hit
+
+    targets = [target_rect(PLACEMENTS[item.asset_id]) for item in items]
+    hits = [hit_rect(target) for target in targets]
+    expanded = expanded or any(a.colliderect(b) for i, a in enumerate(hits) for b in hits[i+1:])
+    row_height = min(130, 400//max(1, (len(items)+4)//5))
+    for index, item in enumerate(items):
+        if expanded:
+            target = target_rect((88+index%5*188, row_height+33+index//5*row_height, 128, min(90, row_height-34)))
+            # Labels and click padding keep their pixel size when the overview
+            # reserves space below the city for its administration breakdown.
+            bottom = target.bottom
+            target.h = min(target.h, max(1, math.floor(row_height*rect.h/473)-42))
+            target.bottom = bottom
+        else:
+            target = targets[index]
+        hit = hit_rect(target)
         if item.asset_id == "headquarters":
             action = app.open_empire if planet.owner == PLAYER else app.open_rival
             caption = "Empire overview" if planet.owner == PLAYER else "Rival report"

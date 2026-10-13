@@ -86,6 +86,7 @@ def invasion_error(game, system_id, planet_id, owner="player"):
 
 
 def invade(game, system_id, planet_id, owner="player"):
+    from . import administration
     from .model import RuleError
     from .raiding import is_varkesh, raid
     if is_varkesh(game, owner):
@@ -102,7 +103,9 @@ def invade(game, system_id, planet_id, owner="player"):
     captured = outcome.captured
     for ship in transports:
         game.ships.remove(ship)
+    previous_systems = administration.snapshot(game)
     apply_ground_outcome(planet, owner, defending, outcome)
+    administration.ownership_changed(game, previous_systems)
     action = ("assimilated" if game._empire(owner).race_id == "concord" else "captured") if captured else "failed to capture"
     record_ground_hostility(game, owner, defender,
                            f"{game.empire_name_for(owner)} {action} {planet.name}: "

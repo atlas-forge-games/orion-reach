@@ -1,0 +1,49 @@
+Orion Reach v0.59.0 — Administrative strain
+
+Extract this update over your v0.58 folder. Run python main.py as usual.
+No new dependencies. No git commit or push is performed by the update.
+
+Rules
+- 4 percentage points of shared strain per settled system beyond the first.
+- Another 4 points per newly settled/conquered system for eight production turns.
+- Additional planets in an owned system add no shared strain or new timer.
+- Local distance: 18 * max(0, distance_ly / 7 - 1) points, only on that system's planets.
+- The three contributions add, capped together at 90%.
+- Research/credits lose the full percentage; industry/mining half; food a quarter.
+- Existing bonuses apply first, then strain, then expenses. Whole-unit outputs
+  round down; the existing minimum one construction industry is retained.
+- Trade Goods use reduced industry and then local credit strain. Energy, upkeep,
+  salaries, food consumption and fuel use are unchanged. Treaty income, raid loot
+  and one-time exploration rewards remain unaffected.
+- Outposts do not count and do not shorten administrative distance.
+
+Interface and AI
+- Planet overview: full strain breakdown, capital, light-year distance, output
+  losses and remaining local integration time, alongside the assigned leader.
+- Settlement confirmation previews empire and local effects before consuming a ship.
+- Construction estimates, population growth, worker allocation, trade payouts,
+  empire totals and statistics use the effective production values.
+- AI considers administrative efficiency, consolidates during integration, and
+  still builds additional planets in already settled systems.
+- Encyclopedia includes an Administrative strain guide.
+
+Persistence and balance
+- Save format 41; balance format 6. Integration survives saves and expires after
+  eight outgoing production turns, without restarting for additional planets.
+- Existing saves gain the permanent penalties; their existing systems start
+  integrated because earlier versions did not store acquisition dates.
+- Historical statistics are not rewritten. Existing balance customizations remain.
+- Global rules -> Administration in python editor.py exposes all strain settings.
+- Capital location follows the headquarters palace. If lost, headquarters moves
+  to the first remaining colony; it returns to the original homeworld if recovered.
+- A lost system stops contributing; acquiring it again begins a new timer.
+- Race-specific modifiers and new reduction buildings/technologies are not added.
+
+Validation
+- 956 tests pass, including 27 new administration and interface checks.
+- Settlement, conquest, timer expiry, output rounding, outposts, AI consolidation,
+  forecasts, old saves, balance upgrades and private colony information covered.
+- Dense colony layouts keep every building clickable above the new panel.
+- Run python -m unittest discover -s tests -v to reproduce the suite.
+
+Reproduce the UI previews with python tools/preview_administration.py.

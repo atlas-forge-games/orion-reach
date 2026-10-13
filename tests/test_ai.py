@@ -110,7 +110,7 @@ class AIRulesTests(unittest.TestCase):
                 place_near(game, frontier.id, anchor=home)
                 expected_credits = game.credits
                 # Farms also use construction time before the scientific endgame.
-                for _ in range(330):
+                for _ in range(400):
                     if game.result is not None:
                         break
                     expected_credits += game.empire_rates[0]
@@ -118,8 +118,8 @@ class AIRulesTests(unittest.TestCase):
                     self.assertGreaterEqual(game.opponent.credits, 0)
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)
                 rows = colony_rows(game, owner=RIVAL)
-                # Colonization now costs ten times as much; expansion still
-                # reaches several colonies before the scientific endgame.
+                # Expensive ships plus administration slow expansion; the AI
+                # still develops several colonies after consolidating its foothold.
                 self.assertGreaterEqual(len(rows), 3)
                 self.assertGreater(len({s.id for s, _ in rows}), 1)
                 self.assertTrue(any("factory" in p.buildings and "trade_center" in p.buildings for _, p in rows))

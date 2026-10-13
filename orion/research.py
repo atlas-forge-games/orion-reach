@@ -392,6 +392,7 @@ def scaled_output(value, percent):
 
 def gross_colony_yields(planet, bonuses):
     from .economy import local_bonuses
+    from .administration import reduced_output
     bonuses = local_bonuses(planet, bonuses)
     if not planet.colonized:
         return 0, 0, 0
@@ -408,9 +409,9 @@ def gross_colony_yields(planet, bonuses):
     industry_percent = bonuses.get("industry_percent", 0)
     if planet.biome not in LUSH_BIOMES:
         industry_percent += bonuses.get("harsh_industry_percent", 0)
-    return (max(1, scaled_output(industry, industry_percent)),
-            scaled_output(income, bonuses.get("income_percent", 0)),
-            scaled_output(research, bonuses.get("research_percent", 0)))
+    return (max(1, reduced_output(scaled_output(industry, industry_percent), bonuses, "industry")),
+            reduced_output(scaled_output(income, bonuses.get("income_percent", 0)), bonuses, "credits"),
+            reduced_output(scaled_output(research, bonuses.get("research_percent", 0)), bonuses, "research"))
 
 
 def building_maintenance(identifier, bonuses=None):
@@ -427,8 +428,11 @@ def colony_maintenance(planet, bonuses=None):
 
 def colony_yields(planet, bonuses):
     from .production import trade_goods_credits
+    from .economy import local_bonuses
+    from .administration import reduced_output
+    bonuses = local_bonuses(planet, bonuses)
     industry, income, research = gross_colony_yields(planet, bonuses)
     industry -= assembly_work(planet, industry, bonuses)
     if planet.colonized and planet.trade_goods:
-        income += trade_goods_credits(industry)
+        income += reduced_output(trade_goods_credits(industry), bonuses, "credits")
     return industry, income-colony_maintenance(planet, bonuses), research

@@ -12,7 +12,7 @@ from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .planet_art import draw_planet
 from .population import BASE_FOOD, WORKER_ROLES, farmer_output
-from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS, trade_goods_credits
+from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS
 from .research import building_maintenance
 from .designs import HULLS
 from . import raiding, defenses, economy
@@ -177,9 +177,9 @@ def workforce_panel(app, game, planet, live):
         text(surface, shorten(caption, 108, 8), (x+7, 130), 8, MUTED)
     benefits = game.bonuses_for(planet.owner) if live else {}
     staff = workforce_bonuses(planet, benefits)
-    details = {"farmers": f"{farmer_output(planet, benefits)} food each" if needs_food else "food not required",
+    details = {"farmers": f"{farmer_output(planet, benefits)} base food each" if needs_food else "food not required",
                "workers": f"{research_balance.WORKER_INDUSTRY+staff.industry:g} base IND each", "scientists": f"{research_balance.SCIENTIST_RESEARCH+staff.research} base RP each",
-               "miners": f"{economy.miner_output(planet, benefits):g} RES each"}
+               "miners": f"{economy.miner_output(planet, benefits):g} base RES each"}
     preview = None
     for role in WORKER_ROLES:
         rect = worker_row_rect(role)
@@ -259,10 +259,10 @@ def construction_panel(app, game, system, planet, live):
     if planet.trade_goods and visible:
         text(surface, "Trade Goods", (1090, 91), 22, INK)
         project_art(surface, "trade_center", (1095, 122, 93, 85))
-        rate = trade_goods_credits(game.planet_yields(planet)[0]) if live else None
+        rate = game.trade_goods_income(planet) if live else None
         text(surface, f"+{rate} CR / turn" if live else "Last observed", (1200, 134), 19, GOLD)
         text(surface, "Ongoing production", (1200, 171), 12, CYAN)
-        text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, rounded down", (1090, 213), 12, MUTED)
+        text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, then credit strain", (1090, 213), 12, MUTED)
         text(surface, f"{len(queue)} projects paused · Progress kept" if queue else "No resource cost or building slot", (1090, 236), 11, MUTED)
     elif queue and visible:
         project = queue[0]
@@ -332,17 +332,32 @@ def draw_planet_overview(app):
     system_panel(app, game, system, planet, live)
     workforce_panel(app, game, planet, live)
     construction_panel(app, game, system, planet, live)
-    draw_colony_scene(app, SURFACE_RECT, game, system, planet, framed=False)
+    show_administration = live and planet.colonized and (planet.owner == PLAYER or game.is_observer)
+    scene_rect = (24, 314, 1392, 406) if show_administration else SURFACE_RECT
+    draw_colony_scene(app, scene_rect, game, system, planet, framed=False)
+    if show_administration:
+        from .administration import MAX_STRAIN
+        strain = game.strain_report(planet)
+        panel(surface, (40, 728, 900, 100), (10, 23, 30))
+        text(surface, f"ADMINISTRATION · {strain.total:.1f}% STRAIN · {strain.systems} settled systems",
+             (52, 740), 12, GOLD, "mono")
+        text(surface, f"Empire {strain.empire:g}% + integration {strain.integration:g}% + local distance {strain.distance:.1f}% · cap {MAX_STRAIN:g}%",
+             (52, 763), 12, INK)
+        text(surface, f"Output loss: RP {strain.loss('research'):.1f}% · CR {strain.loss('credits'):.1f}% · IND {strain.loss('industry'):.1f}% · RES {strain.loss('mining'):.1f}% · food {strain.loss('food'):.1f}%",
+             (52, 784), 12, MUTED)
+        location = f"Capital: {strain.capital} · {strain.distance_ly:.1f} ly away"
+        location += f" · This system integrates in {strain.integration_remaining} turns" if strain.integration_remaining else " · This system integrated"
+        text(surface, shorten(location, 876, 11), (52, 806), 11, CYAN)
     if planet.owner == PLAYER and live:
         from . import specialists
         leader = next((p for p in specialists.employed(game) if p.spec.role == "leader"
                        and (p.system_id, p.planet_id) == (system.id, planet.id)), None)
-        panel(surface, (40, 778, 676, 50), (10, 23, 30))
+        panel(surface, (954, 728, 444, 50), (10, 23, 30))
         caption = f"Leader: {leader.spec.name} · Level {leader.level}" if leader else "Leader: none assigned"
         if leader:
             from .specialist_art import draw_portrait
-            draw_portrait(surface, leader.spec, (46, 783, 40, 40))
-        text(surface, caption, (98 if leader else 52, 798), 13, CYAN if leader else MUTED)
+            draw_portrait(surface, leader.spec, (960, 733, 40, 40))
+        text(surface, shorten(caption, 374 if leader else 420, 13), (1012 if leader else 966, 748), 13, CYAN if leader else MUTED)
         count = len(specialists.visitors(game))
         app.button("planet_specialists", f"Specialists · {count} visitors", (1104, 788, 294, 39), app.open_specialists)
     # Planet facts sit over the landscape, leaving the city as the principal view.
@@ -471,7 +486,7 @@ def draw_production(app):
         app.button(f"production_cancel_{i}", "×", (842, y, 56, 32), lambda index=i: app.cancel_construction(index))
         text(surface, shorten(project.refund_text, 64, 9), (898, y+47), 9, MUTED, right=True)
     if not queue:
-        message = (f"Trade Goods · +{trade_goods_credits(game.planet_yields(planet)[0])} CR each turn. Add a project to resume construction."
+        message = (f"Trade Goods · +{game.trade_goods_income(planet)} CR each turn. Add a project to resume construction."
                    if planet.trade_goods else "Nothing queued. Add buildings on the left or ships on the right. Leaving an empty queue selects Trade Goods automatically.")
         paragraph(surface, message, (510, 224), 380, 18, MUTED, 30)
     app.button("production_previous", "←", (502, 701, 64, 30), lambda: app.change_production_page(-1), enabled=app.production_page > 0)
@@ -479,9 +494,9 @@ def draw_production(app):
     text(surface, f"Page {app.production_page+1} / {pages}", (667, 709), 12, MUTED)
     text(surface, "× refunds unused construction payments.", (502, 748), 11, MUTED)
     panel(surface, (40, 836, 876, 54))
-    rate = trade_goods_credits(game.planet_yields(planet)[0])
+    rate = game.trade_goods_income(planet)
     text(surface, f"Trade Goods · +{rate} CR / turn", (56, 844), 17, GOLD)
-    text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, rounded down · Ongoing · Queued projects keep their progress", (56, 871), 11, MUTED)
+    text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, then local credit strain · Rounded down · Queued projects keep their progress", (56, 871), 11, MUTED)
     app.button("production_build_trade_goods", "Active" if planet.trade_goods else "Trade Goods", (718, 844, 182, 38),
                lambda: app.choose_production(TRADE_GOODS.id), enabled=not planet.trade_goods and game.project_error(sid, pid, TRADE_GOODS.id) is None)
     app.button("production_return", "Return to colony", (1122, 833, 278, 48), lambda: app.go("planet"), "primary")

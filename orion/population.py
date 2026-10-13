@@ -40,16 +40,25 @@ def farmer_output(planet, bonuses=None):
 
 
 def farmers_needed(planet, bonuses, surplus=2):
+    from .economy import local_bonuses
+    bonuses = local_bonuses(planet, bonuses)
     if not food_required(planet.workforce, bonuses):
         return 0
     food = report(planet, bonuses)
-    output = farmer_output(planet, bonuses)
-    passive = food.produced-planet.farmers*output
     # Fractional consumption can equal the final limit a billion early (Lithar).
     # Keep a surplus until actually full, while preserving ordinary allocations.
     room = max(1, food_required(food.capacity+planet.slaves, bonuses)-food.consumed)
     target = food.consumed+(min(surplus, room) if planet.population < food.capacity else 0)
-    return min(planet.workforce, max(0, (target-passive+output-1)//output))
+    # Find the minimum funded workforce after local strain and integer rounding.
+    # This also handles settings where a farmer produces no additional food.
+    low, high = 0, planet.workforce
+    while low < high:
+        middle = (low+high)//2
+        if food_production(planet, bonuses, farmers=middle) >= target:
+            high = middle
+        else:
+            low = middle+1
+    return low
 
 
 def clamp_workforce(planet):
@@ -130,8 +139,9 @@ class PopulationReport:
         return self.status
 
 
-def report(planet, bonuses=None):
+def food_production(planet, bonuses=None, *, farmers=None):
     from .economy import local_bonuses
+    from .administration import reduced_output
     bonuses = local_bonuses(planet, bonuses)
     produced = 0
     needs_food = 100+bonuses.get("food_use_percent", 0) > 0
@@ -139,8 +149,15 @@ def report(planet, bonuses=None):
         produced = BASE_FOOD[planet.biome] + bonuses.get("colony_food", 0)
         if planet.biome in LUSH_BIOMES:
             produced += bonuses.get("lush_food", 0)
-        produced += planet.farmers * farmer_output(planet, bonuses)
+        produced += (planet.farmers if farmers is None else farmers)*farmer_output(planet, bonuses)
         produced += sum(BUILDINGS[b].food for b in active_buildings(planet, bonuses))
+    return reduced_output(produced, bonuses, "food")
+
+
+def report(planet, bonuses=None):
+    from .economy import local_bonuses
+    bonuses = local_bonuses(planet, bonuses)
+    produced = food_production(planet, bonuses)
     growth = 100+bonuses.get("growth_percent", 0)
     if planet.biome in LUSH_BIOMES:
         growth += bonuses.get("lush_growth_percent", 0)

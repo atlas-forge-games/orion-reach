@@ -26,6 +26,7 @@ from . import navigation
 from . import sensors
 from . import first_contact
 from . import economy
+from . import administration
 from . import specialists as specialist_rules
 from . import outposts as outpost_rules
 from . import observer as observer_rules
@@ -672,6 +673,7 @@ class GameState:
     black_holes: black_holes.BlackHoleState = field(default_factory=black_holes.BlackHoleState)
     statistics: dict[str, list[list[int]]] = field(default_factory=dict)
     specialists: specialist_rules.SpecialistState = field(default_factory=specialist_rules.SpecialistState)
+    system_integration: dict[str, dict[str, int]] = field(default_factory=dict)
 
     @property
     def is_observer(self):
@@ -700,6 +702,7 @@ class GameState:
                 (self.fleet_at(system_id, enemy) or defense_rules.bases(self, system_id, enemy))]
 
     def eliminate_defeated(self):
+        administration.normalize(self)
         defeated = {owner for owner in self.owners if not self.colony_systems(owner)}
         for system in self.systems:
             for planet in system.worlds:
@@ -882,8 +885,14 @@ class GameState:
         bonuses = empire.technology.bonuses.copy()
         for key, value in RACES[empire.race_id].effects:
             bonuses[key] = bonuses.get(key, 0)+value
+        context = None
+        def local(planet):
+            nonlocal context
+            if context is None:
+                context = administration.Context(self, owner)
+            return {**specialist_rules.colony_effects(self, planet), **context.effects(planet)}
         return economy.PowerBonuses(bonuses, lambda planet: self._power_report(planet, bonuses),
-                                   lambda planet: specialist_rules.colony_effects(self, planet))
+                                   local)
 
     def research_error(self, identifier, *, owner=PLAYER):
         if self.strategy_error(owner):
@@ -917,6 +926,14 @@ class GameState:
 
     def planet_yields(self, planet):
         return colony_yields(planet, self.bonuses_for(planet.owner))
+
+    def strain_report(self, planet):
+        return administration.report(self, planet)
+
+    def trade_goods_income(self, planet):
+        bonuses = economy.local_bonuses(planet, self.bonuses_for(planet.owner))
+        return administration.reduced_output(production_balance.trade_goods_credits(self.planet_yields(planet)[0]),
+                                             bonuses, "credits")
 
     def planet_maintenance(self, planet):
         return colony_maintenance(planet, self.bonuses_for(planet.owner))
@@ -1480,11 +1497,13 @@ class GameState:
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
+        previous_systems = administration.snapshot(self)
         planet.colonized = True
         outpost_rules.clear(planet)
         planet.owner = owner
         planet.population = self.starting_colonists(owner)
         planet.growth_progress = 0
+        administration.ownership_changed(self, previous_systems)
         # New settlements first supply their inhabitants, then assign industry.
         planet.farmers = 0
         planet.farmers = population_rules.farmers_needed(planet, self.bonuses_for(owner), surplus=1)
@@ -1545,6 +1564,7 @@ class GameState:
             return TurnReport(0, 0, [])
         # Freeze the outgoing turn's live totals before AI orders and simulation.
         specialist_rules.normalize(self)
+        administration.normalize(self)
         from . import statistics as statistics_rules
         statistics_rules.record(self)
         # End Turn commits existing orders before the AI plans against current positions.
@@ -1617,6 +1637,7 @@ class GameState:
                 alerts.append(f"{planet.name}: {self.construction_status(planet)}")
         self.turn += 1
         self.year += 1
+        administration.normalize(self)
         black_holes.resolve_arrivals(self, alerts)
         defense_rules.advance(self)
         outpost_rules.advance(self)
@@ -1669,7 +1690,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=40):
+    def from_dict(cls, data, *, version=41):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1839,6 +1860,7 @@ class GameState:
             if version < 26:
                 first_contact.migrate(game)
             observer_rules.load(game, data, version)
+            administration.load(game, data, version)
             from . import statistics as statistics_rules
             statistics_rules.load(game, data, version)
             specialist_rules.load(game, data, version)

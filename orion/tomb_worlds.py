@@ -79,9 +79,11 @@ def unread_count(game):
 
 def awaken(game, tomb):
     """Resolve one vault. The turn coordinator checks victory after all vaults."""
+    from . import administration
     if tomb.awakened_turn is not None:
         return None
     planet = game.planet_at(tomb.system_id, tomb.planet_id)
+    previous_systems = administration.snapshot(game)
     aware = [owner for owner in game.owners if game.system_explored(tomb.system_id, owner)]
     owner, defender = remnant_empire(game), planet.owner
     report = None
@@ -91,6 +93,7 @@ def awaken(game, tomb):
         clear(planet)
         owner = establish_empire(game, tomb)
         planet.colonized, planet.owner, planet.population = True, owner, AWAKENED_POPULATION
+        administration.ownership_changed(game, previous_systems)
         # The buried habitat supports life even on Barren and Volcanic worlds.
         planet.buildings = ["hydroponic_farm"]
         planet.garrison = AWAKENED_TROOPS
@@ -107,6 +110,7 @@ def awaken(game, tomb):
         if outcome.captured:
             owner = establish_empire(game, tomb)
         victory.apply_ground_outcome(planet, owner, defending, outcome)
+        administration.ownership_changed(game, previous_systems)
         tomb.outcome = "captured" if outcome.captured else "repelled"
         message = f"Awakened Remnant troops {'captured' if outcome.captured else 'were repelled on'} {planet.name}."
         if owner is not None:

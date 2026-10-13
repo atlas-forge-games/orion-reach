@@ -12,7 +12,7 @@ from .research import BRANCHES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
-from . import monsters, defenses, sensors, black_holes, outposts
+from . import monsters, defenses, sensors, black_holes, outposts, administration
 from . import raiding
 from . import first_contact
 from .personalities import personality
@@ -436,29 +436,35 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 incoming[other.destination] = incoming.get(other.destination, 0)+1
         targets = [s for s in game.systems if game.within_fuel_range(s.id, owner)
                    and len(available_worlds(game, s, owner)) > incoming.get(s.id, 0)]
+        context = administration.Context(game, owner)
+        integrating = any(until > game.turn for until in context.timers.values())
+        # Consolidate while a new system integrates or the treasury is shrinking.
+        # Existing-system planets remain useful and incur no extra shared strain.
+        if integrating or game.empire_rates_for(owner)[0] < 0:
+            targets = [s for s in targets if s.id in context.systems]
         frontier = [s for s in targets if not any(p.owner == owner for p in game.known_system(s.id, owner).worlds)]
         local = available_worlds(game, game.systems[ship.system_id], owner)
-        # Each colony ship is now a major investment. A known new system gets
-        # priority over repeatedly filling the already settled home system.
-        if local and (not frontier or any(s.id == ship.system_id for s in frontier)):
+        # Secure an initial foothold, then consider local administrative costs.
+        if len(context.systems) == 1 and frontier:
+            targets = frontier
+        origin = game.systems[ship.system_id]
+        target = min(targets, key=lambda s: (
+            context.report(s.id, acquiring=True).total, game.travel_turns(origin, s, owner),
+            tuple(-value for value in world_quality(max(available_worlds(game, s, owner), key=world_quality))), s.id), default=None)
+        if local and target is not None and target.id == ship.system_id:
             planet = max(local, key=world_quality)
             if game.colonize_error(ship.system_id, planet.id, owner=owner) is None:
                 game.colonize(ship.id, ship.system_id, planet.id, owner=owner)
                 event(game, owner, f"Settled {planet.name} with {planet.population} B colonists.")
             continue
-        targets = frontier or targets
         if not targets:
             unknown = [s for s in game.systems if s.kind != black_holes.KIND and not game.system_explored(s.id, owner) and not incoming.get(s.id)
                        and monsters.known_status(game, s.id, owner) != "alive"
                        and game.within_fuel_range(s.id, owner)]
-            if unknown:
+            if unknown and not integrating:
                 target = min(unknown, key=lambda s: (game.travel_turns(game.systems[ship.system_id], s, owner), s.id))
                 game.send_ship(ship.id, target.id, owner=owner)
             continue
-        origin = game.systems[ship.system_id]
-        target = min(targets, key=lambda s: (
-            game.travel_turns(origin, s, owner),
-            tuple(-value for value in world_quality(max(available_worlds(game, s, owner), key=world_quality))), s.id))
         duration = game.send_ship(ship.id, target.id, owner=owner)
         event(game, owner, f"Sent {ship.name} to {target.name}; {duration} turns in transit.")
 

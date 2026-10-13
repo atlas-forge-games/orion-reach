@@ -44,11 +44,11 @@ class EmpireReportTests(unittest.TestCase):
     def test_totals_cover_all_colonies_and_reserved_slots(self):
         game = varied_empire()
         self.assertEqual(summarize_empire(game), EmpireSummary(
-            colonies=4, population=17, industry=43, income=8, gross_income=25, maintenance=17, research=12,
+            colonies=4, population=17, industry=30, income=0, gross_income=17, maintenance=17, research=11,
             used_slots=11, capacity=28, projects=1, idle=3,
-            food_produced=14, food_consumed=17, food_shortages=3,
-            resources=13, energy_generated=48, energy_demand=30, energy_shortages=1))
-        self.assertEqual(game.empire_rates, (8, 12))
+            food_produced=12, food_consumed=17, food_shortages=3,
+            resources=8, energy_generated=48, energy_demand=30, energy_shortages=1))
+        self.assertEqual(game.empire_rates, (0, 11))
         colony_rows(game, "full", "population", True)
         self.assertEqual(summarize_empire(game).colonies, 4)
 
@@ -60,7 +60,7 @@ class EmpireReportTests(unittest.TestCase):
         self.assertEqual(names(filter_by="idle"), ["Altair Haven", "Mars", "Mercury"])
         self.assertEqual(names(filter_by="full"), ["Mercury"])
         self.assertEqual(names(sort_by="population", descending=True), ["Earth", "Altair Haven", "Mars", "Mercury"])
-        self.assertEqual(names(sort_by="industry", descending=True), ["Altair Haven", "Earth", "Mars", "Mercury"])
+        self.assertEqual(names(sort_by="industry", descending=True), ["Earth", "Altair Haven", "Mars", "Mercury"])
         self.assertEqual(names(sort_by="income", descending=True), ["Earth", "Mars", "Altair Haven", "Mercury"])
         self.assertEqual(names(sort_by="research", descending=True), ["Mercury", "Altair Haven", "Earth", "Mars"])
         self.assertEqual(names(sort_by="slots", descending=True), ["Mercury", "Altair Haven", "Earth", "Mars"])
@@ -74,9 +74,9 @@ class EmpireReportTests(unittest.TestCase):
                 summarize_empire(game)
         self.assertEqual(game.to_dict(), before)
         game.advance_turn()
-        self.assertEqual(summarize_empire(game).research, 12)
+        self.assertEqual(summarize_empire(game).research, 11)
         game.advance_turn()
-        self.assertEqual(summarize_empire(game).research, 16)
+        self.assertEqual(summarize_empire(game).research, 14)
         self.assertEqual(summarize_empire(game).projects, 0)
         self.assertEqual(summarize_empire(game).idle, 4)
         self.assertEqual(set(game.to_dict()), set(before))
