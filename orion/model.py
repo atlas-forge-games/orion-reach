@@ -27,6 +27,7 @@ from . import sensors
 from . import first_contact
 from . import economy
 from . import specialists as specialist_rules
+from . import outposts as outpost_rules
 from . import observer as observer_rules
 from .races import RACES, SETUP_RACES, default_rival_race
 from .home_systems import name_home
@@ -340,6 +341,8 @@ class Planet:
     miners: int = 0
     disabled_buildings: list[int] = field(default_factory=list)
     trade_goods: bool = False
+    outpost_owner: str | None = None
+    outpost_hull: int = 0
 
     @property
     def production_idle(self):
@@ -438,7 +441,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=37):
+    def from_dict(cls, data, expected_id, *, version=40):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -455,6 +458,13 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        if version < 40:
+            record["outpost_owner"], record["outpost_hull"] = None, 0
+        if (record["outpost_owner"] not in (None, *EMPIRE_IDS)
+                or not _integer(record["outpost_hull"], 0, outpost_rules.OUTPOST_HULL)
+                or bool(record["outpost_owner"]) != bool(record["outpost_hull"])
+                or (record["outpost_owner"] and data["colonized"])):
+            raise ValueError("Invalid planetary outpost")
         if version < 35:
             record["trade_goods"] = False
         if type(record["trade_goods"]) is not bool or (record["trade_goods"] and not data["colonized"]):
@@ -691,6 +701,10 @@ class GameState:
 
     def eliminate_defeated(self):
         defeated = {owner for owner in self.owners if not self.colony_systems(owner)}
+        for system in self.systems:
+            for planet in system.worlds:
+                if planet.outpost_owner in defeated:
+                    outpost_rules.clear(planet)
         if len(self.owners)-len(defeated) > 1:
             self.ships[:] = [ship for ship in self.ships if ship.owner not in defeated]
         for i, owner in enumerate(self.owners):
@@ -1049,19 +1063,22 @@ class GameState:
     def colony_systems(self, owner=PLAYER):
         return [s for s in self.systems if any(p.owner == owner for p in s.worlds)]
 
+    def supply_systems(self, owner=PLAYER):
+        return [s for s in self.systems if any(p.owner == owner or p.outpost_owner == owner for p in s.worlds)]
+
     def supply_distance(self, destination, owner=PLAYER):
-        """Distance to the nearest real colony; exploration never extends supply."""
+        """Distance to the nearest owned colony or outpost; ships do not extend supply."""
         target = self.systems[destination]
-        return min((distance_ly(s, target) for s in self.colony_systems(owner)), default=math.inf)
+        return min((distance_ly(s, target) for s in self.supply_systems(owner)), default=math.inf)
 
     def within_fuel_range(self, destination, owner=PLAYER):
         return self.supply_distance(destination, owner) <= self.fuel_range(owner)+1e-9
 
     def fuel_range_error(self, destination, owner=PLAYER):
         if not self.within_fuel_range(destination, owner):
-            advice = "Research fuel tanks to extend your raiding range." if raid_rules.is_varkesh(self, owner) else "Colonize closer worlds or research fuel tanks."
+            advice = "Establish a closer outpost or research fuel tanks."
             return (f"Out of fuel range: {self.systems[destination].name} is "
-                    f"{self.supply_distance(destination, owner):.1f} ly from your nearest colony "
+                    f"{self.supply_distance(destination, owner):.1f} ly from your nearest colony or outpost "
                     f"(range {self.fuel_range(owner)} ly). {advice}")
         return None
 
@@ -1443,6 +1460,8 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
+        if planet.outpost_owner not in (None, owner):
+            return "Destroy the opposing outpost before colonizing this planet."
         guardian = monster_rules.alive_at(self, system_id)
         if guardian:
             return f"Defeat the {guardian.spec.name} guarding this system first."
@@ -1462,6 +1481,7 @@ class GameState:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         planet.colonized = True
+        outpost_rules.clear(planet)
         planet.owner = owner
         planet.population = self.starting_colonists(owner)
         planet.growth_progress = 0
@@ -1599,6 +1619,7 @@ class GameState:
         self.year += 1
         black_holes.resolve_arrivals(self, alerts)
         defense_rules.advance(self)
+        outpost_rules.advance(self)
         self.credits += income
         if income < 0:
             alerts.append(f"Budget deficit: {income} CR/turn after maintenance and specialist salaries")
@@ -1648,7 +1669,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=39):
+    def from_dict(cls, data, *, version=40):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1757,6 +1778,10 @@ class GameState:
             if (any(p.owner is not None and p.owner not in game.owners for s in systems for p in s.worlds)
                     or any(s.owner not in game.owners for s in ships)):
                 raise ValueError("Unknown empire owns a colony or ship")
+            if any(sum(p.outpost_owner is not None for p in s.worlds) > 1 for s in systems):
+                raise ValueError("Only one outpost is allowed per system")
+            if any(p.outpost_owner is not None and p.outpost_owner not in game.owners for s in systems for p in s.worlds):
+                raise ValueError("Unknown empire owns an outpost")
             if version >= 23:
                 raid_rules.load_state(game, data)
             if version >= 18:

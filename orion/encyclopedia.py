@@ -124,7 +124,7 @@ def guides():
             ("REFERENCE CATALOG", "The encyclopedia lists the complete public technology catalog, including technologies you have not researched. Reading an entry never selects or unlocks it."),
         )),
         Article("travel", "ships", "Fleet movement and fuel", "Range is different from speed", (
-            ("RANGE", f"The base fuel range is {production_balance.BASE_FUEL_RANGE} light-years from an owned colony. Scouts do not extend that supply range. Civilization traits and researched fuel tanks can extend it."),
+            ("RANGE", f"The base fuel range is {production_balance.BASE_FUEL_RANGE} light-years from an owned colony or outpost. The map shows the combined supply area with one outer boundary. Scouts do not extend supply. Civilization traits and researched fuel tanks can extend it."),
             ("SPEED", "Drive research reduces voyage time. Fuel tanks extend reach without speeding up a voyage. Navigation networks and jump gates can improve travel between your colonies; enemy interdiction can slow an approach."),
             ("ORDERS", "Click a fleet marker, select ships, then choose a destination. Queued departures can be changed before End turn. Ships already in transit continue their ordered voyage."),
         )),
@@ -187,6 +187,7 @@ def articles():
             sections.append(("EXCLUSIVE ALTERNATIVE", alternative+". Completing either technology closes the other choice in this tier."))
         result.append(Article("technology_"+spec.id, "research", spec.name, f"{tier} · {spec.cost:,} RP", tuple(sections)))
     roles = {"colony_ship": "Establish a new colony on a suitable, unclaimed world. Consumed on settlement.",
+             "outpost_ship": "Establish an unarmed refuelling outpost on any uncolonized planet, regardless of habitability. Consumes the ship. Only one outpost may exist per solar system, across all empires. Outposts extend fuel range and observe the local system, but have no population, production or upkeep. An owned outpost can be replaced by a colony using a colony ship. Enemy armed ships can attack it from the planet overview after defeating orbital defenders; destruction removes its fuel coverage.",
              "scout": "Explore systems and search for discoveries. Unarmed.",
              "troop_transport": "Carry troops for planetary invasions or raids. Unarmed.",
              "carrier": "A warship with drone bays. Can launch combat drones during a battle."}

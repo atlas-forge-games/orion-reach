@@ -1,0 +1,43 @@
+Orion Reach v0.58.0 — specialist portraits and planetary outposts
+
+INSTALL
+Extract this incremental archive over the v0.57 project folder. Preserve the
+folder structure and replace files when asked. Start with python main.py.
+No new dependency is required. Your saves and balance.json are not overwritten.
+
+CHANGES
+- Mara Voss and Orun Basalt have portraits in the specialist roster, details,
+  and their assigned planet overview.
+- Standard colony ship cost: 800 Resources / 420 work (both increased 10x).
+- Outpost ship cost: 80 Resources / 42 work, the previous colony-ship price.
+- Send an outpost ship into orbit, select an uncolonized planet, then choose
+  Build outpost. Any biome works. All races, including Varkesh, can use them.
+- One outpost per solar system across all empires. The ship is consumed.
+- Bases extend fuel range and provide live local observations. They have no
+  population, production or upkeep and are not colonies for victory or leaders.
+- An outpost is a visible unarmed surface installation with 30 hull. After
+  clearing orbital defenders, armed ships can Attack outpost from its planet
+  screen. Each ship shares its normal once-per-turn bombardment allowance.
+  Attacks end treaties and set relations to -100. Destruction removes supply
+  coverage immediately. Peaceful bases repair 4 hull/turn after a quiet turn.
+- An owned outpost can be replaced with a normal colony using a colony ship.
+  Normal habitability requirements apply. A defeated empire loses its bases;
+  a Remnant awakening on the same planet replaces the unarmed outpost.
+- The AI builds/deploys useful outposts, attacks hostile bases, saves materials
+  for the larger colony-ship investment and favors known new systems.
+- Fuel coverage is one uniformly transparent blue union, with only its boundary
+  drawn. Overlapping internal circles disappear. Gaps remain outside supply.
+
+SAVES AND BALANCING
+Save format 40; balance profile version 5. Old campaigns remain loadable. Their
+former standard colony costs migrate from 80/42 to 800/420. Intentional custom
+cost values are preserved. Queued orders retain their reserved material costs;
+work requirements use the active ship definition. Starting fleets are unchanged.
+Ship costs and Global rules > Outposts are editable through python editor.py.
+
+VERIFICATION
+929 automated tests pass, including 24 outpost and portrait checks.
+Eight updated screens were visually inspected.
+Automated lifecycle, economy, supply, attack, AI, migration, fog, combat-save,
+observer, UI-action and range-mask regression coverage in tests/test_outposts.py.
+The live preview tool tools/preview_outposts.py captures eight relevant screens.

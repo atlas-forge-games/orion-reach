@@ -12,11 +12,11 @@ PLANETS_PER_PAGE = 4
 
 
 def allegiance(game, system):
-    owners = {p.owner for p in system.worlds if p.colonized}
+    owners = {owner for p in system.worlds for owner in (p.owner, p.outpost_owner) if owner}
     if len(owners) > 1:
         return "Shared system"
     if "player" in owners:
-        return "Your empire"
+        return "Your empire" if any(p.owner == "player" for p in system.worlds) else "Your refuelling outpost"
     return next((game.empire_name_for(owner) for owner in game.opponents if owner in owners), "Unclaimed")
 
 
@@ -59,7 +59,7 @@ def draw_system_panel(app, star):
                    lambda: app.open_system(star.id), "command", icon="system")
         return
 
-    owners = {world.owner for world in known.worlds if world.colonized}
+    owners = {owner for world in known.worlds for owner in (world.owner, world.outpost_owner) if owner}
     owner_color = app.empire_color(next(iter(owners))) if len(owners) == 1 else MUTED
     text(surface, shorten(allegiance(game, known), width, 11), (x, 290), 11, owner_color)
     summaries = [("WORLDS", len(worlds)), ("HABITABLE", sum(p.habitability >= 35 for p in worlds)),
@@ -88,16 +88,17 @@ def draw_system_panel(app, star):
         panel(surface, row, (23, 43, 53) if active else (16, 32, 42) if selected else (9, 22, 31),
               GOLD if active else (58, 90, 103) if selected else LINE)
         draw_planet(surface, world, (row.x+23, row.centery), 35, visual_seed(game, known, world))
-        color = app.empire_color(world.owner) if world.colonized else MUTED
-        if world.colonized:
+        color = app.empire_color(world.owner or world.outpost_owner) if world.owner or world.outpost_owner else MUTED
+        if world.colonized or world.outpost_owner:
             pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
         left = row.x+48
         text(surface, shorten(world.name, row.w-102, 14), (left, row.y+4), 14, GOLD if active else INK)
-        value = f"{world.workforce} B" if world.colonized else f"{world.habitability}%"
+        value = f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else f"{world.habitability}%"
         text(surface, value, (row.right-9, row.y+6), 10, color, right=True)
         text(surface, shorten(f"{world.biome} · {world.size} · {world.richness}", row.w-58, 10),
              (left, row.y+24), 10, MUTED)
-        owner = game.empire_name_for(world.owner) if world.colonized else "Uncolonized"
+        owner = (game.empire_name_for(world.owner) if world.colonized else
+                 "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Uncolonized")
         if world.id in prizes:
             owner += " · Ancient ruins" if guardian.kind == "ancient_sentinel" else " · Prize world"
         text(surface, shorten(owner, row.w-58, 9), (left, row.y+40), 9, color)

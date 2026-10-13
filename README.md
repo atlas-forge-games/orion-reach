@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.57.0
+# Orion Reach — Python prototype 0.58.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,53 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.57: Space Hubs and unique specialists
+## New in v0.58: portraits and planetary outposts
+
+Mara Voss and Orun Basalt now have individual portraits in the specialist roster,
+character details and their assigned colony's overview.
+
+Standard colony ships cost **800 Resources and 420 work** (ten times the former
+price). New **outpost ships cost 80 Resources and 42 work**. Racial and research
+discounts still apply; starting fleets keep their free colony ship.
+
+Send an outpost ship to a system, select an uncolonized planet, and click
+**Build outpost**. The ship is consumed. Every biome is suitable, including
+Barren and Volcanic worlds, and even Varkesh can establish outposts. There can be
+**one outpost per system across all empires**. Guardians, opposing ships and
+missile bases must be cleared first.
+
+- A base extends fuel range exactly like an owned colony and keeps its own
+  system visible. Outposts have no population, construction, output or upkeep;
+  they do not count as colonies for victory or specialist assignments.
+- The installation is visible on the planet, with **30 hull** and no weapons.
+  Clear its orbital defenders, then use **Attack outpost** on the planet screen.
+  Armed ships share the normal once-per-turn bombardment allowance. Attacks
+  end treaties and set relations to -100. Destruction immediately removes the
+  base's supply coverage. Damage persists; peaceful bases repair 4 hull/turn.
+- An owned outpost can become a normal colony by bringing a colony ship and
+  using **Upgrade to colony**. Habitability research is still needed to settle
+  hostile biomes. A defeated empire loses its outposts. A Remnant awakening
+  on an outpost world replaces the unarmed base with its colony.
+- The AI can build and deploy outpost ships, attack hostile bases, save materials
+  for expensive colonies, and favor known new systems for colonization.
+- The galaxy range overlay retains its transparent blue fill and outlines the
+  **union of all colony and outpost ranges**. No interior overlapping-circle
+  lines are drawn, and gaps outside fuel range remain unfilled.
+
+Existing campaigns load with no new outposts added. Their former standard
+colony-ship costs migrate to the new values, while deliberately customized
+costs remain unchanged. Previously queued orders keep their reserved material
+cost; construction work uses the active ship definition. Save format is **40**,
+balance profile format **5**. Ship costs and **Global rules → Outposts** can be
+adjusted with `python editor.py`.
+
+Validated with **929 passing automated tests**, including 24 outpost and portrait
+checks, plus visual inspection of eight updated screens.
+
+![Specialist portrait](screenshots/v058_orun.png)
+![Outpost supply coverage](screenshots/v058_range.png)
+
+## Previous update, v0.57: Space Hubs and unique specialists
 
 Build a **Space Hub** in a colony, then open **Empire → Specialists**, the
 planet's **Specialists** button, or click the completed Hub on the surface.

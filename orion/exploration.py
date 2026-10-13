@@ -95,7 +95,11 @@ class ExplorationState:
                     raise ValueError("Survey does not match this world")
                 if parsed.owner is not None and parsed.owner not in game.owners:
                     raise ValueError
+                if parsed.outpost_owner is not None and parsed.outpost_owner not in game.owners:
+                    raise ValueError("Unknown outpost owner in survey")
                 normalized_worlds.append(asdict(parsed))
+            if sum(p["outpost_owner"] is not None for p in normalized_worlds) > 1:
+                raise ValueError("Multiple outposts in a system survey")
             surveys.append(Survey(**{**row, "worlds": normalized_worlds}))
             keys.add((owner, sid))
         extras = data["scanned_others"] if version >= 20 else {}
@@ -127,8 +131,8 @@ class ExplorationState:
 
 
 def observed_systems(game, owner="player"):
-    """Live intelligence comes from your colonies or your ships in orbit."""
-    return {s.id for s in game.systems if any(p.owner == owner for p in s.worlds)} | {
+    """Live intelligence comes from colonies, outposts or ships in orbit."""
+    return {s.id for s in game.supply_systems(owner)} | {
         s.system_id for s in game.ships if s.owner == owner and not s.in_transit}
 
 

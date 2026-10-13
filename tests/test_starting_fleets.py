@@ -181,7 +181,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 39)
+        self.assertEqual(SAVE_VERSION, 40)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

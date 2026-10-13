@@ -12,7 +12,7 @@ from .research import BRANCHES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
-from . import monsters, defenses, sensors, black_holes
+from . import monsters, defenses, sensors, black_holes, outposts
 from . import raiding
 from . import first_contact
 from .personalities import personality
@@ -28,7 +28,7 @@ def available_worlds(game, system, owner=RIVAL):
     if monsters.known_status(game, system.id, owner) == "alive":
         return []
     known = game.known_system(system.id, owner)
-    return [p for p in known.worlds if not p.colonized and game.can_settle(p, owner)] if known else []
+    return [p for p in known.worlds if not p.colonized and p.outpost_owner in (None, owner) and game.can_settle(p, owner)] if known else []
 
 
 def known_enemy_colonies(game, owner=RIVAL):
@@ -315,6 +315,9 @@ def military_orders(game, reserved=(), owner=RIVAL):
     targets = [s for s in game.systems if game.system_visible(s.id, owner)
                and any(ship.owner in hostile for ship in game.foreign_fleet(s.id, owner))
                and game.within_fuel_range(s.id, owner)] if hostile else []
+    targets += [s for s in game.systems if game.within_fuel_range(s.id, owner)
+                and (known := game.known_system(s.id, owner)) is not None
+                and any(p.outpost_owner in hostile for p in known.worlds)]
     worlds = [(s, p) for s, p in known_enemy_colonies(game, owner)
               if p.owner in hostile and game.within_fuel_range(s.id, owner)]
     ordered = set()
@@ -353,7 +356,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
                          if sensors.distance(c.x, c.y, game.systems[c.near_system]) <= 12})
     gate = gate_site(game, owner)
     for index, ship in enumerate(ships):
-        if ship.id in ordered or ship.has_course or game.foreign_fleet(ship.system_id, owner):
+        if ship.id in ordered or ship.has_course or game.foreign_fleet(ship.system_id, owner) or ship.bombarded_turn == game.turn:
             continue
         if ship.hull < ship.max_hull and game.can_repair(ship):
             continue
@@ -367,6 +370,8 @@ def military_orders(game, reserved=(), owner=RIVAL):
             destination = staging
             if not troop_transports(game, staging.id, owner) and targets:
                 destination = min(targets, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
+        elif targets:
+            destination = min(targets, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
         else:
             destination = colonies[index % len(colonies)]
         if destination.id != ship.system_id:
@@ -415,6 +420,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
     nature = personality(game, owner)
     invasions = diplomatic_orders(game, owner)
+    invasions.extend(outposts.ai_orders(game, owner, enemies(game, owner)))
     invasions.extend(invasion_orders(game, owner, ground_reports=ground_reports))
     if game.result is not None:
         return invasions
@@ -424,18 +430,23 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     for ship in sorted(game.ships_owned_by(owner), key=lambda s: s.id):
         if ship.has_course or ship.kind != "colony_ship" or raiding.is_varkesh(game, owner):
             continue
-        local = available_worlds(game, game.systems[ship.system_id], owner)
-        if local:
-            planet = max(local, key=world_quality)
-            game.colonize(ship.id, ship.system_id, planet.id, owner=owner)
-            event(game, owner, f"Settled {planet.name} with {planet.population} B colonists.")
-            continue
         incoming = {}
         for other in game.ships_owned_by(owner):
             if other.has_course and other.kind == "colony_ship":
                 incoming[other.destination] = incoming.get(other.destination, 0)+1
         targets = [s for s in game.systems if game.within_fuel_range(s.id, owner)
                    and len(available_worlds(game, s, owner)) > incoming.get(s.id, 0)]
+        frontier = [s for s in targets if not any(p.owner == owner for p in game.known_system(s.id, owner).worlds)]
+        local = available_worlds(game, game.systems[ship.system_id], owner)
+        # Each colony ship is now a major investment. A known new system gets
+        # priority over repeatedly filling the already settled home system.
+        if local and (not frontier or any(s.id == ship.system_id for s in frontier)):
+            planet = max(local, key=world_quality)
+            if game.colonize_error(ship.system_id, planet.id, owner=owner) is None:
+                game.colonize(ship.id, ship.system_id, planet.id, owner=owner)
+                event(game, owner, f"Settled {planet.name} with {planet.population} B colonists.")
+            continue
+        targets = frontier or targets
         if not targets:
             unknown = [s for s in game.systems if s.kind != black_holes.KIND and not game.system_explored(s.id, owner) and not incoming.get(s.id)
                        and monsters.known_status(game, s.id, owner) != "alive"
@@ -457,7 +468,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         remaining = planet.workforce-farmers
         scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
         available = remaining-scientists
-        miners = min(max(0, available-1), max(1, available//3)) if game.resources_for(owner) < 250 else 0
+        resource_target = max(250, game.project_price("colony_ship", owner)) if not raiding.is_varkesh(game, owner) else 250
+        miners = min(max(0, available-1), max(1, available//3)) if game.resources_for(owner) < resource_target else 0
         game.set_workforce(system.id, planet.id, farmers, scientists, miners, owner=owner)
     recover_power(game, owner)
     recover_budget(game, owner)
@@ -501,6 +513,10 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         fleet_limit = 0
     scouts = sum(s.kind == "scout" for s in game.ships_owned_by(owner)) + sum(
         q.item_id == "scout" for _, p in colonies for q in p.construction_queue)
+    outpost_ships = sum(s.kind == "outpost_ship" for s in game.ships_owned_by(owner)) + sum(
+        q.item_id == "outpost_ship" for _, p in colonies for q in p.construction_queue)
+    outpost_count = sum(p.outpost_owner == owner for s in game.systems for p in s.worlds)
+    want_outpost = outpost_count < max(1, 2*len(colonies)) and bool(outposts.expansion_targets(game, owner))
     for index, (system, planet) in enumerate(colonies):
         if planet.construction_queue:
             if planet.trade_goods:
@@ -563,6 +579,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         # spare credits, especially for slow-growing civilizations.
         research_ready = game.empire_rates_for(owner)[1] > 0 or len(colonies) == 1 or planet.free_slots == 0
         produce_ship = index == 0 and fleet_size < fleet_limit and len(planet.buildings) >= target_buildings and research_ready
+        produce_outpost = index == 0 and not outpost_ships and want_outpost and len(planet.buildings) >= 2
         produce_warship = (index == 0 and game.turn >= nature.military_turn and len(planet.buildings) >= 2
                           and warships < military_limit)
         produce_transport = (index == 0 and bool(enemies(game, owner))
@@ -585,6 +602,11 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 game.queue_ship(system.id, planet.id, "troop_transport", owner=owner)
                 transports += 1
                 event(game, owner, f"Started a troop transport on {planet.name}.")
+        elif produce_outpost:
+            if game.ship_build_error(system.id, planet.id, "outpost_ship", owner=owner) is None:
+                game.queue_ship(system.id, planet.id, "outpost_ship", owner=owner)
+                outpost_ships += 1
+                event(game, owner, f"Started an outpost ship on {planet.name}.")
         elif produce_ship:
             if game.ship_build_error(system.id, planet.id, owner=owner) is None:
                 game.queue_ship(system.id, planet.id, owner=owner)

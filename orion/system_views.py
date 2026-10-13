@@ -111,6 +111,10 @@ def draw_system(app):
         if world.colonized:
             pg.draw.circle(surface, app.empire_color(world.owner),
                            (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
+        elif world.outpost_owner:
+            color = app.empire_color(world.outpost_owner)
+            pg.draw.rect(surface, color, (round(x+diameter/2+5), round(y-diameter/2-5), 9, 7), 1)
+            text(surface, "OUTPOST", (hit.x+2, y+diameter/2+60), 9, color, "mono")
 
     if not system.worlds:
         text(surface, "No planets detected.", (479, 408), 29, INK, "title")

@@ -26,7 +26,7 @@ HOSTILE_BELOW = -30
 RESULTS = ("active", "monster_victory", *(owner+suffix for owner in OWNERS for suffix in ("_victory", "_retreat")))
 BOARD_COLUMNS = 18
 MIN_ROWS = 10
-MOVEMENT = {"frigate": 3, "scout": 5, "colony_ship": 2, "troop_transport": 2}
+MOVEMENT = {"frigate": 3, "scout": 5, "colony_ship": 2, "outpost_ship": 2, "troop_transport": 2}
 MOVEMENT.update({kind: hull.movement for kind, hull in HULLS.items() if kind != "frigate"})
 MOVEMENT.update({kind: spec.movement for kind, spec in MONSTERS.items()})
 MOVEMENT["missile_base"] = 0

@@ -1,6 +1,7 @@
 """Space Hub recruitment and assignments, with explicit fees and skill effects."""
 import pygame as pg
 from . import specialists as rules
+from .specialist_art import draw_portrait
 from .ui import CYAN, GOLD, INK, MUTED, RED, LINE, panel, paragraph as ui_paragraph, shorten, text
 
 PAGE_SIZE = 5
@@ -65,16 +66,19 @@ def draw_specialists(app):
                             lambda k=identifier: app.specialist_select(k), "hotspot")
         panel(surface, button.rect, (23, 41, 51) if identifier == selected else (13, 26, 35), GOLD if identifier == selected else LINE)
         if app.specialist_tab == "sites":
+            left, width = 88, 298
             name = game.systems[item.system_id].name
             caption = item.spec.name if item.surveyed >= rules.SURVEY_WORK else "Survey in progress"
             detail = "RECOVERED" if item.recovered_by else "UNFINISHED"
         else:
+            draw_portrait(surface, item.spec, (84, y+8, 55, 55))
+            left, width = 149, 239
             name = item.spec.name
             caption = f"{rules.ROLES[item.spec.role]} · Level {item.level}"
             detail = f"Visiting {location(game, item)}" if item.visitor else location(game, item)
-        text(surface, shorten(name, 298, 18), (88, y+9), 18, INK)
-        text(surface, shorten(caption, 298, 12), (88, y+34), 12, CYAN)
-        text(surface, shorten(detail, 298, 11), (88, y+51), 11, MUTED)
+        text(surface, shorten(name, width, 18), (left, y+9), 18, INK)
+        text(surface, shorten(caption, width, 12), (left, y+34), 12, CYAN)
+        text(surface, shorten(detail, width, 11), (left, y+51), 11, MUTED)
     if not items:
         paragraph(surface, "No visitors at present." if app.specialist_tab == "visitors" else "No hired specialists yet." if app.specialist_tab == "hired" else "No expeditions started yet.", (88, 365, 295, 100), 19, INK)
     app.button("specialist_prev", "←", (76, 771, 66, 32), lambda: app.specialist_change_page(-1), enabled=app.specialist_page > 0)
@@ -108,11 +112,12 @@ def draw_empty(app):
 def draw_person(app, p):
     game, surface = app.game, app.canvas
     spec = p.spec
-    text(surface, shorten(spec.name, 600, 29, "title"), (462, 306), 29, INK, "title")
-    text(surface, f"{rules.ROLES[spec.role]} · Level {p.level}", (464, 346), 14, CYAN)
+    draw_portrait(surface, spec, (464, 306, 112, 112))
+    text(surface, shorten(spec.name, 480, 29, "title"), (594, 306), 29, INK, "title")
+    text(surface, f"{rules.ROLES[spec.role]} · Level {p.level}", (596, 346), 14, CYAN)
     next_xp = rules.level_xp(p.level+1) if p.level < rules.MAX_LEVEL else None
     text(surface, f"{p.xp}/{next_xp} XP to next level" if next_xp is not None else f"{p.xp} XP · Maximum level", (1348, 349), 12, MUTED, right=True)
-    paragraph(surface, spec.description, (464, 376, 658, 55), 15, MUTED)
+    paragraph(surface, spec.description, (596, 376, 518, 55), 15, MUTED)
     text(surface, f"{spec.hiring_fee} CR hire · {spec.salary} CR/turn", (1348, 315), 13, GOLD, right=True)
     if p.visitor:
         reason = rules.hire_error(game, p.id)

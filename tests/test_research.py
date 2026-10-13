@@ -148,11 +148,11 @@ class ResearchRulesTests(unittest.TestCase):
         ships = new_game(seed=2408, with_ai=False)
         discover(ships, "orbital_assembly")
         discover(ships, "lightweight_alloys")
-        ships.resources = 56
+        ships.resources = 560
         ships.queue_ship(0, 2)
         ships.fund_project(ships.planet_at(0, 2).construction_queue[0])
         self.assertEqual(ships.resources, 0)
-        self.assertEqual(ships.cancel_construction(0, 2, 0), "56 RES")
+        self.assertEqual(ships.cancel_construction(0, 2, 0), "560 RES")
 
     def test_speed_applies_to_new_voyages_and_in_flight_save_keeps_departure_speed(self):
         game = new_game(seed=2408, with_ai=False)

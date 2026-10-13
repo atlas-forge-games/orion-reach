@@ -714,6 +714,51 @@ class App:
                      f"Use {ship.name} to found a colony with {self.game.starting_colonists()} B inhabitants. The ship is consumed; the new colony can construct buildings and ships.",
                      "Establish colony",settle)
 
+    def outpost_request(self):
+        from . import outposts
+        game = self.game
+        sid, pid = game.selected_system, game.selected_planet
+        error = outposts.deployment_error(game, sid, pid)
+        if error:
+            self.toast(error, True)
+            return
+        ship = outposts.ships_at(game, sid)[0]
+        planet = game.planet_at(sid, pid)
+        def establish():
+            try:
+                outposts.deploy(game, ship.id, sid, pid)
+                self.save_game(autosave=True)
+                self.toast(f"Outpost established on {planet.name} · Fuel range extended")
+            except RuleError as exc:
+                self.toast(exc, True)
+        self.confirm("Establish outpost?",
+                     f"Consume {ship.name} to place a refuelling base on {planet.name}. "
+                     f"It supplies ships within {game.fuel_range()} ly, has {outposts.OUTPOST_HULL} hull, "
+                     "and has no population or production. Only one outpost is allowed per system.",
+                     "Establish outpost", establish)
+
+    def attack_outpost_request(self):
+        from . import outposts
+        game = self.game
+        sid, pid = game.selected_system, game.selected_planet
+        error = outposts.attack_error(game, sid, pid)
+        if error:
+            self.toast(error, True)
+            return
+        planet = game.planet_at(sid, pid)
+        damage = outposts.attack_damage(game, sid, pid)
+        def attack():
+            try:
+                message = outposts.attack(game, sid, pid)
+                self.save_game(autosave=True)
+                self.toast(message)
+            except RuleError as exc:
+                self.toast(exc, True)
+        self.confirm("Attack outpost?",
+                     f"Expected hull damage: {damage}; {max(0, planet.outpost_hull-damage)} hull remaining. "
+                     "Destruction removes its refuelling coverage. Each armed ship can bombard once per turn. "
+                     "This ends treaties and sets relations to -100.", "Attack outpost", attack)
+
     def reset_empire_view(self):
         self.specialist_return="empire"
         self.specialist_tab="visitors"
@@ -2503,6 +2548,9 @@ class App:
                 for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
                     pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
             owners={p.owner for p in known.worlds if p.colonized} if known else set()
+            base_owner=next((p.outpost_owner for p in known.worlds if p.outpost_owner),None) if known else None
+            if base_owner:
+                pg.draw.rect(self.canvas,self.empire_color(base_owner),(round(x)-5,round(y)+15,10,7),1)
             if PLAYER in owners:
                 pg.draw.circle(self.canvas,self.empire_color(PLAYER),(int(x),int(y)),11,2)
             for index,owner in enumerate(o for o in state.opponents if o in owners):
@@ -2553,8 +2601,8 @@ class App:
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
             if black_holes.at(state,star.id):
                 detail="FATAL APPROACH: this ship will be lost." if black_holes.risk(state,star.id) else "Safe approach unlocked. Guardian combat possible."
-            hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony · Range {state.fuel_range()} ly. "
-                  +("Colonize closer worlds or research fuel tanks." if blocked else detail))
+            hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony or outpost · Range {state.fuel_range()} ly. "
+                  +("Establish an outpost or research fuel tanks." if blocked else detail))
         ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
         text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,775),13,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)

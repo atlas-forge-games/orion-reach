@@ -168,6 +168,11 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     surface.set_clip(rect.clip(old_clip))
     seed = f"{game.seed}:{system.id}:{planet.id}"
     surface.blit(landscape(planet.biome, seed, rect.size, planet.colonized), rect)
+    if planet.outpost_owner:
+        from .outpost_view import draw_surface_outpost
+        draw_surface_outpost(app, rect, game, system, planet)
+        surface.set_clip(old_clip)
+        return
     if framed:
         pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.y, rect.w, 35))
         text(surface, "PLANET SURFACE", (rect.x+18, rect.y+12), 10, GOLD, "mono", 2)

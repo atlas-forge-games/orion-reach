@@ -38,13 +38,15 @@ def draw_shipyard(app):
         ship_icon(surface, (112, y+44), 1.0, app.empire_color(PLAYER), kind=spec.id)
         text(surface, spec.name, (153, y+7), 23, INK, "title")
         description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
-                       if spec.id == "colony_ship" else f"{spec.hull} hull · {production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
+                       if spec.id == "colony_ship" else f"{spec.hull} hull · Planetary refuelling base · Unarmed"
+                       if spec.id == "outpost_ship" else f"{spec.hull} hull · {production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
                        if spec.id == "troop_transport" else f"{spec.hull} hull · Surveys & discoveries · Unarmed"
                        if spec.id == "scout" else f"{spec.hull} hull · {game.beam_for(spec.id, planet.owner or PLAYER).damage} damage per shot")
         if spec.drone_bays:
             description = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
         text(surface, description, (154, y+37), 12, CYAN)
         captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
+                    "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
                     "troop_transport": "Needs barracks. Includes 8 troops; consumed on landing.",
                     "scout": "Charts systems and recovers one-time discoveries."}
         forecast = game.queue_estimates(planet, spec.id)

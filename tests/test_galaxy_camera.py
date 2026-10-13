@@ -221,7 +221,8 @@ class CameraInterfaceTests(unittest.TestCase):
         with patch("orion.sensor_view.sensors.centers", return_value=[(home, radius)]), patch("pygame.draw.ellipse") as ellipse:
             draw_coverage(app, MAP)
             coverage = ellipse.call_args_list[0].args[2]
-        self.assertEqual(fuel, coverage)
+        # The union mask carries a two-pixel clipping margin on each side.
+        self.assertEqual(fuel.move(-2, -2), coverage)
         rx, ry = app.map_camera.radii(radius, MAP)
         self.assertEqual(coverage.size, (round(2*rx), round(2*ry)))
         self.assertAlmostEqual(coverage.centerx, app.star_pos(home)[0]-MAP.x, delta=1)

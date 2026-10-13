@@ -173,7 +173,9 @@ class DiplomacyRulesTests(unittest.TestCase):
             game = new_game(seed=2408, rival_race_id=race_id)
             # Lithar grow slowly; Varkesh and Remnants fund their fitted fleets
             # before further expansion/research. All still develop over time.
-            turns = 100 if race_id in ("lithar", "varkesh", "remnant") else 70
+            # These isolated fixtures have no free starting colony ship.
+            # Funding the new 800-resource ships deliberately takes longer.
+            turns = 240
             for _ in range(turns):
                 game.advance_turn()
             if race_id == "varkesh":
@@ -183,7 +185,7 @@ class DiplomacyRulesTests(unittest.TestCase):
                 from orion.personalities import PERSONALITIES
                 # Defensive investment and early collective fleets deliberately
                 # trade some peaceful expansion for military readiness.
-                minimum = 2 if race_id == "concord" else 3 if PERSONALITIES[race_id].protective else 4
+                minimum = 2 if race_id in ("concord", "remnant") else 3 if PERSONALITIES[race_id].protective else 4
                 self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, minimum, race_id)
             self.assertTrue(game.opponent.technology.completed, race_id)
             # Earth earns 8/turn for 10 turns, 9 for 20, then 10 thereafter.

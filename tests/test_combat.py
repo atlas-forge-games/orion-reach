@@ -294,7 +294,7 @@ class CombatRulesTests(unittest.TestCase):
 
     def test_ai_builds_warships_without_using_them_as_transports_or_attacking_neutrals(self):
         game = new_game(seed=2408)
-        for _ in range(45):
+        for _ in range(180):
             game.advance_turn()
             self.assertIsNone(game.combat)
         self.assertTrue(any(s.kind == "frigate" for s in game.ships_owned_by(RIVAL)))

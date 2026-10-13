@@ -40,7 +40,7 @@ def draw_system_intelligence(app, star):
                   (1075, 492), 274, 15, MUTED, 25)
         text(surface, "Scouts can also recover discoveries.", (1075, 626), 12, GOLD)
     else:
-        owners = {p.owner for p in known.worlds if p.colonized}
+        owners = {owner for p in known.worlds for owner in (p.owner, p.outpost_owner) if owner}
         allegiance = ("Shared system" if len(owners)>1 else "Your empire" if "player" in owners else
                       " / ".join(game.empire_name_for(o) for o in game.opponents if o in owners) or "Unclaimed")
         survey = game.exploration.survey(star.id)

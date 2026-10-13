@@ -20,18 +20,34 @@ FLEET_SHIPS_PER_PAGE = 6
 
 
 def draw_fuel_range(app, map_rect):
-    """Own colony supply circles only; their union is the set of valid destinations."""
+    """The actual union of supply areas, with no lines inside overlapping circles."""
     game = app.game
     if not (app.map_order_ids or app.route_ship_id is not None):
         return
     rx, ry = app.map_camera.radii(game.fuel_range(), map_rect)
-    overlay = pg.Surface(map_rect.size, pg.SRCALPHA)
-    for system in game.colony_systems():
+    ellipses = []
+    for system in game.supply_systems():
         x, y = app.star_pos(system)
-        ellipse = pg.Rect(round(x-map_rect.x-rx), round(y-map_rect.y-ry), round(rx*2), round(ry*2))
-        pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 19), ellipse)
-        pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 90), ellipse, 1)
-    app.canvas.blit(overlay, map_rect.topleft)
+        ellipses.append((round(x-map_rect.x-rx), round(y-map_rect.y-ry), max(1, round(rx*2)), max(1, round(ry*2))))
+    app.canvas.blit(fuel_range_overlay(map_rect.size, tuple(ellipses), app.empire_color(PLAYER)), map_rect.topleft)
+
+
+@lru_cache(maxsize=8)
+def fuel_range_overlay(size, ellipses, color):
+    # A margin prevents the viewport's clipping edge becoming a false range boundary.
+    shape = pg.Surface((size[0]+4, size[1]+4), pg.SRCALPHA)
+    for ellipse in ellipses:
+        pg.draw.ellipse(shape, (255, 255, 255, 255), pg.Rect(ellipse).move(2, 2))
+    union = pg.mask.from_surface(shape)
+    interior = union.copy()
+    for offset in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        interior = interior.overlap_mask(union, offset)
+    boundary = union.copy()
+    boundary.erase(interior, (0, 0))
+    fill = union.to_surface(setcolor=(*color, 19), unsetcolor=(0, 0, 0, 0))
+    edge = boundary.to_surface(setcolor=(*color, 90), unsetcolor=(0, 0, 0, 0))
+    fill.blit(edge, (0, 0))
+    return fill.subsurface((2, 2, *size)).copy()
 
 
 @lru_cache(maxsize=1)
@@ -290,13 +306,13 @@ def draw_fleet_popup(app):
         text(surface, shorten(destination, 290, 13), (x+18, bottom+66), 13, RED if blocked else INK)
         distance = game.supply_distance(target.id)
         fuel = ("Saved course kept · outside current range" if keeping and outside else
-                f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range()} ly from colony")
+                f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range()} ly from supply")
         route, radius, slow = ((first.route_bonus, first.approach_range, first.approach_slow) if keeping else
                                navigation.route_modifiers(game, origin, target, PLAYER))
         if not blocked and not outside and (route or slow):
             fuel = f"Route speed +{route}%"+(f" · Final {radius:g} ly: −{slow:g}%" if slow else " · In fuel range")
         text(surface, shorten(fuel, 290, 11), (x+18, bottom+90), 11, RED if blocked else CYAN)
-        hint = ("Colonize closer worlds or research fuel tanks." if blocked else
+        hint = ("Establish an outpost or research fuel tanks." if blocked else
                 f"Click {origin.name} to cancel before End Turn." if first.departure_pending
                 else "Select at least one ship to give orders." if not app.fleet_selected_ids
                 else "Planets unknown until arrival." if not game.system_explored(target.id)

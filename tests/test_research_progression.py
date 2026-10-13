@@ -172,6 +172,8 @@ class ProgressionTests(unittest.TestCase):
                           restored.technology.project_cost), (5, 1000, 1234))
         for section, table in original['data'].items():
             for identifier, entry in table.items():
+                if section == 'ships' and identifier == 'colony_ship':
+                    entry = {**entry, 'resource_cost': 800, 'work_cost': 420}
                 self.assertEqual(balance.profile_for(restored)['data'][section][identifier], entry)
         self.assertTrue(set(ADVANCED_FACILITIES) <= set(balance.profile_for(restored)['data']['buildings']))
         self.assertEqual(old, original)

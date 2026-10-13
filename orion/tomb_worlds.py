@@ -86,6 +86,9 @@ def awaken(game, tomb):
     owner, defender = remnant_empire(game), planet.owner
     report = None
     if defender is None:
+        from .outposts import clear
+        outpost_owner = planet.outpost_owner
+        clear(planet)
         owner = establish_empire(game, tomb)
         planet.colonized, planet.owner, planet.population = True, owner, AWAKENED_POPULATION
         # The buried habitat supports life even on Barren and Volcanic worlds.
@@ -93,6 +96,8 @@ def awaken(game, tomb):
         planet.garrison = AWAKENED_TROOPS
         planet.farmers = population.farmers_needed(planet, game.bonuses_for(owner), surplus=1)
         tomb.outcome = "founded"
+        if outpost_owner:
+            exploration.record_survey(game, tomb.system_id, outpost_owner)
     elif defender == owner:
         planet.garrison = min(ground_combat.MAX_GARRISON, planet.garrison+AWAKENED_TROOPS)
         tomb.outcome = "reinforced"

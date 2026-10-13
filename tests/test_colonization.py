@@ -40,7 +40,7 @@ class ColonizationRulesTests(unittest.TestCase):
     def test_shared_queue_overflow_forecast_and_no_building_slot_for_ships(self):
         self.game.credits = self.game.resources = 1000
         self.game.queue_building(0, 2, "factory")
-        self.game.queue_ship(0, 2)
+        self.game.queue_ship(0, 2, "outpost_ship")
         self.game.queue_building(0, 2, "mine")
         before = self.game.to_dict()
         self.assertEqual(self.earth.used_slots, 2)
@@ -50,7 +50,7 @@ class ColonizationRulesTests(unittest.TestCase):
             self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory"])
         self.assertEqual(self.earth.construction_queue[0].progress, 6)
-        self.assertEqual(self.game.ships, [Ship(1, "colony_ship", 0)])
+        self.assertEqual(self.game.ships, [Ship(1, "outpost_ship", 0)])
         self.game.advance_turn()
         self.assertEqual(self.earth.buildings, ["factory", "mine"])
         self.assertEqual(self.game.next_ship_id, 2)
@@ -70,6 +70,7 @@ class ColonizationRulesTests(unittest.TestCase):
         self.assertEqual(GameState.from_dict(before), self.game)
 
     def test_ship_refunds_and_invalid_build_orders(self):
+        self.game.resources = 1000
         for system, planet, kind in ((0, 3, "colony_ship"), (0, 2, "unknown"), (-1, 2, "colony_ship")):
             before = self.game.to_dict()
             with self.assertRaises(RuleError):
@@ -80,8 +81,8 @@ class ColonizationRulesTests(unittest.TestCase):
         self.assertEqual(self.game.cancel_construction(0, 2, 0), "0 RES")
         self.game.queue_ship(0, 2)
         self.game.advance_turn()
-        self.assertEqual(self.game.cancel_construction(0, 2, 0), "68 RES")
-        self.assertEqual((self.game.credits, self.game.resources), (128, 110))
+        self.assertEqual(self.game.cancel_construction(0, 2, 0), "788 RES")
+        self.assertEqual((self.game.credits, self.game.resources), (128, 990))
         self.assertEqual(self.game.ships, [])
 
     def test_distance_travel_arrival_and_no_early_or_duplicate_arrival(self):
@@ -163,24 +164,25 @@ class ColonizationRulesTests(unittest.TestCase):
             self.assertEqual(self.game.to_dict(), before)
 
     def test_ids_remain_unique_after_settlement_and_new_construction(self):
-        self.game.credits = self.game.resources = 1000
+        self.game.credits = self.game.resources = 10000
         self.earth.buildings = ["factory"]*8
         for _ in range(2):
             self.game.queue_ship(0, 2)
-        for _ in range(3):
+        for _ in range(self.game.queue_estimates(self.earth)[-1]):
             self.game.advance_turn()
         self.assertEqual([s.id for s in self.game.ships], [1, 2])
         self.game.colonize(1, 0, 3)
         self.game.queue_ship(0, 2)
-        for _ in range(2):
+        for _ in range(self.game.queue_estimates(self.earth)[-1]):
             self.game.advance_turn()
         self.assertEqual([s.id for s in self.game.ships], [2, 3])
         self.assertEqual(self.game.next_ship_id, 4)
 
     def test_round_trip_mid_route_and_mid_construction_then_settle(self):
+        self.game.credits = 10000
+        self.game.resources = 1000
         self.game.queue_ship(0, 2)
-        for _ in range(7):
-            self.game.advance_turn()
+        self.game.buy_construction(0, 2)
         target, planet = remote_world(self.game)
         self.game.send_ship(1, target.id)
         self.game.queue_building(0, 2, "factory")
@@ -277,16 +279,18 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.app.render()
 
     def test_build_travel_reload_arrive_and_settle_through_real_controls(self):
+        self.app.game.credits = 10000
+        self.app.game.resources = 1000
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.click("star_0")
         self.click("galaxy_world_2")
         self.click("surface_shipyard")
         self.click("build_colony_ship")
-        self.assertEqual(self.app.game.credits, 120)
-        for _ in range(7):
-            self.key(pg.K_e)
-        self.click("research_back")
+        self.assertEqual(self.app.game.planet_at(0, 2).construction_queue[0].resource_cost, 800)
+        self.click("shipyard_back")
+        self.click("planet_buy")
+        self.click("dialog_ok")
         self.assertEqual(self.app.screen, "planet")
         self.click("planet_return")
         self.key(pg.K_f)

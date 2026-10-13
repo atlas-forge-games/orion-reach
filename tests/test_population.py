@@ -279,7 +279,7 @@ class PopulationSaveTests(unittest.TestCase):
             expected["statistics"] = migrated_statistics(history_source).statistics
             self.assertEqual(restored.to_dict(), expected)
             self.assertEqual(json.loads(storage.save(restored).read_text())["version"], SAVE_VERSION)
-        self.assertEqual(SAVE_VERSION, 39)
+        self.assertEqual(SAVE_VERSION, 40)
 
     def test_invalid_growth_progress_in_planets_and_surveys_is_rejected(self):
         game = new_game(seed=2408)

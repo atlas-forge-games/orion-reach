@@ -84,6 +84,18 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
             pg.draw.circle(surface, INK, points([(side*21, -9)])[0], max(1, round(3*scale)), max(1, round(scale)))
         pg.draw.line(surface, color, points([(0, 26)])[0], points([(0, 34)])[0], max(1, round(3*scale)))
         return
+    if kind == "outpost_ship":
+        hull = points([(0, -29), (10, -14), (10, 23), (-10, 23), (-10, -14)])
+        pg.draw.polygon(surface, (31, 49, 61), hull)
+        pg.draw.polygon(surface, color, hull, max(1, round(scale)))
+        for side in (-1, 1):
+            pod = points([(side*13, -11), (side*25, -6), (side*25, 17), (side*13, 22)])
+            pg.draw.polygon(surface, (71, 88, 96), pod)
+            pg.draw.polygon(surface, color, pod, max(1, round(scale)))
+            pg.draw.line(surface, color, points([(side*7, 24)])[0], points([(side*7, 33)])[0], max(1, round(3*scale)))
+        pg.draw.line(surface, INK, points([(-6, 0)])[0], points([(6, 0)])[0], max(1, round(2*scale)))
+        pg.draw.line(surface, INK, points([(0, -6)])[0], points([(0, 6)])[0], max(1, round(2*scale)))
+        return
     if kind == "troop_transport":
         hull = points([(-13, -29), (13, -29), (19, -14), (19, 22), (-19, 22), (-19, -14)])
         pg.draw.polygon(surface, (31, 49, 61), hull)

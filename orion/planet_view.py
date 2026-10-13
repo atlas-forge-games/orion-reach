@@ -133,12 +133,12 @@ def system_panel(app, game, system, planet, live):
         if selected or app.is_active(button):
             pg.draw.rect(app.canvas, (24, 43, 50), button.rect)
         draw_planet(app.canvas, world, (46, y+(14 if row_height>=30 else 8)), 23 if row_height>=30 else 17, f"{game.seed}:{system.id}:{world.id}")
-        color = app.empire_color(world.owner) if world.owner else MUTED
+        color = app.empire_color(world.owner or world.outpost_owner) if world.owner or world.outpost_owner else MUTED
         label = world.name if row_height>=30 else f"{world.name} · {world.biome}"
         text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
         if row_height>=30:
             text(app.canvas, f"{world.biome} · {world.size} · {world.richness}", (64, y+18), 9, MUTED)
-        basic = f"{world.workforce} B" if world.colonized else world.size[:1]
+        basic = f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
         text(app.canvas, basic, (255, y+1), 10, color, right=True)
     if len(system.worlds) <= 4:
         text(app.canvas, "COLORS IDENTIFY EACH EMPIRE", (38, 272), 9, MUTED, "mono")
@@ -234,6 +234,25 @@ def construction_panel(app, game, system, planet, live):
     surface = app.canvas
     panel(surface, (1074, 54, 342, 244))
     text(surface, "CURRENT PROJECT", (1090, 66), 10, GOLD, "mono", 1)
+    if planet.outpost_owner:
+        from . import outposts
+        text(surface, "Refuelling outpost", (1090, 97), 22, INK)
+        text(surface, shorten(game.empire_name_for(planet.outpost_owner), 306, 14), (1090, 135), 14, CYAN)
+        text(surface, f"Hull {planet.outpost_hull}/{outposts.OUTPOST_HULL} · No population", (1090, 164), 13, INK)
+        paragraph(surface, "Extends ship range. No production or upkeep. Unarmed; protect it with a fleet.",
+                  (1090, 188), 306, 12, MUTED, 18)
+        if live and not game.is_observer and planet.outpost_owner != PLAYER:
+            reason = outposts.attack_error(game, system.id, planet.id)
+            app.button("attack_outpost", "Attack outpost", (1090, 257, 310, 29), app.attack_outpost_request, enabled=reason is None)
+            if reason:
+                text(surface, shorten(reason, 310, 10), (1090, 235), 10, MUTED)
+        elif live and not game.is_observer:
+            reason = game.colonize_error(system.id, planet.id)
+            app.button("colonize_planet", "Upgrade to colony", (1090, 257, 310, 29), app.colonize_request, enabled=reason is None)
+            text(surface, shorten(reason or "Consumes a colony ship; replaces the outpost.", 310, 10), (1090, 235), 10, MUTED)
+        else:
+            text(surface, "OBSERVING" if live else "LAST OBSERVED OUTPOST", (1090, 268), 11, MUTED, "mono")
+        return
     owned = live and planet.owner == PLAYER
     queue = planet.construction_queue
     visible = owned or game.is_observer or not live or planet.owner not in game.opponents
@@ -264,7 +283,7 @@ def construction_panel(app, game, system, planet, live):
                   "Build a structure or launch a ship from this colony." if owned else
                   f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
                   "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
-                  f"{planet.biome} · {planet.size} · {planet.richness} minerals. Bring a colony ship to settle here.",
+                  "A colony ship settles this world. An outpost ship builds a refuelling base on any biome.",
                   (1090, 143), 306, 14, MUTED, 25)
     if game.is_observer:
         if planet.colonized:
@@ -285,8 +304,13 @@ def construction_panel(app, game, system, planet, live):
         app.button("invade_planet", "Plan colony raid" if raiding.is_varkesh(game) else "Plan ground invasion", (1090, 257, 310, 29), app.invade_request,
                    enabled=game.invasion_error(system.id, planet.id) is None)
     else:
+        from . import outposts
         reason = game.colonize_error(system.id, planet.id)
-        app.button("colonize_planet", "Colonize", (1090, 257, 310, 29), app.colonize_request, enabled=reason is None)
+        outpost_reason = outposts.deployment_error(game, system.id, planet.id)
+        app.button("colonize_planet", "Colonize", (1090, 257, 146, 29), app.colonize_request, enabled=reason is None)
+        app.button("establish_outpost", "Build outpost", (1246, 257, 154, 29), app.outpost_request, enabled=outpost_reason is None)
+        if outpost_reason and outposts.ships_at(game, system.id):
+            text(surface, shorten(outpost_reason, 310, 10), (1090, 213), 10, MUTED)
         if reason:
             text(surface, shorten(reason, 310, 10), (1090, 232), 10, MUTED)
 
@@ -313,9 +337,12 @@ def draw_planet_overview(app):
         from . import specialists
         leader = next((p for p in specialists.employed(game) if p.spec.role == "leader"
                        and (p.system_id, p.planet_id) == (system.id, planet.id)), None)
-        panel(surface, (40, 795, 676, 32), (10, 23, 30))
+        panel(surface, (40, 778, 676, 50), (10, 23, 30))
         caption = f"Leader: {leader.spec.name} · Level {leader.level}" if leader else "Leader: none assigned"
-        text(surface, caption, (52, 804), 13, CYAN if leader else MUTED)
+        if leader:
+            from .specialist_art import draw_portrait
+            draw_portrait(surface, leader.spec, (46, 783, 40, 40))
+        text(surface, caption, (98 if leader else 52, 798), 13, CYAN if leader else MUTED)
         count = len(specialists.visitors(game))
         app.button("planet_specialists", f"Specialists · {count} visitors", (1104, 788, 294, 39), app.open_specialists)
     # Planet facts sit over the landscape, leaving the city as the principal view.
@@ -392,6 +419,10 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
                       else "Unlock a scientific victory")
             if getattr(spec, "drone_bays", 0):
                 detail = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches"
+            if item_id == "outpost_ship":
+                detail = "Establish a planetary refuelling outpost · Unarmed"
+            elif item_id == "colony_ship":
+                detail = f"Found a colony with {game.starting_colonists()} B population · Unarmed"
             text(surface, shorten(detail, width-100, 11), (x+85, y+64), 11, CYAN)
         app.button("production_build_"+item_id, "Queue", (x+width-116, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen))

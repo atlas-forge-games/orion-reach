@@ -118,7 +118,9 @@ class AIRulesTests(unittest.TestCase):
                     self.assertGreaterEqual(game.opponent.credits, 0)
                     self.assertEqual(GameState.from_dict(game.to_dict()), game)
                 rows = colony_rows(game, owner=RIVAL)
-                self.assertGreaterEqual(len(rows), 4)
+                # Colonization now costs ten times as much; expansion still
+                # reaches several colonies before the scientific endgame.
+                self.assertGreaterEqual(len(rows), 3)
                 self.assertGreater(len({s.id for s, _ in rows}), 1)
                 self.assertTrue(any("factory" in p.buildings and "trade_center" in p.buildings for _, p in rows))
                 self.assertTrue(game.opponent.technology.completed)
@@ -153,15 +155,15 @@ class AIRulesTests(unittest.TestCase):
         game = new_game(seed=2408)
         sid, pid = game.opponent.home_system, game.opponent.home_planet
         game.planet_at(sid, pid).biome = "Terran"
-        game.queue_ship(0, 2)
-        game.queue_ship(sid, pid, owner=RIVAL)
+        game.queue_ship(0, 2, "outpost_ship")
+        game.queue_ship(sid, pid, "outpost_ship", owner=RIVAL)
         from unittest.mock import patch
         with patch("orion.ai.run_ai", return_value=[]):
             for _ in range(7):
                 report = game.advance_turn()
         self.assertEqual(len(game.ships), 2)
         self.assertEqual({s.owner for s in game.ships}, {PLAYER, RIVAL})
-        self.assertEqual(report.completed, ["Colony ship on Earth"])
+        self.assertEqual(report.completed, ["Outpost ship on Earth"])
         self.assertEqual(len(game.ships_owned_by()), 1)
         self.assertEqual(game.next_ship_id, 3)
 
@@ -236,9 +238,10 @@ class AIRulesTests(unittest.TestCase):
     def test_v4_migration_preserves_player_assets_and_waits_for_explicit_rival(self):
         from scenarios import migrated_statistics
         game = new_game(seed=2408, with_ai=False)
+        game.credits = 10000
+        game.resources = 1000
         game.queue_ship(0, 2)
-        for _ in range(7):
-            game.advance_turn()
+        game.buy_construction(0, 2)
         place_near(game, 1)
         game.send_ship(1, 1)
         game.queue_building(0, 2, "mine")

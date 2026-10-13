@@ -25,10 +25,11 @@ HULL_TECHNOLOGIES = {
 
 
 SHIP_TYPES = {
-    "colony_ship": ShipSpec("colony_ship", "Colony ship", 80, 42, hull=12),
+    "colony_ship": ShipSpec("colony_ship", "Colony ship", 800, 420, hull=12),
     "frigate": ShipSpec("frigate", "Frigate", 60, 36, hull=20, damage=5),
     "troop_transport": ShipSpec("troop_transport", "Troop transport", 80, 42, hull=16),
     "scout": ShipSpec("scout", "Scout", 25, 12, hull=8),
+    "outpost_ship": ShipSpec("outpost_ship", "Outpost ship", 80, 42, hull=12),
     "destroyer": ShipSpec("destroyer", "Destroyer", 90, 54, hull=30, damage=10, technology="destroyer_hulls"),
     "cruiser": ShipSpec("cruiser", "Cruiser", 150, 90, hull=42, damage=12, technology="cruiser_hulls"),
     "battleship": ShipSpec("battleship", "Battleship", 260, 156, hull=75, damage=18, technology="battleship_hulls"),
@@ -53,7 +54,7 @@ PROJECTS = {**BUILDINGS, **SHIP_TYPES, ASCENSION_GATE.id: ASCENSION_GATE}
 MAX_QUEUE = 20
 SHIP_SPEED = .02  # 2 light-years per turn; travel time depends on the generated distance.
 LEGACY_SHIP_SPEED = .18  # Preserve voyages ordered before v0.19.
-BASE_FUEL_RANGE = 7  # Light-years from any owned colony, not from a scout's position.
+BASE_FUEL_RANGE = 7  # Light-years from any owned colony or planetary outpost.
 STARTING_COLONISTS = 1  # Billions, included in the ship cost in this prototype.
 REPAIR_PER_TURN = 4
 TROOP_STRENGTH = 8

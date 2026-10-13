@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 4
+VERSION = 5
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'buildings': ('buildings', 'BUILDINGS'),
@@ -37,6 +37,7 @@ CATALOGUES = {
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'outposts': ('outposts', ('OUTPOST_HULL', 'OUTPOST_RECOVERY')),
     'specialists': ('specialists', ('XP_PER_TURN', 'XP_PER_LEVEL', 'MAX_LEVEL', 'MAX_EMPLOYED', 'MAX_VISITORS', 'VISIT_INTERVAL', 'VISIT_DURATION', 'SURVEY_WORK', 'SOCIAL_VISIT_CHANCE', 'NORMAL_VISIT_CHANCE', 'ISOLATED_VISIT_CHANCE')),
     'economy': ('economy', ('STARTING_CREDITS', 'STARTING_RESOURCES', 'STARTING_POPULATION', 'BASE_EXTRACTION', 'MINER_RESOURCES', 'BASE_ENERGY', 'GATE_ENERGY')),
     'production': ('production', ('SHIP_SPEED', 'BASE_FUEL_RANGE', 'STARTING_COLONISTS', 'REPAIR_PER_TURN', 'TROOP_STRENGTH', 'GATE_CHARGE_TURNS', 'TRADE_GOODS_PERCENT')),
@@ -140,7 +141,7 @@ def numeric_bounds(section, field):
     if field == 'tracking_penalty': return 0, 100
     if field == 'tier': return 1, 8
     if field in ('accuracy', 'shield_bypass', 'interception_piercing', 'shield_hardening', 'interception', 'interception_cap', 'TRADE_GOODS_PERCENT'): return 0, 100
-    if field in ('work_cost', 'space', 'hull', 'DRONE_HULL', 'cost', 'shots', 'shield_multiplier', 'versus_drones', 'versus_capitals'): return 1, 100000
+    if field in ('work_cost', 'space', 'hull', 'DRONE_HULL', 'OUTPOST_HULL', 'cost', 'shots', 'shield_multiplier', 'versus_drones', 'versus_capitals'): return 1, 100000
     if field == 'resource_cost': return 1, 100000
     if field == 'building_slots': return 1, 12
     if field == 'population_limit': return 1, 100
@@ -335,6 +336,22 @@ def upgrade_profile(profile):
                 data['buildings'].setdefault('space_hub', deepcopy(_defaults()['data']['buildings']['space_hub']))
             if isinstance(data.get('rules'), dict):
                 data['rules'].setdefault('specialists', deepcopy(_defaults()['data']['rules']['specialists']))
+        profile['version'] = 4
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 4:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            if isinstance(data.get('ships'), dict):
+                data['ships'].setdefault('outpost_ship', deepcopy(_defaults()['data']['ships']['outpost_ship']))
+                colony = data['ships'].get('colony_ship')
+                # Migrate the former standard price; retain deliberate editor overrides.
+                if isinstance(colony, dict):
+                    if colony.get('resource_cost') == 80:
+                        colony['resource_cost'] = 800
+                    if colony.get('work_cost') == 42:
+                        colony['work_cost'] = 420
+            if isinstance(data.get('rules'), dict):
+                data['rules'].setdefault('outposts', deepcopy(_defaults()['data']['rules']['outposts']))
         profile['version'] = VERSION
     return profile
 
