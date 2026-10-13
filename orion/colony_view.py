@@ -95,10 +95,11 @@ def draw_colony(app):
     building_projects = planet.building_projects
     text(surface, f"{len(planet.buildings)} built + {len(building_projects)} reserved / {planet.building_capacity}",
          (727, 385), 11, MUTED, "mono", right=True)
-    for page_index, key, label in ((0, "colony_economy", "Economy & troops"),
+    for page_index, key, label in ((0, "colony_economy", "Economy"),
                                     (1, "colony_infrastructure", "Infrastructure"),
-                                    (2, "colony_power", "Power plants")):
-        app.button(key, label, (751+page_index*211, 378, 203, 26),
+                                    (2, "colony_power", "Power"),
+                                    (3, "colony_advanced", "Advanced")):
+        app.button(key, label, (751+page_index*158, 378, 151, 26),
                    lambda i=page_index: setattr(app, "colony_build_page", i),
                    "primary" if app.colony_build_page == page_index else "normal")
     estimates = game.queue_estimates(planet)
@@ -121,7 +122,7 @@ def draw_colony(app):
             draw_building_art(surface, building_id, (x+6, y+5, 44, 34))
             status = economy.building_status(planet, index, game.bonuses_for(planet.owner))
             text(surface, status, (x+52, y+20), 8, MUTED if status == "STANDBY" else RED if status in ("NO FUEL", "NO POWER", "DISABLED") else CYAN, "mono")
-            text(surface, definition.name, (x+12, y+42), 13, INK)
+            text(surface, shorten(definition.name, 134, 13), (x+12, y+42), 13, INK)
             text(surface, shorten(compact_yields(game, definition, planet), 136, 9), (x+12, y+63), 9, MUTED)
         elif index < planet.used_slots:
             queue_index, project = building_projects[index-len(planet.buildings)]
@@ -130,7 +131,7 @@ def draw_colony(app):
             label = "PAUSED" if planet.trade_goods else "BUILDING" if queue_index==0 else f"QUEUED {queue_index+1}"
             text(surface, label, (x+52, y+11), 8, GOLD, "mono")
             text(surface, "Trade Goods active" if planet.trade_goods else turn_label(estimates[queue_index]), (x+52, y+27), 10, MUTED)
-            text(surface, definition.name, (x+12, y+46), 13, INK)
+            text(surface, shorten(definition.name, 134, 13), (x+12, y+46), 13, INK)
             pg.draw.rect(surface, LINE, (x+12, y+72, 134, 3))
             pg.draw.rect(surface, GOLD, (x+12, y+72, int(134*project.progress/definition.work_cost), 3))
         else:

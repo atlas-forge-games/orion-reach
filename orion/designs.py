@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, replace
 from functools import lru_cache
-from .research import TECHNOLOGIES, LEGACY_TIER_LIMITS
+from .research import TECHNOLOGIES
 from .production import HULL_TECHNOLOGIES
 
 MAX_DESIGNS = 24
@@ -114,9 +114,13 @@ for _identifier, _effects in {
 }.items():
     MODULES[_identifier] = replace(MODULES[_identifier], **_effects)
 
-ARSENAL_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values()
-                               if t.branch in LEGACY_TIER_LIMITS and t.tier > LEGACY_TIER_LIMITS[t.branch]
-                               and any(module.technology == t.id for module in MODULES.values()))
+# Save-era identifiers must not depend on the editable/current tree positions.
+ARSENAL_TECHNOLOGIES = frozenset((
+    "pulse_beams", "plasma_beams", "ion_beams", "graviton_beams", "particle_beams",
+    "heavy_beam_mounts", "phased_beams", "disruptor_beams", "fusion_torpedoes",
+    "reinforced_armor", "mirv_torpedoes", "antimatter_torpedoes", "regenerative_shields",
+    "hardened_shields", "interceptor_drones", "advanced_flak", "bomber_drones", "automated_damage_control",
+))
 
 
 @lru_cache(maxsize=512)

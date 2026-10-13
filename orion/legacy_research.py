@@ -88,3 +88,70 @@ def validate_legacy(completed, active=None, progress=0):
             raise ValueError("Legacy progress without a project")
     elif not _available(active, known) or progress >= LEGACY_TECHNOLOGIES[active][2]:
         raise ValueError("Invalid legacy active technology")
+
+
+# Frozen v0.37–v0.55 layout for saves predating embedded balance profiles.
+PRE_REBALANCE_TIERS = {
+    'construction': (
+        ('automated_factories', 'civil_engineering'),
+        ('prefabricated_structures', 'orbital_assembly'),
+        ('advanced_fortifications', 'orbital_defense_systems'),
+    ),
+    'power': (
+        ('ion_drives', 'compact_reactors'),
+        ('fusion_drives', 'fusion_grids'),
+        ('fusion_power', 'colonial_navigation'),
+        ('jump_gates', 'field_stabilization'),
+    ),
+    'physics': (
+        ('research_instruments', 'field_laboratories'),
+        ('planetary_observatories', 'quantum_optics'),
+        ('precision_beam_optics', 'electronic_countermeasures'),
+        ('siege_weapons', 'torpedo_guidance'),
+        ('pulse_beams', 'plasma_beams'),
+        ('ion_beams', 'graviton_beams'),
+        ('particle_beams', 'heavy_beam_mounts'),
+        ('phased_beams', 'disruptor_beams'),
+    ),
+    'fields': (
+        ('radiation_shields', 'habitat_shields'),
+        ('thermal_barriers', 'industrial_force_fields'),
+        ('planetary_shielding', 'gravity_wells'),
+        ('barrier_fields', 'subspace_interdiction'),
+        ('regenerative_shields', 'hardened_shields'),
+    ),
+    'materials': (
+        ('deep_core_drills', 'lightweight_alloys'),
+        ('superconductors', 'composite_structures'),
+        ('fusion_torpedoes', 'reinforced_armor'),
+        ('mirv_torpedoes', 'antimatter_torpedoes'),
+        ('cryogenic_fuel_tanks', 'automated_refineries'),
+        ('antimatter_fuel_tanks', 'molecular_shipbuilding'),
+        ('spatial_compression_tanks', 'nanostructured_materials'),
+    ),
+    'biology': (
+        ('colony_biospheres', 'symbiotic_farming'),
+        ('colony_biogenesis', 'ecology_networks'),
+    ),
+    'computers': (
+        ('research_networks', 'trade_algorithms'),
+        ('distributed_computing', 'planetary_automation'),
+        ('deep_space_radar', 'targeting_computers'),
+        ('long_range_sensors', 'predictive_fire_control'),
+        ('subspace_scanners', 'quantum_targeting'),
+        ('gravitic_mapping', 'planetary_data_vaults'),
+        ('event_horizon_navigation', 'quantum_research_archives'),
+    ),
+    'society': (
+        ('colonial_administration', 'scientific_institutes'),
+        ('commerce_guilds', 'cultural_exchange'),
+    ),
+    'starships': (
+        ('destroyer_hulls', 'modular_spaceframes'),
+        ('cruiser_hulls', 'deep_space_logistics'),
+        ('battleship_hulls', 'drone_carriers'),
+        ('titan_hulls', 'mass_ship_production'),
+        ('interceptor_drones', 'advanced_flak'),
+        ('bomber_drones', 'automated_damage_control'),
+    ),
+}

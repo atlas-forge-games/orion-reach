@@ -45,7 +45,7 @@ def draw_marker(app, star, selected=False):
     elif app.settings.get("animated_background", True):
         angle = (app.time*.16) % math.tau
         pg.draw.arc(app.canvas, black_holes.SITES[site.kind][2], rect.inflate(2, 2), angle, angle+.6, 1)
-    app.button(f"star_{star.id}", "", rect, lambda: app.select_star(star.id), "hotspot")
+    app.map_button(f"star_{star.id}", rect, lambda: app.select_star(star.id))
 
 
 def open_guide(app, relic_id=None):

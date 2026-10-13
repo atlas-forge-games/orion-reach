@@ -7,7 +7,7 @@ import random
 import pygame as pg
 
 from .building_art import draw_building_art
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, ADVANCED_FACILITIES, facility_family
 from .economy import building_status
 from .model import PLAYER, RIVAL
 from .production import SHIP_TYPES
@@ -157,6 +157,7 @@ PLACEMENTS = {
     "thermal_plant": (600, 410, 110, 100),
     "singularity_plant": (805, 415, 112, 105),
 }
+PLACEMENTS.update({identifier: PLACEMENTS[facility_family(identifier)] for identifier in ADVANCED_FACILITIES})
 
 
 def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
@@ -174,7 +175,7 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     if framed:
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
-    expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "geothermal_plant", "thermal_plant", "singularity_plant") for item in items)
+    expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "geothermal_plant", "thermal_plant", "singularity_plant", *ADVANCED_FACILITIES) for item in items)
     row_height = min(130, 400//max(1, (len(items)+4)//5))
     for index, item in enumerate(items):
         cx, bottom, width, height = ((88+index%5*188, row_height+33+index//5*row_height, 128, min(90, row_height-34)) if expanded else PLACEMENTS[item.asset_id])

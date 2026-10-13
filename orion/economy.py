@@ -1,7 +1,7 @@
 """Shared construction resources and independent, deterministic colony grids."""
 
 from dataclasses import dataclass
-from .buildings import BUILDINGS, MINERAL_FACTORS
+from .buildings import BUILDINGS, MINERAL_FACTORS, facility_family
 
 STARTING_RESOURCES = 120
 STARTING_CREDITS = 120
@@ -86,7 +86,7 @@ def energy_report(planet, bonuses=None, *, fuel_budget=0):
     demand += GATE_ENERGY if planet.ascension_gate else 0
     priority = {"hydroponic_farm": 0, "mine": 1}
     used, active, offline = 0, [], []
-    for i in sorted(enabled, key=lambda i: (priority.get(planet.buildings[i], 2), i)):
+    for i in sorted(enabled, key=lambda i: (priority.get(facility_family(planet.buildings[i]), 2), i)):
         cost = BUILDINGS[planet.buildings[i]].energy_use
         if used+cost <= generated:
             active.append(i)
@@ -133,7 +133,7 @@ def mining_output(planet, bonuses=None):
     buildings = active_buildings(planet, bonuses)
     base = sum(BUILDINGS[b].resources for b in buildings)*MINERAL_FACTORS[planet.richness]
     return (BASE_EXTRACTION+int(base+planet.miners*miner_output(planet, bonuses))
-            +buildings.count("mine")*bonuses.get("mine_resources", 0))
+            +sum(facility_family(b) == "mine" for b in buildings)*bonuses.get("mine_resources", 0))
 
 
 def building_status(planet, index, bonuses=None):

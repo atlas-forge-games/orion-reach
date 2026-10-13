@@ -15,7 +15,7 @@ def draw_coverage(app, rect):
     layer = pg.Surface(rect.size, pg.SRCALPHA)
     for system, radius in sensors.centers(app.game):
         x, y = app.star_pos(system)
-        rx, ry = radius/140*(rect.w-80), radius/100*(rect.h-64)
+        rx, ry = app.map_camera.radii(radius, rect)
         area = pg.Rect(round(x-rect.x-rx), round(y-rect.y-ry), round(2*rx), round(2*ry))
         pg.draw.ellipse(layer, (115, 191, 164, 25), area)
         pg.draw.ellipse(layer, (137, 217, 181, 110), area, 1)
@@ -29,10 +29,10 @@ def map_contacts(app):
 
 
 def contact_markers(app, rect):
-    contacts = map_contacts(app)
+    contacts = [c for c in map_contacts(app) if rect.collidepoint(app.map_pos(c.x, c.y))]
     obstacles = star_obstacles(app, rect)+[guardian_legend_rect(rect), pg.Rect(rect.x, rect.y, rect.w, 37)]
     obstacles += [r.inflate(4, 4) for _, r, _ in fleet_markers(app, rect)+guardian_markers(app, rect)]
-    anchors = [(rect.x+40+c.x*(rect.w-80), rect.y+32+c.y*(rect.h-64)) for c in contacts]
+    anchors = [app.map_pos(c.x, c.y) for c in contacts]
     preferred = [(round(x)+12, round(y)-12, 52, 23) for x, y in anchors]
     layout = marker_layout(tuple(rect.inflate(-8, -8)), tuple(tuple(r) for r in obstacles), tuple(preferred))
     return [(c, pg.Rect(r), anchor) for c, r, anchor in zip(contacts, layout, anchors)]
@@ -50,8 +50,8 @@ def draw_contacts(app, rect):
         panel(app.canvas, badge, (9, 22, 30), GOLD if contact.anchor == app.sensor_contact_id else color)
         text(app.canvas, str(contact.count) if contact.count is not None else "?", (badge.x+8, badge.y+5), 11, color, "mono")
         text(app.canvas, "◉" if contact.active else "·", (badge.right-18, badge.y+3), 13, color)
-        app.button(f"sensor_contact_{contact.anchor}", "", badge,
-                   lambda identifier=contact.anchor: app.open_sensor_contact(identifier), "hotspot")
+        app.map_button(f"sensor_contact_{contact.anchor}", badge,
+                       lambda identifier=contact.anchor: app.open_sensor_contact(identifier))
 
 
 def draw_contact_panel(app):

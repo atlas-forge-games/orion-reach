@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from .buildings import BUILDINGS, workforce_bonuses
+from .buildings import BUILDINGS, workforce_bonuses, facility_family
 from .production import ASCENSION_GATE, HULL_TECHNOLOGIES
 from .population import LUSH_BIOMES, assembly_work
 from .economy import active_buildings
@@ -67,51 +67,72 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("civil_engineering", "construction", 1, "Civil Engineering", "+2 industry per colony.", colony_industry=2),
     tech("prefabricated_structures", "construction", 2, "Prefabricated Structures", "New building orders cost 20% fewer resources.", building_discount=20),
     tech("orbital_assembly", "construction", 2, "Orbital Assembly", "New ship orders cost 20% fewer resources.", ship_discount=20),
+    tech("advanced_fortifications", "construction", 3, "Advanced Fortifications", "Fortifications gain +25 percentage points of defending firepower.", fortification_bonus=25),
+    tech("orbital_defense_systems", "construction", 3, "Orbital Defense Systems", "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles."),
+
     tech("ion_drives", "power", 1, "Ion Drives", "+25% ship speed on newly ordered voyages. Unlock maneuvering thrusters in the ship designer.", ship_speed=25),
     tech("compact_reactors", "power", 1, "Compact Reactors", "+1 industry, +1 credit and +4 energy per colony.", colony_industry=1, colony_income=1, colony_energy=4),
     tech("fusion_drives", "power", 2, "Fusion Drives", "+50% ship speed on newly ordered voyages.", ship_speed=50),
     tech("fusion_grids", "power", 2, "Fusion Grids", "+2 industry per factory and +8 energy per colony. Unlock thermal backup plants: up to 24 energy; burn Resources only when needed.", factory_industry=2, colony_energy=8),
-    tech("research_instruments", "physics", 1, "Research Instruments", "+2 research per laboratory.", lab_research=2),
-    tech("field_laboratories", "physics", 1, "Field Laboratories", "+1 research per colony.", colony_research=1),
-    tech("planetary_observatories", "physics", 2, "Planetary Observatories", "+3 research per colony.", colony_research=3),
-    tech("quantum_optics", "physics", 2, "Quantum Optics", "+3 research per laboratory. Standard frigates and carriers gain 7-damage beams. Unlock 14-damage quantum batteries for new designs.", lab_research=3, beam_level=1),
-    tech("radiation_shields", "fields", 1, "Radiation Shields", "Colony ships can settle barren worlds. Unlock ship shield generators (+12 shields per module).", barren=1),
-    tech("habitat_shields", "fields", 1, "Habitat Shields", "+2 credits per desert or tundra colony.", rough_income=2),
-    tech("thermal_barriers", "fields", 2, "Thermal Barriers", "Colony ships can settle volcanic worlds.", volcanic=1),
-    tech("industrial_force_fields", "fields", 2, "Industrial Force Fields", "+2 resources per operational mine, regardless of mineral richness.", mine_resources=2),
-    tech("deep_core_drills", "materials", 1, "Deep Core Drills", "+2 resources per operational mine, regardless of richness. Unlock geothermal plants: +20 energy, 2 CR/turn upkeep.", mine_resources=2),
-    tech("lightweight_alloys", "materials", 1, "Lightweight Alloys", "Lighter fuel tanks: +10 ly range. New ships cost 10% fewer resources.", ship_discount=10, fuel_range=10),
-    tech("superconductors", "materials", 2, "Superconductors", "+1 industry per colony and +2 research per laboratory.", colony_industry=1, lab_research=2),
-    tech("composite_structures", "materials", 2, "Composite Structures", "Advanced fuel tanks: +15 ly range. New buildings cost 15% fewer resources.", building_discount=15, fuel_range=15),
-    tech("colony_biospheres", "biology", 1, "Colony Biospheres", "New colonies start with 1 billion additional inhabitants.", colonists=1),
-    tech("symbiotic_farming", "biology", 1, "Symbiotic Farming", "+2 food and +2 credits per colony.", colony_food=2, colony_income=2),
-    tech("colony_biogenesis", "biology", 2, "Colony Biogenesis", "New colonies start with 2 billion additional inhabitants.", colonists=2),
-    tech("ecology_networks", "biology", 2, "Ecology Networks", "+1 credit per 2 billion inhabitants on each colony.", income_per_two_pop=1),
-    tech("research_networks", "computers", 1, "Research Networks", "+1 research per colony and per laboratory. Unlock combat scanners (+1 weapon range).", colony_research=1, lab_research=1),
-    tech("trade_algorithms", "computers", 1, "Trade Algorithms", "+2 credits per trade center.", trade_income=2),
-    tech("distributed_computing", "computers", 2, "Distributed Computing", "+2 research per colony.", colony_research=2),
-    tech("planetary_automation", "computers", 2, "Planetary Automation", "+1 industry per factory and +1 resource per operational mine.", factory_industry=1, mine_resources=1),
-    tech("colonial_administration", "society", 1, "Colonial Administration", "+2 credits per colony.", colony_income=2),
-    tech("scientific_institutes", "society", 1, "Scientific Institutes", "+1 research per colony.", colony_research=1),
-    tech("commerce_guilds", "society", 2, "Commerce Guilds", "+3 credits per trade center.", trade_income=3),
-    tech("cultural_exchange", "society", 2, "Cultural Exchange", "Your active trade pact earns +3 credits; your research pact earns +3 research.", pact_income=3, pact_research=3),
-    tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
-    tech("advanced_fortifications", "construction", 3, "Advanced Fortifications", "Fortifications gain +25 percentage points of defending firepower.", fortification_bonus=25),
     tech("fusion_power", "power", 3, "Fusion Power", "Unlock fusion plants: +30 local energy per plant, with 3 CR/turn upkeep."),
     tech("colonial_navigation", "power", 3, "Colonial Navigation Network", "+25% travel speed between your own colonized systems.", colony_speed=25),
     tech("jump_gates", "power", 4, "Jump Gates", "Unlock jump gates. Gates at both endpoints give +50% internal travel speed, replacing any navigation bonus."),
     tech("field_stabilization", "power", 4, "Field Stabilization", "Halve hostile interdiction slowdown. Unlock singularity plants: +50 energy with 5 CR/turn upkeep and no Resource fuel.", field_stabilization=1),
-    tech("orbital_defense_systems", "construction", 3, "Orbital Defense Systems", "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles."),
-    tech("precision_beam_optics", "physics", 3, "Precision Beam Optics", "Halve the accuracy penalty for firing beam weapons at long range.", beam_precision=1),
-    tech("siege_weapons", "physics", 4, "Siege Weapons", "Unlock siege cannons: triple damage to planetary shields and missile bases. Standard warships gain double bombardment damage.", siege_bonus=100),
-    tech("torpedo_guidance", "physics", 4, "Advanced Torpedo Guidance", "Halve target evasion against torpedoes and missiles. Point defense still intercepts successful hits.", torpedo_guidance=1),
+
+    tech("research_instruments", "physics", 1, "Research Instruments", "+2 research per laboratory.", lab_research=2),
+    tech("field_laboratories", "physics", 1, "Field Laboratories", "+1 research per colony.", colony_research=1),
+    tech("pulse_beams", "physics", 2, "Pulse Beams", "Unlock pulse cannons: two accurate shots of 4 base damage, range 6, +15 accuracy. Early anti-small-ship weapons. Each uses one offensive slot and scales with hull size."),
+    tech("precision_beam_optics", "physics", 2, "Precision Beam Optics", "Halve the accuracy penalty for firing beam weapons at long range.", beam_precision=1),
+    tech("ion_beams", "physics", 3, "Ion Beams", "Unlock ion cannons: 8 base hull damage or up to 32 shield damage, range 6. Shield damage does not spill into hull damage. Each uses one offensive slot and scales with hull size."),
+    tech("electronic_countermeasures", "physics", 3, "Electronic Countermeasures", "Your ships gain 10 percentage points of evasion.", evasion=10),
+    tech("quantum_optics", "physics", 4, "Quantum Optics", "+3 research per laboratory. Standard frigates and carriers gain 7-damage beams. Unlock quantum batteries with 14 base damage. Designer module damage scales with hull size.", lab_research=3, beam_level=1),
+    tech("planetary_observatories", "physics", 4, "Advanced Laboratories", "+3 research per colony. Unlock advanced research labs: 8 RP +2 per scientist, using 7 energy and 4 CR/turn. Each laboratory receives lab research bonuses.", colony_research=3),
+    tech("plasma_beams", "physics", 5, "Plasma Beams", "Unlock plasma cannons: 24 base damage, range 4. High close-range damage; each cannon fills one offensive slot and scales with hull size."),
+    tech("siege_weapons", "physics", 5, "Siege Weapons", "Unlock siege cannons: triple damage to planetary shields and missile bases. Standard warships gain double bombardment damage.", siege_bonus=100),
+    tech("graviton_beams", "physics", 6, "Graviton Beams", "Unlock graviton beams: 16 damage, range 6. A hit slows the target by one cell through its next turn; does not stack or reduce movement below one."),
+    tech("torpedo_guidance", "physics", 6, "Advanced Torpedo Guidance", "Halve target evasion against torpedoes and missiles. Point defense still intercepts successful hits.", torpedo_guidance=1),
+    tech("particle_beams", "physics", 7, "Particle Beams", "Unlock particle lances: 20 base damage, range 10. Long-range fleet artillery; each lance fills one offensive slot and scales with hull size."),
+    tech("phased_beams", "physics", 7, "Phased Beams", "Unlock phased beams: 16 damage, range 7. Half the damage bypasses ship shields. Hardened shields reduce this penetration."),
+    tech("heavy_beam_mounts", "physics", 8, "Heavy Beam Mounts", "Unlock heavy beam batteries: 30 base damage, range 9. Each battery fills one offensive slot; module size, damage and tracking depend on its hull."),
+    tech("disruptor_beams", "physics", 8, "Disruptor Beams", "Unlock disruptors: 40 base damage, range 5. Each fills one offensive slot and scales with hull size. Must recharge for one full combat turn after firing."),
+
+    tech("radiation_shields", "fields", 1, "Radiation Shields", "Colony ships can settle barren worlds. Unlock ship shield generators (+12 shields per module).", barren=1),
+    tech("habitat_shields", "fields", 1, "Habitat Shields", "+2 credits per desert or tundra colony.", rough_income=2),
+    tech("thermal_barriers", "fields", 2, "Thermal Barriers", "Colony ships can settle volcanic worlds.", volcanic=1),
+    tech("industrial_force_fields", "fields", 2, "Industrial Force Fields", "+2 resources per operational mine, regardless of mineral richness.", mine_resources=2),
     tech("planetary_shielding", "fields", 3, "Planetary Shielding", "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.", shield_capacity=100),
     tech("gravity_wells", "fields", 3, "Gravity-Well Generators", "Unlock interdiction generators: hostile final approaches slow by 25% within 5 ly.", interdiction_slow=25, interdiction_range=5),
     tech("barrier_fields", "fields", 4, "Barrier Fields", "Unlock or upgrade planetary generators to 200 shield points, with 6 CR/turn upkeep.", shield_capacity=200, shield_upkeep=2),
     tech("subspace_interdiction", "fields", 4, "Subspace Interdiction", "Unlock or upgrade interdiction generators: 40% slowdown within 8 ly, with 5 CR/turn upkeep.", interdiction_slow=40, interdiction_range=8, interdiction_upkeep=2),
-    tech("electronic_countermeasures", "physics", 3, "Electronic Countermeasures", "Your ships gain 10 percentage points of evasion.", evasion=10),
-    tech("deep_space_radar", "computers", 3, "Deep-Space Radar", "Detect fleet positions and owners within 5 ly of colonies. Unlock sensor arrays (+5 ly locally).", sensor_range=5, sensor_level=1),
-    tech("targeting_computers", "computers", 3, "Targeting Computers", "+10 percentage points to weapon hit chance from targeting computers.", targeting_accuracy=10),
+    tech("regenerative_shields", "fields", 5, "Regenerative Shields", "Unlock regenerating shield modules: +8 capacity, restoring 2 shield points at the start of each ship's turn. Less capacity than ordinary shields."),
+    tech("hardened_shields", "fields", 5, "Hardened Shields", "Unlock hardened shield modules: +12 capacity. While shields remain, reduce phased penetration by 75%. Hardening does not stack."),
+
+    tech("lightweight_alloys", "materials", 1, "Lightweight Alloys", "Lighter fuel tanks: +10 ly range. New ships cost 10% fewer resources.", ship_discount=10, fuel_range=10),
+    tech("superconductors", "materials", 1, "Superconductors", "+1 industry per colony and +2 research per laboratory.", colony_industry=1, lab_research=2),
+    tech("fusion_torpedoes", "materials", 2, "Fusion Torpedoes", "Unlock fusion launchers: 18 damage, range 9. Benefits from torpedo guidance; vulnerable to point defense."),
+    tech("reinforced_armor", "materials", 2, "Reinforced Armor", "Unlock reinforced armor plates: +14 hull in one defense space, with -1 tactical movement (minimum one)."),
+    tech("deep_core_drills", "materials", 3, "Deep Core Drills", "+2 resources per operational mine, regardless of richness. Unlock deep-core mines: 4 resources +2 per miner, scaled by richness, using 5 energy and 3 CR/turn. Also unlock 20-energy geothermal plants.", mine_resources=2),
+    tech("composite_structures", "materials", 3, "Composite Structures", "Advanced fuel tanks: +15 ly range. New buildings cost 15% fewer resources.", building_discount=15, fuel_range=15),
+    tech("cryogenic_fuel_tanks", "materials", 4, "Cryogenic Fuel Tanks", "+10 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not change travel speed.", fuel_range=10),
+    tech("mirv_torpedoes", "materials", 4, "MIRV Torpedoes", "Unlock MIRV launchers: three 7-damage warheads, range 8. Each rolls separately and ignores half of enemy interception."),
+    tech("automated_refineries", "materials", 5, "Automated Refineries", "+3 resources per operational mine, regardless of richness. Unlock automated refineries: 7 resources +3 per miner, scaled by richness, using 8 energy and 5 CR/turn.", mine_resources=3),
+    tech("molecular_shipbuilding", "materials", 5, "Molecular Shipbuilding", "New ship orders cost 15% fewer Resources. Already placed orders keep their price.", ship_discount=15),
+    tech("antimatter_fuel_tanks", "materials", 6, "Antimatter Fuel Tanks", "+15 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require Cryogenic Fuel Tanks.", fuel_range=15),
+    tech("antimatter_torpedoes", "materials", 6, "Antimatter Torpedoes", "Unlock antimatter launchers: 36 damage, range 9. Must reload for one full combat turn; vulnerable to point defense."),
+    tech("spatial_compression_tanks", "materials", 7, "Spatial-Compression Tanks", "+20 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require earlier tank choices.", fuel_range=20),
+    tech("nanostructured_materials", "materials", 7, "Nanostructured Materials", "+4 industry per colony. Unlock nanofactories: 14 industry +3 per worker, using 10 energy and 7 CR/turn. Factory research bonuses also apply.", colony_industry=4),
+
+    tech("colony_biospheres", "biology", 1, "Colony Biospheres", "New colonies start with 1 billion additional inhabitants.", colonists=1),
+    tech("symbiotic_farming", "biology", 1, "Symbiotic Farming", "+2 food and +2 credits per colony.", colony_food=2, colony_income=2),
+    tech("colony_biogenesis", "biology", 2, "Colony Biogenesis", "New colonies start with 2 billion additional inhabitants.", colonists=2),
+    tech("ecology_networks", "biology", 2, "Ecology Networks", "+1 credit per 2 billion inhabitants on each colony.", income_per_two_pop=1),
+
+    tech("research_networks", "computers", 1, "Research Networks", "+1 research per colony and per laboratory. Unlock combat scanners (+1 weapon range).", colony_research=1, lab_research=1),
+    tech("trade_algorithms", "computers", 1, "Trade Algorithms", "+2 credits per trade center.", trade_income=2),
+    tech("deep_space_radar", "computers", 2, "Deep-Space Radar", "Detect fleet positions and owners within 5 ly of colonies. Unlock sensor arrays (+5 ly locally).", sensor_range=5, sensor_level=1),
+    tech("targeting_computers", "computers", 2, "Targeting Computers", "+10 percentage points to weapon hit chance from targeting computers.", targeting_accuracy=10),
+    tech("distributed_computing", "computers", 3, "Distributed Computing", "+2 research per colony.", colony_research=2),
+    tech("planetary_automation", "computers", 3, "Planetary Automation", "+1 industry per factory and +1 resource per operational mine. Unlock robotic factories: 8 industry +2 per worker, using 6 energy and 4 CR/turn.", factory_industry=1, mine_resources=1),
     tech("long_range_sensors", "computers", 4, "Long-Range Sensors", "Detect fleets within 10 ly and reveal ship counts. Unlock sensor arrays. Replaces earlier sensor range.", sensor_range=10, sensor_level=2),
     tech("predictive_fire_control", "computers", 4, "Predictive Fire Control", "+20 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.", targeting_accuracy=20),
     tech("subspace_scanners", "computers", 5, "Subspace Scanners", "Detect fleets within 20 ly; reveal classes and movement direction. Unlock sensor arrays. Replaces earlier sensor range.", sensor_range=20, sensor_level=3),
@@ -119,45 +140,35 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("gravitic_mapping", "computers", 6, "Gravitic Mapping", "Reveal the names and locations of black holes. Approaching them remains fatal without Event Horizon Navigation.", black_hole_detection=1),
     tech("planetary_data_vaults", "computers", 6, "Planetary Data Vaults", "+2 research per colony.", colony_research=2),
     tech("event_horizon_navigation", "computers", 7, "Event Horizon Navigation", "Reveal black holes and safely approach their ancient relic sites. A legendary guardian must be defeated to recover each relic. Includes Gravitic Mapping.", black_hole_detection=1, black_hole_navigation=1),
-    tech("quantum_research_archives", "computers", 7, "Quantum Research Archives", "+4 research per colony.", colony_research=4),
+    tech("quantum_research_archives", "computers", 7, "Quantum Research Archives", "+4 research per colony. Unlock quantum research labs: 14 RP +3 per scientist, using 11 energy and 7 CR/turn. Laboratory research bonuses also apply.", colony_research=4),
+
+    tech("colonial_administration", "society", 1, "Colonial Administration", "+2 credits per colony.", colony_income=2),
+    tech("scientific_institutes", "society", 1, "Scientific Institutes", "+1 research per colony.", colony_research=1),
+    tech("commerce_guilds", "society", 2, "Commerce Guilds", "+3 credits per trade center.", trade_income=3),
+    tech("cultural_exchange", "society", 2, "Cultural Exchange", "Your active trade pact earns +3 credits; your research pact earns +3 research.", pact_income=3, pact_research=3),
+
     tech("destroyer_hulls", "starships", 1, "Destroyer Hulls", "Unlock destroyers: agile torpedo warships. Build the standard class or create a custom design."),
     tech("modular_spaceframes", "starships", 1, "Modular Spaceframes", "New ships cost 10% fewer Resources. Does not unlock destroyers.", ship_discount=10),
-    tech("cruiser_hulls", "starships", 2, "Cruiser Hulls", "Unlock cruisers: versatile warships with eight module spaces. Does not unlock skipped hull classes."),
+    tech("cruiser_hulls", "starships", 2, "Cruiser Hulls", "Unlock cruisers: versatile warships with four medium weapon slots. Does not unlock skipped hull classes."),
     tech("deep_space_logistics", "starships", 2, "Deep-Space Logistics", "+5 ly fuel range for your fleets. Does not unlock cruisers.", fuel_range=5),
-    tech("battleship_hulls", "starships", 3, "Battleship Hulls", "Unlock battleships: heavy gun platforms with twelve module spaces. Drone carriers are the alternative choice."),
-    tech("drone_carriers", "starships", 3, "Drone Carriers", "Unlock carrier hulls and drone bays. Each bay supports two active drones and four launches per battle. Battleships are the alternative choice."),
-    tech("titan_hulls", "starships", 4, "Titan Hulls", "Unlock titans: massive capital ships with eighteen module spaces. Does not unlock skipped hull classes."),
+    tech("drone_carriers", "starships", 3, "Drone Carriers", "Unlock carrier hulls and drone bays. Each bay supports two active drones and four launches per battle. Carriers use medium modules."),
+    tech("advanced_flak", "starships", 3, "Advanced Flak Systems", "Unlock flak modules: 45% interception per module against torpedoes and drones, with a 75% shipboard cap. Fits any combat hull."),
+    tech("battleship_hulls", "starships", 4, "Battleship Hulls", "Unlock battleships: heavy gun platforms with four heavy weapon slots. Heavy modules deal more damage but track small targets poorly. Does not unlock skipped hull classes."),
     tech("mass_ship_production", "starships", 4, "Mass Ship Production", "New ships cost 20% fewer Resources. Does not unlock titans.", ship_discount=20),
-    tech("pulse_beams", "physics", 5, "Pulse Beams", "Unlock pulse cannons: two accurate 4-damage shots, range 6. Compact weapons for fighting small ships and drones."),
-    tech("plasma_beams", "physics", 5, "Plasma Beams", "Unlock plasma cannons: 24 damage, range 4. High close-range damage in two weapon spaces."),
-    tech("ion_beams", "physics", 6, "Ion Beams", "Unlock ion cannons: 8 hull damage or up to 32 shield damage, range 6. Extra shield damage does not spill into hull damage."),
-    tech("graviton_beams", "physics", 6, "Graviton Beams", "Unlock graviton beams: 16 damage, range 6. A hit slows the target by one cell through its next turn; does not stack or reduce movement below one."),
-    tech("particle_beams", "physics", 7, "Particle Beams", "Unlock particle lances: 20 damage, range 10, using three weapon spaces. Long-range fleet artillery."),
-    tech("heavy_beam_mounts", "physics", 7, "Heavy Beam Mounts", "Unlock heavy beam batteries: 30 damage, range 9, using four weapon spaces. Large mounts for capital ships."),
-    tech("phased_beams", "physics", 8, "Phased Beams", "Unlock phased beams: 16 damage, range 7. Half the damage bypasses ship shields. Hardened shields reduce this penetration."),
-    tech("disruptor_beams", "physics", 8, "Disruptor Beams", "Unlock disruptors: 40 damage, range 5, using three weapon spaces. Must recharge for one full combat turn after firing."),
-    tech("fusion_torpedoes", "materials", 3, "Fusion Torpedoes", "Unlock fusion launchers: 18 damage, range 9. Benefits from torpedo guidance; vulnerable to point defense."),
-    tech("reinforced_armor", "materials", 3, "Reinforced Armor", "Unlock reinforced armor plates: +14 hull in one defense space, with -1 tactical movement (minimum one)."),
-    tech("mirv_torpedoes", "materials", 4, "MIRV Torpedoes", "Unlock MIRV launchers: three 7-damage warheads, range 8. Each rolls separately and ignores half of enemy interception."),
-    tech("antimatter_torpedoes", "materials", 4, "Antimatter Torpedoes", "Unlock antimatter launchers: 36 damage, range 9. Must reload for one full combat turn; vulnerable to point defense."),
-    tech("regenerative_shields", "fields", 5, "Regenerative Shields", "Unlock regenerating shield modules: +8 capacity, restoring 2 shield points at the start of each ship's turn. Less capacity than ordinary shields."),
-    tech("hardened_shields", "fields", 5, "Hardened Shields", "Unlock hardened shield modules: +12 capacity. While shields remain, reduce phased penetration by 75%. Hardening does not stack."),
     tech("interceptor_drones", "starships", 5, "Interceptor Drones", "Unlock interceptor bays for carriers: fast drones deal 8 damage to drones, 2 to other targets. Each nearby interceptor adds 20% fleet interception within two cells (maximum 40%). Requires a carrier hull."),
-    tech("advanced_flak", "starships", 5, "Advanced Flak Systems", "Unlock flak modules: 45% interception per module against torpedoes and drones, with a 75% shipboard cap. Fits any combat hull."),
+    tech("automated_damage_control", "starships", 5, "Automated Damage Control", "Unlock repair systems for any combat hull. Each repairs up to 3 hull at the start of a turn, with 12 hull of reserve per battle. Repairs only damage suffered in that battle."),
+    tech("titan_hulls", "starships", 6, "Titan Hulls", "Unlock titans: massive capital ships with four heavy weapon slots and the strongest module scaling. Powerful against large targets; poor tracking against small ships."),
     tech("bomber_drones", "starships", 6, "Bomber Drones", "Unlock bomber bays for carriers: slower drones deal 5 damage, doubled against cruisers, larger ships, bases and guardians. Vulnerable to interception. Requires a carrier hull."),
-    tech("automated_damage_control", "starships", 6, "Automated Damage Control", "Unlock repair systems for any combat hull. Each repairs up to 3 hull at the start of a turn, with 12 hull of reserve per battle. Repairs only damage suffered in that battle."),
-    tech("cryogenic_fuel_tanks", "materials", 5, "Cryogenic Fuel Tanks", "+10 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not change travel speed.", fuel_range=10),
-    tech("automated_refineries", "materials", 5, "Automated Refineries", "+3 Resources per operational mining complex, regardless of mineral richness.", mine_resources=3),
-    tech("antimatter_fuel_tanks", "materials", 6, "Antimatter Fuel Tanks", "+15 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require Cryogenic Fuel Tanks.", fuel_range=15),
-    tech("molecular_shipbuilding", "materials", 6, "Molecular Shipbuilding", "New ship orders cost 15% fewer Resources. Already placed orders keep their price.", ship_discount=15),
-    tech("spatial_compression_tanks", "materials", 7, "Spatial-Compression Tanks", "+20 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require earlier tank choices.", fuel_range=20),
-    tech("nanostructured_materials", "materials", 7, "Nanostructured Materials", "+4 industry per colony, without additional workers or power consumption.", colony_industry=4),
+
+    tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
 )}
 
 FUEL_TANK_TECHNOLOGIES = ("lightweight_alloys", "composite_structures", "cryogenic_fuel_tanks",
                           "antimatter_fuel_tanks", "spatial_compression_tanks")
-FUEL_EXPANSION_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values() if t.branch == "materials" and t.tier >= 5)
-BLACK_HOLE_TECHNOLOGIES = frozenset(t.id for t in TECHNOLOGIES.values() if t.branch == "computers" and t.tier >= 6)
+FUEL_EXPANSION_TECHNOLOGIES = frozenset(("cryogenic_fuel_tanks", "automated_refineries", "antimatter_fuel_tanks",
+                                       "molecular_shipbuilding", "spatial_compression_tanks", "nanostructured_materials"))
+BLACK_HOLE_TECHNOLOGIES = frozenset(("gravitic_mapping", "planetary_data_vaults",
+                                   "event_horizon_navigation", "quantum_research_archives"))
 
 
 def branch_tiers(branch):
@@ -368,9 +379,9 @@ class ResearchState:
 
 def building_yields(definition, richness, bonuses):
     industry, income, research = definition.yields(richness)
-    industry += bonuses.get("factory_industry", 0) if definition.id == "factory" else 0
+    industry += bonuses.get("factory_industry", 0) if facility_family(definition.id) == "factory" else 0
     income += bonuses.get("trade_income", 0) if definition.id == "trade_center" else 0
-    research += bonuses.get("lab_research", 0) if definition.id == "research_lab" else 0
+    research += bonuses.get("lab_research", 0) if facility_family(definition.id) == "research_lab" else 0
     return industry, income, research
 
 

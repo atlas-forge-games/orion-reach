@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, FACILITY_FAMILIES, ADVANCED_FACILITIES, facility_family
 from .economy import energy_report
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, SHIP_TYPES
@@ -183,8 +183,10 @@ def world_quality(planet):
 def development_choice(planet, race_id="kharuun", available=None):
     existing = set(planet.buildings) | {q.item_id for q in planet.construction_queue}
     for item in (*RACES[race_id].development, "factory", "trade_center", "research_lab", "mine"):
-        if item not in existing and (available is None or item in available):
-            return item
+        candidates = reversed(FACILITY_FAMILIES.get(item, (item,))) if available is not None else (item,)
+        for candidate in candidates:
+            if candidate not in existing and (available is None or candidate in available):
+                return candidate
     return None
 
 
@@ -259,7 +261,7 @@ def recover_budget(game, owner):
                     continue
                 saving = game.planet_yields(future)[1]-game.planet_yields(planet)[1]
                 if saving > 0:
-                    options.append((item == "hydroponic_farm", item == "barracks", item == "research_lab",
+                    options.append((item == "hydroponic_farm", item == "barracks", facility_family(item) == "research_lab",
                                     -saving, system.id, planet.id, index, future))
         if not options:
             return
@@ -283,7 +285,7 @@ def recover_power(game, owner):
         if item is None:
             continue
         if not planet.free_slots:
-            disposable = [i for i, b in enumerate(planet.buildings) if b in ("research_lab", "factory", "trade_center")]
+            disposable = [i for i, b in enumerate(planet.buildings) if facility_family(b) in ("research_lab", "factory", "trade_center")]
             if not disposable:
                 continue
             index = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
@@ -514,7 +516,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                       or planet.farmers > 2
                       or 0 < planet.free_slots <= farms_needed)
         if needs_food and planet.free_slots == 0:
-            disposable = [i for i, b in enumerate(planet.buildings) if b in ("research_lab", "factory", "trade_center")]
+            disposable = [i for i, b in enumerate(planet.buildings) if facility_family(b) in ("research_lab", "factory", "trade_center")]
             if disposable:
                 index_to_remove = max(disposable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
                 game.demolish_building(system.id, planet.id, index_to_remove, owner=owner)
@@ -536,7 +538,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 and game.resources_for(owner) >= game.project_price("barracks", owner)):
             # Older, fully developed colonies need room for the new troop facility.
             # Preserve farms and the last research lab; prefer redundant industry.
-            replaceable = [i for i, b in enumerate(planet.buildings) if b in ("factory", "mine", "trade_center")]
+            replaceable = [i for i, b in enumerate(planet.buildings) if facility_family(b) in ("factory", "mine", "trade_center")]
             if replaceable:
                 slot = max(replaceable, key=lambda i: (planet.buildings.count(planet.buildings[i]), i))
                 game.demolish_building(system.id, planet.id, slot, owner=owner)
@@ -590,6 +592,9 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
             queue_building(game, system, planet, infrastructure_item, owner)
         elif planet.free_slots > 0:
             available = {b for b in BUILDINGS if game.build_error(system.id, planet.id, b, owner=owner) is None}
+            available = {b for b in available if b not in ADVANCED_FACILITIES
+                         or (game.planet_yields(projected_colony(planet, b))[1] >= 0
+                             and projected_income(game, owner, (system.id, planet.id, b)) >= 1)}
             item = development_choice(planet, game._empire(owner).race_id, available)
             queue_building(game, system, planet, item, owner)
         if not planet.construction_queue:

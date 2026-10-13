@@ -90,6 +90,18 @@ BUILDINGS = {
                                  income=4, income_per_population=.5, energy_use=1, maintenance=1),
     "research_lab": BuildingSpec("research_lab", "Research lab", "Base research plus better output from every scientist.", 50, 30,
                                  research=4, research_per_scientist=1, energy_use=4, maintenance=2),
+    "robotic_factory": BuildingSpec("robotic_factory", "Robotic factory", "Automated production lines provide more industry and double the basic factory's worker bonus. Occupies its own slot; stacks with other factories.", 110, 66,
+                                    industry=8, industry_per_worker=2, energy_use=6, maintenance=4, technology="planetary_automation"),
+    "nanofactory": BuildingSpec("nanofactory", "Nanofactory", "Molecular assembly provides advanced industry and worker output at high power and credit cost. Occupies its own slot; stacks with other factories.", 230, 138,
+                               industry=14, industry_per_worker=3, energy_use=10, maintenance=7, technology="nanostructured_materials"),
+    "deep_core_mine": BuildingSpec("deep_core_mine", "Deep-core mine", "Deep shafts double the basic mine's extraction and miner bonus. Output scales with richness. Occupies its own slot; stacks with other mines.", 90, 54,
+                                  resources=4, resources_per_miner=2, energy_use=5, maintenance=3, technology="deep_core_drills"),
+    "automated_refinery": BuildingSpec("automated_refinery", "Automated refinery", "High-capacity mineral processing boosts extraction and every miner. Output scales with richness. Occupies its own slot; stacks with other mines.", 180, 108,
+                                      resources=7, resources_per_miner=3, energy_use=8, maintenance=5, technology="automated_refineries"),
+    "advanced_research_lab": BuildingSpec("advanced_research_lab", "Advanced research lab", "Precision instruments double the basic lab's research and scientist bonus. Occupies its own slot; stacks with other laboratories.", 120, 72,
+                                         research=8, research_per_scientist=2, energy_use=7, maintenance=4, technology="planetary_observatories"),
+    "quantum_research_lab": BuildingSpec("quantum_research_lab", "Quantum research lab", "Quantum simulations deliver advanced research and scientist output at high power and credit cost. Occupies its own slot; stacks with other laboratories.", 240, 144,
+                                        research=14, research_per_scientist=3, energy_use=11, maintenance=7, technology="quantum_research_archives"),
     "hydroponic_farm": BuildingSpec("hydroponic_farm", "Hydroponic farm", "Base food plus better output from every farmer.", 30, 18,
                                     food=4, food_per_farmer=1, energy_use=2, maintenance=1),
     "barracks": BuildingSpec("barracks", "Barracks", "Trains a local garrison and enables troop transport construction. One per colony.",
@@ -122,7 +134,21 @@ BUILDING_GROUPS = (
     ("factory", "mine", "trade_center", "research_lab", "hydroponic_farm", "barracks", "fortifications"),
     ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"),
     ("solar_array", "geothermal_plant", "fusion_plant", "thermal_plant", "singularity_plant"),
+    ("robotic_factory", "nanofactory", "deep_core_mine", "automated_refinery", "advanced_research_lab", "quantum_research_lab"),
 )
+
+# Facility families share research bonuses, power priority and AI preferences.
+# Each distinct facility still occupies a slot and can be built once per colony.
+FACILITY_FAMILIES = {
+    "factory": ("factory", "robotic_factory", "nanofactory"),
+    "mine": ("mine", "deep_core_mine", "automated_refinery"),
+    "research_lab": ("research_lab", "advanced_research_lab", "quantum_research_lab"),
+}
+ADVANCED_FACILITIES = tuple(item for family in FACILITY_FAMILIES.values() for item in family[1:])
+
+
+def facility_family(identifier):
+    return next((base for base, family in FACILITY_FAMILIES.items() if identifier in family), identifier)
 
 
 @dataclass(frozen=True)

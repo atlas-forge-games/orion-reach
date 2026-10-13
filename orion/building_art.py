@@ -4,7 +4,7 @@ from functools import lru_cache
 import pygame as pg
 
 from .ui import ASSETS
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, FACILITY_FAMILIES, facility_family
 
 BUILDING_ART_IDS = ("headquarters", "shipyard", *BUILDINGS, "ascension_gate")
 
@@ -21,11 +21,13 @@ def load_building_art(building_id):
             return None
         return image.subsurface(bounds).copy()
     except (OSError, pg.error):
-        return None
+        family = facility_family(building_id)
+        return load_building_art(family) if family != building_id else None
 
 
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
+    building_id = facility_family(building_id)
     image = pg.Surface((120, 110), pg.SRCALPHA)
     if building_id in ("geothermal_plant", "thermal_plant", "singularity_plant"):
         pg.draw.polygon(image, (59, 84, 98), [(5, 78), (60, 55), (115, 78), (60, 107)])
@@ -156,7 +158,17 @@ def building_sprite(building_id, size):
     if source is None:
         source = fallback_building(building_id)
     fit = source.get_rect().fit(pg.Rect((0, 0), size))
-    return pg.transform.smoothscale(source, fit.size)
+    sprite = pg.transform.smoothscale(source, fit.size)
+    family = facility_family(building_id)
+    if family != building_id:
+        # Small lit plates distinguish higher facility levels at every icon size.
+        level = FACILITY_FAMILIES[family].index(building_id)
+        color = (102, 218, 233) if level == 1 else (227, 186, 97)
+        width, height = sprite.get_size()
+        plate = max(3, width//10)
+        for i in range(level+1):
+            pg.draw.rect(sprite, color, (width//2+(i-level/2)*(plate+2), height*.72, plate, max(3, height//15)))
+    return sprite
 
 
 def draw_building_art(surface, building_id, rect, *, alpha=255):

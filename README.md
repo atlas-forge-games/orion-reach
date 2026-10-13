@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.54.0
+# Orion Reach — Python prototype 0.56.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,66 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.56: research progression and advanced facilities
+
+The standard research tree now introduces a beam weapon at every physics tier
+from **II to VIII**: pulse, ion, quantum, plasma, graviton, particle/phased,
+then heavy beam/disruptor weapons. Utility research remains a meaningful
+alternative. Early sensors and fusion torpedoes move to tier II, antimatter
+torpedoes to VI, battleships to IV and titans to VI. The existing research
+prices and two exclusive choices per tier remain in place.
+
+Six researchable facilities extend the basic economic buildings:
+
+| Role | Middle progression | Later progression |
+| --- | --- | --- |
+| Manufacturing | Robotic factory — Computers III | Nanofactory — Materials VII |
+| Mining | Deep-core mine — Materials III | Automated refinery — Materials V |
+| Research | Advanced research lab — Physics IV | Quantum research lab — Computers VII |
+
+Each has higher fixed output and a stronger workforce bonus, balanced by more
+Resources, construction work, energy and credit upkeep. These are additional
+facilities: each occupies its own building slot, can be built once per planet,
+and stacks with other facility types. They inherit the corresponding factory,
+mine or laboratory research bonuses. Mines retain priority during power shortages.
+
+Unlocked facilities appear in the construction queue's building column and in
+the colony **Advanced** category. The AI uses researched facilities
+with the same upkeep and power checks. All six are editable in `python editor.py`.
+See [RESEARCH_TREE.md](RESEARCH_TREE.md) for the complete layout and facility costs.
+
+The new layout applies to **new campaigns using the standard balance**. Existing
+campaigns and custom profiles retain their research choices, positions, prices
+and progress; older profiles gain the six facility definitions automatically.
+If you have a custom `balance.json`, keep editing its tree or use the editor's
+**Reset all** and **Save** to adopt all new defaults for future campaigns.
+Reset all also resets your other custom balance values. Save format remains
+**38**; balance profiles advance to **3**. No new dependencies are needed.
+
+## New in v0.55: galaxy map zoom and panning
+
+Zoom into the galaxy with the **mouse wheel over the map**, or use the map's
+**− / +** buttons. Zoom ranges from the full map at **100%** to **400%**. Wheel
+zoom keeps the position under the cursor in place, subject to the map edges.
+
+**Hold the right or middle mouse button and drag** to move the map in any
+direction. **Shift + arrow keys** also pan; hold them for continuous movement.
+Horizontal mouse-wheel/trackpad scrolling pans horizontally, and **Shift +
+mouse wheel** pans vertically. Ordinary arrow-key navigation remains available.
+
+The **Fit** button, **0**, or **Home** returns to the full galaxy. **Center** or
+**C** brings the selected system back into view at the current zoom. Keyboard
+**+ / −** also changes zoom. System names and fleet badges stay readable while
+stars, ships, routes, sensor coverage and fuel ranges move together. Objects
+outside the view do not leave stray labels or clickable markers at its edges.
+
+Zooming and panning also work while choosing a fleet destination. Dragging
+never sends ships; left-click a destination as usual. The wheel over the side
+panel still pages through planets or the fleet manifest. The view is retained
+when visiting another screen and resets when starting or loading a campaign.
+Observers can use the same controls. Save format remains **38**; no additional
+dependencies or gameplay balance changes are included.
 
 ## New in v0.54: diplomacy statistics from turn one
 
@@ -2647,6 +2707,10 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Save a manual snapshot | F5, or Save Game where shown |
 | Advance one turn | E, or End Turn |
 | Inspect a solar system beside the galaxy map | Click a star, or Left / Right on the galaxy screen |
+| Zoom the galaxy map | Mouse wheel over the map, map − / + buttons, or keyboard + / − |
+| Pan the zoomed galaxy map | Right- or middle-drag; hold Shift + arrow keys; horizontal wheel; Shift + wheel vertically |
+| Fit the entire galaxy | Fit button, 0, or Home |
+| Center the selected system | Center button or C |
 | Browse system-panel pages | Panel arrows, Page Up / Down, or scroll over the panel |
 | Open the full orbital diagram | Full system view in the system panel |
 | Open a planet | Click its panel row or globe/caption; Enter activates a focused planet |

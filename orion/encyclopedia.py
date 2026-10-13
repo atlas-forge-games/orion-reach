@@ -63,6 +63,9 @@ def guides():
             ("YOUR COLLECTION", "Recovery is saved with the campaign and announced in Turn news. Info → Legendary artifacts marks your recovered relics. Flagship/capital placement, bonuses and special powers remain proposed; collection does not activate them yet."),
         )),
         Article("map", "basics", "Reading the galaxy map", "Names, colors and intelligence", (
+            ("ZOOM AND PAN", "Use the mouse wheel over the map to zoom from 100% to 400% around the cursor, or use the minus/plus buttons. Hold the right or middle mouse button and drag in any direction. Shift + arrow keys also pan continuously; horizontal wheel scrolling pans sideways and Shift + wheel pans vertically. Names and fleet badges keep their readable size."),
+            ("FIND YOUR WAY", "Fit, 0 or Home restores the full map. Center or C brings the selected system into view. Keyboard + / minus changes zoom. Ordinary arrow keys still navigate controls and systems. The view is retained across screen visits and resets when starting or loading a campaign."),
+            ("FLEET ORDERS", "You can zoom and pan while choosing a destination. Dragging never issues movement orders: left-click the destination as usual. Scrolling over the side panel still pages through its planets or fleet manifest."),
             ("SYSTEM NAMES", "Parentheses mark systems you have not surveyed. Gray names are neutral. Colonized names use their known owners' colors; shared systems split the name between those colors."),
             ("INFORMATION", "Explored systems may show a stored survey rather than a live view. A survey does not reveal later enemy movement or changes until you observe the system again."),
             ("COLORS", "Saturated blue is your default empire color. Settings → Galaxy colors offers saturated turquoise. Ownership rings and fleet markers follow the same preference."),

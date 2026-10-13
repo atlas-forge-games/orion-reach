@@ -1,0 +1,52 @@
+Orion Reach v0.55.0 - Galaxy map zoom and panning
+
+INSTALL
+Requires the existing v0.54.0 game. This is an incremental update.
+Close the game, extract this ZIP into the repository root (the directory
+containing main.py), and allow the included files to overwrite their older
+versions. Restart with python main.py.
+
+CONTROLS
+- Mouse wheel over the map: zoom from 100% to 400% around the cursor.
+- Map minus/plus buttons or keyboard + / minus: zoom around the map centre.
+- Hold right or middle mouse button and drag: pan in any direction.
+- Hold Shift + arrow keys: continuous panning.
+- Horizontal mouse wheel / trackpad: pan sideways.
+- Shift + mouse wheel: pan vertically.
+- Fit button, 0 or Home: restore the full galaxy.
+- Center button or C: bring the selected system back into view.
+
+BEHAVIOR
+Stars, moving fleets, courses, sensors, fuel-range overlays and the background
+move together. Names and fleet badges retain their readable size. Offscreen
+objects have no stray labels or click targets along the map edges. The view
+stays within the galaxy bounds, including when zooming out after panning.
+
+Camera controls also work while selecting a fleet destination. Dragging does
+not issue orders or cancel selected ships: left-click a destination as usual.
+The wheel over the side panel still pages through planets or the manifest.
+Ordinary arrow-key navigation is retained, and browsing systems brings the
+selected system into view. Mouse input respects resized/letterboxed windows.
+
+The camera survives visits to other screens and resets when starting or
+loading a campaign. Losing focus, opening a dialog or leaving the map stops
+dragging and held-key panning. Observer campaigns use the same controls.
+
+COMPATIBILITY
+Save format remains 38. Existing campaigns load normally. This is a display
+update; it does not change population, race balance, discoveries or game rules.
+The discussed balancing and deep-investigation ideas remain future proposals.
+No additional dependencies are required. Save files and local settings are
+not included in this update.
+
+VERIFIED
+All 864 automated tests passed, including 14 new camera tests covering
+cursor-anchored zoom, map limits, letterboxed input, zoomed fleet orders,
+safe dragging, fog of war, hidden black holes, moving fleets, sensor/fuel
+geometry, offscreen markers, screen transitions, keyboard controls and saves.
+Rendered fit, zoomed, plain-background, fleet-order and Observer black-hole
+views were inspected. Dense-map tests retain non-overlapping fleet badges.
+
+COMMIT (run yourself from the repository root after extracting)
+git add README.md orion/ tests/test_galaxy_camera.py UPDATE_v055.txt
+git commit -m "Add galaxy map zoom and panning controls"

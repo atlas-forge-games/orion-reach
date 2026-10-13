@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 2
+VERSION = 3
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'buildings': ('buildings', 'BUILDINGS'),
@@ -104,6 +104,17 @@ def _defaults():
 
 def default_profile():
     return deepcopy(_defaults())
+
+
+def legacy_profile():
+    """Preserve the research choices of campaigns without a saved profile."""
+    from .legacy_research import PRE_REBALANCE_TIERS
+    profile = default_profile()
+    for branch, tiers in PRE_REBALANCE_TIERS.items():
+        for tier, pair in enumerate(tiers, 1):
+            for order, identifier in enumerate(pair):
+                profile['data']['technologies'][identifier].update(branch=branch, tier=tier, order=order)
+    return profile
 
 
 def active_profile():
@@ -268,7 +279,7 @@ def require_valid(profile):
 
 
 def upgrade_profile(profile):
-    """Add slot/scaling controls without replacing any pre-existing balance values."""
+    """Add new controls/facilities without replacing saved values or tree layouts."""
     if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 1:
         profile = deepcopy(profile)
         hulls = profile.get('data', {}).get('hulls', {}) if isinstance(profile.get('data'), dict) else {}
@@ -278,6 +289,14 @@ def upgrade_profile(profile):
                     for key in ('offensive_slots', 'defensive_slots', 'support_slots',
                                 'module_size', 'module_scale', 'tracking_penalty'):
                         hulls[identifier].setdefault(key, defaults[key])
+        profile['version'] = 2
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 2:
+        from .buildings import ADVANCED_FACILITIES
+        profile = deepcopy(profile)
+        buildings = profile.get('data', {}).get('buildings', {}) if isinstance(profile.get('data'), dict) else {}
+        if isinstance(buildings, dict):
+            for identifier in ADVANCED_FACILITIES:
+                buildings.setdefault(identifier, deepcopy(_defaults()['data']['buildings'][identifier]))
         profile['version'] = VERSION
     return profile
 

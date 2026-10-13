@@ -107,7 +107,7 @@ class Storage:
                 raise SaveError("This is not an Orion Reach save.")
             if type(data.get("version")) is not int or data["version"] not in range(1, SAVE_VERSION+1):
                 raise SaveError("This save uses an unsupported version.")
-            profile = data.get("balance") if data["version"] >= 36 else balance.default_profile()
+            profile = data.get("balance") if data["version"] >= 36 else balance.legacy_profile()
             balance.activate(profile)
             # Migrate older formats in memory; never rewrite a loaded source file.
             state = GameState.from_dict(data.get("game"), version=data["version"])

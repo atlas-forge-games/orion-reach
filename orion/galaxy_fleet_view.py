@@ -24,8 +24,7 @@ def draw_fuel_range(app, map_rect):
     game = app.game
     if not (app.map_order_ids or app.route_ship_id is not None):
         return
-    radius = game.fuel_range()/100
-    rx, ry = radius*(map_rect.w-80)/1.4, radius*(map_rect.h-64)
+    rx, ry = app.map_camera.radii(game.fuel_range(), map_rect)
     overlay = pg.Surface(map_rect.size, pg.SRCALPHA)
     for system in game.colony_systems():
         x, y = app.star_pos(system)
@@ -33,9 +32,6 @@ def draw_fuel_range(app, map_rect):
         pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 19), ellipse)
         pg.draw.ellipse(overlay, (*app.empire_color(PLAYER), 90), ellipse, 1)
     app.canvas.blit(overlay, map_rect.topleft)
-    speed = 100*production_balance.SHIP_SPEED*(1+game.ship_speed_bonus()/100)
-    text(app.canvas, f"FUEL RANGE {game.fuel_range()} LY  ·  SPEED {speed:g} LY/TURN",
-         (map_rect.right-18, map_rect.y+18), 10, CYAN, "mono", right=True)
 
 
 @lru_cache(maxsize=1)
@@ -77,7 +73,7 @@ def marker_layout(bounds, star_obstacles, preferred_rects, padding=4):
 
 def star_label_rects(app, map_rect):
     """Keep names inside the rectangular map and clear of nearby stars and names."""
-    systems = black_holes.chart_systems(app.game)
+    systems = app.map_systems()
     obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
                  pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
                  for s in systems]
@@ -94,7 +90,7 @@ def star_label_rects(app, map_rect):
 
 def star_obstacles(app, map_rect, radius=21):
     obstacles = []
-    for system in black_holes.chart_systems(app.game):
+    for system in app.map_systems():
         x, y = app.star_pos(system)
         obstacles.append(hit_rect((x, y)) if system.kind == black_holes.KIND else
                          pg.Rect(int(x)-radius, int(y)-radius, radius*2, radius*2))
@@ -114,7 +110,8 @@ def guardian_legend_rect(map_rect):
 
 def guardian_markers(app, map_rect):
     """Known threats have their own symbol and hit target; hidden deaths stay private."""
-    guardians = [g for g in app.game.guardians if monsters.known_status(app.game, g.system_id) == "alive"]
+    guardians = [g for g in app.game.guardians if monsters.known_status(app.game, g.system_id) == "alive"
+                 and map_rect.collidepoint(app.star_pos(app.game.systems[g.system_id]))]
     obstacles = star_obstacles(app, map_rect)+[guardian_legend_rect(map_rect).inflate(4, 4)]
     anchors = [app.star_pos(app.game.systems[g.system_id]) for g in guardians]
     preferred = [(round(x)-34, round(y)-33, 24, 24) for x, y in anchors]
@@ -130,8 +127,8 @@ def draw_map_guardians(app, map_rect):
         pg.draw.line(app.canvas, tuple(c//3 for c in color), anchor, rect.center, 1)
         panel(app.canvas, rect, (9, 17, 28), color)
         draw_guardian_symbol(app.canvas, rect.center, guardian.kind, 18)
-        app.button(f"guardian_{guardian.system_id}", "", rect,
-                   lambda sid=guardian.system_id: app.select_star(sid), "hotspot")
+        app.map_button(f"guardian_{guardian.system_id}", rect,
+                       lambda sid=guardian.system_id: app.select_star(sid))
     kinds = known_guardian_kinds(app.game)
     if kinds:
         rect = guardian_legend_rect(map_rect)
@@ -153,21 +150,36 @@ def fleet_markers(app, map_rect):
     # Reserve each star's full click target; extra halo padding can consume the
     # last free badge positions on a 72-system map with multiple fleets per star.
     obstacles = star_obstacles(app, map_rect, radius=18)
+    obstacles.append(pg.Rect(map_rect.x, map_rect.y, map_rect.w, 38))
     obstacles.extend(rect.inflate(4, 4) for _, rect, _ in guardian_markers(app, map_rect))
     if known_guardian_kinds(app.game):
         obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
-    groups = sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id))
-    for ships in groups:
+    groups = []
+    for ships in sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id)):
         ship = ships[0]
         nx, ny = navigation.position(app.game, ship)
-        x, y = map_rect.x+40+nx*(map_rect.w-80), map_rect.y+32+ny*(map_rect.h-64)
+        x, y = app.map_pos(nx, ny)
+        if not map_rect.collidepoint((x, y)):
+            continue
+        groups.append(ships)
         preferred = (x+12, y+12) if ship.has_course else (x+18, y+23)
         width = max(44, 32+font(11, "mono_bold").size(str(len(ships)))[0])
         anchors.append((x, y))
         preferred_rects.append(tuple(pg.Rect(*preferred, width, 23)))
     rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), tuple(preferred_rects), padding=2)
+    # Very crowded full-galaxy views can need smaller badges to leave room for
+    # navigation. Keep every fleet clickable instead of accepting an overlap.
+    occupied = list(obstacles)
+    crowded = False
+    for rectangle in rectangles:
+        badge = pg.Rect(rectangle)
+        crowded |= badge.collidelist(occupied) != -1
+        occupied.append(badge)
+    if crowded:
+        compact = tuple((x, y, max(40, width-4), 20) for x, y, width, _ in preferred_rects)
+        rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), compact, padding=0)
     return [(ships, pg.Rect(rect), anchor) for ships, rect, anchor in zip(groups, rectangles, anchors)]
 
 
@@ -176,7 +188,8 @@ def draw_map_fleets(app, map_rect):
     clip = surface.get_clip()
     surface.set_clip(map_rect)
     markers = fleet_markers(app, map_rect)
-    for ships, _, _ in markers:
+    # A visible route can cross the viewport while its fleet is off screen.
+    for ships in group_fleets(game.visible_ships()):
         ship = ships[0]
         if ship.has_course:
             color = app.empire_color(ship.owner)
@@ -203,8 +216,8 @@ def draw_map_fleets(app, map_rect):
         panel(surface, rect, (11, 27, 36), color)
         ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
         text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono_bold")
-        app.button(f"map_fleet_{ships[0].id}", "", rect,
-                   lambda sid=ships[0].id: app.open_map_fleet(sid), "hotspot")
+        app.map_button(f"map_fleet_{ships[0].id}", rect,
+                       lambda sid=ships[0].id: app.open_map_fleet(sid))
     surface.set_clip(clip)
 
 

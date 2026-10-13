@@ -53,6 +53,8 @@ from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popu
 from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_background import draw_galaxy_background
+from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
+from . import production as production_balance
 from .galaxy_labels import draw_system_label
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
@@ -154,6 +156,7 @@ class App:
         self.notice_error=error
 
     def go(self,screen, *, idle_prompt=False):
+        clear_gesture(self)
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
         if self.game and self.game.is_observer:
@@ -219,6 +222,8 @@ class App:
             self.focus="contact_continue"
         if screen=="galaxy":
             self.focus=f"star_{self.game.selected_system}"
+            if self.map_view_system!=self.game.selected_system:
+                self.ensure_map_system(self.game.selected_system)
         if screen=="race_select":
             self.focus=f"race_{self.race_id}"
         if screen=="setup":
@@ -364,6 +369,10 @@ class App:
         self.focus=f"galaxy_world_{known.worlds[self.galaxy_planet_page*PLANETS_PER_PAGE].id}"
 
     def reset_fleet_view(self):
+        self.map_camera=GalaxyCamera()
+        self.map_drag=None
+        self.map_pan_keys=set()
+        self.map_view_system=None
         self.colony_visit=None
         self.idle_colonies=[]
         self.idle_colony_review=None
@@ -520,12 +529,12 @@ class App:
         self.close_fleet_popup()
 
     def fleet_route_target(self):
-        if not self.keyboard_mode:
+        if not self.keyboard_mode and not self.map_drag and MAP.collidepoint(self.mouse) and self.mouse[1]>=MAP.y+38:
             # Match the click handler's topmost-first hit testing in dense clusters.
             for guardian, rect, _ in reversed(guardian_markers(self,MAP)):
                 if rect.collidepoint(self.mouse):
                     return guardian.system_id
-            for system in reversed(black_holes.chart_systems(self.game)):
+            for system in reversed(self.map_systems()):
                 x,y=self.star_pos(system)
                 rect=black_hole_view.hit_rect((x,y)) if system.kind==black_holes.KIND else pg.Rect(int(x)-18,int(y)-18,36,36)
                 if rect.collidepoint(self.mouse):
@@ -1132,6 +1141,7 @@ class App:
         else:
             self.focus=f"star_{self.game.selected_system}"
             self.keyboard_mode=True
+            self.ensure_map_system(self.game.selected_system)
 
     def cycle_planet(self,delta):
         known=self.game.known_system(self.game.selected_system)
@@ -1916,6 +1926,8 @@ class App:
         if event.type==pg.MOUSEMOTION:
             self.mouse=self.logical_pos(event.pos)
             self.keyboard_mode=False
+        if handle_map_input(self,event,MAP):
+            return
         if event.type==pg.MOUSEBUTTONUP and event.button==3:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
@@ -2353,8 +2365,39 @@ class App:
         text(self.canvas,"Music and interface sounds have separate controls.",(256,834),14,MUTED)
         self.button("settings_done","Done",(933,817,251,52),lambda:self.go(self.settings_return),"primary")
 
+    def map_pos(self,x,y):
+        return self.map_camera.position(x,y,MAP)
+
     def star_pos(self,system):
-        return (MAP.x+40+system.x*(MAP.w-80),MAP.y+32+system.y*(MAP.h-64))
+        return self.map_pos(system.x,system.y)
+
+    def map_systems(self):
+        return [system for system in black_holes.chart_systems(self.game) if MAP.collidepoint(self.star_pos(system))]
+
+    def map_button(self,key,rect,action):
+        rect=pg.Rect(rect).clip(MAP)
+        if rect.w and rect.h:
+            return self.button(key,"",rect,action,"hotspot")
+
+    def zoom_map(self,steps,anchor=None):
+        self.map_camera.zoom_at(steps,MAP.center if anchor is None else anchor,MAP)
+        self.pressed=None
+
+    def fit_map(self):
+        self.map_camera.reset()
+        clear_gesture(self)
+        self.pressed=None
+
+    def center_map(self):
+        star=self.game.systems[self.game.selected_system]
+        if black_holes.charted(self.game,star):
+            self.map_camera.center_on(star.x,star.y,MAP)
+        self.pressed=None
+
+    def ensure_map_system(self,system_id):
+        star=self.game.systems[system_id]
+        if black_holes.charted(self.game,star) and not MAP.inflate(-120,-120).collidepoint(self.star_pos(star)):
+            self.map_camera.center_on(star.x,star.y,MAP)
 
     def draw_galaxy(self):
         state=self.game
@@ -2362,18 +2405,21 @@ class App:
             self.go("menu")
             return
         (draw_observer_header if state.is_observer else draw_galaxy_header)(self)
-        draw_galaxy_background(self.canvas,MAP,self.settings["galaxy_background"])
+        draw_galaxy_background(self.canvas,MAP,self.settings["galaxy_background"],self.map_camera)
+        old_clip=self.canvas.get_clip()
+        self.canvas.set_clip(MAP)
         # A sparse coordinate grid makes the map legible without implying travel lanes.
         for x in range(MAP.x+44,MAP.right,76):
-            pg.draw.line(self.canvas,(14,29,38),(x,MAP.y+1),(x,MAP.bottom-1))
+            at=self.map_camera.transform((x,MAP.centery),MAP)[0]
+            pg.draw.line(self.canvas,(14,29,38),(at,MAP.y+1),(at,MAP.bottom-1))
         for y in range(MAP.y+40,MAP.bottom,70):
-            pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,y),(MAP.right-1,y))
-        text(self.canvas,"SECTOR 01 / LOCAL CLUSTER",(MAP.x+22,MAP.y+18),10,FAINT,"mono",1)
+            at=self.map_camera.transform((MAP.centerx,y),MAP)[1]
+            pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,at),(MAP.right-1,at))
         draw_coverage(self,MAP)
         draw_fuel_range(self,MAP)
         labels=star_label_rects(self,MAP)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
-        for star in black_holes.chart_systems(state):
+        for star in self.map_systems():
             x,y=self.star_pos(star)
             selected=star.id==preview
             if star.kind==black_holes.KIND:
@@ -2407,14 +2453,21 @@ class App:
                 tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
                 pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
             draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
-            self.button(f"star_{star.id}","",(int(x)-18,int(y)-18,36,36),
-                        lambda s=star.id:self.select_star(s),"hotspot")
+            self.map_button(f"star_{star.id}",(int(x)-18,int(y)-18,36,36),lambda s=star.id:self.select_star(s))
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             draw_contacts(self,MAP)
+        self.canvas.set_clip(old_clip)
+        draw_map_navigation(self,MAP)
+        if self.map_order_ids or self.route_ship_id is not None:
+            speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus()/100)
+            text(self.canvas,f"RANGE {state.fuel_range()} LY · SPEED {speed:g} LY/TURN",
+                 (MAP.right-16,MAP.y+18),10,CYAN,"mono",right=True)
+        if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             self.button("sensor_overlay", "Sensors on · S" if self.show_sensors else "Sensor range · S",
                         (824,187,188,28),self.toggle_sensors,"primary" if self.show_sensors else "normal")
+        self.map_view_system=state.selected_system
         star=state.systems[preview]
         if not self.fleet_popup and not self.map_order_ids:
             if self.sensor_contact_id is not None:
@@ -2600,12 +2653,14 @@ class App:
     def run(self):
         self.present()
         while self.running:
-            self.time+=min(self.clock.tick(60)/1000,.1)
+            elapsed=min(self.clock.tick(60)/1000,.1)
+            self.time+=elapsed
             for event in pg.event.get():
                 self.handle_event(event)
                 # Screen transitions must update hit regions before the next queued event.
                 self.render()
             self.update_splash()
             self.update_combat()
+            update_map_input(self,elapsed,MAP)
             self.render()
             self.present()
