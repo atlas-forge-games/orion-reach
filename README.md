@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.56.0
+# Orion Reach — Python prototype 0.57.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,50 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.56: research progression and advanced facilities
+## New in v0.57: Space Hubs and unique specialists
+
+Build a **Space Hub** in a colony, then open **Empire → Specialists**, the
+planet's **Specialists** button, or click the completed Hub on the surface.
+The first operational Hub welcomes two visitors on the next turn, when
+available: a colony leader and an explorer. Later visitors arrive periodically;
+Terran and Concord receive them more often. Extra Hubs do not multiply the
+empire's visitor rate.
+
+The galaxy shares **18 unique characters**, each with a name, biography and
+distinct starting skills. A character can visit or work for only one empire at
+a time. Hire up to **four** specialists; each demands an immediate hiring fee
+and a fixed salary every turn, including time in reserve. Salaries are included
+in the treasury, empire budget and credits-per-turn statistics. Dismissal stops
+the salary immediately, with no fee refund. Hired characters remain employed
+if their Hub closes; experience survives dismissal and later recruitment.
+
+- **Colony leaders:** one per colony; fixed industry, science, credits, food or
+  mining bonuses. Multiple leaders can serve different colonies. Assignments
+  do not require a Hub at the destination.
+- **Explorers:** one per friendly system with no foreign colonies. Survey first,
+  then use Hacking, Salvaging or Archaeology to recover a sealed station,
+  mineral asteroid or ancient observatory. Each system has one finite site;
+  rewards cannot be repeated. Progress survives reassignment and conquest.
+- **Experience:** one XP per hired turn. Levels 2–5 require 5, 15, 30 and 50 total
+  XP. Each level adds one to each starting skill; missing skills remain zero.
+  Salaries do not increase with level. Assignments are immediate in this first
+  version, with no separate character travel system.
+
+The AI uses the same hiring, salary, assignment and exploration rules. Old
+campaigns gain an empty specialist roster and can build Hubs; their existing
+balance and research trees remain intact. Save format is now 39 and balance
+profile format is 4. **`python editor.py`** includes Specialists, Expedition
+sites and Global rules → Specialists. Prices, starting skills, rewards,
+experience, capacities and arrival rates can be changed for future campaigns.
+The in-game Info guide also explains the new rules. Admirals, agents and
+offensive missions remain future additions.
+
+Validated with **905 passing automated tests**, including 31 specialist tests,
+plus visual checks of recruitment, assignments, discoveries and editor screens.
+
+![Specialist recruitment](screenshots/specialists_visitors.png)
+
+## Previous update, v0.56: research progression and advanced facilities
 
 The standard research tree now introduces a beam weapon at every physics tier
 from **II to VIII**: pulse, ion, quantum, plasma, graviton, particle/phased,

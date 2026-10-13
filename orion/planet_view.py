@@ -309,6 +309,15 @@ def draw_planet_overview(app):
     workforce_panel(app, game, planet, live)
     construction_panel(app, game, system, planet, live)
     draw_colony_scene(app, SURFACE_RECT, game, system, planet, framed=False)
+    if planet.owner == PLAYER and live:
+        from . import specialists
+        leader = next((p for p in specialists.employed(game) if p.spec.role == "leader"
+                       and (p.system_id, p.planet_id) == (system.id, planet.id)), None)
+        panel(surface, (40, 795, 676, 32), (10, 23, 30))
+        caption = f"Leader: {leader.spec.name} · Level {leader.level}" if leader else "Leader: none assigned"
+        text(surface, caption, (52, 804), 13, CYAN if leader else MUTED)
+        count = len(specialists.visitors(game))
+        app.button("planet_specialists", f"Specialists · {count} visitors", (1104, 788, 294, 39), app.open_specialists)
     # Planet facts sit over the landscape, leaving the city as the principal view.
     facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {planet.richness} minerals"
     panel(surface, (40, 330, 700, 34), (10, 23, 30))

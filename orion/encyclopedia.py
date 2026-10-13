@@ -5,6 +5,7 @@ from functools import lru_cache
 
 from .buildings import BUILDINGS
 from . import council as council_balance
+from . import specialists as specialist_rules
 from .designs import HULLS, MODULES
 from .encyclopedia_artifacts import ARTIFACT_CONCEPTS
 from .personalities import PERSONALITIES
@@ -50,6 +51,13 @@ def building_research(identifier):
 
 def guides():
     return (
+        Article("specialists", "colonies", "Space Hubs and specialists", "Unique leaders and explorers", (
+            ("RECRUIT", f"Build a Space Hub, then open Specialists from the Empire overview, your planet or the Hub building. An operational first Hub welcomes a leader and an explorer when available. Later arrivals are checked every {specialist_rules.VISIT_INTERVAL} turns per empire. Terran and Concord attract more visitors; Remnant, Nexus and Varkesh attract fewer. Additional Hubs do not multiply the arrival rate. Visitors depart after {specialist_rules.VISIT_DURATION} turns."),
+            ("UNIQUE PEOPLE", f"The galaxy shares {len(specialist_rules.SPECIALISTS)} named characters with distinct starting skills. Each exists only once. You may employ {specialist_rules.MAX_EMPLOYED} at a time. Hiring costs the displayed fee; every hired turn costs the salary, even while in reserve. Salaries reduce net income and follow normal treasury debt rules. Dismissal ends the salary immediately, without refunding the fee. Experience is retained if another empire later hires the character."),
+            ("LEADERS", "Assign one leader to each colony. Their skill values add fixed industry, research, credit, food or mining output before applicable empire modifiers. They do not multiply population output. Several leaders may serve different colonies; no Hub is needed at their assigned colony. Losing a colony returns its leader to reserve."),
+            ("EXPLORERS", "Assign an explorer to a system with your colony and no foreign colonies. First they survey, then the discovered site's required skill determines recovery speed. Hacking opens sealed stations, Salvaging recovers rare minerals, and Archaeology reconstructs ancient research. Foreign fleets pause expeditions. Each system has one finite site and pays its reward once; progress survives reassignment and conquest."),
+            ("EXPERIENCE", f"Hired specialists gain {specialist_rules.XP_PER_TURN} XP per turn, including time in reserve. Each new level adds one to every starting skill; missing skills remain zero. Maximum level is {specialist_rules.MAX_LEVEL}. New levels apply after that turn's work. Hiring fees and salaries do not rise with level. Assignments take effect immediately; this first version has no specialist travel time."),
+        )),
         Article("welcome", "basics", "Welcome to Orion Reach", "Your first turns", (
             ("EXPLORE", "Select a star on the galaxy map. Its planets appear on the right. Send scouts to reveal unknown systems and search for discoveries."),
             ("BUILD A COLONY", "Open a planet to assign farmers, industrial workers, researchers and miners. Balance food and power before adding more buildings or ships."),
@@ -89,7 +97,7 @@ def guides():
             ("GROWTH", "Food balance, planet capacity and racial abilities affect population growth. Machine and energy civilizations have different food and growth rules; see Civilizations for their traits."),
         )),
         Article("resources", "economy", "The six resources", "What the top bar tells you", (
-            ("CREDITS", "Credits pay building maintenance and diplomatic expenses. The top bar shows your treasury and net income per turn."),
+            ("CREDITS", "Credits pay building maintenance, specialist hiring fees and salaries, and diplomatic expenses. The top bar shows your treasury and net income per turn."),
             ("RESEARCH", "Research points fund discoveries. Unused RP is banked until you select a project."),
             ("RESOURCES", "Resources are a shared empire stockpile produced by miners and mines. Construction spends Resources; thermal backup plants can also consume them as fuel."),
             ("INDUSTRY", "Industry supplies construction work locally. Buildings and ships require both Resources and enough completed work."),

@@ -128,11 +128,13 @@ BUILDINGS = {
                                  energy_output=24, energy_per_resource=4, maintenance=1, technology="fusion_grids"),
     "singularity_plant": BuildingSpec("singularity_plant", "Singularity plant", "A stabilized micro-singularity provides high continuous power without consuming Resources.", 140, 84,
                                      energy_output=50, maintenance=5, technology="field_stabilization"),
+    "space_hub": BuildingSpec("space_hub", "Space Hub", "A meeting place for travelling specialists. Operational Hubs attract unique colony leaders and explorers; hire and assign them from Specialists.", 60, 36,
+                              energy_use=2, maintenance=2, unique=True, special_effect="Attracts specialist visitors · empire-wide visitor limit"),
 }
 
 BUILDING_GROUPS = (
     ("factory", "mine", "trade_center", "research_lab", "hydroponic_farm", "barracks", "fortifications"),
-    ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"),
+    ("space_hub", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"),
     ("solar_array", "geothermal_plant", "fusion_plant", "thermal_plant", "singularity_plant"),
     ("robotic_factory", "nanofactory", "deep_core_mine", "automated_refinery", "advanced_research_lab", "quantum_research_lab"),
 )

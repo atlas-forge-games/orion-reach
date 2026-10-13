@@ -137,6 +137,7 @@ def landscape(biome, seed, size, settled):
 
 # Positions match the road foundations; sprites stay large enough to read.
 PLACEMENTS = {
+    "space_hub": (530, 305, 138, 90),
     "research_lab": (130, 211, 174, 142),
     "headquarters": (354, 211, 177, 169),
     "factory": (579, 211, 218, 145),

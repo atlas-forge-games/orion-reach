@@ -391,6 +391,8 @@ def scaled_output(value, percent):
 
 
 def gross_colony_yields(planet, bonuses):
+    from .economy import local_bonuses
+    bonuses = local_bonuses(planet, bonuses)
     if not planet.colonized:
         return 0, 0, 0
     staff = workforce_bonuses(planet, bonuses)

@@ -1,0 +1,83 @@
+ORION REACH v0.57.0 — SPACE HUBS AND UNIQUE SPECIALISTS
+
+INSTALL
+Extract this incremental update into your existing v0.56 Orion Reach project,
+replacing the included files. Keep assets, saves and your custom balance.json.
+Run python main.py. No additional game dependencies are required.
+
+GET STARTED
+1. Queue a Space Hub on an owned colony. It costs 60 Resources and 36 work,
+   needs 2 energy and costs 2 credits per turn with standard balance.
+2. After it is operational, advance a turn. The first Hub offers a leader and
+   explorer if the shared character pool has them available.
+3. Click the Hub on the planet, the planet's Specialists button, or
+   Empire > Specialists. Review each visitor's skills, fee and salary.
+4. Hire, then choose a colony for a leader or a system for an explorer.
+   Hired and Discoveries tabs let you change assignments and inspect progress.
+
+STANDARD RULES
+- 18 distinct characters globally: 10 colony leaders and 8 explorers.
+- Each has a unique name, biography and starting skill combination.
+- No duplicates across empires. Characters retain XP across employers.
+- Hiring fees: 55–90 CR. Salaries: 2–4 CR per hired turn, including reserve.
+- Four hires and three simultaneous visitors per empire; one leader per colony
+  and one explorer per system. Several leaders may serve different colonies.
+- First Hub introductions are followed by one arrival check every four turns.
+  Terran/Concord: 80%; Aelari/Lithar/Kharuun: 55%;
+  Remnant/Nexus/Varkesh: 30%. Other races use 55%.
+- Visitors stay six turns and cannot visit two empires at once. Extra Hubs add
+  meeting locations, not extra arrival rolls. Shutdown, power loss or loss of
+  the host colony makes unhired visitors unavailable; existing hires stay.
+- One XP per hired turn, including reserve. Total XP for levels 2–5:
+  5, 15, 30, 50. Each level adds one to every starting skill. Missing skills
+  stay zero. New levels apply after that turn's work. Pay stays fixed.
+- Leaders add fixed local output before applicable empire modifiers. Food
+  skills do not create a food requirement for civilizations that need none.
+- Explorers need a colony in a system without foreign colonies. A foreign
+  fleet pauses their work, but salary and XP continue. Assignments take
+  effect immediately; specialist travel time is outside this first version.
+- Each system has one finite expedition site, separate from ordinary scout
+  discoveries and black-hole relics. Surveying takes 12 work. Recovery needs
+  the site's skill at level 2 or better:
+    Sealed trading station: Hacking, 18 work, 120 CR.
+    Rare mineral asteroid: Salvaging, 20 work, 80 Resources.
+    Ancient observatory: Archaeology, 18 work, 80 RP.
+- Recovery uses the relevant skill as work per turn. Insufficient skill blocks
+  recovery; switch explorers or gain levels. Progress survives reassignment
+  and conquest; completing the site pays once and returns its explorer to
+  reserve. Losing an assignment returns staff to reserve; an eliminated
+  empire releases its staff back to the shared pool after a cooldown.
+- Salaries are charged through normal net income, once per turn. As with
+  building upkeep, insufficient income can put the treasury into debt.
+  Dismissal stops pay immediately and does not refund the hiring fee.
+- The AI builds a Hub after basic industry and food are established, reserves
+  its first expansion before investing in recruitment (Varkesh are exempt), hires
+  within its budget and uses the same assignments and finite sites.
+- Visitor arrivals, hires, level gains, discoveries and rewards appear in
+  Turn news; private rival activity is not exposed to the player.
+
+BALANCE EDITOR AND SAVES
+python editor.py now has Specialists and Expedition sites catalogues plus
+Global rules > Specialists. Individual fees, salaries, names, descriptions,
+starting skills, role, site requirements/rewards and global limits/rates/XP
+can be edited. Names and starting profiles must remain distinct; explorers
+need Surveying and characters must use skills appropriate to their role.
+
+Existing saves keep their research layout, economic values and balance.
+Older profiles gain only the new definitions/settings. Existing campaigns
+start with no hires or visits; build a Hub to begin. This release writes save
+version 39 and balance profile version 4. Earlier executables cannot load
+newly written saves. Loading an older save never rewrites its source file.
+
+This first version includes leaders and explorers. Fleet admirals, espionage,
+counterespionage and offensive bounty-hunter missions are not implemented yet.
+
+VALIDATION
+All 905 automated tests pass, including 31 specialist-specific tests.
+Automated tests cover fees, pay/debt, local yields and forecasts, XP, unique
+visitors, assignments, closed Hubs, conquest, finite rewards, save validation,
+old-save/profile migration, AI, private news and real UI controls.
+Run: python -m unittest discover -s tests -v
+Screenshots: python tools/preview_specialists.py
+
+No commit or push has been made by this update.

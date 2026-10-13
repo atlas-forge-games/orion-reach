@@ -131,7 +131,8 @@ class PopulationReport:
 
 
 def report(planet, bonuses=None):
-    bonuses = bonuses or {}
+    from .economy import local_bonuses
+    bonuses = local_bonuses(planet, bonuses)
     produced = 0
     needs_food = 100+bonuses.get("food_use_percent", 0) > 0
     if planet.colonized and needs_food:

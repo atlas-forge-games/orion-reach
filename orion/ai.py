@@ -461,6 +461,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         game.set_workforce(system.id, planet.id, farmers, scientists, miners, owner=owner)
     recover_power(game, owner)
     recover_budget(game, owner)
+    from .specialists import ai_orders as specialist_orders
+    specialist_orders(game, owner)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
     if ("science" in game.victory_conditions and "ascension_theory" in game._empire(owner).technology.completed
             and not gate_site(game, owner)):

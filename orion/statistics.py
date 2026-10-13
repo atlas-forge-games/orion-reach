@@ -20,7 +20,7 @@ METRICS = {
     "food": Metric("Food production", "food / turn", "Gross food produced across colonies, before consumption."),
     "mining": Metric("Mining production", "resources / turn", "Gross extraction from colonies, mines and miners, before power-plant fuel use."),
     "energy": Metric("Energy", "energy / turn", "Actual generation across local colony grids, including fueled backup power."),
-    "credits": Metric("Credits per turn", "credits / turn", "Net income after maintenance, including trade agreements and Trade Goods."),
+    "credits": Metric("Credits per turn", "credits / turn", "Net income after maintenance and specialist salaries, including agreements and Trade Goods."),
 }
 
 
@@ -32,7 +32,7 @@ def sample(game, owner):
     return [game.turn, sum(p.workforce for p in colonies), sum(y[0] for y in yields),
             sum(game.population_report(p).produced for p in colonies),
             sum(economy.mining_output(p, bonuses) for p in colonies),
-            sum(game.planet_energy(p).generated for p in colonies), sum(y[1] for y in yields)+trade]
+            sum(game.planet_energy(p).generated for p in colonies), game.empire_rates_for(owner)[0]]
 
 
 def record(game):

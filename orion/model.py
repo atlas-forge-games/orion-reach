@@ -26,6 +26,7 @@ from . import navigation
 from . import sensors
 from . import first_contact
 from . import economy
+from . import specialists as specialist_rules
 from . import observer as observer_rules
 from .races import RACES, SETUP_RACES, default_rival_race
 from .home_systems import name_home
@@ -660,6 +661,7 @@ class GameState:
     victory_conditions: tuple[str, ...] = victory_rules.CONDITIONS
     black_holes: black_holes.BlackHoleState = field(default_factory=black_holes.BlackHoleState)
     statistics: dict[str, list[list[int]]] = field(default_factory=dict)
+    specialists: specialist_rules.SpecialistState = field(default_factory=specialist_rules.SpecialistState)
 
     @property
     def is_observer(self):
@@ -866,7 +868,8 @@ class GameState:
         bonuses = empire.technology.bonuses.copy()
         for key, value in RACES[empire.race_id].effects:
             bonuses[key] = bonuses.get(key, 0)+value
-        return economy.PowerBonuses(bonuses, lambda planet: self._power_report(planet, bonuses))
+        return economy.PowerBonuses(bonuses, lambda planet: self._power_report(planet, bonuses),
+                                   lambda planet: specialist_rules.colony_effects(self, planet))
 
     def research_error(self, identifier, *, owner=PLAYER):
         if self.strategy_error(owner):
@@ -1496,6 +1499,7 @@ class GameState:
 
     def empire_rates_for(self, owner):
         income, research = self.diplomatic_yields(owner)
+        income -= specialist_rules.salaries(self, owner)
         for system in self.systems:
             for planet in system.worlds:
                 if planet.owner != owner:
@@ -1520,6 +1524,7 @@ class GameState:
         if combat_rules.intercept(self):
             return TurnReport(0, 0, [])
         # Freeze the outgoing turn's live totals before AI orders and simulation.
+        specialist_rules.normalize(self)
         from . import statistics as statistics_rules
         statistics_rules.record(self)
         # End Turn commits existing orders before the AI plans against current positions.
@@ -1596,7 +1601,7 @@ class GameState:
         defense_rules.advance(self)
         self.credits += income
         if income < 0:
-            alerts.append(f"Budget deficit: {income} CR/turn after building maintenance")
+            alerts.append(f"Budget deficit: {income} CR/turn after maintenance and specialist salaries")
         if self.credits < 0:
             alerts.append(f"Treasury debt: {-self.credits} CR; future income repays it")
         self.research += research
@@ -1609,6 +1614,7 @@ class GameState:
                 else:
                     self.rival_event(message+".", turn=self.turn, owner=planet.owner)
         population.extend(raid_rules.advance_mortality(self, slave_start))
+        specialist_rules.advance_employed(self)
         exploration = exploration_rules.refresh(self, recover=True)
         discovered = None if self.is_observer else self.advance_research()
         for owner, empire in self.opponents.items():
@@ -1627,6 +1633,7 @@ class GameState:
                 alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
         self.__dict__.pop("_turn_power", None)
         tomb_rules.advance(self, alerts, ground_battles)
+        specialist_rules.advance_visitors(self)
         exploration_rules.refresh(self)
         monster_rules.intercept(self)
         self.check_victory(convene=False)
@@ -1641,7 +1648,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=38):
+    def from_dict(cls, data, *, version=39):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1809,6 +1816,7 @@ class GameState:
             observer_rules.load(game, data, version)
             from . import statistics as statistics_rules
             statistics_rules.load(game, data, version)
+            specialist_rules.load(game, data, version)
             if not black_holes.charted(game, game.systems[game.selected_system]):
                 game.selected_system, game.selected_planet = 0, None
             from .balance import tag_game

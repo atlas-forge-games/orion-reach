@@ -248,7 +248,8 @@ class BalanceEditor:
         panel(self.canvas,(24,116,204,704))
         text(self.canvas,'CATALOGUES', (38,132),10,MUTED,'mono',1)
         for index,(key,label) in enumerate(balance.LABELS.items()):
-            self.button('section_'+key,label,(34,160+index*33,184,29),lambda k=key:self.select_section(k),selected=self.section==key,size=12)
+            step = min(33, 650//len(balance.LABELS))
+            self.button('section_'+key,label,(34,160+index*step,184,step-3),lambda k=key:self.select_section(k),selected=self.section==key,size=12)
         if self.mode=='tree': self.draw_tree()
         else: self.draw_data()
         text(self.canvas,shorten(self.message.replace('\n',' · '),1376,13),(24,838),13,RED if self.error else INK)

@@ -28,6 +28,7 @@ def draw_empire(app):
     if app.empire_return != "galaxy":
         app.button("empire_galaxy", "Galaxy map", (361, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("empire_rival", "Rival report", (556, 124, 213, 46), app.open_rival)
+    app.button("empire_specialists", "Specialists", (784, 124, 213, 46), app.open_specialists)
     text(surface, f"YEAR {game.year}   ·   TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, shorten(game.empire_name, 930, 43, "title"), (64, 190), 43, INK, "title")
     text(surface, f"{RACES[game.race_id].name} · Your colonies, economy and construction at a glance.", (66, 251), 14, MUTED)
@@ -153,8 +154,9 @@ def draw_empire(app):
                enabled=app.empire_page<last_page)
     app.button("empire_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("empire_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn. Trade included."
-    text(surface, caption, (400, 835), 12, MUTED)
+    from .specialists import salaries
+    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn · {salaries(game)} CR salaries included"
+    text(surface, shorten(caption, 650, 12), (400, 835), 12, MUTED)
     text(surface, "Future income repays debt; buildings keep operating." if game.credits < 0 else
          "Page Up / Down or mouse wheel: browse colonies", (400, 857), 11, FAINT)
     app.button("empire_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)

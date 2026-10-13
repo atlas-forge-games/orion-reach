@@ -95,7 +95,7 @@ class StatisticsRulesTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 storage = Storage(folder)
                 restored, meta = storage.load(storage.save(game))
-                self.assertEqual(meta["version"], 38)
+                self.assertEqual(meta["version"], 39)
                 self.assertEqual(restored, game)
                 game.advance_turn()
                 restored.advance_turn()

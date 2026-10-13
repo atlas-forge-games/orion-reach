@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 3
+VERSION = 4
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'buildings': ('buildings', 'BUILDINGS'),
@@ -32,9 +32,12 @@ CATALOGUES = {
     'branches': ('research', 'BRANCHES'),
     'guardians': ('monsters', 'MONSTERS'),
     'personalities': ('personalities', 'PERSONALITIES'),
+    'specialists': ('specialists', 'SPECIALISTS'),
+    'expedition_sites': ('specialists', 'SITES'),
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'specialists': ('specialists', ('XP_PER_TURN', 'XP_PER_LEVEL', 'MAX_LEVEL', 'MAX_EMPLOYED', 'MAX_VISITORS', 'VISIT_INTERVAL', 'VISIT_DURATION', 'SURVEY_WORK', 'SOCIAL_VISIT_CHANCE', 'NORMAL_VISIT_CHANCE', 'ISOLATED_VISIT_CHANCE')),
     'economy': ('economy', ('STARTING_CREDITS', 'STARTING_RESOURCES', 'STARTING_POPULATION', 'BASE_EXTRACTION', 'MINER_RESOURCES', 'BASE_ENERGY', 'GATE_ENERGY')),
     'production': ('production', ('SHIP_SPEED', 'BASE_FUEL_RANGE', 'STARTING_COLONISTS', 'REPAIR_PER_TURN', 'TROOP_STRENGTH', 'GATE_CHARGE_TURNS', 'TRADE_GOODS_PERCENT')),
     'population': ('population', ('GROWTH_THRESHOLD', 'GROWTH_LIMIT', 'GAIA_GROWTH_LIMIT', 'GROWTH_PER_FOOD', 'ASSEMBLY_GROWTH_LIMIT', 'GROWTH_PER_INDUSTRY', 'GAIA_CAPACITY')),
@@ -54,6 +57,7 @@ LABELS = {
     'modules': 'Ship modules', 'weapons': 'Weapons', 'races': 'Races',
     'technologies': 'Technologies', 'branches': 'Research branches',
     'guardians': 'Guardians', 'personalities': 'AI personalities',
+    'specialists': 'Specialists', 'expedition_sites': 'Expedition sites',
     'projects': 'Special projects', 'world_sizes': 'Planet sizes',
     'biomes': 'Planet biomes', 'minerals': 'Mineral richness',
     'rules': 'Global rules', 'research_costs': 'Research costs', 'drones': 'Drone roles', 'galaxy_sizes': 'Galaxy sizes',
@@ -127,6 +131,10 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if field in ('SOCIAL_VISIT_CHANCE', 'NORMAL_VISIT_CHANCE', 'ISOLATED_VISIT_CHANCE'): return 0, 100
+    if field in ('MAX_LEVEL', 'MAX_EMPLOYED', 'MAX_VISITORS'): return 1, 18
+    if field in ('XP_PER_LEVEL', 'VISIT_INTERVAL', 'VISIT_DURATION', 'SURVEY_WORK', 'difficulty', 'work'): return 1, 10000
+    if section == 'specialists' and field in module('specialists').SKILLS: return 0, 100
     if field in ('offensive_slots', 'defensive_slots', 'support_slots'): return 1 if field == 'offensive_slots' else 0, 12
     if field == 'module_scale': return 1, 1000
     if field == 'tracking_penalty': return 0, 100
@@ -199,6 +207,12 @@ def validate(profile):
                         upper = 100 if effect in ('building_discount','ship_discount','assembly_percent','targeting_accuracy','torpedo_guidance','evasion','beam_precision') else 95 if effect == 'interdiction_slow' else 3 if effect == 'sensor_level' else 1000
                         if type(amount) is not int or not lower <= amount <= upper:
                             errors.append(path+'.'+effect+f': use a whole number from {lower} to {upper}.')
+                elif section == 'specialists' and key == 'role':
+                    if type(value) is not str or value not in ('leader', 'explorer'):
+                        errors.append(path+': choose leader or explorer.')
+                elif section == 'expedition_sites' and key == 'skill':
+                    if type(value) is not str or value not in ('hacking', 'extraction', 'archaeology'):
+                        errors.append(path+': choose hacking, extraction or archaeology.')
                 elif key == 'module_size':
                     if type(value) is not str or value not in module('designs').MODULE_SIZES:
                         errors.append(path+': choose small, medium or heavy.')
@@ -268,7 +282,20 @@ def validate(profile):
         errors.append('Combined interdiction slowdown must stay below 100%.')
     if data['rules']['production']['STARTING_COLONISTS']+sum(e.get('colonists',0) for e in effects)+max(e.get('colonists',0) for e in racial)>100:
         errors.append('Starting colonists plus researched/racial bonuses cannot exceed 100 B.')
-    # Neither special internal unit is a purchasable construction entry.
+    names = [entry['name'].casefold() for entry in data['specialists'].values()]
+    if len(set(names)) != len(names):
+        errors.append('Specialists must have unique names.')
+    skills = module('specialists').SKILLS
+    profiles = []
+    for identifier, entry in data['specialists'].items():
+        allowed = ('industry', 'research', 'income', 'food', 'mining') if entry['role'] == 'leader' else ('survey', 'hacking', 'extraction', 'archaeology')
+        if any(entry[key] for key in skills if key not in allowed) or not any(entry[key] for key in allowed):
+            errors.append('specialists.'+identifier+': choose skills belonging to this role.')
+        if entry['role'] == 'explorer' and not entry['survey']:
+            errors.append('specialists.'+identifier+': explorers need a positive Surveying skill.')
+        profiles.append(tuple(entry[key] for key in skills))
+    if len(set(profiles)) != len(profiles):
+        errors.append('Specialists must have distinct starting skill profiles.')
     return errors
 
 
@@ -297,6 +324,17 @@ def upgrade_profile(profile):
         if isinstance(buildings, dict):
             for identifier in ADVANCED_FACILITIES:
                 buildings.setdefault(identifier, deepcopy(_defaults()['data']['buildings'][identifier]))
+        profile['version'] = 3
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 3:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            for section in ('specialists', 'expedition_sites'):
+                data.setdefault(section, deepcopy(_defaults()['data'][section]))
+            if isinstance(data.get('buildings'), dict):
+                data['buildings'].setdefault('space_hub', deepcopy(_defaults()['data']['buildings']['space_hub']))
+            if isinstance(data.get('rules'), dict):
+                data['rules'].setdefault('specialists', deepcopy(_defaults()['data']['rules']['specialists']))
         profile['version'] = VERSION
     return profile
 

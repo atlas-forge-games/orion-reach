@@ -29,6 +29,19 @@ def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
     building_id = facility_family(building_id)
     image = pg.Surface((120, 110), pg.SRCALPHA)
+    if building_id == "space_hub":
+        pg.draw.polygon(image, (51, 75, 88), [(4, 80), (59, 56), (116, 80), (61, 108)])
+        for x, y in ((18, 48), (76, 48)):
+            pg.draw.rect(image, (98, 119, 137), (x, y, 26, 36), border_radius=5)
+            pg.draw.ellipse(image, (136, 162, 175), (x-2, y-8, 30, 17))
+            for offset in (7, 17):
+                pg.draw.line(image, (236, 186, 106), (x+offset, y+7), (x+offset, y+26), 3)
+        pg.draw.rect(image, (42, 73, 94), (44, 39, 32, 49), border_radius=5)
+        pg.draw.ellipse(image, (91, 209, 221), (40, 25, 40, 24))
+        pg.draw.ellipse(image, (183, 246, 236), (46, 30, 28, 11), 2)
+        pg.draw.line(image, (235, 208, 142), (61, 27), (61, 10), 3)
+        pg.draw.circle(image, (192, 240, 245), (61, 8), 4)
+        return image
     if building_id in ("geothermal_plant", "thermal_plant", "singularity_plant"):
         pg.draw.polygon(image, (59, 84, 98), [(5, 78), (60, 55), (115, 78), (60, 107)])
         pg.draw.polygon(image, (33, 51, 66), [(5, 78), (60, 107), (115, 78), (115, 86), (60, 110), (5, 86)])

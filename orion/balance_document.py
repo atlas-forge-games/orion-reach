@@ -114,6 +114,10 @@ class BalanceDocument:
     def options(self, section, path):
         field = path[0]
         data = self.profile['data']
+        if section == 'specialists' and field == 'role':
+            return [(k, v) for k, v in balance.module('specialists').ROLES.items()]
+        if section == 'expedition_sites' and field == 'skill':
+            return [(k, balance.module('specialists').SKILLS[k][0]) for k in ('hacking', 'extraction', 'archaeology')]
         if field == 'technology': return [(None,'Available from the start')]+[(k,v['name']) for k,v in data['technologies'].items()]
         if field == 'branch': return [(k,data['branches'][k]['name']) for k in self.profile['branch_order']]+[('ascension','Ascension finale')]
         if field == 'category': return [(v,v.title()) for v in ('weapon','defense','support')]

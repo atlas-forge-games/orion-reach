@@ -39,9 +39,18 @@ class PowerBonuses(dict):
     The context is not an effect, never enters saved research, and survives an
     empty modifier dictionary being passed through `bonuses or {}`.
     """
-    def __init__(self, bonuses, power):
+    def __init__(self, bonuses, power, local=None):
         super().__init__(bonuses)
         self.power = power
+        self.local = local
+
+    def at(self, planet):
+        if self.local is None:
+            return self
+        values = dict(self)
+        for key, value in self.local(planet).items():
+            values[key] = values.get(key, 0)+value
+        return PowerBonuses(values, self.power)
 
     def __bool__(self):
         return True
@@ -129,11 +138,15 @@ def miner_output(planet, bonuses=None):
 def mining_output(planet, bonuses=None):
     if not planet.colonized:
         return 0
-    bonuses = bonuses or {}
+    bonuses = local_bonuses(planet, bonuses)
     buildings = active_buildings(planet, bonuses)
     base = sum(BUILDINGS[b].resources for b in buildings)*MINERAL_FACTORS[planet.richness]
-    return (BASE_EXTRACTION+int(base+planet.miners*miner_output(planet, bonuses))
+    return (BASE_EXTRACTION+bonuses.get("colony_resources", 0)+int(base+planet.miners*miner_output(planet, bonuses))
             +sum(facility_family(b) == "mine" for b in buildings)*bonuses.get("mine_resources", 0))
+
+
+def local_bonuses(planet, bonuses):
+    return bonuses.at(planet) if isinstance(bonuses, PowerBonuses) else (bonuses or {})
 
 
 def building_status(planet, index, bonuses=None):

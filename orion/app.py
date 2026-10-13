@@ -21,6 +21,8 @@ from .empire_view import draw_empire
 from .rival_view import draw_rival
 from .diplomacy_view import draw_diplomacy
 from .statistics_view import draw_statistics
+from .specialist_view import draw_specialists
+from . import specialists as specialist_rules
 from .statistics import METRICS as STATISTIC_METRICS
 from .contact_view import draw_contact
 from .council_view import draw_council
@@ -66,7 +68,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
+GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 
 
 class App:
@@ -161,7 +163,7 @@ class App:
             screen="menu"
         if self.game and self.game.is_observer:
             tabs={"empire":"empires", "diplomacy":"diplomacy", "research":"research", "fleets":"fleets",
-                  "objectives":"objectives", "designer":"fleets", "exploration":"empires"}
+                  "objectives":"objectives", "designer":"fleets", "exploration":"empires", "specialists":"empires"}
             if screen in tabs:
                 self.observer_tab=tabs[screen]
                 self.observer_page=0
@@ -191,7 +193,7 @@ class App:
         # before go() runs. Reading Info, pausing, or choosing research is temporary.
         location=(self.game.campaign_id,self.game.selected_system,self.game.selected_planet) if self.game else None
         temporary=(screen not in GAME_SCREENS or screen in
-                   ("research","designer","exploration","empire","diplomacy","statistics","fleets","fleet","rival","objectives",
+                   ("research","designer","exploration","empire","diplomacy","statistics","specialists","fleets","fleet","rival","objectives",
                     "contact","news","ground","combat","council","result"))
         if self.colony_visit and not temporary:
             leaving=(screen not in colony_screens or self.colony_visit!=location)
@@ -249,6 +251,8 @@ class App:
             self.focus="diplomacy_back"
         if screen=="statistics":
             self.focus="statistics_back"
+        if screen=="specialists":
+            self.focus="specialists_back"
         if screen=="research":
             self.focus=f"research_branch_{self.research_branch}"
         if screen=="objectives":
@@ -711,6 +715,10 @@ class App:
                      "Establish colony",settle)
 
     def reset_empire_view(self):
+        self.specialist_return="empire"
+        self.specialist_tab="visitors"
+        self.specialist_selected=None
+        self.specialist_page=self.specialist_assignment_page=0
         self.empire_return="galaxy"
         self.empire_filter="all"
         self.empire_sort="name"
@@ -998,6 +1006,51 @@ class App:
 
     def open_statistics(self):
         self.go("statistics")
+
+    def open_specialists(self):
+        if self.screen!="specialists":
+            self.specialist_return=self.screen if self.screen in GAME_SCREENS else "empire"
+        self.specialist_set_tab("visitors" if specialist_rules.visitors(self.game) else "hired")
+        self.go("specialists")
+
+    def close_specialists(self):
+        self.go(self.specialist_return)
+
+    def specialist_set_tab(self,tab):
+        self.specialist_tab=tab
+        self.specialist_selected=None
+        self.specialist_page=self.specialist_assignment_page=0
+
+    def specialist_select(self,identifier):
+        self.specialist_selected=identifier
+        self.specialist_assignment_page=0
+
+    def specialist_change_page(self,delta):
+        from .specialist_view import rows, PAGE_SIZE
+        self.specialist_page=max(0,min(self.specialist_page+delta,max(0,(len(rows(self))-1)//PAGE_SIZE)))
+
+    def specialist_assignment_page_by(self,delta):
+        self.specialist_assignment_page=max(0,self.specialist_assignment_page+delta)
+
+    def specialist_action(self,action,identifier,*args):
+        try:
+            operations={"hire":specialist_rules.hire,"assign":specialist_rules.assign,
+                        "unassign":specialist_rules.unassign,"dismiss":specialist_rules.dismiss}
+            operations[action](self.game,identifier,*args)
+            name=specialist_rules.person(self.game,identifier).spec.name
+            if action=="hire":
+                self.specialist_set_tab("hired")
+                self.specialist_selected=identifier
+            if self.save_game(autosave=True):
+                self.toast(name+": "+{"hire":"hired · choose an assignment", "assign":"assignment updated",
+                           "unassign":"returned to reserve · salary continues", "dismiss":"dismissed · salary ended"}[action])
+        except RuleError as exc:
+            self.toast(exc,True)
+
+    def specialist_dismiss(self,identifier):
+        p=specialist_rules.person(self.game,identifier)
+        self.confirm("Dismiss "+p.spec.name+"?", f"Their {p.spec.salary} CR/turn salary ends immediately. The hiring fee is not refunded. They keep their experience and may later visit another empire's Hub.",
+                     "Dismiss", lambda:self.specialist_action("dismiss",identifier))
 
     def close_statistics(self):
         self.go("observer" if self.game.is_observer else "diplomacy")
@@ -1807,6 +1860,10 @@ class App:
                      f"Also reserves {project.needs_resources} Resources if not already reserved. Other queued projects are kept.","Buy",buy)
 
     def inspect_surface_building(self,index):
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        if planet.owner==PLAYER and index<len(planet.buildings) and planet.buildings[index]=="space_hub":
+            self.open_specialists()
+            return
         self.colony_slot=index
         self.go("colony")
         self.focus=f"colony_slot_{index}"
@@ -2049,6 +2106,8 @@ class App:
                 self.close_diplomacy()
             elif self.screen=="statistics":
                 self.close_statistics()
+            elif self.screen=="specialists":
+                self.close_specialists()
             elif self.screen=="research":
                 self.close_research()
             elif self.screen=="objectives":
@@ -2543,6 +2602,9 @@ class App:
 
     def draw_statistics(self):
         draw_statistics(self)
+
+    def draw_specialists(self):
+        draw_specialists(self)
 
     def draw_research(self):
         draw_research(self)
