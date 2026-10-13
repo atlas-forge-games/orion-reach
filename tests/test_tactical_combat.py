@@ -99,8 +99,9 @@ class TacticalRulesTests(unittest.TestCase):
 
     def test_quantum_optics_gives_both_empires_the_same_coloured_beam(self):
         game = encounter(own=("frigate", "scout"), start=False)
-        game.technology.completed = ["research_instruments", "quantum_optics"]
-        game.opponent.technology.completed = ["field_laboratories", "quantum_optics"]
+        from scenarios import research_to
+        research_to(game, "research_instruments", "quantum_optics")
+        research_to(game, "field_laboratories", "quantum_optics", owner=RIVAL)
         game.start_combat(0)
         for identifier in (1, 3):
             ship = game.combat.ship(identifier)

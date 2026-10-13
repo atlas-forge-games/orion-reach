@@ -303,6 +303,8 @@ class AscensionCostTests(unittest.TestCase):
         self.assertEqual(restored.research, 17)
 
     def test_previous_cost_bounds_are_validated_before_migration(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
         from test_victory import discover_branches
         game = new_game(seed=2408, with_ai=False, with_tombs=False, with_black_holes=False)
         discover_branches(game)

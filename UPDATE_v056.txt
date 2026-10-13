@@ -1,0 +1,59 @@
+Orion Reach v0.56.0 - Research progression and advanced facilities
+
+INSTALL
+Requires the existing v0.55.0 game. This is an incremental update.
+Close the game, extract this ZIP into the repository root (the directory
+containing main.py), and allow the included files to overwrite older versions.
+Restart with python main.py. No additional dependencies are required.
+
+RESEARCH
+Physics introduces weapons throughout the tree: pulse at II, ion at III,
+quantum at IV, plasma at V, graviton at VI, particle/phased at VII, and heavy
+beam/disruptor weapons at VIII. Utility research remains an alternative.
+Sensors and fusion torpedoes arrive at II; antimatter torpedoes at VI.
+Carriers and flak are alternatives at III, battleships arrive at IV, and
+titans compete with bomber drones at VI. All nine branches retain two
+exclusive alternatives at every tier and the existing research prices.
+
+NEW FACILITIES
+- Robotic factory: Planetary Automation, Computers III.
+- Nanofactory: Nanostructured Materials, Materials VII.
+- Deep-core mine: Deep Core Drills, Materials III.
+- Automated refinery: Automated Refineries, Materials V.
+- Advanced research lab: Advanced Laboratories, Physics IV.
+- Quantum research lab: Quantum Research Archives, Computers VII.
+
+Each offers stronger fixed output and workforce bonuses, with higher resource
+cost, construction work, power consumption and credit upkeep. Each distinct
+facility uses its own slot, can be built once per planet and stacks with
+other facility types. Advanced facilities do not require a lower-level
+facility. Corresponding factory, mine and laboratory research bonuses apply.
+
+The colony's Advanced category lists the new facilities. The construction
+screen shows only researched, buildable options. AI development considers
+researched facilities while budgeting for upkeep and local power. All six
+buildings can be balanced in python editor.py. RESEARCH_TREE.md lists the
+complete new default tree and each facility's prices, output and upkeep.
+
+COMPATIBILITY
+The revised layout applies to new campaigns using standard balance.
+Existing campaigns keep their saved technology positions, choices, costs
+and progress. Campaigns from before embedded profiles use their historical
+tree. Existing custom profiles also retain their layout and values, while
+gaining the six facility definitions automatically. Save format remains 38;
+balance profile format is now 3.
+
+If balance.json exists, it remains your chosen custom profile. To adopt all
+new defaults for future campaigns, open python editor.py, choose Reset all
+and Save. This also resets other custom balance values. Alternatively, edit
+only your research tree manually. Existing campaign snapshots are preserved.
+
+VALIDATION
+874 regression tests passed, including new facility output, power priorities,
+research gates, duplicate prevention, AI choices, editor changes and old-save
+compatibility. Research and colony screens were rendered and reviewed.
+
+COMMIT AFTER EXTRACTING
+git add README.md RESEARCH_TREE.md UPDATE_v056.txt orion/ tests/ tools/preview_research_progression.py screenshots/research_progression_beams.png screenshots/research_progression_mining.png screenshots/advanced_facilities_catalogue.png screenshots/advanced_facilities_surface.png
+git commit -m "Rebalance research tiers and add advanced economic facilities"
+git push

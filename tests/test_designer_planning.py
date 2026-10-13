@@ -118,7 +118,7 @@ class BlueprintPlanningTests(unittest.TestCase):
             self.assertIn("18 total damage", changed)
             self.assertIn("46 resources", changed)
         fitted_module.cache_clear()
-        discover(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers")
+        discover(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "mass_ship_production")
         requirements = " ".join(body for _, body in research_sections("battleship", ("laser",), game.technology))
         self.assertIn("Excluded", requirements)
         for identifier, expected in (("ion", "4 times"), ("phased", "50%"), ("graviton", "next turn"),

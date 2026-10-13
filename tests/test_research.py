@@ -27,13 +27,8 @@ from orion.storage import SAVE_VERSION, Storage
 
 
 def discover(game, identifier, owner=PLAYER):
-    """Fund an ordinary choice, including its prerequisite, for effect fixtures."""
-    technology = TECHNOLOGIES[identifier]
-    state = game.research_state(owner)
-    if technology.tier == 2 and state.status(identifier) == "locked":
-        discover(game, choices(technology.branch, 1)[0].id, owner)
-    game._empire(owner).research += technology.cost
-    return game.choose_research(identifier, owner=owner)
+    from scenarios import research_to
+    return research_to(game, identifier, owner=owner)
 
 
 class ResearchRulesTests(unittest.TestCase):

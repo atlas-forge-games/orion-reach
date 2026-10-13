@@ -26,7 +26,8 @@ def scenario(ai=False):
     game.ships.clear()
     game.next_ship_id = 1
     game.credits = game.resources = 5000
-    game.technology.completed = ["destroyer_hulls", "cruiser_hulls", "battleship_hulls"]
+    from scenarios import research_to
+    research_to(game, "battleship_hulls")
     return game
 
 
@@ -202,7 +203,8 @@ class DesignerCombatTests(unittest.TestCase):
 
     def test_guardians_attack_designed_ships_and_destruction_still_explodes(self):
         game = new_game(seed=2408, with_ai=False)
-        game.technology.completed = ["destroyer_hulls", "cruiser_hulls", "battleship_hulls"]
+        from scenarios import research_to
+        research_to(game, "battleship_hulls")
         guard = game.guardians[0]
         design = game.save_design("Hunter", "battleship", ["torpedo"]*4+["armor"]*3)
         game.ships = [Ship(1, "battleship", guard.system_id, design=design)]

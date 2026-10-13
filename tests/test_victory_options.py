@@ -194,6 +194,8 @@ class VictoryOptionRulesTests(unittest.TestCase):
         self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
     def test_v32_ascension_goal_progress_and_finished_gate_survive(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
         game = campaign(with_ai=False)
         game.technology.legacy_fuel = True
         game.technology.legacy_black_holes = True
@@ -214,6 +216,10 @@ class VictoryOptionRulesTests(unittest.TestCase):
 
 
 class AdvancedFuelTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self)
+
     def test_tanks_extend_existing_fleets_additively_without_changing_speed(self):
         game = campaign()
         discover(game, "lightweight_alloys")
@@ -236,8 +242,8 @@ class AdvancedFuelTests(unittest.TestCase):
 
     def test_later_tanks_work_after_skipping_every_earlier_tank(self):
         game = campaign()
-        for identifier in ("deep_core_drills", "superconductors", "reinforced_armor", "antimatter_torpedoes",
-                           "automated_refineries", "molecular_shipbuilding", "spatial_compression_tanks"):
+        for identifier in ("superconductors", "reinforced_armor", "deep_core_drills", "mirv_torpedoes",
+                           "automated_refineries", "antimatter_torpedoes", "spatial_compression_tanks"):
             discover(game, identifier)
         self.assertEqual(game.fuel_range(), 27)
         self.assertEqual(game.technology.status("cryogenic_fuel_tanks"), "excluded")
@@ -246,6 +252,7 @@ class AdvancedFuelTests(unittest.TestCase):
 
     def test_varkesh_range_bonus_applies_to_new_tanks(self):
         game = campaign(race_id="varkesh")
+        discover(game, "superconductors")
         discover(game, "cryogenic_fuel_tanks")
         self.assertEqual(game.fuel_range(), (7+10)*1.5)
 
@@ -260,7 +267,7 @@ class AdvancedFuelTests(unittest.TestCase):
 
     def test_ai_researches_new_tank_when_old_range_options_were_skipped(self):
         game = campaign()
-        for identifier in ("deep_core_drills", "superconductors", "reinforced_armor", "mirv_torpedoes"):
+        for identifier in ("superconductors", "reinforced_armor", "deep_core_drills"):
             discover(game, identifier, "rival")
         game.opponent.research = TECHNOLOGIES["cryogenic_fuel_tanks"].cost
         with patch.object(GameState, "system_explored", return_value=False), patch.object(GameState, "within_fuel_range", return_value=False):
@@ -274,13 +281,15 @@ class AdvancedFuelTests(unittest.TestCase):
         for identifier in ("planetary_data_vaults", "quantum_research_archives"):
             discover(game, identifier)
         self.assertIsNotNone(game.research_error("ascension_theory"))
-        for identifier in ("cryogenic_fuel_tanks", "molecular_shipbuilding", "nanostructured_materials"):
+        for identifier in ("automated_refineries", "antimatter_fuel_tanks", "nanostructured_materials"):
             discover(game, identifier)
         self.assertIsNone(game.research_error("ascension_theory"))
 
 
 class VictorySetupScreenTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self)
         self.directory = tempfile.TemporaryDirectory()
         self.app = App(Path(self.directory.name), capture=True)
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
@@ -350,7 +359,7 @@ class VictorySetupScreenTests(unittest.TestCase):
 
     def test_new_tank_can_be_inspected_selected_and_switched_with_transferred_rp(self):
         self.app.game = campaign(with_ai=False)
-        discover(self.app.game, "mirv_torpedoes")
+        discover(self.app.game, "deep_core_drills")
         self.app.game.research = 120
         self.app.go("research")
         self.click("research_choose_cryogenic_fuel_tanks", mouse_button=3)
@@ -358,8 +367,8 @@ class VictorySetupScreenTests(unittest.TestCase):
         self.click("dialog_close")
         self.click("research_choose_cryogenic_fuel_tanks")
         self.assertEqual(self.app.game.technology.progress, 120)
-        self.click("research_choose_automated_refineries")
-        self.assertEqual(self.app.game.technology.active, "automated_refineries")
+        self.click("research_choose_mirv_torpedoes")
+        self.assertEqual(self.app.game.technology.active, "mirv_torpedoes")
         self.assertEqual(self.app.game.technology.progress, 120)
 
 

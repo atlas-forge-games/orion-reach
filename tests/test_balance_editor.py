@@ -209,7 +209,7 @@ class BalanceTests(BalanceTestCase):
         old.write_text(json.dumps(payload))
         restored,_=store.load(old)
         self.assertEqual(restored,normal)
-        self.assertEqual(balance.active_profile(),balance.default_profile())
+        self.assertEqual(balance.active_profile(),balance.legacy_profile())
 
     def test_failed_load_restores_active_balance_and_does_not_rewrite_save(self):
         store=Storage(self.root)

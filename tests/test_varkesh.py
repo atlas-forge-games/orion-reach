@@ -62,7 +62,9 @@ class VarkeshMovementTests(unittest.TestCase):
                                            (["ion_drives", "fusion_drives"], 162.5, 10.5),
                                            (["lightweight_alloys"], 50, 25.5),
                                            (["lightweight_alloys", "composite_structures"], 50, 48)):
-            game.technology.completed = technologies
+            game.technology.completed = []
+            from scenarios import research_to
+            research_to(game, *technologies)
             self.assertEqual((game.ship_speed_bonus(), game.fuel_range()), (speed, reach))
             self.assertEqual(game, GameState.from_dict(game.to_dict()))
 

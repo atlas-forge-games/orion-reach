@@ -1,0 +1,3785 @@
+{
+  "format": "orion-reach-balance",
+  "version": 2,
+  "name": "Standard balance",
+  "branch_order": [
+    "construction",
+    "power",
+    "physics",
+    "fields",
+    "materials",
+    "biology",
+    "computers",
+    "society",
+    "starships"
+  ],
+  "data": {
+    "buildings": {
+      "factory": {
+        "name": "Factory",
+        "description": "Base industry plus better output from every industrial worker.",
+        "resource_cost": 45,
+        "work_cost": 24,
+        "industry": 4,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 1,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 3,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 2,
+        "technology": null,
+        "special_effect": ""
+      },
+      "mine": {
+        "name": "Mining complex",
+        "description": "Base resource extraction and miner bonuses scale with mineral richness.",
+        "resource_cost": 30,
+        "work_cost": 18,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 2,
+        "resources_per_miner": 1,
+        "energy_use": 2,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 1,
+        "technology": null,
+        "special_effect": ""
+      },
+      "trade_center": {
+        "name": "Trade centre",
+        "description": "Base credits plus income from every population unit.",
+        "resource_cost": 40,
+        "work_cost": 24,
+        "industry": 0,
+        "income": 4,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0.5,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 1,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 1,
+        "technology": null,
+        "special_effect": ""
+      },
+      "research_lab": {
+        "name": "Research lab",
+        "description": "Base research plus better output from every scientist.",
+        "resource_cost": 50,
+        "work_cost": 30,
+        "industry": 0,
+        "income": 0,
+        "research": 4,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 1,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 4,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 2,
+        "technology": null,
+        "special_effect": ""
+      },
+      "hydroponic_farm": {
+        "name": "Hydroponic farm",
+        "description": "Base food plus better output from every farmer.",
+        "resource_cost": 30,
+        "work_cost": 18,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 4,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 1,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 2,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 1,
+        "technology": null,
+        "special_effect": ""
+      },
+      "barracks": {
+        "name": "Barracks",
+        "description": "Trains a local garrison and enables troop transport construction. One per colony.",
+        "resource_cost": 50,
+        "work_cost": 30,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 1,
+        "garrison_limit": 8,
+        "defence_bonus": 0,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 1,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 1,
+        "technology": null,
+        "special_effect": ""
+      },
+      "fortifications": {
+        "name": "Fortifications",
+        "description": "Bunkers give all defending troops 50% more firepower. One per colony.",
+        "resource_cost": 60,
+        "work_cost": 36,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 50,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 0,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 2,
+        "technology": null,
+        "special_effect": ""
+      },
+      "missile_base": {
+        "name": "Missile base",
+        "description": "A planetary surface battery defending orbit with 40 hull, range 8 and 10 missile damage. One per colony.",
+        "resource_cost": 100,
+        "work_cost": 60,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 3,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 3,
+        "technology": "orbital_defense_systems",
+        "special_effect": "40 hull \u00b7 10 missile damage \u00b7 range 8"
+      },
+      "planetary_shield": {
+        "name": "Planetary shield",
+        "description": "Blocks hostile landings while charged. Regenerates 25 points each peaceful turn. Barrier Fields improves capacity and upkeep.",
+        "resource_cost": 120,
+        "work_cost": 70,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 8,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 4,
+        "technology": "planetary_shielding",
+        "special_effect": "100 shield points \u00b7 25 recovery/turn"
+      },
+      "sensor_array": {
+        "name": "Sensor array",
+        "description": "Extends this system's researched detection radius by 5 ly. Multiple arrays in one system do not stack.",
+        "resource_cost": 60,
+        "work_cost": 36,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 3,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 2,
+        "technology": "deep_space_radar",
+        "special_effect": "+5 ly local sensor range"
+      },
+      "jump_gate": {
+        "name": "Jump gate",
+        "description": "Connect two of your colonies for +50% travel speed on new orders. Replaces the navigation network bonus.",
+        "resource_cost": 140,
+        "work_cost": 84,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 8,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 4,
+        "technology": "jump_gates",
+        "special_effect": "+50% speed between friendly gates"
+      },
+      "interdictor": {
+        "name": "Interdiction generator",
+        "description": "Slows hostile approaches within 5 ly by 25%. Subspace Interdiction improves the radius and strength.",
+        "resource_cost": 110,
+        "work_cost": 66,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": true,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 8,
+        "energy_output": 0,
+        "energy_per_resource": 0,
+        "maintenance": 3,
+        "technology": "gravity_wells",
+        "special_effect": "25% hostile slowdown within 5 ly"
+      },
+      "solar_array": {
+        "name": "Solar array",
+        "description": "Generates local power without fuel or assigned workers.",
+        "resource_cost": 30,
+        "work_cost": 18,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 0,
+        "energy_output": 12,
+        "energy_per_resource": 0,
+        "maintenance": 1,
+        "technology": null,
+        "special_effect": ""
+      },
+      "fusion_plant": {
+        "name": "Fusion plant",
+        "description": "A compact reactor supplies substantial local power. No fuel resource required.",
+        "resource_cost": 80,
+        "work_cost": 48,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 0,
+        "energy_output": 30,
+        "energy_per_resource": 0,
+        "maintenance": 3,
+        "technology": "fusion_power",
+        "special_effect": ""
+      },
+      "geothermal_plant": {
+        "name": "Geothermal plant",
+        "description": "Deep thermal wells provide steady local power without consuming Resources.",
+        "resource_cost": 55,
+        "work_cost": 36,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 0,
+        "energy_output": 20,
+        "energy_per_resource": 0,
+        "maintenance": 2,
+        "technology": "deep_core_drills",
+        "special_effect": ""
+      },
+      "thermal_plant": {
+        "name": "Thermal backup plant",
+        "description": "Burns Resources only when other generators cannot cover working buildings. Last to run; 1 Resource per 4 energy, rounded up per plant.",
+        "resource_cost": 35,
+        "work_cost": 24,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 0,
+        "energy_output": 24,
+        "energy_per_resource": 4,
+        "maintenance": 1,
+        "technology": "fusion_grids",
+        "special_effect": ""
+      },
+      "singularity_plant": {
+        "name": "Singularity plant",
+        "description": "A stabilized micro-singularity provides high continuous power without consuming Resources.",
+        "resource_cost": 140,
+        "work_cost": 84,
+        "industry": 0,
+        "income": 0,
+        "research": 0,
+        "mineral_scaled": false,
+        "food": 0,
+        "training": 0,
+        "garrison_limit": 0,
+        "defence_bonus": 0,
+        "unique": false,
+        "industry_per_worker": 0,
+        "research_per_scientist": 0,
+        "food_per_farmer": 0,
+        "income_per_population": 0,
+        "resources": 0,
+        "resources_per_miner": 0,
+        "energy_use": 0,
+        "energy_output": 50,
+        "energy_per_resource": 0,
+        "maintenance": 5,
+        "technology": "field_stabilization",
+        "special_effect": ""
+      }
+    },
+    "ships": {
+      "colony_ship": {
+        "name": "Colony ship",
+        "resource_cost": 80,
+        "work_cost": 42,
+        "hull": 12,
+        "damage": 0,
+        "technology": null,
+        "drone_bays": 0,
+        "movement": 2
+      },
+      "frigate": {
+        "name": "Frigate",
+        "resource_cost": 60,
+        "work_cost": 36,
+        "hull": 20,
+        "damage": 5,
+        "technology": null,
+        "drone_bays": 0,
+        "movement": 3
+      },
+      "troop_transport": {
+        "name": "Troop transport",
+        "resource_cost": 80,
+        "work_cost": 42,
+        "hull": 16,
+        "damage": 0,
+        "technology": null,
+        "drone_bays": 0,
+        "movement": 2
+      },
+      "scout": {
+        "name": "Scout",
+        "resource_cost": 25,
+        "work_cost": 12,
+        "hull": 8,
+        "damage": 0,
+        "technology": null,
+        "drone_bays": 0,
+        "movement": 5
+      },
+      "destroyer": {
+        "name": "Destroyer",
+        "resource_cost": 90,
+        "work_cost": 54,
+        "hull": 30,
+        "damage": 10,
+        "technology": "destroyer_hulls",
+        "drone_bays": 0,
+        "movement": 4
+      },
+      "cruiser": {
+        "name": "Cruiser",
+        "resource_cost": 150,
+        "work_cost": 90,
+        "hull": 42,
+        "damage": 12,
+        "technology": "cruiser_hulls",
+        "drone_bays": 0,
+        "movement": 3
+      },
+      "battleship": {
+        "name": "Battleship",
+        "resource_cost": 260,
+        "work_cost": 156,
+        "hull": 75,
+        "damage": 18,
+        "technology": "battleship_hulls",
+        "drone_bays": 0,
+        "movement": 2
+      },
+      "carrier": {
+        "name": "Drone carrier",
+        "resource_cost": 210,
+        "work_cost": 126,
+        "hull": 55,
+        "damage": 5,
+        "technology": "drone_carriers",
+        "drone_bays": 2,
+        "movement": 2
+      },
+      "titan": {
+        "name": "Titan",
+        "resource_cost": 420,
+        "work_cost": 252,
+        "hull": 125,
+        "damage": 26,
+        "technology": "titan_hulls",
+        "drone_bays": 0,
+        "movement": 1
+      }
+    },
+    "hulls": {
+      "frigate": {
+        "name": "Frigate",
+        "hull": 20,
+        "capacity": 4,
+        "weapon": 3,
+        "defense": 2,
+        "support": 1,
+        "movement": 4,
+        "resource_cost": 30,
+        "work_cost": 18,
+        "offensive_slots": 4,
+        "defensive_slots": 2,
+        "support_slots": 1,
+        "module_size": "small",
+        "module_scale": 100,
+        "tracking_penalty": 0
+      },
+      "destroyer": {
+        "name": "Destroyer",
+        "hull": 30,
+        "capacity": 6,
+        "weapon": 4,
+        "defense": 3,
+        "support": 2,
+        "movement": 4,
+        "resource_cost": 45,
+        "work_cost": 27,
+        "offensive_slots": 4,
+        "defensive_slots": 2,
+        "support_slots": 2,
+        "module_size": "small",
+        "module_scale": 100,
+        "tracking_penalty": 0
+      },
+      "cruiser": {
+        "name": "Cruiser",
+        "hull": 42,
+        "capacity": 8,
+        "weapon": 5,
+        "defense": 4,
+        "support": 2,
+        "movement": 3,
+        "resource_cost": 70,
+        "work_cost": 42,
+        "offensive_slots": 4,
+        "defensive_slots": 3,
+        "support_slots": 2,
+        "module_size": "medium",
+        "module_scale": 200,
+        "tracking_penalty": 30
+      },
+      "battleship": {
+        "name": "Battleship",
+        "hull": 75,
+        "capacity": 12,
+        "weapon": 8,
+        "defense": 6,
+        "support": 2,
+        "movement": 2,
+        "resource_cost": 130,
+        "work_cost": 78,
+        "offensive_slots": 4,
+        "defensive_slots": 3,
+        "support_slots": 2,
+        "module_size": "heavy",
+        "module_scale": 300,
+        "tracking_penalty": 30
+      },
+      "carrier": {
+        "name": "Carrier",
+        "hull": 55,
+        "capacity": 10,
+        "weapon": 3,
+        "defense": 4,
+        "support": 6,
+        "movement": 2,
+        "resource_cost": 100,
+        "work_cost": 60,
+        "offensive_slots": 4,
+        "defensive_slots": 2,
+        "support_slots": 3,
+        "module_size": "medium",
+        "module_scale": 200,
+        "tracking_penalty": 30
+      },
+      "titan": {
+        "name": "Titan",
+        "hull": 125,
+        "capacity": 18,
+        "weapon": 12,
+        "defense": 9,
+        "support": 3,
+        "movement": 1,
+        "resource_cost": 220,
+        "work_cost": 132,
+        "offensive_slots": 4,
+        "defensive_slots": 3,
+        "support_slots": 2,
+        "module_size": "heavy",
+        "module_scale": 400,
+        "tracking_penalty": 35
+      }
+    },
+    "modules": {
+      "laser": {
+        "name": "Laser cannon",
+        "category": "weapon",
+        "space": 1,
+        "resource_cost": 12,
+        "work_cost": 8,
+        "description": "5 damage \u00b7 range 6",
+        "technology": null,
+        "weapon": "laser",
+        "damage": 5,
+        "range": 6,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "torpedo": {
+        "name": "Torpedo launcher",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 22,
+        "work_cost": 14,
+        "description": "10 damage \u00b7 range 8 \u00b7 countered by point defense",
+        "technology": null,
+        "weapon": "torpedo",
+        "damage": 10,
+        "range": 8,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "quantum": {
+        "name": "Quantum battery",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 32,
+        "work_cost": 20,
+        "description": "14 damage \u00b7 range 7",
+        "technology": "quantum_optics",
+        "weapon": "quantum",
+        "damage": 14,
+        "range": 7,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "siege": {
+        "name": "Siege cannon",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 30,
+        "work_cost": 20,
+        "description": "8 damage \u00b7 range 6 \u00b7 triple damage to bases and planetary shields",
+        "technology": "siege_weapons",
+        "weapon": "siege",
+        "damage": 8,
+        "range": 6,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "armor": {
+        "name": "Armor plate",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 10,
+        "work_cost": 6,
+        "description": "+8 hull \u00b7 -1 tactical movement (minimum 1)",
+        "technology": null,
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 8,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": -1,
+        "range_bonus": 0
+      },
+      "shield": {
+        "name": "Shield generator",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 18,
+        "work_cost": 12,
+        "description": "+12 shields \u00b7 restored at the start of each battle",
+        "technology": "radiation_shields",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 12,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "point_defense": {
+        "name": "Point defense",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 12,
+        "work_cost": 8,
+        "description": "-30% torpedo and drone damage (maximum -60%)",
+        "technology": null,
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 30,
+        "interception_cap": 60,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "engine": {
+        "name": "Maneuvering thruster",
+        "category": "support",
+        "space": 1,
+        "resource_cost": 14,
+        "work_cost": 10,
+        "description": "+1 tactical movement \u00b7 does not change travel speed",
+        "technology": "ion_drives",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 1,
+        "range_bonus": 0
+      },
+      "scanner": {
+        "name": "Combat scanner",
+        "category": "support",
+        "space": 1,
+        "resource_cost": 16,
+        "work_cost": 10,
+        "description": "+1 weapon range \u00b7 one scanner per ship",
+        "technology": "research_networks",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 1
+      },
+      "drone_bay": {
+        "name": "Drone bay",
+        "category": "support",
+        "space": 3,
+        "resource_cost": 30,
+        "work_cost": 18,
+        "description": "Carrier only \u00b7 2 active drones \u00b7 4 launches/battle",
+        "technology": "drone_carriers",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "pulse": {
+        "name": "Pulse cannon",
+        "category": "weapon",
+        "space": 1,
+        "resource_cost": 24,
+        "work_cost": 16,
+        "description": "2 \u00d7 4 damage \u00b7 range 6 \u00b7 +15 accuracy",
+        "technology": "pulse_beams",
+        "weapon": "pulse",
+        "damage": 8,
+        "range": 6,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "plasma": {
+        "name": "Plasma cannon",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 48,
+        "work_cost": 30,
+        "description": "24 damage \u00b7 range 4",
+        "technology": "plasma_beams",
+        "weapon": "plasma",
+        "damage": 24,
+        "range": 4,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "ion": {
+        "name": "Ion cannon",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 44,
+        "work_cost": 28,
+        "description": "8 hull / up to 32 shield damage \u00b7 range 6",
+        "technology": "ion_beams",
+        "weapon": "ion",
+        "damage": 8,
+        "range": 6,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "graviton": {
+        "name": "Graviton beam",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 50,
+        "work_cost": 32,
+        "description": "16 damage \u00b7 range 6 \u00b7 slow target 1 cell (no stacking)",
+        "technology": "graviton_beams",
+        "weapon": "graviton",
+        "damage": 16,
+        "range": 6,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "particle": {
+        "name": "Particle lance",
+        "category": "weapon",
+        "space": 3,
+        "resource_cost": 62,
+        "work_cost": 40,
+        "description": "20 damage \u00b7 range 10",
+        "technology": "particle_beams",
+        "weapon": "particle",
+        "damage": 20,
+        "range": 10,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "heavy_beam": {
+        "name": "Heavy beam battery",
+        "category": "weapon",
+        "space": 4,
+        "resource_cost": 82,
+        "work_cost": 52,
+        "description": "30 damage \u00b7 range 9",
+        "technology": "heavy_beam_mounts",
+        "weapon": "heavy_beam",
+        "damage": 30,
+        "range": 9,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "phased": {
+        "name": "Phased beam",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 65,
+        "work_cost": 42,
+        "description": "16 damage \u00b7 range 7 \u00b7 50% bypasses ship shields",
+        "technology": "phased_beams",
+        "weapon": "phased",
+        "damage": 16,
+        "range": 7,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "disruptor": {
+        "name": "Disruptor",
+        "category": "weapon",
+        "space": 3,
+        "resource_cost": 88,
+        "work_cost": 56,
+        "description": "40 damage \u00b7 range 5 \u00b7 recharge 1 turn after firing",
+        "technology": "disruptor_beams",
+        "weapon": "disruptor",
+        "damage": 40,
+        "range": 5,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "fusion_torpedo": {
+        "name": "Fusion launcher",
+        "category": "weapon",
+        "space": 2,
+        "resource_cost": 42,
+        "work_cost": 26,
+        "description": "18 damage \u00b7 range 9 \u00b7 intercepted by point defense",
+        "technology": "fusion_torpedoes",
+        "weapon": "fusion_torpedo",
+        "damage": 18,
+        "range": 9,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "mirv": {
+        "name": "MIRV launcher",
+        "category": "weapon",
+        "space": 3,
+        "resource_cost": 62,
+        "work_cost": 40,
+        "description": "3 \u00d7 7 damage \u00b7 range 8 \u00b7 ignores half of interception",
+        "technology": "mirv_torpedoes",
+        "weapon": "mirv",
+        "damage": 21,
+        "range": 8,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "antimatter": {
+        "name": "Antimatter launcher",
+        "category": "weapon",
+        "space": 3,
+        "resource_cost": 78,
+        "work_cost": 50,
+        "description": "36 damage \u00b7 range 9 \u00b7 reload 1 turn after firing",
+        "technology": "antimatter_torpedoes",
+        "weapon": "antimatter",
+        "damage": 36,
+        "range": 9,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "reinforced_armor": {
+        "name": "Reinforced armor",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 26,
+        "work_cost": 16,
+        "description": "+14 hull \u00b7 -1 tactical movement (minimum 1)",
+        "technology": "reinforced_armor",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 14,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": -1,
+        "range_bonus": 0
+      },
+      "regenerative_shield": {
+        "name": "Regenerative shield",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 32,
+        "work_cost": 20,
+        "description": "+8 shields \u00b7 recover 2 at the start of each turn",
+        "technology": "regenerative_shields",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 8,
+        "shield_regeneration": 2,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "hardened_shield": {
+        "name": "Hardened shield",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 34,
+        "work_cost": 22,
+        "description": "+12 shields \u00b7 reduce shield penetration by 75%",
+        "technology": "hardened_shields",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 12,
+        "shield_regeneration": 0,
+        "shield_hardening": 75,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "flak": {
+        "name": "Advanced flak",
+        "category": "defense",
+        "space": 1,
+        "resource_cost": 28,
+        "work_cost": 18,
+        "description": "45% interception \u00b7 shipboard cap 75%",
+        "technology": "advanced_flak",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 45,
+        "interception_cap": 75,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "damage_control": {
+        "name": "Damage control",
+        "category": "support",
+        "space": 1,
+        "resource_cost": 32,
+        "work_cost": 20,
+        "description": "Repair 3 hull/turn \u00b7 reserve 12/battle \u00b7 battle damage only",
+        "technology": "automated_damage_control",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 3,
+        "repair_capacity": 12,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "interceptor_bay": {
+        "name": "Interceptor bay",
+        "category": "support",
+        "space": 3,
+        "resource_cost": 45,
+        "work_cost": 28,
+        "description": "Carrier \u00b7 2 active / 4 launches \u00b7 protect allies within 2 cells",
+        "technology": "interceptor_drones",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      },
+      "bomber_bay": {
+        "name": "Bomber bay",
+        "category": "support",
+        "space": 3,
+        "resource_cost": 48,
+        "work_cost": 30,
+        "description": "Carrier \u00b7 2 active / 4 launches \u00b7 double damage to capitals",
+        "technology": "bomber_drones",
+        "weapon": "none",
+        "damage": 0,
+        "range": 0,
+        "hull_bonus": 0,
+        "shields": 0,
+        "shield_regeneration": 0,
+        "shield_hardening": 0,
+        "repair_rate": 0,
+        "repair_capacity": 0,
+        "interception": 0,
+        "interception_cap": 0,
+        "movement_bonus": 0,
+        "range_bonus": 0
+      }
+    },
+    "weapons": {
+      "none": {
+        "name": "Unarmed",
+        "damage": 0,
+        "range": 0,
+        "color": [
+          133,
+          151,
+          160
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "laser": {
+        "name": "Laser",
+        "damage": 5,
+        "range": 6,
+        "color": [
+          255,
+          80,
+          76
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "quantum": {
+        "name": "Quantum beam",
+        "damage": 7,
+        "range": 7,
+        "color": [
+          187,
+          113,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "torpedo": {
+        "name": "Torpedo",
+        "damage": 10,
+        "range": 8,
+        "color": [
+          255,
+          188,
+          79
+        ],
+        "accuracy": 75,
+        "shots": 1,
+        "projectile": true,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "missile": {
+        "name": "Defense missile",
+        "damage": 10,
+        "range": 8,
+        "color": [
+          255,
+          188,
+          79
+        ],
+        "accuracy": 75,
+        "shots": 1,
+        "projectile": true,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "siege": {
+        "name": "Siege cannon",
+        "damage": 8,
+        "range": 6,
+        "color": [
+          229,
+          144,
+          88
+        ],
+        "accuracy": 70,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "cruiser_battery": {
+        "name": "Cruiser battery",
+        "damage": 12,
+        "range": 7,
+        "color": [
+          120,
+          196,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "battleship_battery": {
+        "name": "Heavy battery",
+        "damage": 18,
+        "range": 7,
+        "color": [
+          255,
+          156,
+          88
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "titan_battery": {
+        "name": "Titan battery",
+        "damage": 26,
+        "range": 8,
+        "color": [
+          187,
+          113,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "drone_beam": {
+        "name": "Drone pulse",
+        "damage": 3,
+        "range": 3,
+        "color": [
+          102,
+          220,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": true,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "interceptor_pulse": {
+        "name": "Interceptor pulse",
+        "damage": 2,
+        "range": 3,
+        "color": [
+          102,
+          255,
+          216
+        ],
+        "accuracy": 95,
+        "shots": 1,
+        "projectile": false,
+        "drone": true,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 4,
+        "versus_capitals": 1
+      },
+      "bomber_torpedo": {
+        "name": "Drone torpedo",
+        "damage": 5,
+        "range": 3,
+        "color": [
+          255,
+          169,
+          77
+        ],
+        "accuracy": 75,
+        "shots": 1,
+        "projectile": true,
+        "drone": true,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 2
+      },
+      "plasma_breath": {
+        "name": "Plasma breath",
+        "damage": 8,
+        "range": 4,
+        "color": [
+          104,
+          255,
+          144
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "crystal_ray": {
+        "name": "Crystal ray",
+        "damage": 10,
+        "range": 7,
+        "color": [
+          102,
+          220,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "ancient_lance": {
+        "name": "Ancient lance",
+        "damage": 12,
+        "range": 8,
+        "color": [
+          255,
+          198,
+          104
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "void_ray": {
+        "name": "Void ray",
+        "damage": 15,
+        "range": 5,
+        "color": [
+          196,
+          143,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "pulse": {
+        "name": "Pulse beam",
+        "damage": 8,
+        "range": 6,
+        "color": [
+          114,
+          222,
+          255
+        ],
+        "accuracy": 100,
+        "shots": 2,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "plasma": {
+        "name": "Plasma beam",
+        "damage": 24,
+        "range": 4,
+        "color": [
+          255,
+          129,
+          54
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "ion": {
+        "name": "Ion beam",
+        "damage": 8,
+        "range": 6,
+        "color": [
+          83,
+          182,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 4,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "graviton": {
+        "name": "Graviton beam",
+        "damage": 16,
+        "range": 6,
+        "color": [
+          179,
+          130,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": true,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "particle": {
+        "name": "Particle lance",
+        "damage": 20,
+        "range": 10,
+        "color": [
+          127,
+          244,
+          221
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "heavy_beam": {
+        "name": "Heavy beam",
+        "damage": 30,
+        "range": 9,
+        "color": [
+          255,
+          210,
+          126
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "phased": {
+        "name": "Phased beam",
+        "damage": 16,
+        "range": 7,
+        "color": [
+          219,
+          170,
+          255
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 50,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "disruptor": {
+        "name": "Disruptor",
+        "damage": 40,
+        "range": 5,
+        "color": [
+          238,
+          100,
+          219
+        ],
+        "accuracy": 85,
+        "shots": 1,
+        "projectile": false,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 1,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "fusion_torpedo": {
+        "name": "Fusion torpedo",
+        "damage": 18,
+        "range": 9,
+        "color": [
+          255,
+          200,
+          86
+        ],
+        "accuracy": 75,
+        "shots": 1,
+        "projectile": true,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "mirv": {
+        "name": "MIRV torpedo",
+        "damage": 21,
+        "range": 8,
+        "color": [
+          255,
+          155,
+          99
+        ],
+        "accuracy": 75,
+        "shots": 3,
+        "projectile": true,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 50,
+        "slows": false,
+        "reload": 0,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      },
+      "antimatter": {
+        "name": "Antimatter torpedo",
+        "damage": 36,
+        "range": 9,
+        "color": [
+          222,
+          146,
+          255
+        ],
+        "accuracy": 75,
+        "shots": 1,
+        "projectile": true,
+        "drone": false,
+        "shield_multiplier": 1,
+        "shield_bypass": 0,
+        "interception_piercing": 0,
+        "slows": false,
+        "reload": 1,
+        "versus_drones": 1,
+        "versus_capitals": 1
+      }
+    },
+    "races": {
+      "terran": {
+        "name": "Terrans",
+        "focus": "Adaptable diplomats",
+        "description": "Human explorers whose diverse societies value negotiation, exchange and new frontiers.",
+        "default_empire": "Terran Union",
+        "color": [
+          119,
+          194,
+          207
+        ],
+        "trade_threshold": 20,
+        "research_threshold": 30,
+        "envoy_bonus": 4,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "factory",
+          "trade_center",
+          "research_lab",
+          "mine"
+        ],
+        "effects": {},
+        "abilities": [],
+        "research_priority": [
+          "computers",
+          "construction",
+          "society"
+        ],
+        "starting_research": 0,
+        "home_system": "Sol",
+        "homeworld": "Earth",
+        "home_neighbors": [
+          "Mercury",
+          "Venus",
+          "Mars"
+        ]
+      },
+      "kharuun": {
+        "name": "Kharuun",
+        "focus": "Crystalline builders",
+        "description": "Mineral-bodied engineers who measure trust through reliable exchange and lasting works.",
+        "default_empire": "Kharuun Assembly",
+        "color": [
+          231,
+          150,
+          100
+        ],
+        "trade_threshold": 15,
+        "research_threshold": 45,
+        "envoy_bonus": 0,
+        "trade_bonus": 1,
+        "research_bonus": 0,
+        "development": [
+          "factory",
+          "trade_center",
+          "mine",
+          "research_lab"
+        ],
+        "effects": {},
+        "abilities": [],
+        "research_priority": [
+          "construction",
+          "materials",
+          "physics"
+        ],
+        "starting_research": 0,
+        "home_system": "Zharum",
+        "homeworld": "Kharduun",
+        "home_neighbors": [
+          "Orvek",
+          "Talzun",
+          "Dravik"
+        ]
+      },
+      "aelari": {
+        "name": "Aelari",
+        "focus": "Amphibious scholars",
+        "description": "Ocean-born archivists who build alliances around shared discovery and patient inquiry.",
+        "default_empire": "Aelari Concord",
+        "color": [
+          164,
+          163,
+          229
+        ],
+        "trade_threshold": 30,
+        "research_threshold": 15,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 1,
+        "development": [
+          "factory",
+          "research_lab",
+          "trade_center",
+          "mine"
+        ],
+        "effects": {},
+        "abilities": [],
+        "research_priority": [
+          "physics",
+          "computers",
+          "biology"
+        ],
+        "starting_research": 0,
+        "home_system": "Aelys",
+        "homeworld": "Namaris",
+        "home_neighbors": [
+          "Syrin",
+          "Pelara",
+          "Thalun"
+        ]
+      },
+      "lithar": {
+        "name": "Lithar",
+        "focus": "Patient living stone",
+        "description": "Ancient stone organisms that endure hostile worlds and measure their future in geological ages.",
+        "default_empire": "Lithar Continuum",
+        "color": [
+          188,
+          179,
+          150
+        ],
+        "trade_threshold": 25,
+        "research_threshold": 40,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "mine",
+          "factory",
+          "research_lab",
+          "trade_center"
+        ],
+        "effects": {
+          "capacity_percent": 100,
+          "food_use_percent": -50,
+          "growth_percent": -75,
+          "barren": 1,
+          "volcanic": 1
+        },
+        "abilities": [
+          "Settle every biome; double population limits.",
+          "Half food consumption, rounded up.",
+          "Population grows at one quarter of the usual rate."
+        ],
+        "research_priority": [
+          "materials",
+          "construction",
+          "biology"
+        ],
+        "starting_research": 0,
+        "home_system": "Tharok",
+        "homeworld": "Durath",
+        "home_neighbors": [
+          "Keld",
+          "Ormun",
+          "Voldrak"
+        ]
+      },
+      "varkesh": {
+        "name": "Varkesh",
+        "focus": "Brutal raiding clans",
+        "description": "Armored warlords rule through fear, plunder rival worlds and drag captives back to a single fortified stronghold.",
+        "default_empire": "Varkesh Clans",
+        "color": [
+          216,
+          127,
+          89
+        ],
+        "trade_threshold": 40,
+        "research_threshold": 50,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "factory",
+          "research_lab",
+          "mine",
+          "trade_center"
+        ],
+        "effects": {
+          "ship_discount": 20,
+          "capacity_percent": 50,
+          "research_percent": -20,
+          "ship_speed_percent": 50,
+          "fuel_range_percent": 50
+        },
+        "abilities": [
+          "Cannot colonize; ship speed and range +50%.",
+          "Raids steal credits and slaves; home limit 100.",
+          "Slaves: normal output, 5% mortality each turn.",
+          "Ships \u221220% resource cost; native capacity +50%; research \u221220%."
+        ],
+        "research_priority": [
+          "physics",
+          "construction",
+          "power"
+        ],
+        "starting_research": 0,
+        "home_system": "Rhazek",
+        "homeworld": "Drazhak",
+        "home_neighbors": [
+          "Skarn",
+          "Vordash",
+          "Kreth"
+        ]
+      },
+      "wanderers": {
+        "name": "Wanderers",
+        "focus": "Nomadic navigators",
+        "description": "Travel-worn navigators whose shipbuilding traditions and long-range fleets keep distant horizons within reach.",
+        "default_empire": "Wanderer Flotillas",
+        "color": [
+          210,
+          181,
+          125
+        ],
+        "trade_threshold": 15,
+        "research_threshold": 30,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "factory",
+          "research_lab",
+          "trade_center",
+          "mine"
+        ],
+        "effects": {
+          "fuel_range": 3,
+          "ship_discount": 15,
+          "industry_percent": -15
+        },
+        "abilities": [
+          "Ships reach 3 light-years farther from colonies.",
+          "All ships cost 15% fewer resources.",
+          "Colony industry output is 15% lower."
+        ],
+        "research_priority": [
+          "power",
+          "materials",
+          "construction"
+        ],
+        "starting_research": 0,
+        "home_system": "Wayfarer",
+        "homeworld": "Haven",
+        "home_neighbors": [
+          "Ember",
+          "Landfall",
+          "Farwatch"
+        ]
+      },
+      "xenonflora": {
+        "name": "Xenonflora",
+        "focus": "Living ecosystems",
+        "description": "Interwoven plant minds that flourish on living worlds, growing cities as extensions of their own bodies.",
+        "default_empire": "Xenonflora Bloom",
+        "color": [
+          137,
+          194,
+          111
+        ],
+        "trade_threshold": 25,
+        "research_threshold": 25,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "hydroponic_farm",
+          "factory",
+          "research_lab",
+          "trade_center"
+        ],
+        "effects": {
+          "lush_food": 3,
+          "lush_growth_percent": 50,
+          "harsh_industry_percent": -25
+        },
+        "abilities": [
+          "Terran, Ocean and Gaia colonies produce +3 food.",
+          "Population grows 50% faster on those worlds.",
+          "Industry is 25% lower on all other biomes."
+        ],
+        "research_priority": [
+          "biology",
+          "fields",
+          "construction"
+        ],
+        "starting_research": 0,
+        "home_system": "Viridia",
+        "homeworld": "Sylvaris",
+        "home_neighbors": [
+          "Rootfall",
+          "Mycela",
+          "Florath"
+        ]
+      },
+      "nexus": {
+        "name": "Nexus",
+        "focus": "Machine collective",
+        "description": "Linked machine minds that assemble new citizens in industrial foundries and work without organic sustenance.",
+        "default_empire": "Nexus Collective",
+        "color": [
+          113,
+          203,
+          219
+        ],
+        "trade_threshold": 25,
+        "research_threshold": 20,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "factory",
+          "mine",
+          "research_lab",
+          "trade_center"
+        ],
+        "effects": {
+          "food_use_percent": -100,
+          "industry_percent": 25,
+          "assembly_percent": 20,
+          "barren": 1,
+          "volcanic": 1
+        },
+        "abilities": [
+          "Settle every biome; no food required.",
+          "Gross industry output is 25% higher.",
+          "20% of industry assembles population until full."
+        ],
+        "research_priority": [
+          "computers",
+          "construction",
+          "materials"
+        ],
+        "starting_research": 0,
+        "home_system": "Axiom",
+        "homeworld": "Origin",
+        "home_neighbors": [
+          "Relay",
+          "Foundry",
+          "Matrix"
+        ]
+      },
+      "aetheri": {
+        "name": "Aetheri",
+        "focus": "Luminous energy beings",
+        "description": "Patient currents of sentient energy whose insight outpaces their ability to shape solid matter.",
+        "default_empire": "Aetheri Resonance",
+        "color": [
+          176,
+          156,
+          238
+        ],
+        "trade_threshold": 30,
+        "research_threshold": 15,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "factory",
+          "trade_center",
+          "research_lab",
+          "mine"
+        ],
+        "effects": {
+          "food_use_percent": -100,
+          "passive_growth": 10,
+          "research_percent": 25,
+          "industry_percent": -20,
+          "barren": 1,
+          "volcanic": 1
+        },
+        "abilities": [
+          "Settle every biome; no food required.",
+          "Population grows by 10% of a billion per turn.",
+          "Colony research +25%; colony industry -20%."
+        ],
+        "research_priority": [
+          "physics",
+          "fields",
+          "power"
+        ],
+        "starting_research": 0,
+        "home_system": "Luminara",
+        "homeworld": "Veylume",
+        "home_neighbors": [
+          "Ilyon",
+          "Seris",
+          "Orae"
+        ]
+      },
+      "concord": {
+        "name": "The Concord",
+        "focus": "Assimilating collective",
+        "description": "Countless minds bound to one will. The collective seeks to absorb independent civilizations, their worlds and their knowledge.",
+        "default_empire": "Concord Collective",
+        "color": [
+          123,
+          196,
+          171
+        ],
+        "trade_threshold": 45,
+        "research_threshold": 55,
+        "envoy_bonus": 0,
+        "trade_bonus": 3,
+        "research_bonus": 1,
+        "development": [
+          "factory",
+          "research_lab",
+          "mine",
+          "trade_center"
+        ],
+        "effects": {
+          "income_percent": -10
+        },
+        "abilities": [
+          "Networked pacts: +3 CR trade; +1 RP research.",
+          "Colony credit income is 10% lower.",
+          "Conquest brings populations into the collective."
+        ],
+        "research_priority": [
+          "computers",
+          "construction",
+          "biology"
+        ],
+        "starting_research": 0,
+        "home_system": "Seryn",
+        "homeworld": "Dyara",
+        "home_neighbors": [
+          "Enna",
+          "Belora",
+          "Thessa"
+        ]
+      },
+      "remnant": {
+        "name": "The Remnant",
+        "focus": "Keepers of lost glory",
+        "description": "Proud, patient survivors of a magnificent civilization, carrying fragments of knowledge and a quiet sense of loss.",
+        "default_empire": "Remnant Enclave",
+        "color": [
+          179,
+          185,
+          208
+        ],
+        "trade_threshold": 35,
+        "research_threshold": 20,
+        "envoy_bonus": 0,
+        "trade_bonus": 0,
+        "research_bonus": 0,
+        "development": [
+          "research_lab",
+          "factory",
+          "mine",
+          "trade_center"
+        ],
+        "effects": {
+          "research_percent": 25,
+          "industry_percent": -20
+        },
+        "abilities": [
+          "Begin with 80 research points to spend.",
+          "Research +25%; industry \u221220%.",
+          "Awakened tomb worlds join your empire."
+        ],
+        "research_priority": [
+          "physics",
+          "computers",
+          "society"
+        ],
+        "starting_research": 80,
+        "home_system": "Avarion",
+        "homeworld": "Elyndra",
+        "home_neighbors": [
+          "Vesper",
+          "Orath",
+          "Nyth"
+        ]
+      }
+    },
+    "technologies": {
+      "automated_factories": {
+        "branch": "construction",
+        "tier": 1,
+        "name": "Automated Factories",
+        "description": "+2 industry per factory.",
+        "effects": {
+          "factory_industry": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "civil_engineering": {
+        "branch": "construction",
+        "tier": 1,
+        "name": "Civil Engineering",
+        "description": "+2 industry per colony.",
+        "effects": {
+          "colony_industry": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "prefabricated_structures": {
+        "branch": "construction",
+        "tier": 2,
+        "name": "Prefabricated Structures",
+        "description": "New building orders cost 20% fewer resources.",
+        "effects": {
+          "building_discount": 20
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "orbital_assembly": {
+        "branch": "construction",
+        "tier": 2,
+        "name": "Orbital Assembly",
+        "description": "New ship orders cost 20% fewer resources.",
+        "effects": {
+          "ship_discount": 20
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "ion_drives": {
+        "branch": "power",
+        "tier": 1,
+        "name": "Ion Drives",
+        "description": "+25% ship speed on newly ordered voyages. Unlock maneuvering thrusters in the ship designer.",
+        "effects": {
+          "ship_speed": 25
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "compact_reactors": {
+        "branch": "power",
+        "tier": 1,
+        "name": "Compact Reactors",
+        "description": "+1 industry, +1 credit and +4 energy per colony.",
+        "effects": {
+          "colony_industry": 1,
+          "colony_income": 1,
+          "colony_energy": 4
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "fusion_drives": {
+        "branch": "power",
+        "tier": 2,
+        "name": "Fusion Drives",
+        "description": "+50% ship speed on newly ordered voyages.",
+        "effects": {
+          "ship_speed": 50
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "fusion_grids": {
+        "branch": "power",
+        "tier": 2,
+        "name": "Fusion Grids",
+        "description": "+2 industry per factory and +8 energy per colony. Unlock thermal backup plants: up to 24 energy; burn Resources only when needed.",
+        "effects": {
+          "factory_industry": 2,
+          "colony_energy": 8
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "research_instruments": {
+        "branch": "physics",
+        "tier": 1,
+        "name": "Research Instruments",
+        "description": "+2 research per laboratory.",
+        "effects": {
+          "lab_research": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "field_laboratories": {
+        "branch": "physics",
+        "tier": 1,
+        "name": "Field Laboratories",
+        "description": "+1 research per colony.",
+        "effects": {
+          "colony_research": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "planetary_observatories": {
+        "branch": "physics",
+        "tier": 2,
+        "name": "Planetary Observatories",
+        "description": "+3 research per colony.",
+        "effects": {
+          "colony_research": 3
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "quantum_optics": {
+        "branch": "physics",
+        "tier": 2,
+        "name": "Quantum Optics",
+        "description": "+3 research per laboratory. Standard frigates and carriers gain 7-damage beams. Unlock 14-damage quantum batteries for new designs.",
+        "effects": {
+          "lab_research": 3,
+          "beam_level": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "radiation_shields": {
+        "branch": "fields",
+        "tier": 1,
+        "name": "Radiation Shields",
+        "description": "Colony ships can settle barren worlds. Unlock ship shield generators (+12 shields per module).",
+        "effects": {
+          "barren": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "habitat_shields": {
+        "branch": "fields",
+        "tier": 1,
+        "name": "Habitat Shields",
+        "description": "+2 credits per desert or tundra colony.",
+        "effects": {
+          "rough_income": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "thermal_barriers": {
+        "branch": "fields",
+        "tier": 2,
+        "name": "Thermal Barriers",
+        "description": "Colony ships can settle volcanic worlds.",
+        "effects": {
+          "volcanic": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "industrial_force_fields": {
+        "branch": "fields",
+        "tier": 2,
+        "name": "Industrial Force Fields",
+        "description": "+2 resources per operational mine, regardless of mineral richness.",
+        "effects": {
+          "mine_resources": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "deep_core_drills": {
+        "branch": "materials",
+        "tier": 1,
+        "name": "Deep Core Drills",
+        "description": "+2 resources per operational mine, regardless of richness. Unlock geothermal plants: +20 energy, 2 CR/turn upkeep.",
+        "effects": {
+          "mine_resources": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "lightweight_alloys": {
+        "branch": "materials",
+        "tier": 1,
+        "name": "Lightweight Alloys",
+        "description": "Lighter fuel tanks: +10 ly range. New ships cost 10% fewer resources.",
+        "effects": {
+          "ship_discount": 10,
+          "fuel_range": 10
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "superconductors": {
+        "branch": "materials",
+        "tier": 2,
+        "name": "Superconductors",
+        "description": "+1 industry per colony and +2 research per laboratory.",
+        "effects": {
+          "colony_industry": 1,
+          "lab_research": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "composite_structures": {
+        "branch": "materials",
+        "tier": 2,
+        "name": "Composite Structures",
+        "description": "Advanced fuel tanks: +15 ly range. New buildings cost 15% fewer resources.",
+        "effects": {
+          "building_discount": 15,
+          "fuel_range": 15
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "colony_biospheres": {
+        "branch": "biology",
+        "tier": 1,
+        "name": "Colony Biospheres",
+        "description": "New colonies start with 1 billion additional inhabitants.",
+        "effects": {
+          "colonists": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "symbiotic_farming": {
+        "branch": "biology",
+        "tier": 1,
+        "name": "Symbiotic Farming",
+        "description": "+2 food and +2 credits per colony.",
+        "effects": {
+          "colony_food": 2,
+          "colony_income": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "colony_biogenesis": {
+        "branch": "biology",
+        "tier": 2,
+        "name": "Colony Biogenesis",
+        "description": "New colonies start with 2 billion additional inhabitants.",
+        "effects": {
+          "colonists": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "ecology_networks": {
+        "branch": "biology",
+        "tier": 2,
+        "name": "Ecology Networks",
+        "description": "+1 credit per 2 billion inhabitants on each colony.",
+        "effects": {
+          "income_per_two_pop": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "research_networks": {
+        "branch": "computers",
+        "tier": 1,
+        "name": "Research Networks",
+        "description": "+1 research per colony and per laboratory. Unlock combat scanners (+1 weapon range).",
+        "effects": {
+          "colony_research": 1,
+          "lab_research": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "trade_algorithms": {
+        "branch": "computers",
+        "tier": 1,
+        "name": "Trade Algorithms",
+        "description": "+2 credits per trade center.",
+        "effects": {
+          "trade_income": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "distributed_computing": {
+        "branch": "computers",
+        "tier": 2,
+        "name": "Distributed Computing",
+        "description": "+2 research per colony.",
+        "effects": {
+          "colony_research": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "planetary_automation": {
+        "branch": "computers",
+        "tier": 2,
+        "name": "Planetary Automation",
+        "description": "+1 industry per factory and +1 resource per operational mine.",
+        "effects": {
+          "factory_industry": 1,
+          "mine_resources": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "colonial_administration": {
+        "branch": "society",
+        "tier": 1,
+        "name": "Colonial Administration",
+        "description": "+2 credits per colony.",
+        "effects": {
+          "colony_income": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "scientific_institutes": {
+        "branch": "society",
+        "tier": 1,
+        "name": "Scientific Institutes",
+        "description": "+1 research per colony.",
+        "effects": {
+          "colony_research": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "commerce_guilds": {
+        "branch": "society",
+        "tier": 2,
+        "name": "Commerce Guilds",
+        "description": "+3 credits per trade center.",
+        "effects": {
+          "trade_income": 3
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "cultural_exchange": {
+        "branch": "society",
+        "tier": 2,
+        "name": "Cultural Exchange",
+        "description": "Your active trade pact earns +3 credits; your research pact earns +3 research.",
+        "effects": {
+          "pact_income": 3,
+          "pact_research": 3
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "ascension_theory": {
+        "branch": "ascension",
+        "tier": 3,
+        "name": "Ascension Theory",
+        "description": "Unlock the Ascension Gate and a scientific victory.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "advanced_fortifications": {
+        "branch": "construction",
+        "tier": 3,
+        "name": "Advanced Fortifications",
+        "description": "Fortifications gain +25 percentage points of defending firepower.",
+        "effects": {
+          "fortification_bonus": 25
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "fusion_power": {
+        "branch": "power",
+        "tier": 3,
+        "name": "Fusion Power",
+        "description": "Unlock fusion plants: +30 local energy per plant, with 3 CR/turn upkeep.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "colonial_navigation": {
+        "branch": "power",
+        "tier": 3,
+        "name": "Colonial Navigation Network",
+        "description": "+25% travel speed between your own colonized systems.",
+        "effects": {
+          "colony_speed": 25
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "jump_gates": {
+        "branch": "power",
+        "tier": 4,
+        "name": "Jump Gates",
+        "description": "Unlock jump gates. Gates at both endpoints give +50% internal travel speed, replacing any navigation bonus.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "field_stabilization": {
+        "branch": "power",
+        "tier": 4,
+        "name": "Field Stabilization",
+        "description": "Halve hostile interdiction slowdown. Unlock singularity plants: +50 energy with 5 CR/turn upkeep and no Resource fuel.",
+        "effects": {
+          "field_stabilization": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "orbital_defense_systems": {
+        "branch": "construction",
+        "tier": 3,
+        "name": "Orbital Defense Systems",
+        "description": "Unlock missile bases: immobile defenders in fleet battles, with 40 hull and 10-damage missiles.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "precision_beam_optics": {
+        "branch": "physics",
+        "tier": 3,
+        "name": "Precision Beam Optics",
+        "description": "Halve the accuracy penalty for firing beam weapons at long range.",
+        "effects": {
+          "beam_precision": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "siege_weapons": {
+        "branch": "physics",
+        "tier": 4,
+        "name": "Siege Weapons",
+        "description": "Unlock siege cannons: triple damage to planetary shields and missile bases. Standard warships gain double bombardment damage.",
+        "effects": {
+          "siege_bonus": 100
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "torpedo_guidance": {
+        "branch": "physics",
+        "tier": 4,
+        "name": "Advanced Torpedo Guidance",
+        "description": "Halve target evasion against torpedoes and missiles. Point defense still intercepts successful hits.",
+        "effects": {
+          "torpedo_guidance": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "planetary_shielding": {
+        "branch": "fields",
+        "tier": 3,
+        "name": "Planetary Shielding",
+        "description": "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.",
+        "effects": {
+          "shield_capacity": 100
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "gravity_wells": {
+        "branch": "fields",
+        "tier": 3,
+        "name": "Gravity-Well Generators",
+        "description": "Unlock interdiction generators: hostile final approaches slow by 25% within 5 ly.",
+        "effects": {
+          "interdiction_slow": 25,
+          "interdiction_range": 5
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "barrier_fields": {
+        "branch": "fields",
+        "tier": 4,
+        "name": "Barrier Fields",
+        "description": "Unlock or upgrade planetary generators to 200 shield points, with 6 CR/turn upkeep.",
+        "effects": {
+          "shield_capacity": 200,
+          "shield_upkeep": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "subspace_interdiction": {
+        "branch": "fields",
+        "tier": 4,
+        "name": "Subspace Interdiction",
+        "description": "Unlock or upgrade interdiction generators: 40% slowdown within 8 ly, with 5 CR/turn upkeep.",
+        "effects": {
+          "interdiction_slow": 40,
+          "interdiction_range": 8,
+          "interdiction_upkeep": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "electronic_countermeasures": {
+        "branch": "physics",
+        "tier": 3,
+        "name": "Electronic Countermeasures",
+        "description": "Your ships gain 10 percentage points of evasion.",
+        "effects": {
+          "evasion": 10
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "deep_space_radar": {
+        "branch": "computers",
+        "tier": 3,
+        "name": "Deep-Space Radar",
+        "description": "Detect fleet positions and owners within 5 ly of colonies. Unlock sensor arrays (+5 ly locally).",
+        "effects": {
+          "sensor_range": 5,
+          "sensor_level": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "targeting_computers": {
+        "branch": "computers",
+        "tier": 3,
+        "name": "Targeting Computers",
+        "description": "+10 percentage points to weapon hit chance from targeting computers.",
+        "effects": {
+          "targeting_accuracy": 10
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "long_range_sensors": {
+        "branch": "computers",
+        "tier": 4,
+        "name": "Long-Range Sensors",
+        "description": "Detect fleets within 10 ly and reveal ship counts. Unlock sensor arrays. Replaces earlier sensor range.",
+        "effects": {
+          "sensor_range": 10,
+          "sensor_level": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "predictive_fire_control": {
+        "branch": "computers",
+        "tier": 4,
+        "name": "Predictive Fire Control",
+        "description": "+20 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.",
+        "effects": {
+          "targeting_accuracy": 20
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "subspace_scanners": {
+        "branch": "computers",
+        "tier": 5,
+        "name": "Subspace Scanners",
+        "description": "Detect fleets within 20 ly; reveal classes and movement direction. Unlock sensor arrays. Replaces earlier sensor range.",
+        "effects": {
+          "sensor_range": 20,
+          "sensor_level": 3
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "quantum_targeting": {
+        "branch": "computers",
+        "tier": 5,
+        "name": "Quantum Targeting",
+        "description": "+30 percentage points to weapon hit chance from targeting computers. Replaces earlier targeting bonuses.",
+        "effects": {
+          "targeting_accuracy": 30
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "gravitic_mapping": {
+        "branch": "computers",
+        "tier": 6,
+        "name": "Gravitic Mapping",
+        "description": "Reveal the names and locations of black holes. Approaching them remains fatal without Event Horizon Navigation.",
+        "effects": {
+          "black_hole_detection": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "planetary_data_vaults": {
+        "branch": "computers",
+        "tier": 6,
+        "name": "Planetary Data Vaults",
+        "description": "+2 research per colony.",
+        "effects": {
+          "colony_research": 2
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "event_horizon_navigation": {
+        "branch": "computers",
+        "tier": 7,
+        "name": "Event Horizon Navigation",
+        "description": "Reveal black holes and safely approach their ancient relic sites. A legendary guardian must be defeated to recover each relic. Includes Gravitic Mapping.",
+        "effects": {
+          "black_hole_detection": 1,
+          "black_hole_navigation": 1
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "quantum_research_archives": {
+        "branch": "computers",
+        "tier": 7,
+        "name": "Quantum Research Archives",
+        "description": "+4 research per colony.",
+        "effects": {
+          "colony_research": 4
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "destroyer_hulls": {
+        "branch": "starships",
+        "tier": 1,
+        "name": "Destroyer Hulls",
+        "description": "Unlock destroyers: agile torpedo warships. Build the standard class or create a custom design.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "modular_spaceframes": {
+        "branch": "starships",
+        "tier": 1,
+        "name": "Modular Spaceframes",
+        "description": "New ships cost 10% fewer Resources. Does not unlock destroyers.",
+        "effects": {
+          "ship_discount": 10
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "cruiser_hulls": {
+        "branch": "starships",
+        "tier": 2,
+        "name": "Cruiser Hulls",
+        "description": "Unlock cruisers: versatile warships with eight module spaces. Does not unlock skipped hull classes.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "deep_space_logistics": {
+        "branch": "starships",
+        "tier": 2,
+        "name": "Deep-Space Logistics",
+        "description": "+5 ly fuel range for your fleets. Does not unlock cruisers.",
+        "effects": {
+          "fuel_range": 5
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "battleship_hulls": {
+        "branch": "starships",
+        "tier": 3,
+        "name": "Battleship Hulls",
+        "description": "Unlock battleships: heavy gun platforms with twelve module spaces. Drone carriers are the alternative choice.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "drone_carriers": {
+        "branch": "starships",
+        "tier": 3,
+        "name": "Drone Carriers",
+        "description": "Unlock carrier hulls and drone bays. Each bay supports two active drones and four launches per battle. Battleships are the alternative choice.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "titan_hulls": {
+        "branch": "starships",
+        "tier": 4,
+        "name": "Titan Hulls",
+        "description": "Unlock titans: massive capital ships with eighteen module spaces. Does not unlock skipped hull classes.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "mass_ship_production": {
+        "branch": "starships",
+        "tier": 4,
+        "name": "Mass Ship Production",
+        "description": "New ships cost 20% fewer Resources. Does not unlock titans.",
+        "effects": {
+          "ship_discount": 20
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "pulse_beams": {
+        "branch": "physics",
+        "tier": 5,
+        "name": "Pulse Beams",
+        "description": "Unlock pulse cannons: two accurate 4-damage shots, range 6. Compact weapons for fighting small ships and drones.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "plasma_beams": {
+        "branch": "physics",
+        "tier": 5,
+        "name": "Plasma Beams",
+        "description": "Unlock plasma cannons: 24 damage, range 4. High close-range damage in two weapon spaces.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "ion_beams": {
+        "branch": "physics",
+        "tier": 6,
+        "name": "Ion Beams",
+        "description": "Unlock ion cannons: 8 hull damage or up to 32 shield damage, range 6. Extra shield damage does not spill into hull damage.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "graviton_beams": {
+        "branch": "physics",
+        "tier": 6,
+        "name": "Graviton Beams",
+        "description": "Unlock graviton beams: 16 damage, range 6. A hit slows the target by one cell through its next turn; does not stack or reduce movement below one.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "particle_beams": {
+        "branch": "physics",
+        "tier": 7,
+        "name": "Particle Beams",
+        "description": "Unlock particle lances: 20 damage, range 10, using three weapon spaces. Long-range fleet artillery.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "heavy_beam_mounts": {
+        "branch": "physics",
+        "tier": 7,
+        "name": "Heavy Beam Mounts",
+        "description": "Unlock heavy beam batteries: 30 damage, range 9, using four weapon spaces. Large mounts for capital ships.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "phased_beams": {
+        "branch": "physics",
+        "tier": 8,
+        "name": "Phased Beams",
+        "description": "Unlock phased beams: 16 damage, range 7. Half the damage bypasses ship shields. Hardened shields reduce this penetration.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "disruptor_beams": {
+        "branch": "physics",
+        "tier": 8,
+        "name": "Disruptor Beams",
+        "description": "Unlock disruptors: 40 damage, range 5, using three weapon spaces. Must recharge for one full combat turn after firing.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "fusion_torpedoes": {
+        "branch": "materials",
+        "tier": 3,
+        "name": "Fusion Torpedoes",
+        "description": "Unlock fusion launchers: 18 damage, range 9. Benefits from torpedo guidance; vulnerable to point defense.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "reinforced_armor": {
+        "branch": "materials",
+        "tier": 3,
+        "name": "Reinforced Armor",
+        "description": "Unlock reinforced armor plates: +14 hull in one defense space, with -1 tactical movement (minimum one).",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "mirv_torpedoes": {
+        "branch": "materials",
+        "tier": 4,
+        "name": "MIRV Torpedoes",
+        "description": "Unlock MIRV launchers: three 7-damage warheads, range 8. Each rolls separately and ignores half of enemy interception.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "antimatter_torpedoes": {
+        "branch": "materials",
+        "tier": 4,
+        "name": "Antimatter Torpedoes",
+        "description": "Unlock antimatter launchers: 36 damage, range 9. Must reload for one full combat turn; vulnerable to point defense.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "regenerative_shields": {
+        "branch": "fields",
+        "tier": 5,
+        "name": "Regenerative Shields",
+        "description": "Unlock regenerating shield modules: +8 capacity, restoring 2 shield points at the start of each ship's turn. Less capacity than ordinary shields.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "hardened_shields": {
+        "branch": "fields",
+        "tier": 5,
+        "name": "Hardened Shields",
+        "description": "Unlock hardened shield modules: +12 capacity. While shields remain, reduce phased penetration by 75%. Hardening does not stack.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "interceptor_drones": {
+        "branch": "starships",
+        "tier": 5,
+        "name": "Interceptor Drones",
+        "description": "Unlock interceptor bays for carriers: fast drones deal 8 damage to drones, 2 to other targets. Each nearby interceptor adds 20% fleet interception within two cells (maximum 40%). Requires a carrier hull.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "advanced_flak": {
+        "branch": "starships",
+        "tier": 5,
+        "name": "Advanced Flak Systems",
+        "description": "Unlock flak modules: 45% interception per module against torpedoes and drones, with a 75% shipboard cap. Fits any combat hull.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "bomber_drones": {
+        "branch": "starships",
+        "tier": 6,
+        "name": "Bomber Drones",
+        "description": "Unlock bomber bays for carriers: slower drones deal 5 damage, doubled against cruisers, larger ships, bases and guardians. Vulnerable to interception. Requires a carrier hull.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "automated_damage_control": {
+        "branch": "starships",
+        "tier": 6,
+        "name": "Automated Damage Control",
+        "description": "Unlock repair systems for any combat hull. Each repairs up to 3 hull at the start of a turn, with 12 hull of reserve per battle. Repairs only damage suffered in that battle.",
+        "effects": {},
+        "cost_override": 0,
+        "order": 0
+      },
+      "cryogenic_fuel_tanks": {
+        "branch": "materials",
+        "tier": 5,
+        "name": "Cryogenic Fuel Tanks",
+        "description": "+10 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not change travel speed.",
+        "effects": {
+          "fuel_range": 10
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "automated_refineries": {
+        "branch": "materials",
+        "tier": 5,
+        "name": "Automated Refineries",
+        "description": "+3 Resources per operational mining complex, regardless of mineral richness.",
+        "effects": {
+          "mine_resources": 3
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "antimatter_fuel_tanks": {
+        "branch": "materials",
+        "tier": 6,
+        "name": "Antimatter Fuel Tanks",
+        "description": "+15 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require Cryogenic Fuel Tanks.",
+        "effects": {
+          "fuel_range": 15
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "molecular_shipbuilding": {
+        "branch": "materials",
+        "tier": 6,
+        "name": "Molecular Shipbuilding",
+        "description": "New ship orders cost 15% fewer Resources. Already placed orders keep their price.",
+        "effects": {
+          "ship_discount": 15
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "spatial_compression_tanks": {
+        "branch": "materials",
+        "tier": 7,
+        "name": "Spatial-Compression Tanks",
+        "description": "+20 ly fleet range from every owned colony. Automatically upgrades all ships; stacks with other tank research. Does not require earlier tank choices.",
+        "effects": {
+          "fuel_range": 20
+        },
+        "cost_override": 0,
+        "order": 0
+      },
+      "nanostructured_materials": {
+        "branch": "materials",
+        "tier": 7,
+        "name": "Nanostructured Materials",
+        "description": "+4 industry per colony, without additional workers or power consumption.",
+        "effects": {
+          "colony_industry": 4
+        },
+        "cost_override": 0,
+        "order": 0
+      }
+    },
+    "branches": {
+      "construction": {
+        "name": "Construction",
+        "description": "Build productive colonies and efficient shipyards."
+      },
+      "power": {
+        "name": "Power & Propulsion",
+        "description": "Choose faster voyages or stronger planetary power grids."
+      },
+      "physics": {
+        "name": "Physics",
+        "description": "Advance research instruments and beam weapons."
+      },
+      "fields": {
+        "name": "Force Fields",
+        "description": "Protect settlements and work in hostile environments."
+      },
+      "materials": {
+        "name": "Materials & Chemistry",
+        "description": "Improve extraction, fuel tanks and construction materials."
+      },
+      "biology": {
+        "name": "Biology",
+        "description": "Support larger expeditions and more prosperous colonies."
+      },
+      "computers": {
+        "name": "Computers",
+        "description": "Connect laboratories, automate industry and optimize trade."
+      },
+      "society": {
+        "name": "Society",
+        "description": "Strengthen administration, commerce and cooperation."
+      },
+      "starships": {
+        "name": "Starship Engineering",
+        "description": "Research new hull classes or specialize fleet production and range."
+      }
+    },
+    "guardians": {
+      "space_serpent": {
+        "name": "Space Serpent",
+        "hull": 48,
+        "movement": 4,
+        "weapon": "plasma_breath",
+        "color": [
+          109,
+          235,
+          161
+        ],
+        "reward": "Huge Gaia world",
+        "research_reward": 0
+      },
+      "crystal_guardian": {
+        "name": "Crystal Guardian",
+        "hull": 80,
+        "movement": 1,
+        "weapon": "crystal_ray",
+        "color": [
+          111,
+          208,
+          255
+        ],
+        "reward": "Large ultra-rich world",
+        "research_reward": 0
+      },
+      "ancient_sentinel": {
+        "name": "Ancient Sentinel",
+        "hull": 96,
+        "movement": 2,
+        "weapon": "ancient_lance",
+        "color": [
+          255,
+          198,
+          104
+        ],
+        "reward": "Ancient ruins + 120 RP",
+        "research_reward": 120
+      },
+      "void_leviathan": {
+        "name": "Void Leviathan",
+        "hull": 140,
+        "movement": 3,
+        "weapon": "void_ray",
+        "color": [
+          196,
+          143,
+          255
+        ],
+        "reward": "Three exceptional worlds",
+        "research_reward": 0
+      },
+      "ashen_leviathan": {
+        "name": "Ashen Leviathan",
+        "hull": 280,
+        "movement": 3,
+        "weapon": "plasma",
+        "color": [
+          255,
+          194,
+          113
+        ],
+        "reward": "Unique legendary relic",
+        "research_reward": 0
+      },
+      "horizon_warden": {
+        "name": "Horizon Warden",
+        "hull": 260,
+        "movement": 2,
+        "weapon": "graviton",
+        "color": [
+          201,
+          178,
+          255
+        ],
+        "reward": "Unique legendary relic",
+        "research_reward": 0
+      },
+      "crown_sentinel": {
+        "name": "Crown Sentinel",
+        "hull": 320,
+        "movement": 2,
+        "weapon": "heavy_beam",
+        "color": [
+          236,
+          207,
+          151
+        ],
+        "reward": "Unique legendary relic",
+        "research_reward": 0
+      }
+    },
+    "personalities": {
+      "terran": {
+        "traits": "Open \u00b7 Pragmatic \u00b7 Ambitious",
+        "summary": "Welcome exchange and new frontiers. Rebuild trust readily, but may challenge a weaker, unfriendly neighbour.",
+        "greeting": "We crossed the dark wondering who we would find. May this meeting open a better future for both our peoples.",
+        "envoy": 2,
+        "gift": 1,
+        "breach": 15,
+        "forgiveness": 4,
+        "fleet_bonus": 0,
+        "military_turn": 12,
+        "conquest_ratio": 180,
+        "protective": false
+      },
+      "kharuun": {
+        "traits": "Practical \u00b7 Honourable \u00b7 Reserved",
+        "summary": "Value reliable exchange and lasting agreements. Trust grows through deeds; broken promises are slow to heal.",
+        "greeting": "Fine words are easily shaped. Let us see whether your promises endure.",
+        "envoy": 0,
+        "gift": 0,
+        "breach": 15,
+        "forgiveness": 12,
+        "fleet_bonus": 0,
+        "military_turn": 12,
+        "conquest_ratio": 0,
+        "protective": false
+      },
+      "aelari": {
+        "traits": "Curious \u00b7 Cooperative \u00b7 Cautious",
+        "summary": "Seek shared discoveries and research partners. Prefer peaceful development and defend their own worlds.",
+        "greeting": "A new voice in the cosmos. What might we learn from one another?",
+        "envoy": 3,
+        "gift": -2,
+        "breach": 15,
+        "forgiveness": 5,
+        "fleet_bonus": 0,
+        "military_turn": 12,
+        "conquest_ratio": 0,
+        "protective": true
+      },
+      "lithar": {
+        "traits": "Patient \u00b7 Territorial \u00b7 Steadfast",
+        "summary": "Build strong defences and seldom begin wars. Their worlds are enduring commitments, and their grudges endure too.",
+        "greeting": "We have endured the passing of suns. Tread gently upon our worlds, and we shall endure beside you.",
+        "envoy": -2,
+        "gift": -3,
+        "breach": 25,
+        "forgiveness": 20,
+        "fleet_bonus": 0,
+        "military_turn": 12,
+        "conquest_ratio": 0,
+        "protective": true
+      },
+      "varkesh": {
+        "traits": "Brutal \u00b7 Predatory \u00b7 Intimidating",
+        "summary": "Strike at weak colonies for slaves and plunder. Respect strength; active agreements stay their raiding fleets.",
+        "greeting": "We are the Varkesh. Your wealth will fill our vaults. Your people will fill our slave holds. Resist, and your worlds will burn.",
+        "envoy": -3,
+        "gift": 3,
+        "breach": 10,
+        "forgiveness": 6,
+        "fleet_bonus": 2,
+        "military_turn": 6,
+        "conquest_ratio": 0,
+        "protective": false
+      },
+      "wanderers": {
+        "traits": "Friendly \u00b7 Independent \u00b7 Adventurous",
+        "summary": "Welcome travellers and trade. Prefer exploration and quick reconciliation to prolonged territorial wars.",
+        "greeting": "Another light along the road. May our paths cross in friendship, and our horizons remain open.",
+        "envoy": 2,
+        "gift": 2,
+        "breach": 15,
+        "forgiveness": 3,
+        "fleet_bonus": 0,
+        "military_turn": 12,
+        "conquest_ratio": 0,
+        "protective": false
+      },
+      "xenonflora": {
+        "traits": "Protective \u00b7 Communal \u00b7 Watchful",
+        "summary": "Guard their living communities with shields and fortifications. Trust grows slowly after harm or betrayal.",
+        "greeting": "We hear your voice beyond the roots. Do you come to nurture, or to consume?",
+        "envoy": -1,
+        "gift": -2,
+        "breach": 25,
+        "forgiveness": 15,
+        "fleet_bonus": 1,
+        "military_turn": 12,
+        "conquest_ratio": 0,
+        "protective": true
+      },
+      "nexus": {
+        "traits": "Calculating \u00b7 Unemotional \u00b7 Methodical",
+        "summary": "Evaluate exchange through practical benefit. May expand by force against an unfriendly neighbour when the odds favour success.",
+        "greeting": "Independent intelligence confirmed. Mutually beneficial exchange is possible. State your priorities.",
+        "envoy": -2,
+        "gift": 2,
+        "breach": 15,
+        "forgiveness": 8,
+        "fleet_bonus": 1,
+        "military_turn": 12,
+        "conquest_ratio": 160,
+        "protective": false
+      },
+      "aetheri": {
+        "traits": "Mysterious \u00b7 Contemplative \u00b7 Detached",
+        "summary": "Value patient dialogue and knowledge over material gifts. Avoid conquest and invest in protective fields.",
+        "greeting": "Another voice reaches us across the silence. We are listening.",
+        "envoy": 1,
+        "gift": -5,
+        "breach": 15,
+        "forgiveness": 10,
+        "fleet_bonus": 0,
+        "military_turn": 12,
+        "conquest_ratio": 0,
+        "protective": true
+      },
+      "concord": {
+        "traits": "Assimilating \u00b7 Relentless \u00b7 Collective",
+        "summary": "One will seeks to absorb every independent civilization. Build invasion fleets early; agreements postpone assimilation.",
+        "greeting": "We are the Concord. Your separation is temporary. Your knowledge, your worlds, your voices will become ours.",
+        "envoy": -6,
+        "gift": -10,
+        "breach": 20,
+        "forgiveness": 0,
+        "fleet_bonus": 3,
+        "military_turn": 6,
+        "conquest_ratio": 120,
+        "protective": false
+      },
+      "remnant": {
+        "traits": "Proud \u00b7 Secretive \u00b7 Possessive",
+        "summary": "Guard lost knowledge and ancient claims. Slow to forgive, and willing to confront a weaker, unfriendly neighbour.",
+        "greeting": "You name these stars as though they have never belonged to anyone. We remember otherwise.",
+        "envoy": -2,
+        "gift": -4,
+        "breach": 25,
+        "forgiveness": 20,
+        "fleet_bonus": 1,
+        "military_turn": 12,
+        "conquest_ratio": 150,
+        "protective": true
+      }
+    },
+    "projects": {
+      "ascension_gate": {
+        "name": "Ascension Gate",
+        "resource_cost": 500,
+        "work_cost": 300,
+        "maintenance": 5
+      }
+    },
+    "world_sizes": {
+      "Tiny": {
+        "building_slots": 4,
+        "population_limit": 8
+      },
+      "Small": {
+        "building_slots": 6,
+        "population_limit": 12
+      },
+      "Medium": {
+        "building_slots": 8,
+        "population_limit": 16
+      },
+      "Large": {
+        "building_slots": 10,
+        "population_limit": 20
+      },
+      "Huge": {
+        "building_slots": 12,
+        "population_limit": 24
+      }
+    },
+    "biomes": {
+      "Terran": {
+        "base_food": 6,
+        "farmer_output": 2,
+        "habitability": 100
+      },
+      "Ocean": {
+        "base_food": 4,
+        "farmer_output": 2,
+        "habitability": 80
+      },
+      "Desert": {
+        "base_food": 0,
+        "farmer_output": 2,
+        "habitability": 40
+      },
+      "Tundra": {
+        "base_food": 0,
+        "farmer_output": 2,
+        "habitability": 35
+      },
+      "Barren": {
+        "base_food": 0,
+        "farmer_output": 1,
+        "habitability": 0
+      },
+      "Volcanic": {
+        "base_food": 0,
+        "farmer_output": 1,
+        "habitability": 0
+      },
+      "Gaia": {
+        "base_food": 12,
+        "farmer_output": 3,
+        "habitability": 100
+      }
+    },
+    "galaxy_sizes": {
+      "Compact": {
+        "star_count": 24
+      },
+      "Standard": {
+        "star_count": 48
+      },
+      "Expansive": {
+        "star_count": 72
+      }
+    },
+    "minerals": {
+      "Poor": {
+        "multiplier": 0.5
+      },
+      "Average": {
+        "multiplier": 1.0
+      },
+      "Rich": {
+        "multiplier": 1.5
+      },
+      "Ultra-rich": {
+        "multiplier": 3.0
+      }
+    },
+    "rules": {
+      "economy": {
+        "STARTING_CREDITS": 120,
+        "STARTING_RESOURCES": 120,
+        "STARTING_POPULATION": 8,
+        "BASE_EXTRACTION": 2,
+        "MINER_RESOURCES": 2,
+        "BASE_ENERGY": 12,
+        "GATE_ENERGY": 10
+      },
+      "production": {
+        "SHIP_SPEED": 0.02,
+        "BASE_FUEL_RANGE": 7,
+        "STARTING_COLONISTS": 1,
+        "REPAIR_PER_TURN": 4,
+        "TROOP_STRENGTH": 8,
+        "GATE_CHARGE_TURNS": 5,
+        "TRADE_GOODS_PERCENT": 30
+      },
+      "population": {
+        "GROWTH_THRESHOLD": 100,
+        "GROWTH_LIMIT": 25,
+        "GAIA_GROWTH_LIMIT": 35,
+        "GROWTH_PER_FOOD": 5,
+        "ASSEMBLY_GROWTH_LIMIT": 25,
+        "GROWTH_PER_INDUSTRY": 5,
+        "GAIA_CAPACITY": 4
+      },
+      "workers": {
+        "WORKER_INDUSTRY": 1,
+        "SCIENTIST_RESEARCH": 2,
+        "POPULATION_INCOME": 1
+      },
+      "defenses": {
+        "BASE_HULL": 40,
+        "SHIELD_CAPACITY": 100,
+        "SHIELD_RECOVERY": 25,
+        "BASE_RECOVERY": 4
+      },
+      "diplomacy": {
+        "ENVOY_COST": 10,
+        "ENVOY_RELATIONS": 8,
+        "ENVOY_COOLDOWN": 3,
+        "GIFT_COST": 50,
+        "GIFT_RELATIONS": 15,
+        "GIFT_COOLDOWN": 5,
+        "OFFER_COOLDOWN": 3,
+        "TRADE_INCOME": 5,
+        "RESEARCH_INCOME": 3,
+        "BREAK_PENALTY": 15
+      },
+      "tomb_worlds": {
+        "TOMB_CHANCE": 10,
+        "AWAKENING_CHANCE": 200,
+        "AWAKENED_TROOPS": 16,
+        "AWAKENED_POPULATION": 2
+      },
+      "raiding": {
+        "SLAVE_CAPACITY": 100,
+        "MORTALITY_CHANCE": 20,
+        "CREDITS_PER_POPULATION": 10
+      },
+      "council": {
+        "ELECTION_INTERVAL": 50
+      },
+      "combat": {
+        "DRONE_HULL": 6,
+        "DRONES_PER_BAY": 2,
+        "LAUNCHES_PER_BAY": 4
+      },
+      "navigation": {
+        "GATE_SPEED_BONUS": 50,
+        "INTERDICTION_SLOW": 25,
+        "INTERDICTION_RANGE": 5
+      },
+      "sensors": {
+        "ARRAY_RANGE": 5,
+        "CONTACT_LIFETIME": 20
+      },
+      "galaxy": {
+        "MIN_STAR_DISTANCE": 6
+      }
+    },
+    "research_costs": {
+      "1": {
+        "cost": 160
+      },
+      "2": {
+        "cost": 400
+      },
+      "3": {
+        "cost": 480
+      },
+      "4": {
+        "cost": 880
+      },
+      "5": {
+        "cost": 1440
+      },
+      "6": {
+        "cost": 2160
+      },
+      "7": {
+        "cost": 3040
+      },
+      "8": {
+        "cost": 4160
+      },
+      "ascension": {
+        "cost": 20000
+      }
+    },
+    "drones": {
+      "assault": {
+        "name": "Assault drone",
+        "weapon": "drone_beam",
+        "movement": 5
+      },
+      "interceptor": {
+        "name": "Interceptor",
+        "weapon": "interceptor_pulse",
+        "movement": 6
+      },
+      "bomber": {
+        "name": "Bomber",
+        "weapon": "bomber_torpedo",
+        "movement": 3
+      }
+    }
+  }
+}

@@ -28,6 +28,10 @@ from scenarios import place_near, use_nearby_system
 
 
 class FuelRulesTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self)
+
     def test_ten_light_years_take_five_turns_and_propulsion_only_changes_speed(self):
         origin = SimpleNamespace(id=0, x=.2, y=.4)
         target = SimpleNamespace(id=1, x=.2+10/140, y=.4)
@@ -88,8 +92,9 @@ class FuelRulesTests(unittest.TestCase):
         game.choose_research("lightweight_alloys")
         self.assertEqual(game.fuel_range(), 17)
         self.assertTrue(game.within_fuel_range(1))
-        self.assertEqual(game.technology.status("deep_core_drills"), "excluded")
-        game.choose_research("composite_structures")
+        self.assertEqual(game.technology.status("superconductors"), "excluded")
+        from scenarios import research_to
+        research_to(game, "composite_structures")
         self.assertEqual(game.fuel_range(), 32)
         self.assertEqual(game.fuel_range(RIVAL), 7)
         self.assertEqual(game.bonuses_for(PLAYER).get("ship_speed", 0), 0)

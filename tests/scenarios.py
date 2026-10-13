@@ -32,6 +32,34 @@ def fixed_start_game(*args, **kwargs):
 new_game = fixed_start_game
 
 
+def research_to(game, *identifiers, owner='player'):
+    """Fund the requested choices and any missing earlier tiers in the active tree."""
+    from orion.research import TECHNOLOGIES, choices
+    state = game.research_state(owner)
+    picks = {(TECHNOLOGIES[t].branch, TECHNOLOGIES[t].tier): t
+             for t in identifiers if t != 'ascension_theory'}
+    for branch in dict.fromkeys(b for b, _ in picks):
+        for tier in range(1, max(t for b, t in picks if b == branch)+1):
+            selected = picks.get((branch, tier), choices(branch, tier)[0].id)
+            if tier in state.completed_tiers(branch):
+                if (branch, tier) in picks and selected not in state.completed:
+                    raise AssertionError('Conflicting requested discoveries')
+                continue
+            game._empire(owner).research += TECHNOLOGIES[selected].cost
+            game.choose_research(selected, owner=owner)
+    if 'ascension_theory' in identifiers:
+        game._empire(owner).research += TECHNOLOGIES['ascension_theory'].cost
+        game.choose_research('ascension_theory', owner=owner)
+
+
+def use_research_layout(test_case, *, legacy=False):
+    """Research fixtures explicitly choose their era and restore the prior profile."""
+    from orion import balance
+    previous = balance.active_profile()
+    balance.activate(balance.legacy_profile() if legacy else balance.default_profile())
+    test_case.addCleanup(lambda: balance.activate(previous))
+
+
 def set_idle_trade_goods(game):
     """Choose ongoing production in UI scenarios testing other turn reminders."""
     if not game.strategy_error("player"):

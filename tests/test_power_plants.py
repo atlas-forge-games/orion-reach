@@ -23,9 +23,8 @@ def campaign(**kwargs):
 
 
 def unlock(game, *identifiers):
-    for identifier in identifiers:
-        game.research += TECHNOLOGIES[identifier].cost
-        game.choose_research(identifier)
+    from scenarios import research_to
+    research_to(game, *identifiers)
 
 
 class PowerDispatchTests(unittest.TestCase):

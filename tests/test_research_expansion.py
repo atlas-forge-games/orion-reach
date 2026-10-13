@@ -63,6 +63,7 @@ class ExpansionResearchTests(unittest.TestCase):
             if technology.tier > 2:
                 self.assertEqual(game.technology.status(technology.id), "locked")
         discover(game, "deep_space_radar")
+        discover(game, "distributed_computing")
         self.assertEqual(game.technology.status("long_range_sensors"), "available")
         self.assertEqual(game.technology.status("predictive_fire_control"), "available")
         self.assertEqual(game.technology.status("subspace_scanners"), "locked")
@@ -159,6 +160,7 @@ class SiegeTests(unittest.TestCase):
 
     def test_siege_research_improves_standard_bombardment_and_custom_cannons(self):
         self.assertEqual(defenses.bombardment_power(self.game, self.system.id), 5)
+        discover(self.game, "planetary_observatories")
         discover(self.game, "siege_weapons")
         self.assertEqual(defenses.bombardment_power(self.game, self.system.id), 10)
         cannon = ShipDesign("design_1", "Siege frigate", "frigate", ("siege",))
@@ -563,13 +565,13 @@ class ExpansionInterfaceTests(unittest.TestCase):
     def test_tiers_are_reachable_and_active_research_opens_correct_tier(self):
         app = self.app
         app.select_research_branch("computers")
-        app.select_research_tier(3)
+        app.select_research_tier(TECHNOLOGIES["deep_space_radar"].tier)
         buttons = self.render("research")
         self.assertIn("research_choose_deep_space_radar", buttons)
         self.assertEqual(sum(key.startswith("research_choose_") for key in buttons), 2)
         self.assertNotIn("research_projects", buttons)
         app.change_research_tier(1)
-        self.assertEqual(app.research_tier, 4)
+        self.assertEqual(app.research_tier, TECHNOLOGIES["deep_space_radar"].tier+1)
         discover(app.game, "predictive_fire_control")
         app.game.choose_research("quantum_targeting")
         app.go("galaxy")

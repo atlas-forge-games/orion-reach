@@ -86,6 +86,12 @@ def cycle(game):
 
 
 class ArsenalResearchTests(unittest.TestCase):
+    def setUp(self):
+        from orion import balance
+        previous = balance.active_profile()
+        balance.activate(balance.default_profile())
+        self.addCleanup(lambda: balance.activate(previous))
+
     def test_all_new_equipment_has_research_gates_and_can_be_built(self):
         self.assertEqual(len(ARSENAL_TECHNOLOGIES), 18)
         for name, module in MODULES.items():
@@ -117,15 +123,15 @@ class ArsenalResearchTests(unittest.TestCase):
 
     def test_new_branch_switch_transfers_rp_and_preserves_exclusivity(self):
         game = campaign()
-        discover(game, ["ion_beams"])
+        discover(game, ["graviton_beams"])
         game.research = 200
         game.choose_research("particle_beams")
-        game.choose_research("heavy_beam_mounts")
+        game.choose_research("phased_beams")
         self.assertEqual(game.technology.progress, 200)
-        game.research = TECHNOLOGIES["heavy_beam_mounts"].cost-200
+        game.research = TECHNOLOGIES["phased_beams"].cost-200
         game.advance_research()
         self.assertEqual(game.technology.status("particle_beams"), "excluded")
-        self.assertIsNone(game.research_error("phased_beams"))
+        self.assertIsNone(game.research_error("heavy_beam_mounts"))
         self.assertEqual(round_trip(game), game)
 
 
@@ -335,6 +341,10 @@ class ArsenalDroneTests(unittest.TestCase):
 
 class ArsenalSaveAndAITests(unittest.TestCase):
     def test_authentic_v30_campaigns_keep_projects_battles_and_science_goals(self):
+        from orion import balance
+        previous = balance.active_profile()
+        balance.activate(balance.legacy_profile())
+        self.addCleanup(lambda: balance.activate(previous))
         path = Path(__file__).parent/"fixtures/v0412_arsenal_saves.json"
         source = path.read_bytes(); fixtures = json.loads(source)
         for name, data in fixtures["cases"].items():

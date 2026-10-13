@@ -30,9 +30,8 @@ def campaign():
 
 
 def research(game, *identifiers, owner=PLAYER):
-    for identifier in identifiers:
-        game._empire(owner).research += TECHNOLOGIES[identifier].cost
-        game.choose_research(identifier, owner=owner)
+    from scenarios import research_to
+    research_to(game, *identifiers, owner=owner)
 
 
 def carrier_battle(*, enemy="frigate", custom=False, two=False):
@@ -49,6 +48,10 @@ def carrier_battle(*, enemy="frigate", custom=False, two=False):
 
 
 class HullResearchTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self)
+
     def test_named_research_gates_custom_and_standard_construction_for_both_empires(self):
         for owner in (PLAYER, RIVAL):
             game = campaign()
@@ -64,7 +67,7 @@ class HullResearchTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuleError, "Requires"):
                         game.queue_ship(sid.id, planet.id, planned.id)
                 self.assertEqual(game.to_dict(), before)
-            research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "titan_hulls", owner=owner)
+            research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "mass_ship_production", "titan_hulls", owner=owner)
             for kind in ("destroyer", "cruiser", "carrier", "titan"):
                 game.queue_ship(sid.id, planet.id, kind, owner=owner)
                 if owner == PLAYER:
@@ -74,7 +77,7 @@ class HullResearchTests(unittest.TestCase):
 
     def test_skipped_hulls_stay_locked_even_after_later_research(self):
         game = campaign()
-        research(game, "modular_spaceframes", "deep_space_logistics", "battleship_hulls", "titan_hulls")
+        research(game, "modular_spaceframes", "deep_space_logistics", "advanced_flak", "battleship_hulls", "titan_hulls")
         self.assertTrue(game.technology.hull_unlocked("battleship"))
         self.assertTrue(game.technology.hull_unlocked("titan"))
         for kind in ("destroyer", "cruiser", "carrier"):
@@ -103,7 +106,7 @@ class HullResearchTests(unittest.TestCase):
                 research(game, choices(branch, tier)[0].id)
         self.assertEqual(game.technology.finished_branches, 8)
         self.assertIsNotNone(game.research_error("ascension_theory"))
-        research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "titan_hulls",
+        research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "battleship_hulls",
                  "interceptor_drones", "bomber_drones", "ascension_theory")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
@@ -307,6 +310,8 @@ class CarrierCombatTests(unittest.TestCase):
 
 class LegacyHullTests(unittest.TestCase):
     def test_authentic_v28_saves_keep_hulls_queues_and_science_goal(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
         fixtures = list((Path(__file__).parent/"fixtures").glob("v0381_*_v28.json"))
         self.assertEqual(len(fixtures), 2)
         for path in fixtures:

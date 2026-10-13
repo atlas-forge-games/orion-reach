@@ -39,6 +39,12 @@ def fund(game, *identifiers):
 
 
 class TierRulesTests(unittest.TestCase):
+    def setUp(self):
+        from orion import balance
+        previous = balance.active_profile()
+        balance.activate(balance.default_profile())
+        self.addCleanup(lambda: balance.activate(previous))
+
     def test_every_path_has_two_choices_per_tier_and_no_dead_ends(self):
         self.assertLessEqual(set(LEGACY_TECHNOLOGIES), set(TECHNOLOGIES))
         self.assertEqual([len(branch_tiers(b)) for b in BRANCHES], [3, 4, 8, 5, 7, 2, 7, 2, 6])
@@ -67,9 +73,9 @@ class TierRulesTests(unittest.TestCase):
              "planetary_shielding", "planetary_shield", "shield_capacity", 200),
             (("radiation_shields", "thermal_barriers", "planetary_shielding", "subspace_interdiction"),
              "gravity_wells", "interdictor", "interdiction_slow", 40),
-            (("research_networks", "distributed_computing", "targeting_computers", "long_range_sensors"),
+            (("research_networks", "targeting_computers", "distributed_computing", "long_range_sensors"),
              "deep_space_radar", "sensor_array", "sensor_range", 10),
-            (("research_networks", "distributed_computing", "targeting_computers", "predictive_fire_control", "subspace_scanners"),
+            (("research_networks", "targeting_computers", "distributed_computing", "predictive_fire_control", "subspace_scanners"),
              "deep_space_radar", "sensor_array", "sensor_range", 20),
         )
         for path, earlier, building, bonus, expected in cases:
@@ -94,7 +100,7 @@ class TierRulesTests(unittest.TestCase):
             (("targeting_computers", "predictive_fire_control", "quantum_targeting"), 30),
         ):
             state = ResearchState()
-            for identifier in ("research_networks", "distributed_computing", *path):
+            for identifier in ("research_networks", path[0], "distributed_computing", *path[1:]):
                 complete(state, identifier)
             self.assertEqual(state.bonuses["accuracy"], expected)
         state = ResearchState()
@@ -119,6 +125,10 @@ class TierRulesTests(unittest.TestCase):
 
 class LegacyResearchTests(unittest.TestCase):
     def setUp(self):
+        from orion import balance
+        previous = balance.active_profile()
+        balance.activate(balance.legacy_profile())
+        self.addCleanup(lambda: balance.activate(previous))
         self.cases = json.loads((FIXTURES/"v0361_research_states.json").read_text())
 
     def test_authentic_save_keeps_discoveries_conflicting_choices_project_and_gate(self):

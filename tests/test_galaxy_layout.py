@@ -27,7 +27,8 @@ class RectangularGalaxyTests(unittest.TestCase):
             game.research += sum(TECHNOLOGIES[t].cost for t in ("lightweight_alloys", "composite_structures"))
             game.choose_research("lightweight_alloys")
             self.assertEqual(game.fuel_range(), (old_range/5+10)*multiplier)
-            game.choose_research("composite_structures")
+            from scenarios import research_to
+            research_to(game, "composite_structures")
             self.assertEqual(game.fuel_range(), (old_range/5+25)*multiplier)
 
     def test_starting_empires_do_not_relocate_or_terraform_surrounding_systems(self):
@@ -75,7 +76,8 @@ class RectangularGalaxyTests(unittest.TestCase):
             self.assertIn("lightweight_alloys", game.research_state(owner).completed)
         game.research += sum(TECHNOLOGIES[t].cost for t in ("lightweight_alloys", "composite_structures"))
         game.choose_research("lightweight_alloys")
-        game.choose_research("composite_structures")
+        from scenarios import research_to
+        research_to(game, "composite_structures")
         target = next(s for s in game.systems[1:] if game.within_fuel_range(s.id))
         game.send_ship(1, target.id)
         game.advance_turn()

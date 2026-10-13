@@ -201,7 +201,7 @@ class HullModuleTests(unittest.TestCase):
             self.assertEqual(doc.entry('modules','graviton')['damage'],19)
             self.assertEqual(doc.entry('hulls','frigate')['offensive_slots'],4)
             doc.save()
-            self.assertEqual(json.loads(path.read_text())['version'],2)
+            self.assertEqual(json.loads(path.read_text())['version'],balance.VERSION)
 
 
 class ProductionLayoutTests(unittest.TestCase):
