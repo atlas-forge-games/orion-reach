@@ -48,11 +48,12 @@ def draw_system(app):
     live = game.system_visible(system.id)
     app.chrome("SYSTEM OVERVIEW")
     app.button("system_back", "←  Galaxy map", (64, 124, 205, 48), lambda: app.go("galaxy"), "ghost")
-    text(surface, f"GALAXY  /  {system.name.upper()}", (300, 143), 11, MUTED, "mono", 1)
+    text(surface, shorten(f"GALAXY / {system.name.upper()}", 240, 11, "mono"), (300, 143), 11, MUTED, "mono", 1)
     text(surface, f"YEAR {game.year}   ·   {game.credits:,} CR   ·   {game.research:,} RP", (1376, 140), 13, GOLD, "mono", right=True)
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets", (67, 260), 16, MUTED)
+    app.button("system_megastructures", "Megastructures", (570, 124, 224, 48), lambda: app.go("megastructure"))
     ships, rivals = len(game.fleet_at(system.id)), len(game.foreign_fleet(system.id)) if live else 0
     guardian_status = monsters.known_status(game, system.id)
     guardian = monsters.at(game, system.id) if guardian_status else None
@@ -84,6 +85,11 @@ def draw_system(app):
     if system.worlds:
         pg.draw.line(surface, LINE, (287, 420), (1325, 420), 1)
     draw_star(surface, (224, 434), 45, STAR_COLORS[system.kind])
+    if system.megastructure and system.megastructure.kind == "dyson_sphere":
+        from .megastructure_view import draw_art
+        m = system.megastructure
+        draw_art(surface, m.kind, (108, 343, 232, 181), stage=m.stage,
+                 progress=m.progress/m.stage_work if m.stage_work else 0)
     text(surface, system.name.upper(), (191, 528), 13, GOLD, "mono", 1)
     text(surface, "PRIMARY STAR", (171, 555), 10, FAINT, "mono", 1)
 
@@ -134,6 +140,9 @@ def draw_system(app):
         text(surface, label, (x+21, 663), 10, MUTED, "mono", 1)
         text(surface, value, (x+20, 688), 29, CYAN if i==2 else INK)
         text(surface, caption, (x+21, 735), 11, MUTED)
+    if system.megastructure:
+        from .megastructure_view import draw_ribbon
+        draw_ribbon(app, system, live)
     hint = "Click a planet to survey it. Colony and fleet colors identify each empire." if system.worlds else "Use Previous / Next to survey another system."
     if not live:
         hint = "Stored survey. Send a ship to refresh colony ownership, population and activity."

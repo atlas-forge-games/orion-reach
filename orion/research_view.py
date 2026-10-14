@@ -256,6 +256,10 @@ def draw_technology_info(app, identifier):
     cost = state.project_cost if status == "active" else technology.cost
     alternative = next((t for t in choices(technology.branch, technology.tier) if t.id != identifier), None)
     notes = []
+    from .megastructures import MEGASTRUCTURES
+    for spec in MEGASTRUCTURES.values():
+        if technology.branch == spec.branch and technology.tier == spec.tier:
+            notes.append(f"Either choice in this tier unlocks the {spec.name} system project.")
     if identifier == "ascension_theory" and "science" not in game.victory_conditions:
         notes.append("Science victory was disabled in galaxy setup. Ascension Theory and the gate are unavailable in this campaign.")
     elif status == "available":
@@ -273,7 +277,7 @@ def draw_technology_info(app, identifier):
     else:
         notes.append(state.choice_error(identifier))
     if alternative and status in ("active", "available", "locked"):
-        notes.append(f"Discovering this technology permanently excludes {alternative.name} at this tier.")
+        notes.append(f"Choosing this technology excludes normal research of {alternative.name}. A Research Array may later recover it.")
     name = BRANCHES[technology.branch].name if technology.branch in BRANCHES else "Ascension"
     tier = "FINALE" if technology.branch == "ascension" else f"TIER {TIER_NAMES[technology.tier-1]}"
     description_height = 26*len(wrapped_lines(technology.description, 784, 17))

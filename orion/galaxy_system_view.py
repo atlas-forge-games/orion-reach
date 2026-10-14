@@ -135,6 +135,9 @@ def draw_system_panel(app, star):
         scan = f"Missile bases: {own_bases} yours · {enemy_bases} opposing"
     if game.is_observer:
         scan = f"{rivals} ships in orbit · {enemy_bases} missile bases · Read only"
+    if known.megastructure and not (own_bases or enemy_bases):
+        m = known.megastructure
+        scan = f"{m.spec.name} · stage {m.stage}/4"+(" · last seen" if not live else "")
     opponents = game.opponents_at(star.id) if live else []
     can_face = live and (ships or own_bases) and (rivals or enemy_bases or guardian_status == "alive")
     target = app.rival_id if app.rival_id in opponents else opponents[0] if opponents else None

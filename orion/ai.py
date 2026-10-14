@@ -425,6 +425,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     if game.result is not None:
         return invasions
     research_choice(game, owner)
+    from .megastructures import ai_orders as megastructure_orders
+    megastructure_orders(game, owner)
     scouting_orders(game, owner)
     military_orders(game, monsters.ai_orders(game, owner), owner)
     for ship in sorted(game.ships_owned_by(owner), key=lambda s: s.id):

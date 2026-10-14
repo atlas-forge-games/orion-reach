@@ -46,8 +46,8 @@ def draw_empire(app):
         ("FOOD / CONSUMED", f"{summary.food_produced} / {summary.food_consumed}",
          f"{summary.food_shortages} shortages · supplies local", RED if summary.food_shortages else CYAN),
         ("RESOURCES", f"{game.resources:,} RES", f"{summary.resources:+} / turn · net", GOLD),
-        ("LOCAL ENERGY", f"{summary.energy_generated}/{summary.energy_demand}",
-         f"{summary.energy_shortages} shortages · local", RED if summary.energy_shortages else CYAN),
+        ("ENERGY", "∞" if game.bonuses_for().get("unlimited_energy") else f"{summary.energy_generated}/{summary.energy_demand}",
+         "Dyson grid · empire-wide" if game.bonuses_for().get("unlimited_energy") else f"{summary.energy_shortages} shortages · local", RED if summary.energy_shortages else CYAN),
     ]
     for i, (label, value, caption, color) in enumerate(stats):
         x = 64+i*166

@@ -131,6 +131,26 @@ refitted in the designer; existing ships and orders keep their original fit.
 
 ## Profiles and campaigns
 
+### Megastructures (v0.60)
+
+The **Megastructures** catalog contains the four system projects. Edit their
+names, descriptions, research branch/tier, stage-one resource and work costs,
+hull per section, finite energy per stage, ship speed multiplier increment,
+resource output per stage and discovery percentage per stage. Stage costs are
+multiplied by 1, 2, 3 and 4; total construction costs are ten times stage one.
+
+The completed Dyson Sphere's unlimited energy is a fixed rule. Its numeric
+energy setting controls partial-stage output. The forge uses `1 + stage ×
+ship_speed_per_stage`: the default increment of 3 produces 4× / 7× / 10× / 13×
+ship work. Materials remain at normal prices. Array chance is 0–25% per stage
+(up to 100% when complete); it never adds ordinary research points. Mining
+network output goes directly to the treasury's resource reserve.
+
+**Global rules → Megastructures** contains industry and material costs to repair
+one hull point. The four-stage structure and once-per-civilization/system limits
+are fixed rules. Existing format 6 profiles gain the new catalog and repair
+settings when upgraded to format 7, preserving all earlier values and tree edits.
+
 ### Administrative strain (v0.59)
 
 **Global rules → Administration** exposes system strain (4), integration strain

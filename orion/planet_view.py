@@ -166,8 +166,8 @@ def workforce_panel(app, game, planet, live):
     energy = game.planet_energy(planet) if live else None
     outputs += [("resources", "RESOURCES", f"{game.planet_resources(planet):+}" if live else "—",
                  f"{game.resources:,} stored" if owned else "mined / turn", ROLE_COLORS["miners"]),
-                ("energy", "ENERGY", f"{energy.generated}/{energy.demand}" if live else "—",
-                 (f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
+                ("energy", "ENERGY", (f"∞ / {energy.demand}" if energy.unlimited else f"{energy.generated}/{energy.demand}") if live else "—",
+                 ("Dyson grid · no fuel" if energy.unlimited else f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*124
         panel(surface, (x, 86, 120, 57), (15, 28, 37))
@@ -466,6 +466,14 @@ def draw_production(app):
     panel(surface, (486, 146, 428, 631))
     queue = planet.construction_queue
     text(surface, f"CONSTRUCTION QUEUE · {len(queue)}/20", (502, 164), 12, GOLD, "mono")
+    from .economy import local_bonuses
+    modifiers = local_bonuses(planet, game.bonuses_for(planet.owner))
+    if not planet.trade_goods:
+        multiplier = modifiers.get("ship_work_multiplier", 1)
+        contribution = modifiers.get("megastructure_work", 0)
+        caption = f"Stellar Forge: {multiplier}× ship work" if multiplier > 1 else f"{contribution} industry / turn to megastructure" if contribution else ""
+        if caption:
+            text(surface, caption, (502, 187), 11, CYAN)
     if planet.trade_goods and queue:
         text(surface, "TRADE GOODS ACTIVE · Click a project to resume", (502, 187), 10, CYAN)
     pages = max(1, math.ceil(len(queue)/6))

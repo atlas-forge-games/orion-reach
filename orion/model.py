@@ -27,6 +27,7 @@ from . import sensors
 from . import first_contact
 from . import economy
 from . import administration
+from . import megastructures
 from . import specialists as specialist_rules
 from . import outposts as outpost_rules
 from . import observer as observer_rules
@@ -399,14 +400,20 @@ class Planet:
         if self.trade_goods:
             return []
         work = colony_yields(self, bonuses or {})[0]
+        multiplier = max(1, economy.local_bonuses(self, bonuses).get("ship_work_multiplier", 1))
+        # Integer ticks preserve ship overflow without accelerating a later building.
+        work *= multiplier
         completed = []
         while work > 0 and self.construction_queue:
             project = self.construction_queue[0]
             if project.needs_resources and (fund is None or not fund(project)):
                 break
-            applied = min(work, project.remaining_work)
+            ticks = 1 if project.is_ship else multiplier
+            applied = min(work//ticks, project.remaining_work)
+            if not applied:
+                break
             project.progress += applied
-            work -= applied
+            work -= applied*ticks
             if project.remaining_work == 0:
                 completed.append(self.finish_current_project(project=projects))
         return completed
@@ -593,6 +600,7 @@ class StarSystem:
     biome: str
     richness: str
     worlds: list[Planet] = field(default_factory=list)
+    megastructure: megastructures.Megastructure | None = None
 
 
 def generate_planets(system, galaxy_seed, *, player_home=True):
@@ -674,6 +682,7 @@ class GameState:
     statistics: dict[str, list[list[int]]] = field(default_factory=dict)
     specialists: specialist_rules.SpecialistState = field(default_factory=specialist_rules.SpecialistState)
     system_integration: dict[str, dict[str, int]] = field(default_factory=dict)
+    megastructure_history: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def is_observer(self):
@@ -878,13 +887,23 @@ class GameState:
     def research_state(self, owner=PLAYER):
         return self._empire(owner).technology
 
-    def bonuses_for(self, owner=PLAYER):
+    def _base_bonuses(self, owner=PLAYER):
         if owner is None or (self.is_observer and owner == PLAYER):
             return {}
         empire = self._empire(owner)
         bonuses = empire.technology.bonuses.copy()
         for key, value in RACES[empire.race_id].effects:
             bonuses[key] = bonuses.get(key, 0)+value
+        for key, value in megastructures.empire_effects(self, owner).items():
+            bonuses[key] = bonuses.get(key, 0)+value
+        return bonuses
+
+    def bonuses_for(self, owner=PLAYER):
+        if owner is None or (self.is_observer and owner == PLAYER):
+            return {}
+        if megastructures.has_projects(self, owner):
+            return megastructures.plan_for(self, owner).bonuses
+        bonuses = self._base_bonuses(owner)
         context = None
         def local(planet):
             nonlocal context
@@ -983,6 +1002,8 @@ class GameState:
         return queue_estimates(self, planet, additional)
 
     def resource_rate(self, owner=PLAYER):
+        if megastructures.has_projects(self, owner):
+            return megastructures.plan_for(self, owner).net_resources
         return sum(self.planet_resources(p) for s in self.systems for p in s.worlds if p.owner == owner)
 
     def resources_for(self, owner=PLAYER):
@@ -1017,7 +1038,17 @@ class GameState:
 
     def _settle_power(self):
         self._turn_power = {}
+        self._turn_megastructures = {}
+        self._array_chances = {}
         for owner in self.owners:
+            if megastructures.has_projects(self, owner):
+                plan = megastructures.make_plan(self, owner)
+                self._turn_megastructures[owner] = plan
+                self._turn_power.update(plan.power)
+                for sid in plan.arrays:
+                    m = self.systems[sid].megastructure
+                    self._array_chances[sid] = min(100, m.stage*m.spec.discovery_chance_per_stage)
+                continue
             worlds = [p for s in self.systems for p in s.worlds if p.colonized and p.owner == owner]
             self._turn_power.update(economy.dispatch_power(worlds, dict(self.bonuses_for(owner)), self.resources_for(owner)))
 
@@ -1553,6 +1584,8 @@ class GameState:
             return self._advance_turn()
         finally:
             self.__dict__.pop("_turn_power", None)
+            self.__dict__.pop("_turn_megastructures", None)
+            self.__dict__.pop("_array_chances", None)
 
     def _advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
@@ -1565,6 +1598,7 @@ class GameState:
         # Freeze the outgoing turn's live totals before AI orders and simulation.
         specialist_rules.normalize(self)
         administration.normalize(self)
+        megastructures.normalize(self)
         from . import statistics as statistics_rules
         statistics_rules.record(self)
         # End Turn commits existing orders before the AI plans against current positions.
@@ -1635,6 +1669,7 @@ class GameState:
         for planet, _ in population_start:
             if planet.owner == PLAYER and not planet.trade_goods and planet.construction_queue and planet.construction_queue[0].needs_resources > self.resources:
                 alerts.append(f"{planet.name}: {self.construction_status(planet)}")
+        completed.extend(megastructures.finish_work(self))
         self.turn += 1
         self.year += 1
         administration.normalize(self)
@@ -1663,6 +1698,7 @@ class GameState:
             empire.credits += rival_rates[owner][0]
             empire.research += rival_rates[owner][1]
             self.advance_research(owner)
+        alerts.extend(megastructures.discover(self))
         for ship in self.ships:
             if ship.id in repairable and self.can_repair(ship):
                 ship.hull = min(ship.max_hull, ship.hull+production_balance.REPAIR_PER_TURN)
@@ -1674,6 +1710,8 @@ class GameState:
                 location = exploration_rules.gate_location(self, rival_gate[0].id, rival_gate[1])
                 alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
         self.__dict__.pop("_turn_power", None)
+        self.__dict__.pop("_turn_megastructures", None)
+        self.__dict__.pop("_array_chances", None)
         tomb_rules.advance(self, alerts, ground_battles)
         specialist_rules.advance_visitors(self)
         exploration_rules.refresh(self)
@@ -1690,7 +1728,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=41):
+    def from_dict(cls, data, *, version=42):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1732,6 +1770,8 @@ class GameState:
                     raise ValueError
                 record = dict(s)
                 world_data = record.pop("worlds", None)
+                if version < 42:
+                    record.pop("megastructure", None)
                 system = StarSystem(**record)
                 if version == 1:
                     system.worlds = generate_planets(system, data["seed"])
@@ -1838,6 +1878,7 @@ class GameState:
                         or not any(t.remnant_owner == "rival_6" for t in game.tomb_worlds)):
                     raise ValueError("The extra rival must be an awakened Remnant enclave")
             black_holes.load(game, data, version)
+            megastructures.load(game, data, version)
             if version >= 16:
                 game.guardians = monster_rules.parse_guardians(data["guardians"], game, version=version)
             black_holes.validate_guardians(game)

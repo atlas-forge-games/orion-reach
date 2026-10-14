@@ -19,9 +19,10 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 6
+VERSION = 7
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
+    'megastructures': ('megastructures', 'MEGASTRUCTURES'),
     'buildings': ('buildings', 'BUILDINGS'),
     'ships': ('production', 'SHIP_TYPES'),
     'hulls': ('designs', 'HULLS'),
@@ -37,6 +38,7 @@ CATALOGUES = {
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'megastructures': ('megastructures', ('REPAIR_WORK', 'REPAIR_RESOURCES')),
     'administration': ('administration', ('SYSTEM_STRAIN', 'INTEGRATION_STRAIN', 'INTEGRATION_TURNS',
                          'DISTANCE_STRAIN', 'DISTANCE_UNIT_LY', 'MAX_STRAIN', 'RESEARCH_SENSITIVITY',
                          'CREDITS_SENSITIVITY', 'INDUSTRY_SENSITIVITY', 'MINING_SENSITIVITY', 'FOOD_SENSITIVITY')),
@@ -57,6 +59,7 @@ RULES = {
     'galaxy': ('model', ('MIN_STAR_DISTANCE',)),
 }
 LABELS = {
+    'megastructures': 'Megastructures',
     'buildings': 'Buildings', 'ships': 'Standard ships', 'hulls': 'Designer hulls',
     'modules': 'Ship modules', 'weapons': 'Weapons', 'races': 'Races',
     'technologies': 'Technologies', 'branches': 'Research branches',
@@ -135,6 +138,9 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if field in ('REPAIR_WORK', 'REPAIR_RESOURCES'): return 1, 1000
+    if field == 'discovery_chance_per_stage': return 0, 25
+    if field == 'ship_speed_per_stage': return 0, 50
     if field == 'DISTANCE_UNIT_LY': return .1, 200
     if field == 'MAX_STRAIN': return 0, 99
     if field in ('SYSTEM_STRAIN', 'INTEGRATION_STRAIN', 'DISTANCE_STRAIN') or field.endswith('_SENSITIVITY'): return 0, 100
@@ -215,6 +221,9 @@ def validate(profile):
                         upper = 100 if effect in ('building_discount','ship_discount','assembly_percent','targeting_accuracy','torpedo_guidance','evasion','beam_precision') else 95 if effect == 'interdiction_slow' else 3 if effect == 'sensor_level' else 1000
                         if type(amount) is not int or not lower <= amount <= upper:
                             errors.append(path+'.'+effect+f': use a whole number from {lower} to {upper}.')
+                elif section == 'megastructures' and key == 'branch':
+                    if type(value) is not str or value not in base['branch_order']:
+                        errors.append(path+': choose a research branch.')
                 elif section == 'specialists' and key == 'role':
                     if type(value) is not str or value not in ('leader', 'explorer'):
                         errors.append(path+': choose leader or explorer.')
@@ -365,6 +374,13 @@ def upgrade_profile(profile):
         data = profile.get('data')
         if isinstance(data, dict) and isinstance(data.get('rules'), dict):
             data['rules'].setdefault('administration', deepcopy(_defaults()['data']['rules']['administration']))
+        profile['version'] = 6
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 6:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict) and isinstance(data.get('rules'), dict):
+            data.setdefault('megastructures', deepcopy(_defaults()['data']['megastructures']))
+            data['rules'].setdefault('megastructures', deepcopy(_defaults()['data']['rules']['megastructures']))
         profile['version'] = VERSION
     return profile
 

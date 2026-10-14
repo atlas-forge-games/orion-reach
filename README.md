@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.59.0
+# Orion Reach — Python prototype 0.60.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,7 +7,50 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.59: administrative strain
+## New in v0.60: system megastructures
+
+Open **Megastructures** in a solar system to commission a four-stage project.
+Each civilization can commission each type **once per campaign**, with **one
+structure per solar system**. Starting, repairing and advancing construction
+require being the only civilization with a settlement in that system. A rival
+settlement pauses work; outposts do not count as settlements.
+
+| Structure | Research prerequisite (either choice) | Completed effect | Total materials / industry |
+| --- | --- | --- | --- |
+| Dyson Sphere | Power & Propulsion tier 4 | **Unlimited energy empire-wide**, including gates; backup fuel use stops | 20,000 RES / 4,000 IND |
+| Stellar Forge | Construction tier 3 | **13× ship production** in its system; normal ship material prices | 18,000 RES / 3,500 IND |
+| Research Array | Physics tier 7 | **4% chance per turn** to discover an unknown technology, including an omitted alternative | 15,000 RES / 3,000 IND |
+| Asteroid Mining Network | Materials & Chemistry tier 6 | **600 resources per turn**, directly to the empire reserve | 16,000 RES / 3,200 IND |
+
+The forge accelerates ships only. It does not improve building construction,
+Trade Goods, population assembly or megastructure work. The array produces **no
+ordinary research points**; its discoveries persist even across exclusive choices.
+Orbital mining is separate from planetary mining and administrative penalties.
+
+Choose how much local industry to contribute: 0, 25, 50, 75 or 100%. Materials
+are paid as work proceeds. Fuel is funded first, followed by megastructures and
+colony queues. Only affordable work is diverted, so shortages return unused
+industry to normal production. Construction can be paused at any time. The four
+stages cost 1×, 2×, 3× and 4× their initial budget; completed sections provide
+partial benefits from the following turn. There is no recurring upkeep yet.
+
+Structures appear in the system overview with illustrated stages, progress and
+controls. They can be attacked after orbital defenses are cleared, using ships'
+normal bombardment action. Repairs consume industry and resources before further
+construction. A sole new settler can inherit a structure after its owner loses
+every colony in the system; work starts paused. Captured duplicates do not stack.
+Hostile armed blockades stop work and effects. Shared settlements stop work while
+completed sections continue functioning for the existing owner.
+
+AI civilizations follow the same rules and invest from large resource reserves.
+`python editor.py` exposes the costs, prerequisites, yields, discovery chance,
+ship acceleration, hull and repair costs. Save format **42** and balance format
+**7** load earlier campaigns/profiles without replacing their custom settings.
+
+![Megastructure catalog](screenshots/v060_catalog.png)
+![Stellar Forge under construction](screenshots/v060_stellar_forge.png)
+
+## Previous update, v0.59: administrative strain
 
 Expansion now reduces colony efficiency through shared administration and local
 distance from the capital. The same rules apply to players and AI civilizations.

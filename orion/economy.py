@@ -26,6 +26,7 @@ class EnergyReport:
     fuel_used: int = 0
     # Slot, actual generation, Resource use; includes standby generators.
     plants: tuple[tuple[int, int, int], ...] = ()
+    unlimited: bool = False
 
     @property
     def balance(self):
@@ -93,6 +94,14 @@ def energy_report(planet, bonuses=None, *, fuel_budget=0):
         remaining_fuel -= (output+building.energy_per_resource-1)//building.energy_per_resource
     demand = sum(BUILDINGS[planet.buildings[i]].energy_use for i in enabled)
     demand += GATE_ENERGY if planet.ascension_gate else 0
+    if bonuses.get("unlimited_energy"):
+        # Store finite supplied energy for saves/statistics; display the flag as ∞.
+        return EnergyReport(generated=max(base_generated, demand), demand=demand, used=demand,
+                            active=tuple(enabled), gate_powered=planet.ascension_gate,
+                            base_generated=max(base_generated, demand),
+                            backup_capacity=sum(b.energy_output for _, b in backup),
+                            plants=tuple((i, 0 if b.energy_per_resource else b.energy_output, 0) for i, b in plants),
+                            unlimited=True)
     priority = {"hydroponic_farm": 0, "mine": 1}
     used, active, offline = 0, [], []
     for i in sorted(enabled, key=lambda i: (priority.get(facility_family(planet.buildings[i]), 2), i)):

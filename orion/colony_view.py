@@ -214,5 +214,7 @@ def draw_colony(app):
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
     text(surface, f"Resources: {game.resources:,} · {game.planet_resources(planet):+}/turn here, after {game.planet_energy(planet).fuel_used} RES fuel.", (399, 828), 11, MUTED)
-    text(surface, f"Power: {game.planet_energy(planet).generated}/{game.planet_energy(planet).demand} needed. Farms and mines have priority.", (399, 850), 11, FAINT)
+    power = game.planet_energy(planet)
+    power_text = f"Power: ∞ / {power.demand} needed. Empire-wide Dyson grid; no fuel consumed." if power.unlimited else f"Power: {power.generated}/{power.demand} needed. Farms and mines have priority."
+    text(surface, power_text, (399, 850), 11, FAINT)
     app.button("colony_end_turn", "End turn · E", (1081, 816, 295, 63), app.advance_turn, "primary")

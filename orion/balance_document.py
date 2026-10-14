@@ -95,6 +95,11 @@ class BalanceDocument:
     def fields(self, section, identifier, query=''):
         rows = []
         for key,value in self.entry(section,identifier).items():
+            if section == 'megastructures':
+                effect_fields = {'dyson_sphere': 'energy_per_stage', 'stellar_forge': 'ship_speed_per_stage',
+                                 'research_array': 'discovery_chance_per_stage', 'asteroid_network': 'resources_per_stage'}
+                if key in effect_fields.values() and key != effect_fields[identifier]:
+                    continue
             if section == 'buildings' and key == 'unique':
                 continue  # Legacy save metadata; one per planet is now a fixed rule.
             if (section == 'hulls' and key in ('capacity', 'weapon', 'defense', 'support')
@@ -114,6 +119,8 @@ class BalanceDocument:
     def options(self, section, path):
         field = path[0]
         data = self.profile['data']
+        if section == 'megastructures' and field == 'branch':
+            return [(k, data['branches'][k]['name']) for k in self.profile['branch_order']]
         if section == 'specialists' and field == 'role':
             return [(k, v) for k, v in balance.module('specialists').ROLES.items()]
         if section == 'expedition_sites' and field == 'skill':

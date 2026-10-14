@@ -207,6 +207,7 @@ class ResearchState:
     legacy_fuel: bool = False
     # Existing campaigns keep the five-tier Computers requirement for Ascension.
     legacy_black_holes: bool = False
+    recovered: list[str] = field(default_factory=list)
 
     @property
     def bonuses(self):
@@ -307,7 +308,9 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=36):
+    def from_dict(cls, data, *, version=42):
+        if version < 42 and isinstance(data, dict) and data.get("recovered") == []:
+            data = {k: v for k, v in data.items() if k != "recovered"}
         keys = {"completed", "active", "progress"}
         if version >= 28:
             keys |= {"legacy_count", "legacy_active"}
@@ -319,6 +322,8 @@ class ResearchState:
             keys.add("legacy_fuel")
         if version >= 34:
             keys.add("legacy_black_holes")
+        if version >= 42:
+            keys.add("recovered")
         if not isinstance(data, dict) or set(data) != keys:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
@@ -327,6 +332,10 @@ class ResearchState:
             return cls(completed.copy(), active, progress, len(completed), active is not None, True, True, True, True)
         if not isinstance(completed, list) or len(completed) > len(TECHNOLOGIES):
             raise ValueError("Invalid discoveries")
+        recovered = data.get("recovered", []) if version >= 42 else []
+        if (not isinstance(recovered, list) or any(not isinstance(t, str) or t not in TECHNOLOGIES or t not in completed for t in recovered)
+                or len(set(recovered)) != len(recovered)):
+            raise ValueError("Invalid array discoveries")
         if version < 33 and any(isinstance(t, str) and t in FUEL_EXPANSION_TECHNOLOGIES for t in (*completed, active)):
             raise ValueError("Fuel technology is newer than this save format")
         if version < 34 and any(isinstance(t, str) and t in BLACK_HOLE_TECHNOLOGIES for t in (*completed, active)):
@@ -349,9 +358,11 @@ class ResearchState:
             raise ValueError("Invalid legacy black-hole research goal")
         state = cls(completed[:count], legacy_count=count, legacy_starships=legacy_starships,
                     legacy_arsenal=legacy_arsenal, legacy_fuel=legacy_fuel,
-                    legacy_black_holes=legacy_black_holes)
+                    legacy_black_holes=legacy_black_holes, recovered=recovered.copy())
+        if any(t in completed[:count] for t in recovered):
+            raise ValueError("Array discovery in legacy prefix")
         for identifier in completed[count:]:
-            if state.choice_error(identifier):
+            if not isinstance(identifier, str) or identifier not in TECHNOLOGIES or identifier in state.completed or (identifier not in recovered and state.choice_error(identifier)):
                 raise ValueError("Invalid technology sequence")
             state.completed.append(identifier)
         if type(progress) is not int or progress < 0:
@@ -433,6 +444,7 @@ def colony_yields(planet, bonuses):
     bonuses = local_bonuses(planet, bonuses)
     industry, income, research = gross_colony_yields(planet, bonuses)
     industry -= assembly_work(planet, industry, bonuses)
+    industry = max(0, industry-bonuses.get("megastructure_work", 0))
     if planet.colonized and planet.trade_goods:
         income += reduced_output(trade_goods_credits(industry), bonuses, "credits")
     return industry, income-colony_maintenance(planet, bonuses), research

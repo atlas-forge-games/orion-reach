@@ -14,6 +14,7 @@ from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system
+from .megastructure_view import draw_megastructure
 from .planet_view import draw_planet_overview, draw_production, worker_row_rect, worker_selection_count
 from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
@@ -68,7 +69,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
+GAME_SCREENS=("galaxy", "system", "megastructure", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 
 
 class App:
@@ -2136,6 +2137,8 @@ class App:
                 self.go("galaxy")
             elif self.screen=="system":
                 self.go("galaxy")
+            elif self.screen=="megastructure":
+                self.go("system")
             elif self.screen=="planet":
                 if self.worker_source:
                     self.clear_worker_selection()
@@ -2631,6 +2634,9 @@ class App:
 
     def draw_system(self):
         draw_system(self)
+
+    def draw_megastructure(self):
+        draw_megastructure(self)
 
     def draw_planet(self):
         draw_planet_overview(self)

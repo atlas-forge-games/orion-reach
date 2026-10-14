@@ -18,20 +18,21 @@ METRICS = {
     "population": Metric("Population", "B inhabitants", "Total population across colonies, including enslaved population."),
     "industry": Metric("Industry", "production / turn", "Total industry available for construction and Trade Goods."),
     "food": Metric("Food production", "food / turn", "Gross food produced across colonies, before consumption."),
-    "mining": Metric("Mining production", "resources / turn", "Gross extraction from colonies, mines and miners, before power-plant fuel use."),
-    "energy": Metric("Energy", "energy / turn", "Actual generation across local colony grids, including fueled backup power."),
+    "mining": Metric("Mining production", "resources / turn", "Gross extraction from colonies and asteroid networks, before fuel or construction spending."),
+    "energy": Metric("Energy", "energy / turn", "Actual energy supplied across colony grids. A completed Dyson Sphere provides unlimited capacity; the graph records finite supply."),
     "credits": Metric("Credits per turn", "credits / turn", "Net income after maintenance and specialist salaries, including agreements and Trade Goods."),
 }
 
 
 def sample(game, owner):
+    from .megastructures import active
     colonies = [p for s in game.systems for p in s.worlds if p.colonized and p.owner == owner]
     bonuses = game.bonuses_for(owner)
     yields = [game.planet_yields(p) for p in colonies]
     trade, _ = game.diplomatic_yields(owner)
     return [game.turn, sum(p.workforce for p in colonies), sum(y[0] for y in yields),
             sum(game.population_report(p).produced for p in colonies),
-            sum(economy.mining_output(p, bonuses) for p in colonies),
+            sum(economy.mining_output(p, bonuses) for p in colonies)+sum(s.megastructure.stage*s.megastructure.spec.resources_per_stage for s in active(game, owner)),
             sum(game.planet_energy(p).generated for p in colonies), game.empire_rates_for(owner)[0]]
 
 

@@ -1,0 +1,58 @@
+Orion Reach v0.60 — system megastructures
+
+Extract this update into your v0.59 project, replacing files when asked.
+Run python main.py as usual. No new dependencies are required.
+
+Open a solar system and select Megastructures. Four staged projects are available:
+
+Dyson Sphere: Power & Propulsion tier 4. Four stages cost 20,000 RES / 4,000 work.
+Early stages add 30 energy per owned colony each. Completion supplies UNLIMITED
+energy empire-wide. Enabled buildings and gates remain powered without fuel.
+
+Stellar Forge: Construction tier 3. Total 18,000 RES / 3,500 work.
+Ship production in its system is 4x / 7x / 10x / 13x as stages complete.
+Buildings, Trade Goods and other industry uses receive no boost. Ships still
+require their normal material costs and researched designs.
+
+Research Array: Physics tier 7. Total 15,000 RES / 3,000 work.
+1% / 2% / 3% / 4% chance each production turn to discover one unknown technology,
+including previously omitted choices or higher tiers. No normal RP output.
+If it discovers the active research or its alternative, invested RP is refunded.
+Ascension Theory can be found only when science victory is enabled.
+
+Asteroid Mining Network: Materials & Chemistry tier 6. Total 16,000 RES / 3,200 work.
+150 / 300 / 450 / 600 resources per turn directly into the empire reserve.
+This is orbital output, unaffected by planetary richness or administrative strain.
+
+Each civilization may commission each type once per campaign, even if it is
+later lost or destroyed. Only one structure may occupy each solar system.
+Only the sole settled civilization may start, repair or advance construction.
+Rival outposts do not count as settlements. Shared settlement or hostile armed
+ships pause work without losing progress. Completed sections continue operating
+while their owner retains a colony and there is no hostile armed blockade.
+
+Choose 0 / 25 / 50 / 75 / 100% local industry, or pause construction. Costs are
+paid progressively; only funded industry is diverted. Fuel is funded first,
+followed by megastructure work and ordinary colony queues. Stage costs increase
+1x / 2x / 3x / 4x; newly finished stages yield benefits on the following turn.
+There is no recurring megastructure upkeep in this first version.
+
+Structures have hull and can be attacked after orbital defenses are defeated.
+Attacks use ships' existing once-per-turn bombardment action. Repairs take
+priority over construction and require industry plus resources. Losing every
+colony can transfer a structure to a sole new settler, with construction paused.
+Captured duplicate structures do not stack effects. Last-seen surveys preserve
+old structure information without exposing current activity.
+
+AI civilizations obey the same construction and uniqueness rules and invest
+only with substantial resource reserves. The balance editor includes all four
+specifications, output rates, discovery chance, costs, hull and repair costs.
+
+Save format 42 / balance format 7. Existing saves and profiles are upgraded on
+load. Recovered research choices remain valid across saves. Earlier versions
+cannot load the new format; keep a backup before returning to an older release.
+
+Reproduce screenshots: python tools/preview_megastructures.py
+Run tests: python -m unittest discover -s tests -v
+
+Nothing has been committed or pushed automatically.

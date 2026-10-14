@@ -31,6 +31,7 @@ class Survey:
     first_visit: int
     last_seen: int
     worlds: list[dict]
+    megastructure: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ class ExplorationState:
         return self.scanned_others.setdefault(owner, [])
 
     @classmethod
-    def from_dict(cls, data, game, *, version=36):
+    def from_dict(cls, data, game, *, version=42):
         from .model import Planet, _integer
         if version < 20 and isinstance(data, dict):
             data = {k: v for k, v in data.items() if k != "scanned_others"}
@@ -74,7 +75,12 @@ class ExplorationState:
             raise ValueError
         surveys, keys = [], set()
         for row in data["surveys"]:
-            if not isinstance(row, dict) or set(row) != {"owner", "system_id", "first_visit", "last_seen", "worlds"}:
+            expected = {"owner", "system_id", "first_visit", "last_seen", "worlds"}
+            if version >= 42:
+                expected.add("megastructure")
+            if version < 42 and isinstance(row, dict):
+                row = {k: v for k, v in row.items() if k != "megastructure"}
+            if not isinstance(row, dict) or set(row) != expected:
                 raise ValueError
             owner, sid = row["owner"], row["system_id"]
             if owner not in game.owners or not _integer(sid, 0, count-1):
@@ -100,6 +106,9 @@ class ExplorationState:
                 normalized_worlds.append(asdict(parsed))
             if sum(p["outpost_owner"] is not None for p in normalized_worlds) > 1:
                 raise ValueError("Multiple outposts in a system survey")
+            if row.get("megastructure") is not None:
+                from .megastructures import Megastructure
+                Megastructure.from_dict(row["megastructure"], game.owners, row["last_seen"])
             surveys.append(Survey(**{**row, "worlds": normalized_worlds}))
             keys.add((owner, sid))
         extras = data["scanned_others"] if version >= 20 else {}
@@ -164,8 +173,10 @@ def known_system(game, system_id, owner="player"):
     survey = game.exploration.survey(system_id, owner)
     if survey is None:
         return None
+    from .megastructures import Megastructure
+    mega = Megastructure.from_dict(survey.megastructure, game.owners, survey.last_seen) if survey.megastructure else None
     return replace(system, worlds=[Planet.from_dict(world, index)
-                                   for index, world in enumerate(survey.worlds)])
+                                   for index, world in enumerate(survey.worlds)], megastructure=mega)
 
 
 def record_survey(game, system_id, owner):
@@ -173,10 +184,13 @@ def record_survey(game, system_id, owner):
         return False
     survey = game.exploration.survey(system_id, owner)
     worlds = [asdict(p) for p in game.systems[system_id].worlds]
+    m = game.systems[system_id].megastructure
+    mega = asdict(m) if m else None
     if survey is None:
-        game.exploration.surveys.append(Survey(owner, system_id, game.turn, game.turn, worlds))
+        game.exploration.surveys.append(Survey(owner, system_id, game.turn, game.turn, worlds, mega))
         return True
     survey.last_seen, survey.worlds = game.turn, worlds
+    survey.megastructure = mega
     return False
 
 
