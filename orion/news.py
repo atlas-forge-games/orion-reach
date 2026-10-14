@@ -36,6 +36,8 @@ def entries(game):
              for e in black_holes.events(game)]
     rows += [NewsEntry(e.turn, None, None, "SPECIALISTS", "Specialist dispatch", e.message, i+1)
              for i, e in enumerate(game.specialists.events) if e.owner == "player" or game.is_observer]
+    rows += [NewsEntry(e.turn, None, None, 'DIPLOMACY', 'Diplomatic dispatch', e.message, e.id)
+             for e in game.diplomatic_news]
     return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id if n.system_id is not None else -1,
                                       n.planet_id if n.planet_id is not None else -1), reverse=True)
 
@@ -47,7 +49,8 @@ def unread_count(game):
             sum(e.id > game.council.news_read for e in game.council.events)+
             sum(e.id > game.black_holes.news_read for e in black_holes.events(game))+
             sum(i >= game.specialists.news_read and (e.owner == "player" or game.is_observer)
-                for i, e in enumerate(game.specialists.events)))
+                for i, e in enumerate(game.specialists.events))+
+            sum(e.id > game.diplomatic_news_read for e in game.diplomatic_news))
 
 
 def mark_read(game):
@@ -58,3 +61,4 @@ def mark_read(game):
     game.council.news_read = game.council.next_event_id-1
     game.black_holes.news_read = len(game.black_holes.events)
     game.specialists.news_read = len(game.specialists.events)
+    game.diplomatic_news_read = game.diplomatic_news[-1].id if game.diplomatic_news else 0

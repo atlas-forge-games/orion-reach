@@ -61,6 +61,8 @@ def report_rows(app):
                          [label for flag, label in ((state.trade_active, "Trade"), (state.non_aggression_active, "Non-aggression")) if flag])
                 if state.research_active:
                     pacts.append("Research")
+                if state.coalition_target:
+                    pacts.append('Coalition vs '+game.empire_name_for(state.coalition_target))
                 values = (game.empire_name_for(first), game.empire_name_for(second),
                           "Eliminated" if not active else "Established" if contacted else "No contact",
                           f"{state.attitude} {state.relations:+}" if contacted and active else "—",

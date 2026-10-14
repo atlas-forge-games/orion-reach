@@ -1,0 +1,34 @@
+Orion Reach v0.63.0 — extract over v0.62.0, then restart the game.
+
+Open Diplomacy → Coalitions & tribute.
+
+Coalitions target a named empire. Shared wars, known territorial pressure,
+racial interests, relationships, cooperation and betrayal determine acceptance.
+Members have mutual non-aggression and +1 relations per turn. Target aggression
+calls coalition partners into defence. Offensive wars do not automatically enlist
+partners. Joining an existing war explicitly requires confirmation. Several
+bilateral agreements can create a larger coalition. No scanner sharing is bundled.
+
+Fear is a separate 0–100 assessment using observed military forces, proximity,
+recent defeats, allied protection and racial resolve. Hidden fleets and worlds
+do not contribute; the diplomacy dialog explains the calculation.
+
+Demand money tribute (three turns of gross income, capped by available treasury)
+or, for Varkesh, one population unit as slaves. AI empires accept at fear 75.
+One demand uses a 100-turn cooldown across every target and both types, including
+refusals. Demands harm relations and encourage protection/coalitions, but do not
+automatically declare war. Human recipients explicitly accept or refuse.
+Population tribute cannot empty a colony and respects existing slave capacity.
+
+All eleven racial priorities guide treaty choices and coalition goals. Lithar
+retain betrayal memory permanently. Trade remains available at +10. AI empires
+form their own treaties and coalitions and can demand tribute. New decisions
+appear in Turn news. There is no resource or technology trading; access and
+mediation are preferences, not new standalone diplomatic actions.
+
+Save format 44 loads older saves without resetting relations or existing treaties.
+Balance profile 10 adds racial priorities and coalition/tribute settings while
+retaining other values. Pending tribute responses and cooldowns survive reload.
+
+See docs/coalitions-and-tribute.md for the full rules and balancing details.
+Nothing committed.

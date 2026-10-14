@@ -227,3 +227,19 @@ thresholds (10, 0 and 30), the trade share (25%) and distance scale (50 ly).
 Research still uses each race's research threshold. Profile version 9 upgrades
 older files, removing retired envoy/gift and flat-trade fields while preserving
 other settings. Active pacts add trust; friendship bundles trade and non-aggression.
+
+## Coalitions, fear and tribute (v0.63)
+
+**Diplomatic priorities** adds one profile per race with a public description,
+interest, frontier/goal weights, pragmatism, loyalty, betrayal memory, resolve and
+trade/research/friendship preferences. Interest is selected from a validated list.
+These influence actual AI treaty choices, coalition willingness and fear.
+
+**Global rules → coalitions** exposes acceptance (40) and minimum shared threat
+(10). **Global rules → tribute** exposes the cooldown (100; minimum 100), fear
+threshold (75), gross-income turns demanded (3) and relations penalty (15).
+Population tribute remains fixed at one citizen, using existing slave capacity.
+
+Balance profile 10 upgrades previous profiles without overwriting their existing
+settings. See [coalition and tribute rules](coalitions-and-tribute.md) for formulas,
+intelligence limits, defensive commitments and persistent Lithar betrayal memory.

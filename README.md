@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.62.0
+# Orion Reach — Python prototype 0.63.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,44 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.63: coalitions, fear and tribute
+
+Open **Diplomacy → Coalitions & tribute** to propose a coalition against a
+named empire, inspect fear and tribute terms, or read the eleven racial priorities.
+
+- Coalitions provide mutual non-aggression and +1 relations per turn. A target
+  attacking a member calls its coalition partners into defence. An offensive
+  declaration does not automatically enlist partners. Joining an existing war
+  is explicitly confirmed before forming the agreement.
+- Acceptance uses shared wars, known nearby colonies, racial interests,
+  intimidation, relations, past cooperation and broken promises. Both partners
+  must know the target and consider it a threat. Conflicting protection treaties
+  must end first. Several bilateral agreements can build a larger coalition.
+- **Fear is separate from relations.** It uses observed military superiority and
+  proximity, recent defeats, allied protection and racial resolve. Hidden fleets
+  and undiscovered colonies do not contribute. The interface shows the calculation.
+- Demand a one-time money tribute, or **one population unit as slaves** when
+  playing Varkesh. AI recipients accept affordable demands at fear **75/100**.
+  Money is three turns of gross colony income, capped by the treasury. Population
+  tribute never empties a colony and respects the existing Varkesh slave capacity.
+- Every demand uses a **100-turn cooldown across all targets and both types**, even
+  when refused. Demands damage relations and encourage defensive coalitions;
+  refusal does not declare war. Human recipients explicitly accept or refuse.
+- Racial priorities guide AI treaty choices and coalition goals. Lithar remember
+  betrayal permanently; other races with a forgiving personality gradually
+  forgive. Trade stays available at +10; broken promises raise other thresholds.
+
+AI empires use the same rules and can form coalitions and demand tribute. Diplomatic
+dispatches appear in Turn news. No direct resource or technology trading is added;
+access, mediation and historical claims are preferences rather than new deal types.
+
+Save format **44** reads older campaigns. New coalition and tribute state starts
+empty; existing relations and treaties remain. Balance profile **10** adds
+**Diplomatic priorities**, plus coalition and tribute rules, preserving other settings.
+See [the detailed rules](docs/coalitions-and-tribute.md).
+
+![Coalition acceptance and shared threats](screenshots/v063_coalitions.png)
 
 ## New in v0.62: treaties and friendship
 

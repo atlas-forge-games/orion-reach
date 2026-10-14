@@ -224,7 +224,7 @@ class PersonalityRulesTests(unittest.TestCase):
         game = self.invasion_scenario()
         message = ai.diplomatic_orders(game, "rival")
         self.assertIn("assimilation", message[0])
-        self.assertEqual(game.diplomacy.relations, -60)
+        self.assertEqual(game.diplomacy.relations, -100)
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_peaceful_races_do_not_start_the_same_conquest(self):

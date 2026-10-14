@@ -19,9 +19,10 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 9
+VERSION = 10
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
+    'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
     'alignment': ('alignment', 'PROFILES'),
     'megastructures': ('megastructures', 'MEGASTRUCTURES'),
     'buildings': ('buildings', 'BUILDINGS'),
@@ -39,6 +40,8 @@ CATALOGUES = {
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'coalitions': ('coalitions', ('ACCEPTANCE', 'MIN_THREAT')),
+    'tribute': ('tribute', ('COOLDOWN', 'FEAR_THRESHOLD', 'INCOME_TURNS', 'RELATION_PENALTY')),
     'alignment': ('alignment', ('REFERENCE_DISTANCE', 'MAX_MODIFIER')),
     'megastructures': ('megastructures', ('REPAIR_WORK', 'REPAIR_RESOURCES')),
     'administration': ('administration', ('SYSTEM_STRAIN', 'INTEGRATION_STRAIN', 'INTEGRATION_TURNS',
@@ -63,6 +66,7 @@ RULES = {
     'galaxy': ('model', ('MIN_STAR_DISTANCE',)),
 }
 LABELS = {
+    'diplomatic_preferences': 'Diplomatic priorities',
     'alignment': 'Diplomatic values',
     'megastructures': 'Megastructures',
     'buildings': 'Buildings', 'ships': 'Standard ships', 'hulls': 'Designer hulls',
@@ -145,6 +149,10 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if section == 'diplomatic_preferences': return (-20, 20) if field == 'resolve' else (0, 20)
+    if field == 'COOLDOWN': return 100, 10000
+    if field in ('FEAR_THRESHOLD', 'MIN_THREAT', 'ACCEPTANCE', 'RELATION_PENALTY'): return 1, 100
+    if field == 'INCOME_TURNS': return 1, 20
     if field in ('TRADE_THRESHOLD', 'NON_AGGRESSION_THRESHOLD', 'FRIENDSHIP_THRESHOLD'): return -30, 100
     if field == 'TRADE_SHARE_PERCENT': return 0, 100
     if field == 'TRADE_DISTANCE_LY': return 1, 200
@@ -246,6 +254,9 @@ def validate(profile):
                 elif key == 'module_size':
                     if type(value) is not str or value not in module('designs').MODULE_SIZES:
                         errors.append(path+': choose small, medium or heavy.')
+                elif section == 'diplomatic_preferences' and key == 'interest':
+                    if type(value) is not str or value not in module('diplomatic_preferences').INTERESTS:
+                        errors.append(path+': choose a valid diplomatic interest.')
                 elif key in ('technology', 'branch', 'category', 'weapon') and (template is None or type(template) is str):
                     options = set(base['data']['technologies'])|{None} if key == 'technology' else set(base['branch_order'])|{'ascension'} if key == 'branch' else {'weapon','defense','support'} if key == 'category' else set(base['data']['weapons'])
                     if type(value) not in (str,type(None)) or value not in options:
@@ -419,6 +430,15 @@ def upgrade_profile(profile):
                     rules.pop(key, None)
                 for key, value in _defaults()['data']['rules']['diplomacy'].items():
                     rules.setdefault(key, value)
+        profile['version'] = 9
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 9:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            data.setdefault('diplomatic_preferences', deepcopy(_defaults()['data']['diplomatic_preferences']))
+            if isinstance(data.get('rules'), dict):
+                for key in ('coalitions', 'tribute'):
+                    data['rules'].setdefault(key, deepcopy(_defaults()['data']['rules'][key]))
         profile['version'] = VERSION
     return profile
 

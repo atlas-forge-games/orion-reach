@@ -1213,7 +1213,7 @@ class App:
                 self.toast(exc,True)
         if action == "declare_war":
             self.confirm("Declare war?",
-                         "Relations become -100. All agreements with this empire end immediately, including non-aggression and shared scanners. Fleets may attack each other.",
+                         "Relations become -100. All agreements with this empire end, including any coalition with them. Broken promises are remembered. Their coalition partners may join the war against you; your offensive declaration does not enlist your own partners.",
                          "Declare war",perform)
         elif action.startswith("end_"):
             title=diplomacy_balance.TREATIES[action[4:]].lower()
@@ -1481,6 +1481,9 @@ class App:
             return
         if self.game.council.pending:
             self.go("council")
+            return
+        if self.game.tribute_demands:
+            self.show_diplomatic_affairs('tribute', self.game.tribute_demands[0].sender)
             return
         location=(self.game.campaign_id,self.game.selected_system,self.game.selected_planet)
         if self.screen in ("planet","production","colony","shipyard") and self.idle_colony_review==location:
@@ -1750,6 +1753,19 @@ class App:
         if owner is not None:
             self.dialog["alignment_owner"]=owner
         self.focus="dialog_close"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
+
+    def show_diplomatic_affairs(self,tab='coalitions',owner=None):
+        from .first_contact import known
+        if self.dialog or not self.game or self.game.is_observer:
+            return
+        owner = owner or self.selected_rival_id()
+        if owner not in self.game.opponents or not known(self.game, PLAYER, owner):
+            return
+        self.dialog={'diplomatic_affairs':True,'affairs_tab':tab,'affairs_owner':owner,'return_focus':self.focus}
+        self.focus='dialog_close'
         self.keyboard_mode=True
         self.pressed=None
         self.buttons=[]
@@ -2065,7 +2081,7 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "alignment_info" in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
                     self.cancel_dialog()
             else:
                 if self.screen=="planet":
@@ -2748,6 +2764,10 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        if 'diplomatic_affairs' in self.dialog:
+            from .diplomatic_affairs_view import draw
+            draw(self)
+            return
         if "alignment_info" in self.dialog:
             from .alignment_view import draw
             draw(self)

@@ -2,10 +2,10 @@
 
 import pygame as pg
 
-from . import alignment, diplomacy as rules, first_contact
+from . import alignment, diplomacy as rules, first_contact, diplomatic_preferences
 from .race_art import draw_race_portrait
 from .races import RACES
-from .personalities import PERSONALITIES, personality
+from .personalities import personality
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
 
@@ -48,7 +48,7 @@ def draw_contact_profile(surface, race, empire_name):
     draw_race_portrait(surface, race.id, (145, 347, 176, 176))
     text(surface, shorten(empire_name, 291, 23, "title"), (87, 537), 23, INK, "title")
     text(surface, race.focus, (89, 575), 12, race.color)
-    paragraph(surface, PERSONALITIES[race.id].traits, (89, 603), 290, 13, MUTED, 18)
+    paragraph(surface, diplomatic_preferences.PROFILES[race.id].summary, (89, 603), 290, 13, MUTED, 18)
 
 
 def draw_treaty(app, owner, state, action, x, y):
@@ -96,7 +96,9 @@ def draw_diplomacy(app):
     app.button("diplomacy_galaxy", "Galaxy map", (284, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("diplomacy_intelligence", "Rival report", (472, 124, 184, 46), app.open_rival)
     app.button("diplomacy_statistics", "Statistics", (672, 124, 130, 46), app.open_statistics)
-    app.button("diplomacy_alignment_matrix", "Race alignment matrix", (818, 124, 558, 46), app.show_alignment)
+    app.button("diplomacy_alignment_matrix", "Race alignment matrix", (818, 124, 270, 46), app.show_alignment)
+    app.button('diplomacy_affairs', 'Coalitions & tribute', (1104, 124, 272, 46), app.show_diplomatic_affairs,
+               enabled=selected is not None)
     draw_relations_strip(app)
     if selected is None:
         draw_contact_profile(surface, RACES[game.race_id], game.empire_name)
@@ -136,7 +138,10 @@ def draw_diplomacy(app):
             y = 740+index*19
             text(surface, f"T{event.turn:03}", (445, y), 10, FAINT, "mono")
             text(surface, shorten(event.message, 849, 11), (506, y), 11, INK)
-    text(surface, f"Offers: {rules.OFFER_COOLDOWN}-turn cooldown. Kept pacts build trust. Friendship shares direct scanner contacts.", (65, 798), 13, MUTED)
+    pending = len(game.tribute_demands)
+    caption = (f'{pending} tribute demand(s) await your response. Open Coalitions & tribute → Tribute & fear.' if pending else
+               f"Offers: {rules.OFFER_COOLDOWN}-turn cooldown. Kept pacts build trust. Coalitions and tribute have their own controls above.")
+    text(surface, caption, (65, 798), 13, GOLD if pending else MUTED)
     app.button("diplomacy_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("diplomacy_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     text(surface, "D: diplomacy · I: empire · E: advance one turn", (400, 848), 12, MUTED)

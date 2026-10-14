@@ -28,6 +28,7 @@ from . import first_contact
 from . import economy
 from . import administration
 from . import megastructures
+from . import coalitions, tribute
 from . import specialists as specialist_rules
 from . import outposts as outpost_rules
 from . import observer as observer_rules
@@ -683,6 +684,10 @@ class GameState:
     specialists: specialist_rules.SpecialistState = field(default_factory=specialist_rules.SpecialistState)
     system_integration: dict[str, dict[str, int]] = field(default_factory=dict)
     megastructure_history: dict[str, list[str]] = field(default_factory=dict)
+    tribute_ready: dict[str, int] = field(default_factory=dict)
+    tribute_demands: list[tribute.Demand] = field(default_factory=list)
+    diplomatic_news: list[coalitions.Dispatch] = field(default_factory=list)
+    diplomatic_news_read: int = 0
 
     @property
     def is_observer(self):
@@ -712,6 +717,8 @@ class GameState:
 
     def eliminate_defeated(self):
         administration.normalize(self)
+        coalitions.normalize(self)
+        tribute.normalize(self)
         defeated = {owner for owner in self.owners if not self.colony_systems(owner)}
         for system in self.systems:
             for planet in system.worlds:
@@ -1590,6 +1597,9 @@ class GameState:
     def _advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
         self._require_strategy()
+        tribute.normalize(self)
+        if self.tribute_demands:
+            raise RuleError('Accept or refuse pending tribute demands in Diplomacy before ending the turn.')
         exploration_rules.refresh(self)
         if monster_rules.intercept(self):
             return TurnReport(0, 0, [])
@@ -1728,7 +1738,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=43):
+    def from_dict(cls, data, *, version=44):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1900,6 +1910,9 @@ class GameState:
                     raise ValueError("Bombardment timestamp is in the future")
             if version < 26:
                 first_contact.migrate(game)
+            coalitions.validate(game)
+            coalitions.load_news(game, data, version)
+            tribute.load(game, data, version)
             observer_rules.load(game, data, version)
             administration.load(game, data, version)
             from . import statistics as statistics_rules

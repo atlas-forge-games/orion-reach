@@ -119,6 +119,8 @@ class BalanceDocument:
     def options(self, section, path):
         field = path[0]
         data = self.profile['data']
+        if section == 'diplomatic_preferences' and field == 'interest':
+            return [(v, v.title()) for v in balance.module('diplomatic_preferences').INTERESTS]
         if section == 'megastructures' and field == 'branch':
             return [(k, data['branches'][k]['name']) for k in self.profile['branch_order']]
         if section == 'specialists' and field == 'role':

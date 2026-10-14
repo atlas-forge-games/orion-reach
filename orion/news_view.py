@@ -11,6 +11,10 @@ def draw_news(app):
     app.chrome("TURN NEWS")
     app.button("news_back", "←  Campaign result · N" if game.result else "←  Galaxy map · N",
                (64, 124, 280, 46), lambda: app.go("galaxy"), "ghost")
+    if game.tribute_demands and not game.is_observer:
+        app.button('news_tribute', 'Answer tribute demand', (370, 124, 302, 46),
+                   lambda: app.show_diplomatic_affairs('tribute', game.tribute_demands[0].sender),
+                   enabled=game.strategy_error('player') is None)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "A chronicle of the galaxy" if game.is_observer else "Dispatches from the frontier", (64, 189), 40, INK, "title")
     text(surface, "Empire activity, council elections, battles and awakenings" if game.is_observer else "Council elections, frontier reports and hostile sensor contacts · newest first", (66, 250), 15, MUTED)

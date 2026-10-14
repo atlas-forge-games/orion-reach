@@ -15,6 +15,7 @@ from .population import farmers_needed, food_required
 from . import monsters, defenses, sensors, black_holes, outposts, administration
 from . import raiding
 from . import first_contact
+from . import coalitions, tribute
 from .personalities import personality
 from .ground_combat import forces, resolve, transports_needed
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
@@ -41,9 +42,11 @@ def enemies(game, owner):
         return {other for other in game.owners if other != owner and game.colony_systems(other)
                 and not game.diplomacy_between(owner, other).trade_active
                 and not game.diplomacy_between(owner, other).research_active
+                and not game.diplomacy_between(owner, other).coalition_target
                 and not game.diplomacy_between(owner, other).non_aggression_active}
     return {other for other in game.owners if other != owner
             and game.diplomacy_between(owner, other).relations < HOSTILE_BELOW
+            and not game.diplomacy_between(owner, other).coalition_target
             and not game.diplomacy_between(owner, other).non_aggression_active}
 
 
@@ -61,7 +64,7 @@ def diplomatic_orders(game, owner):
         target = world.owner
         state = game.diplomacy_between(owner, target)
         if (not first_contact.known(game, owner, target) or state.trade_active or state.research_active
-                or state.non_aggression_active
+                or state.non_aggression_active or state.coalition_target
                 or not game.within_fuel_range(system.id, owner)
                 or state.relations >= (25 if game._empire(owner).race_id == "concord" else 0)):
             continue
@@ -74,8 +77,8 @@ def diplomatic_orders(game, owner):
         return []
     _, _, target = min(candidates)
     state = game.diplomacy_between(owner, target)
-    state.relations = -60
-    state.offer_ready_turn = game.turn+3
+    from .diplomacy import start_war
+    start_war(game, owner, target)
     goal = "announced an assimilation campaign against" if game._empire(owner).race_id == "concord" else "declared war on"
     message = f"{game.empire_name_for(owner)} {goal} {game.empire_name_for(target)}."
     state.record(game.turn, message)
@@ -302,8 +305,8 @@ def announce_raid(game, owner, defender, system):
     """A committed raid is hostile, so orbiting defenders can intercept it."""
     state = game.diplomacy_between(owner, defender)
     if state.relations >= HOSTILE_BELOW:
-        state.relations = -100
-        state.offer_ready_turn = game.turn+3
+        from .diplomacy import start_war
+        start_war(game, owner, defender)
         state.record(game.turn, f"{game.empire_name_for(owner)} sent a raid against {system.name}. Relations are now -100.")
 
 
@@ -339,12 +342,14 @@ def military_orders(game, reserved=(), owner=RIVAL):
             continue
         if candidates and escorts:
             if raiding.is_varkesh(game, owner):
-                destination, planet = min(candidates, key=lambda row: (game.travel_turns(system, row[0], owner),
+                destination, planet = min(candidates, key=lambda row: (row[1].owner not in coalitions.targets(game, owner),
+                                                                      game.travel_turns(system, row[0], owner),
                                                                       -row[1].workforce, row[0].id, row[1].id))
                 announce_raid(game, owner, planet.owner, destination)
             else:
                 destination, _ = min(candidates, key=lambda row: (
-                    not row[1].ascension_gate, game.travel_turns(system, row[0], owner), row[1].population, row[0].id, row[1].id))
+                    row[1].owner not in coalitions.targets(game, owner), not row[1].ascension_gate,
+                    game.travel_turns(system, row[0], owner), row[1].population, row[0].id, row[1].id))
             for ship in troops+escorts:
                 ordered.add(ship.id)
                 if ship.system_id != destination.id:
@@ -404,8 +409,8 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
                       and resolve(invasion_strength(game, system.id, p.id, owner)[0], forces(p, game.bonuses_for(p.owner))).captured]
         if not candidates:
             continue
-        planet = (max(candidates, key=lambda p: (p.workforce, -p.id)) if raiding.is_varkesh(game, owner) else
-                  min(candidates, key=lambda p: (not p.ascension_gate, p.population, p.id)))
+        planet = (max(candidates, key=lambda p: (p.owner in coalitions.targets(game, owner), p.workforce, -p.id)) if raiding.is_varkesh(game, owner) else
+                  min(candidates, key=lambda p: (p.owner not in coalitions.targets(game, owner), not p.ascension_gate, p.population, p.id)))
         report = game.invade(system.id, planet.id, owner=owner)
         if ground_reports is not None and "player" in (report.attacker, report.defender):
             ground_reports.append(report)
@@ -422,6 +427,10 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
 def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
     nature = personality(game, owner)
+    coalitions.ai_orders(game, owner)
+    tribute.ai_orders(game, owner)
+    from .diplomacy import ai_treaty_orders
+    ai_treaty_orders(game, owner)
     invasions = diplomatic_orders(game, owner)
     invasions.extend(outposts.ai_orders(game, owner, enemies(game, owner)))
     invasions.extend(invasion_orders(game, owner, ground_reports=ground_reports))

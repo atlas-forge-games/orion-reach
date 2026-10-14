@@ -247,7 +247,7 @@ class CombatState:
                 raise ValueError("Missing guardian or empire")
         else:
             diplomacy = game.diplomacy_between(*sides)
-            if diplomacy.relations != -100 or diplomacy.trade_active or diplomacy.research_active or diplomacy.non_aggression_active:
+            if diplomacy.relations != -100 or diplomacy.trade_active or diplomacy.research_active or diplomacy.non_aggression_active or diplomacy.coalition_target:
                 raise ValueError("Combat does not match diplomatic state")
         ships = []
         for row in rows:
@@ -626,6 +626,9 @@ def resolve(game, status, destination=None):
             if state.sides[0] in game.opponents:
                 game.rival_event(reward, turn=game.turn, owner=state.sides[0])
     if not state.guardian:
+        from .diplomacy import record_defeat
+        winner = state.enemy(retreating) if retreating else status.rsplit('_', 1)[0]
+        record_defeat(game, state.enemy(winner), winner)
         from .exploration import refresh
         refresh(game)
 

@@ -114,6 +114,8 @@ def invade(game, system_id, planet_id, owner="player"):
     defending = forces(planet, game.bonuses_for(planet.owner))
     outcome = resolve(attack, defending)
     captured = outcome.captured
+    from .diplomacy import record_defeat
+    record_defeat(game, defender if captured else owner, owner if captured else defender)
     lost, ground_troops = transport_losses(len(transports), outcome.attackers)
     for ship in transports[:lost]:
         game.ships.remove(ship)

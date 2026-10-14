@@ -106,6 +106,8 @@ def raid(game, system_id, planet_id, owner="player"):
     else:
         message = f"{game.empire_name_for(owner)} raid on {planet.name} was repelled."
     victory.record_ground_hostility(game, owner, defender, message)
+    from .diplomacy import record_defeat
+    record_defeat(game, defender if outcome.captured else owner, owner if outcome.captured else defender)
     game.raid_events.append(RaidEvent(game.next_raid_id, game.turn, system_id, planet_id, owner, defender,
                                       outcome.captured, captives, credits, razed, observers))
     game.next_raid_id += 1
