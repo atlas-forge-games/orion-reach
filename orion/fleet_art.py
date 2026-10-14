@@ -8,7 +8,7 @@ from .monster_art import draw_monster
 from .monsters import MONSTERS
 
 SHIP_ART_IDS = ("frigate", "destroyer", "cruiser", "battleship", "carrier", "titan", "combat_drone",
-                "troop_transport", "colony_ship", "scout")
+                "troop_transport", "colony_ship", "outpost_ship", "scout")
 
 
 @lru_cache(maxsize=16)

@@ -148,5 +148,20 @@
       1224
     ],
     "sha256": "3cb33ea1111f85bcba00d536f4283fdd0dd83d3ae5434620b796c0f296c18240"
+  },
+  {
+    "id": "outpost_ship",
+    "file": "outpost_ship-v1.png",
+    "dimensions": [
+      1024,
+      1536
+    ],
+    "alpha_bounds": [
+      137,
+      67,
+      887,
+      1430
+    ],
+    "sha256": "a79fb304a2ea006de381bd5b5844c0ad9ea4a9e7ffcbea7a921849228ca502f2"
   }
 ]

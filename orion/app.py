@@ -1735,6 +1735,15 @@ class App:
     def select_colony_slot(self,index):
         self.colony_slot=index
 
+    def show_output_breakdown(self,kind):
+        from .production_breakdown import describe
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        if not planet.colonized or (planet.owner!=PLAYER and not self.game.is_observer):
+            return
+        self.dialog={"output_breakdown":describe(self.game,planet,kind),"info_page":0,"return_focus":self.focus}
+        self.buttons=[]
+        self.focus="dialog_cancel"
+
     def clear_worker_selection(self):
         self.worker_source=None
         self.worker_count=0
@@ -2037,9 +2046,17 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog:
                     self.cancel_dialog()
             else:
+                if self.screen=="planet":
+                    from .production_breakdown import ROLES, KINDS
+                    kind=next((value for role,value in ROLES.items() if worker_row_rect(role).collidepoint(self.mouse)),None)
+                    if kind is None:
+                        kind=next((value for i,value in enumerate(KINDS) if pg.Rect(302+i*124,86,120,57).collidepoint(self.mouse)),None)
+                    if kind:
+                        self.show_output_breakdown(kind)
+                        return
                 module=next((m for m,r in reversed(self.module_regions) if r.collidepoint(self.mouse)),None) if self.screen=="designer" else None
                 if module:
                     self.show_designer_info(module=module)
@@ -2712,6 +2729,10 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        if "output_breakdown" in self.dialog:
+            from .production_breakdown import draw
+            draw(self)
+            return
         if "designer_info" in self.dialog:
             draw_designer_info(self)
             return

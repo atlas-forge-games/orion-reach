@@ -226,7 +226,7 @@ def workforce_panel(app, game, planet, live):
     elif preview:
         caption = f"Select {preview[1]} from {ROLE_LABELS[preview[0]].lower()} · Click here, then click the destination job."
     else:
-        caption = f"Click a worker or gap to select everyone to its right, then a new job. · {food.growth_caption}"
+        caption = f"Left-click: assign workers. Right-click a row or total: calculation. · {food.growth_caption}"
     text(surface, shorten(caption, 742, 11), (302, 279), 11, MUTED)
 
 

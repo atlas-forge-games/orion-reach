@@ -1,0 +1,6 @@
+Orion Reach v0.60.2 — extract over v0.60.1.
+
+Right-click Farming, Industry, Research or Mining rows for live calculation details.
+All six production cards also support right-click explanations.
+Close with right-click, Esc or Close. Long breakdowns have page controls.
+Dedicated outpost ship artwork. Existing saves compatible. Nothing committed.

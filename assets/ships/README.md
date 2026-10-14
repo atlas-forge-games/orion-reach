@@ -25,3 +25,5 @@ Run `python tools/preview_ship_art.py` to render the artwork catalogue and
 the real research, designer, shipyard and carrier combat screens.
 Run `python tools/preview_support_ship_art.py` for the three support ships,
 their small-icon comparisons, and the real shipyard, fleet and combat screens.
+
+Version 0.60.2 adds `outpost_ship-v1.png`: an unarmed construction vessel with prefabricated base modules, crane booms and fuel tanks. Prompt in `outpost_ship-prompt.txt`; original transparent PNG preserved.
