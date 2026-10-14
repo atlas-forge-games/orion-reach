@@ -1,0 +1,6 @@
+Orion Reach v0.60.1 — extract over v0.60.0.
+
+Transport losses now follow troop casualties (rounded up to full loads).
+Full surviving squads re-embark; leftover troops occupy the colony or return home after raids.
+Added Space Hub artwork. Removed the galaxy coordinate grid.
+Existing saves remain compatible. Nothing committed.

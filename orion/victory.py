@@ -57,6 +57,16 @@ def troop_transports(game, system_id, owner="player"):
     return [s for s in game.fleet_at(system_id, owner) if s.kind == "troop_transport"]
 
 
+def transport_losses(count, survivors):
+    """Return lost hulls and leftover troops after full squads re-embark.
+
+    Casualties are concentrated into transport loads, rounding hull losses up.
+    Full surviving squads stay aboard; the remainder becomes a local garrison.
+    """
+    remaining, ground_troops = divmod(survivors, production_balance.TROOP_STRENGTH)
+    return max(0, count-remaining), ground_troops
+
+
 def invasion_strength(game, system_id, planet_id, owner="player"):
     return (len(troop_transports(game, system_id, owner))*production_balance.TROOP_STRENGTH,
             forces(game.planet_at(system_id, planet_id), game.bonuses_for(game.planet_at(system_id, planet_id).owner)).strength)
@@ -101,16 +111,19 @@ def invade(game, system_id, planet_id, owner="player"):
     defending = forces(planet, game.bonuses_for(planet.owner))
     outcome = resolve(attack, defending)
     captured = outcome.captured
-    for ship in transports:
+    lost, ground_troops = transport_losses(len(transports), outcome.attackers)
+    for ship in transports[:lost]:
         game.ships.remove(ship)
     previous_systems = administration.snapshot(game)
     apply_ground_outcome(planet, owner, defending, outcome)
+    if captured:
+        planet.garrison = ground_troops
     administration.ownership_changed(game, previous_systems)
     action = ("assimilated" if game._empire(owner).race_id == "concord" else "captured") if captured else "failed to capture"
     record_ground_hostility(game, owner, defender,
                            f"{game.empire_name_for(owner)} {action} {planet.name}: "
                            f"{attack-outcome.attackers} attacking and {defending.troops-outcome.defenders} defending troops lost. "
-                           f"{len(transports)} transports consumed.")
+                           f"{lost} transports lost; {len(transports)-lost} returned to orbit.")
     game.eliminate_defeated()
     game.check_victory()
     return InvasionReport(owner, system_id, planet_id, attack, defence, len(transports), captured,

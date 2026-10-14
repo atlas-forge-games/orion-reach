@@ -2517,13 +2517,6 @@ class App:
         draw_galaxy_background(self.canvas,MAP,self.settings["galaxy_background"],self.map_camera)
         old_clip=self.canvas.get_clip()
         self.canvas.set_clip(MAP)
-        # A sparse coordinate grid makes the map legible without implying travel lanes.
-        for x in range(MAP.x+44,MAP.right,76):
-            at=self.map_camera.transform((x,MAP.centery),MAP)[0]
-            pg.draw.line(self.canvas,(14,29,38),(at,MAP.y+1),(at,MAP.bottom-1))
-        for y in range(MAP.y+40,MAP.bottom,70):
-            at=self.map_camera.transform((MAP.centerx,y),MAP)[1]
-            pg.draw.line(self.canvas,(14,29,38),(MAP.x+1,at),(MAP.right-1,at))
         draw_coverage(self,MAP)
         draw_fuel_range(self,MAP)
         labels=star_label_rects(self,MAP)

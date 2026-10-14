@@ -7,7 +7,7 @@ from .colony_scene import landscape
 from .ground_combat import GroundForces, forces, resolve
 from . import production as production_balance
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
-from .victory import troop_transports
+from .victory import troop_transports, transport_losses
 from . import raiding
 
 
@@ -57,6 +57,9 @@ def draw_ground(app):
         attacker, defender = "player", planet.owner
         attack_left, defence_left = None, None
         captured, rounds = outcome.captured, outcome.rounds
+    lost, ground_troops = transport_losses(count, report.attacker_survivors if report else outcome.attackers)
+    if tomb:
+        ground_troops = report.attacker_survivors
     attack_color = app.empire_color("player") if attacker == "player" else RED
     defence_color = app.empire_color("player") if defender == "player" else RED
     success_color = attack_color if captured else defence_color
@@ -109,8 +112,8 @@ def draw_ground(app):
     else:
         paragraph(surface, "Troops exchange fire simultaneously. Every four troops inflict one casualty per round, rounded up. Fortifications increase defending firepower.",
                   (85, 637), 766, 15, INK, 25)
-        rules = ("Raid transports are consumed. Captives and surviving troops return home immediately. Empty colonies are abandoned; inhabited colonies keep their owner." if raid else
-                 "All landing transports are consumed. Surviving invaders hold a captured colony. Civilian population and ordinary buildings survive.")
+        rules = ("Transport losses follow troop casualties, rounded up to full loads. Full squads re-embark; other survivors and captives return home. Empty colonies are abandoned; inhabited colonies keep their owner." if raid else
+                 "Transport losses follow troop casualties, rounded up to full loads. Full squads re-embark; remaining troops hold the colony. Civilians and buildings survive.")
         paragraph(surface, rules,
                   (85, 715), 766, 14, MUTED, 23)
 
@@ -120,19 +123,19 @@ def draw_ground(app):
         title = ("Raid succeeded" if captured else "Raid repelled") if report else ("Raid success predicted" if captured else "Defeat predicted")
     text(surface, title, (929, 611), 28, success_color)
     if raid and report:
-        detail = (f"{report.slaves_taken} slave units and {report.credits_stolen} CR taken. {attack_left} troops returned home. "
+        detail = (f"{report.slaves_taken} slave units and {report.credits_stolen} CR taken. {ground_troops} troops returned home; {count-lost} transports remain. "
                   +( "The empty colony was abandoned." if report.colony_razed else "The colony keeps its owner.")) if captured else "No captives or credits taken. Surviving defenders retain the colony."
     elif raid:
         slaves, credits = raiding.expected_loot(game, planet)
-        detail = f"On victory: up to {slaves} slave units and {credits} CR, limited by the victim's treasury. {outcome.attackers} surviving troops return home."
+        detail = f"On victory: up to {slaves} slave units and {credits} CR, limited by the victim's treasury. {ground_troops} troops return home; full squads re-embark."
     elif report:
-        detail = (f"{attack_left} invaders remain as the new garrison. Militia will remuster gradually."
+        detail = (f"{ground_troops} invaders remain as the new garrison. Militia will remuster gradually."
                   if captured else f"{defence_left} defenders remain. Garrison losses need barracks; militia recover one troop per turn.")
     else:
         detail = (f"Expected survivors: {outcome.attackers} invaders, {outcome.defenders} defenders. "
                   "Preview uses the actual battle rules.")
     paragraph(surface, detail, (929, 659), 424, 15, INK, 25)
-    footer = f"{len(rounds)} rounds · assault from beneath the surface" if tomb else f"{len(rounds)} rounds · {count} transports {'consumed' if report else 'will be consumed'}"
+    footer = f"{len(rounds)} rounds · assault from beneath the surface" if tomb else f"{len(rounds)} rounds · transports: {lost} lost / {count-lost} survive"
     text(surface, footer, (929, 766), 12, MUTED)
     if report:
         app.button("ground_continue", "Next report →" if len(app.ground_reports) > 1 else "Continue →",

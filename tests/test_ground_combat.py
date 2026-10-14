@@ -115,7 +115,7 @@ class GroundBattleTests(unittest.TestCase):
         self.assertFalse(resolve(0, GroundForces(0, 0, 0)).captured)
         self.assertTrue(resolve(8, GroundForces(0, 0, 0)).captured)
 
-    def test_preview_matches_capture_and_survivors_become_garrison(self):
+    def test_preview_matches_capture_and_survivors_split_between_ships_and_garrison(self):
         game = scenario()
         sid, pid, planet = fortified_target(game)
         add_transports(game, sid, 4)
@@ -126,9 +126,10 @@ class GroundBattleTests(unittest.TestCase):
         report = game.invade(sid, pid)
         self.assertTrue(report.captured)
         self.assertEqual(report.rounds, prediction.rounds)
-        self.assertEqual((report.attacker_survivors, planet.garrison), (15, 15))
+        self.assertEqual((report.attacker_survivors, planet.garrison), (15, 7))
         self.assertEqual((planet.owner, planet.population, forces(planet).militia), (PLAYER, population, 0))
-        self.assertFalse(game.ships)
+        self.assertEqual(len(game.ships), 1)
+        self.assertEqual(planet.garrison+len(game.ships)*TROOP_STRENGTH, report.attacker_survivors)
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_failed_attack_depletes_garrison_and_militia_across_save_load(self):

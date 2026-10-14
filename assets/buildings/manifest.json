@@ -324,6 +324,22 @@
       "alpha_threshold_for_bounds": 32,
       "sha256": "5d62acfd97d15bbc9d86cbe9a6761d868ce4eacfa39b05a9d70203e83fb4f2ea",
       "special_project_id": "ascension_gate"
+    },
+    {
+      "id": "space_hub",
+      "name": "Space Hub",
+      "file": "space_hub-v1.png",
+      "model_building_id": "space_hub",
+      "width": 1554,
+      "height": 1012,
+      "substantial_alpha_bounds": [
+        29,
+        23,
+        1528,
+        955
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "dc92b032ec75e21f30232427ecf8deb02780713fb67213561c5bdc51a636c929"
     }
   ]
 }

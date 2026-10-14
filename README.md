@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.60.0
+# Orion Reach — Python prototype 0.60.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,14 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## Fixes in v0.60.1
+
+- Invasions and raids lose transports only for troop casualties, rounded up to
+  whole loads (8 troops by default). Full surviving squads re-embark; leftover
+  troops become the occupation garrison, or return home after a raid.
+- Added dedicated Space Hub artwork throughout colony screens.
+- Removed the coordinate grid from the galaxy map.
 
 ## New in v0.60: system megastructures
 
@@ -1488,7 +1496,7 @@ The Varkesh now raid for captives and credits instead of colonizing worlds.
 - **Raiding:** clear hostile ships from orbit, open an enemy colony and choose
   **Plan colony raid**. Review the ground-combat preview, then **Launch raid**.
   Garrisons, militia and fortifications use the existing combat rules. Failed
-  raids take nothing. All participating transports are consumed.
+  raids take nothing. Transport losses follow casualties, rounded up to full loads; full surviving squads re-embark.
 - **Captives:** a successful raid transfers population to the original Varkesh
   homeworld, up to **100 slave population units in addition to native citizens**.
   One slave unit represents the same 1 B population unit used by the workforce.
@@ -1589,8 +1597,8 @@ resolve automatically, with a landing preview and a round-by-round casualty repo
   and one militia troop remusters per turn. Troop losses do not remove civilian
   population or change worker assignments.
 - **Invasions:** clear enemy ships, open the rival planet, choose **Plan ground
-  invasion**, review the preview, then **Launch invasion**. All local transports
-  are consumed. Successful invaders become the occupation garrison; captured
+  invasion**, review the preview, then **Launch invasion**. Full surviving squads return to their transports; leftover troops
+  form the occupation garrison. Transport losses round casualties up to full loads; captured
   militia start at zero and remuster gradually. Occupation forces above eight
   are retained, but barracks cannot replenish beyond their training limit.
 - **AI:** trains defenders, builds fortifications and assembles enough transports

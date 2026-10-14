@@ -54,3 +54,5 @@ Run `python tools/preview_building_art.py` from the repository root to render
 
 The original six PNGs are unchanged. This artwork update changes no building
 statistics, research, game rules or save data.
+
+Version 0.60.1 adds `space_hub-v1.png`: a travelers’ glass lounge, terminal wings, landing pad and communications mast. Generated with the built-in image tool, on a transparent background, in the existing colony architectural style. Prompt recorded in `space_hub-prompt.txt`.

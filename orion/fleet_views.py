@@ -47,7 +47,7 @@ def draw_shipyard(app):
         text(surface, description, (154, y+37), 12, CYAN)
         captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
-                    "troop_transport": "Needs barracks. Includes 8 troops; consumed on landing.",
+                    "troop_transport": "Needs barracks. Includes 8 troops; hull losses follow casualties.",
                     "scout": "Charts systems and recovers one-time discoveries."}
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"

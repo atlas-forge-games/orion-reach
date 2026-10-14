@@ -76,7 +76,8 @@ def raid(game, system_id, planet_id, owner="player"):
     attack = len(transports)*victory.production_balance.TROOP_STRENGTH
     defending = ground_combat.forces(planet, game.bonuses_for(planet.owner))
     outcome = ground_combat.resolve(attack, defending)
-    for ship in transports:
+    lost, ground_troops = victory.transport_losses(len(transports), outcome.attackers)
+    for ship in transports[:lost]:
         game.ships.remove(ship)
     victory.apply_ground_casualties(planet, defending, outcome.defenders)
     captives = credits = 0
@@ -91,7 +92,7 @@ def raid(game, system_id, planet_id, owner="player"):
         planet.slaves -= transferred
         planet.population -= captives-transferred
         home.slaves += captives
-        home.garrison = min(ground_combat.MAX_GARRISON, home.garrison+outcome.attackers)
+        home.garrison = min(ground_combat.MAX_GARRISON, home.garrison+ground_troops)
         # The expedition brings its captives home immediately; no occupation colony.
         population.clamp_workforce(planet)
         home.farmers = population.farmers_needed(home, game.bonuses_for(owner), surplus=1)
