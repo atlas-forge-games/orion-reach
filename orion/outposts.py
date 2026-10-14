@@ -59,6 +59,9 @@ def attack_error(game, system_id, planet_id, owner="player"):
     planet = game.planet_at(system_id, planet_id)
     if planet.outpost_owner in (None, owner):
         return "Choose an opposing outpost."
+    from .diplomacy import aggression_error
+    if aggression_error(game, owner, planet.outpost_owner):
+        return aggression_error(game, owner, planet.outpost_owner)
     if monsters.alive_at(game, system_id):
         return "Defeat the system guardian first."
     if game.foreign_fleet(system_id, owner) or any(p.owner != owner for p in defenses.bases(game, system_id)):

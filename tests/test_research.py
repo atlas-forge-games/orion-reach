@@ -201,9 +201,11 @@ class ResearchRulesTests(unittest.TestCase):
         discover(game, "cultural_exchange")
         self.assertEqual(game.diplomatic_yields(), (0, 0))
         game.diplomacy.trade_active = game.diplomacy.research_active = True
-        self.assertEqual(game.diplomatic_yields(), (8, 7))
-        self.assertEqual(game.diplomatic_yields(RIVAL), (6, 3))
-        self.assertEqual(game.empire_rates, (35, 7))  # Colonial Administration adds another 2 CR.
+        from orion.diplomacy import trade_income
+        trade = trade_income(game, PLAYER, RIVAL)
+        self.assertEqual(game.diplomatic_yields(), (trade, 7))
+        self.assertEqual(game.diplomatic_yields(RIVAL), (trade_income(game, RIVAL, PLAYER), 3))
+        self.assertEqual(game.empire_rates, (27+trade, 7))  # Colonial Administration adds another 2 CR.
 
 
 class ResearchSaveTests(unittest.TestCase):

@@ -247,7 +247,7 @@ class CombatState:
                 raise ValueError("Missing guardian or empire")
         else:
             diplomacy = game.diplomacy_between(*sides)
-            if diplomacy.relations != -100 or diplomacy.trade_active or diplomacy.research_active:
+            if diplomacy.relations != -100 or diplomacy.trade_active or diplomacy.research_active or diplomacy.non_aggression_active:
                 raise ValueError("Combat does not match diplomatic state")
         ships = []
         for row in rows:
@@ -482,6 +482,9 @@ def engagement_error(game, system_id, owner="player", target=None):
     target = engagement_target(game, system_id, owner, target)
     if target == owner or target not in game.owners:
         return "Both empires need ships in orbit in this system."
+    from .diplomacy import aggression_error
+    if aggression_error(game, owner, target):
+        return aggression_error(game, owner, target)
     own, enemy = game.fleet_at(system_id, owner), game.fleet_at(system_id, target)
     own_bases, enemy_bases = defenses.bases(game, system_id, owner), defenses.bases(game, system_id, target)
     if not (own or own_bases) or not (enemy or enemy_bases):
@@ -523,9 +526,8 @@ def begin_combat(game, system_id, owner="player", target=None):
     from .first_contact import establish
     establish(game, owner, target)
     diplomacy = game.diplomacy_between(owner, target)
-    diplomacy.trade_active = diplomacy.research_active = False
-    diplomacy.relations = -100
-    diplomacy.offer_ready_turn = game.turn+3
+    from .diplomacy import start_war
+    start_war(game, owner, target)
     diplomacy.record(game.turn, f"Combat at {game.systems[system_id].name}. Agreements ended; relations are now -100.")
     for participant in (owner, target):
         if participant != "player":

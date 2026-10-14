@@ -101,21 +101,26 @@ class IndependentEmpireTests(unittest.TestCase):
                 self.assertGreater(len(game._empire(owner).events), 1, owner)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
-    def test_diplomacy_gifts_cooldowns_and_treaties_are_bilateral(self):
+    def test_treaties_and_offer_cooldowns_are_bilateral(self):
+        from orion.diplomacy import trade_income
         game = new_game(seed=101, rival_count=3, fog_of_war=False)
         target = "rival_2"
         original = copy.deepcopy(game.diplomacy)
-        game.diplomacy_action("gift", target)
-        self.assertEqual((game.credits, game._empire(target).credits, game.opponent.credits), (70, 170, 120))
+        game.diplomacy_between(PLAYER, target).relations = 10
+        game.diplomacy_action("trade", target)
+        self.assertEqual((game.credits, game._empire(target).credits, game.opponent.credits), (120, 120, 120))
         self.assertEqual(game.diplomacy, original)
         self.assertEqual(game.diplomacy_between(target, "rival_3").relations, alignment.between(game,target,"rival_3"))
-        game.diplomacy_action("envoy", RIVAL)
-        self.assertEqual(game.diplomacy_between(PLAYER, target).relations, alignment.between(game,PLAYER,target)+12)  # Lithar response to gifts.
+        self.assertEqual(game.diplomacy_between(PLAYER, target).offer_ready_turn, game.turn+3)
+        game.diplomacy.relations = 10
+        self.assertIsNone(game.diplomacy_error("trade", RIVAL))
+        game.diplomacy_action("trade", RIVAL)
         for owner in (RIVAL, target):
             state = game.diplomacy_between(PLAYER, owner)
             state.relations = 60
-            state.trade_active = state.research_active = True
-        self.assertEqual(game.diplomatic_yields(), (10, 6))
+            state.research_active = True
+        expected_trade = sum(trade_income(game, PLAYER, owner) for owner in (RIVAL, target))
+        self.assertEqual(game.diplomatic_yields(), (expected_trade, 6))
         self.assertEqual(game.diplomatic_yields("rival_3"), (0, 0))
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
@@ -308,10 +313,12 @@ class MultipleEmpireInterfaceTests(unittest.TestCase):
 
     def test_switching_contacts_targets_actions_and_reports(self):
         self.app.go("diplomacy")
-        self.click("contact_next")
+        self.click("diplomacy_contact_rival_2")
         self.assertEqual(self.app.selected_rival_id(), "rival_2")
-        self.click("diplomacy_gift")
-        self.assertEqual((self.app.game.opponent.credits, self.app.game._empire("rival_2").credits), (120, 170))
+        self.app.game.diplomacy_between(PLAYER, "rival_2").relations = 10
+        self.click("diplomacy_trade")
+        self.assertFalse(self.app.game.diplomacy.trade_active)
+        self.assertTrue(self.app.game.diplomacy_between(PLAYER, "rival_2").trade_active)
         self.click("diplomacy_intelligence")
         self.assertEqual(self.app.selected_rival_id(), "rival_2")
         self.click("contact_next")

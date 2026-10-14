@@ -1,0 +1,27 @@
+Orion Reach v0.62.0 — extract over v0.61.0.
+
+Diplomacy now has a clickable portrait strip with each contacted empire's signed
+relation score. Gifts and envoys have been removed.
+
+Trade is accepted at +10 by every race and adds +1 relations per active turn.
+Non-aggression is accepted at +0, prevents attacks/raids/bombardment and adds
++1 relations per active turn. Friendship is accepted at +30 and includes trade,
+non-aggression and bilateral live scanner sharing. Research remains separate.
+
+Friendship preserves each source scanner's detail level. It shares direct fleet
+detections, not planet surveys or friends-of-friends' intelligence. Ending it
+removes the bundled treaties and stops live sharing immediately; dated sightings
+remain. Declare war ends all agreements and sets relations to -100.
+
+Trade income per partner:
+round((0.25 * sqrt(own gross colony CR * partner gross colony CR) + own bonuses)
+      / (1 + distance between capitals in light-years / 50)).
+Gross colony credits include Trade Goods, before upkeep; treaty income and
+treasury reserves do not count. Values recalculate as the economies change.
+
+Save format 43 reads previous versions. Existing relation scores, trade/research
+pacts and logs are preserved. New treaties start inactive. Balance profiles
+upgrade to version 9 with new treaty and trade controls; retired envoy/gift and
+flat-trade controls are removed. Campaigns keep their other balance settings.
+
+Nothing committed.

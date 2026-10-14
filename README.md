@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.61.0
+# Orion Reach — Python prototype 0.62.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,45 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.62: treaties and friendship
+
+Diplomacy now has a clickable portrait strip: every contacted empire shows its
+current relation score as **+N** or **−N** beneath its portrait. Gifts and envoys
+have been removed. Research agreements remain available.
+
+| Treaty | Acceptance | Benefits |
+| --- | ---: | --- |
+| Trade pact | +10 for every race | Economic trade income; +1 relations per turn |
+| Non-aggression pact | +0 | Prevents attacks, raids and bombardment; +1 relations per turn |
+| Friendship declaration | +30 | Includes trade and non-aggression, plus shared scanner output |
+
+Friendship shares the live fleet contacts each partner directly detects, with
+that source's actual sensor detail. It does not reveal planet surveys, secret
+orders, or friends-of-friends' contacts. Shared coverage appears in the galaxy
+map's sensor overlay. Ending friendship removes its bundled trade and
+non-aggression pacts and immediately stops live sharing; dated sightings remain.
+The two included pacts give +2 relations/turn together, with no duplicate income.
+
+**Declare war** ends all agreements and sets relations to −100. Active
+non-aggression and friendship protect against both human and AI attacks. Breaking
+an agreement has the usual recipient-specific penalty. Offers share a three-turn
+cooldown; declaring war bypasses it.
+
+Each empire's trade income is recalculated each turn:
+
+`round((25% × sqrt(own gross colony CR × partner gross colony CR) + own trade bonuses) / (1 + capital distance / 50 ly))`
+
+Gross credits include Trade Goods before upkeep; treaty income and banked credits
+do not count. Both economies matter, small partners limit the return, and distance
+reduces the entire yield including bonuses. Eliminated partners yield nothing.
+
+Save format **43** loads older saves while retaining existing relations, contacts,
+logs and trade/research pacts. New treaty types start inactive. Balance profile
+**9** replaces the retired envoy/gift and flat-trade controls with treaty thresholds,
+trade share and distance controls, preserving other custom settings.
+
+![Diplomacy with portrait relations and treaty controls](screenshots/v062_diplomacy.png)
 
 ## New in v0.61: shared-values diplomacy
 
@@ -20,10 +59,9 @@ Open **Diplomacy → Values & history** to compare the five values and see
 **shared values + diplomatic history = overall relations**. **Race alignment
 matrix** displays the complete race table without revealing undiscovered empires.
 Treaty offers, council votes and AI decisions all use the same overall relations.
-Gifts, envoys, treaties and conflict change history; alignment is never added each
+Treaties and conflict change history; alignment is never added each
 turn. Passive forgiveness can repair minor grievances toward the alignment
-baseline, but cannot erase ideological differences. Major hostility still needs
-active diplomacy.
+baseline, but cannot erase ideological differences. Declared wars remain hostile.
 
 Existing saves keep their current relation scores, treaties, contacts and logs.
 Their history term includes the previous baseline; loading or resaving never adds
@@ -37,8 +75,8 @@ is not automatically recalibrated after custom edits.
 
 The exact formula and standard profiles are documented in
 [docs/diplomatic-alignment.md](docs/diplomatic-alignment.md).
-Third-party reactions to slavery or assimilation, new treaties and asymmetric
-opinions are future diplomacy work; this release adds the shared-values layer.
+Third-party reactions to slavery or assimilation and asymmetric opinions remain
+future diplomacy work. Treaty additions follow in v0.62 above.
 
 ## Fixes in v0.60.2
 
@@ -746,7 +784,7 @@ red clan banners. It appears in race selection, setup, first contact and
 diplomacy, including existing campaigns after restarting the game.
 
 Their disposition is **Brutal · Predatory · Intimidating**. A threatening
-first-contact transmission and new replies to envoys, gifts, accepted/rejected
+first-contact transmission and new replies to accepted/rejected
 treaties and broken agreements give them a consistent raider voice. Replies
 appear in **Recent exchanges**, alongside the exact costs and diplomatic
 outcomes. Gifts are described as tribute; they retain their ordinary effect on
@@ -1258,20 +1296,20 @@ for that batch. Future discoveries still introduce themselves normally.
   opens a read-only archive, even after the recent diplomatic log has moved on.
 
 Civilization character is separate from its current relationship with you. All
-new contacts begin neutral. Envoys, gifts and treaty endings show their actual
+new contacts now begin at their shared-values alignment. Treaty endings show their actual
 personality-adjusted effects before you commit the action.
 
 | Civilization | Disposition | Strategic character |
 | --- | --- | --- |
 | Terrans | Open, pragmatic, ambitious | Reconcile readily; may challenge weaker, unfriendly neighbours. |
 | Kharuun | Practical, honourable, reserved | Value reliable trade and remember damaged trust. |
-| Aelari | Curious, cooperative, cautious | Welcome envoys, favour research and planetary protection. |
+| Aelari | Curious, cooperative, cautious | Favour research, peaceful treaties and planetary protection. |
 | Lithar | Patient, territorial, steadfast | Build defences and forgive very slowly. |
 | Varkesh | Brutal, predatory, intimidating | Build fleets early and raid neighbours without active agreements. |
 | Wanderers | Friendly, independent, adventurous | Welcome exchange and reconcile quickly. |
 | Xenonflora | Protective, communal, watchful | Fortify living communities and react strongly to broken agreements. |
 | Nexus | Calculating, unemotional, methodical | Value material exchange and assess favourable opportunities for conquest. |
-| Aetheri | Mysterious, contemplative, detached | Prefer dialogue to gifts and favour defensive fields. |
+| Aetheri | Mysterious, contemplative, detached | Prefer patient diplomacy and favour defensive fields. |
 | The Concord | Assimilating, relentless, collective | One will seeks to absorb independent civilizations through conquest. |
 | The Remnant | Proud, secretive, possessive | Guard ancient claims and remember slights. |
 
@@ -1280,18 +1318,15 @@ voice; its AI builds larger fleets earlier and can launch assimilation campaigns
 against reachable neutral neighbours. Successful invasions retain the conquered
 population and buildings under collective ownership, using the existing ground
 combat rules; they do not automatically copy technologies or convert ships.
-Concord trade/research agreements require **+45/+55 relations**. Envoys receive
-**6 fewer** relations and gifts **10 fewer** than their base effect. Their former
-extra envoy bonus is removed. Networked treaty yields (+3 CR/+1 RP) and the 10%
-local credit penalty remain. Existing custom empire names are retained.
+As of v0.62, Concord trade/research agreements require **+10/+55 relations**.
+Their networked treaty bonuses (+3 CR before distance/+1 RP) and the 10% local
+credit penalty remain. Existing custom empire names are retained.
 
-The base envoy gain is 8 plus the sender's racial bonus and the recipient's
-personality modifier; the base gift gain is 15 plus the recipient's modifier.
-Gains cannot fall below one. Ending a treaty costs 10 relations for Varkesh,
+Ending a treaty costs 10 relations for Varkesh,
 20 for Concord, 25 for Lithar/Xenonflora/Remnant and 15 for the others.
 Wary relations (-30 through -1) recover one point at the slower civilization's
 forgiveness interval (3–20 turns). Concord relationships never recover passively;
-hostile wars require active diplomacy. Active treaties continue to build trust.
+declared wars remain hostile. Active treaties continue to build trust.
 
 Terran, Nexus and Remnant AI can declare war on an unfriendly neighbour when their
 known military position is favourable. Concord can also target neutral neighbours.
@@ -1961,8 +1996,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   **Empire → Rival report** to inspect its economy, colonies and recent activity.
 - Cyan marks your colonies and ships; each rival has a distinct map color. Rival worlds
   can be surveyed, with construction controls disabled.
-- **Diplomacy · D** opens race portraits and profiles, relations, envoys, gifts, trade pacts,
-  research agreements and the rival's recent responses. Treaty income is
+- **Diplomacy · D** opens race portraits and profiles, signed relations, trade,
+  non-aggression, friendship, war and research agreements, plus recent responses. Treaty income is
   included in Empire Overview and Rival report.
 - **Research · R** opens nine branches, each with sequential tiers and two mutually
   exclusive choices per tier. Discover technologies that improve production,
@@ -2432,41 +2467,36 @@ instead. Portraits also work with existing saves.
 Open **Diplomacy** from the top bar or press **D**. Use its contact arrows to
 select a rival. The screen shows that rival's
 identity, a relations score from -100 to +100, agreement benefits and acceptance
-thresholds. An offer is accepted immediately when relations meet that rival
-race's threshold; otherwise it is declined with a reason. This is deterministic,
+thresholds. An offer is accepted immediately when relations meet its displayed
+threshold; otherwise it is declined with a reason. This is deterministic,
 with no hidden dice roll. The rival responds to your offers; unsolicited AI
 diplomatic proposals are not implemented yet.
 
-![Diplomacy with rival contact selector](screenshots/multiple_diplomacy.png)
+![Diplomacy with portrait relation scores](screenshots/v062_diplomacy.png)
 
 | Action | Effect | Cooldown |
 | --- | --- | --- |
-| Send envoy | Spend 10 CR; base +8 relations, plus sender racial and recipient personality modifiers | 3 turns |
-| Gift 50 CR | Transfer 50 CR to the rival; base +15 relations, modified by their personality | 5 turns |
-| Propose trade pact | If accepted, +5 CR/turn to each empire; Kharuun receive +6 | All treaty offers share 3 turns |
-| Propose research agreement | If accepted, +3 RP/turn to each empire; Aelari receive +4 | All treaty offers share 3 turns |
-| End an agreement | Stop its benefits for both empires; lose 10–25 relations depending on the recipient | Treaty offers wait at least 3 turns |
+| Propose trade pact | Accepted at +10; dynamic income from both economies and capital distance | Offers share 3 turns |
+| Propose non-aggression | Accepted at +0; prevents military attacks and raids | Offers share 3 turns |
+| Declare friendship | Accepted at +30; includes trade, non-aggression and shared scanners | Offers share 3 turns |
+| Propose research agreement | Racial acceptance threshold; +3 RP/turn plus your research bonuses | Offers share 3 turns |
+| Declare war | Ends all agreements and sets relations to -100 | Immediate |
+| End an agreement | Stops benefits; lose 10–25 relations depending on the recipient | Offers wait at least 3 turns |
 
-A cooldown of three turns means an action used on turn 1 becomes available
-again on turn 4. Declined proposals also trigger the treaty-offer cooldown.
-Envoys and gifts are disabled when relations reach +100. Their displayed gains
-are capped at that maximum.
+A cooldown of three turns means an offer used on turn 1 becomes available again
+on turn 4. Declined proposals also trigger it. Gifts and envoys were removed in
+v0.62. Treaty income begins on the next End Turn, is paid to each empire, and
+never increases a planet's local industry. Trade, research and non-aggression
+each add +1 relations per active turn, capped at +100. Friendship includes two of
+these pacts without adding a second copy of their benefits.
 
-Treaties have no signing fee, ongoing cost or fixed expiry. Each active treaty
-adds +1 relations per End Turn. Income starts on the next End Turn, belongs to
-each empire separately, and never increases a planet's local industry.
-Empire Overview and Rival report include it in their totals and identify the
-agreement contribution. Research points fund the active technology or enter the bank.
-The Cultural Exchange technology adds +3 to each active agreement's output for
-the empire that discovered it; the other empire's benefits are unchanged.
-
-Ending an agreement requires confirmation. If relations fall below zero, the
-rival ends any remaining agreements at the beginning of the next End Turn,
-before income is collected. Envoys and gifts can restore relations. Diplomacy
-does not restrict travel or settlement. Starting combat ends both agreements
-and sets relations to -100. Rival frigates can initiate encounters while relations
-are below -30. Opportunistic AI can declare war as described in the v0.34 rules.
-Alliances and border treaties are not implemented.
+Ending an agreement requires confirmation. Trade and research outside friendship
+end below zero relations before collecting income. Non-aggression remains binding
+until explicitly ended or war is declared. Friendship ends as a bundle, including
+its trade, non-aggression and live scanner sharing. Old observations remain dated.
+Diplomacy does not restrict travel or settlement. Unprotected attacks break
+agreements and set relations to -100. Hostile AI fleets can initiate encounters
+below -30; AI respects active non-aggression and friendship.
 
 Existing campaigns gain neutral diplomatic contact when loaded if a rival
 already exists. Older player empires are assigned Terrans and existing Helios

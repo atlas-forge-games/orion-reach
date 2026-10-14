@@ -40,9 +40,11 @@ def enemies(game, owner):
     if raiding.is_varkesh(game, owner):
         return {other for other in game.owners if other != owner and game.colony_systems(other)
                 and not game.diplomacy_between(owner, other).trade_active
-                and not game.diplomacy_between(owner, other).research_active}
+                and not game.diplomacy_between(owner, other).research_active
+                and not game.diplomacy_between(owner, other).non_aggression_active}
     return {other for other in game.owners if other != owner
-            and game.diplomacy_between(owner, other).relations < HOSTILE_BELOW}
+            and game.diplomacy_between(owner, other).relations < HOSTILE_BELOW
+            and not game.diplomacy_between(owner, other).non_aggression_active}
 
 
 def diplomatic_orders(game, owner):
@@ -59,6 +61,7 @@ def diplomatic_orders(game, owner):
         target = world.owner
         state = game.diplomacy_between(owner, target)
         if (not first_contact.known(game, owner, target) or state.trade_active or state.research_active
+                or state.non_aggression_active
                 or not game.within_fuel_range(system.id, owner)
                 or state.relations >= (25 if game._empire(owner).race_id == "concord" else 0)):
             continue

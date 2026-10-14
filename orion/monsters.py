@@ -241,6 +241,7 @@ def intercept(game):
 def ai_orders(game, owner="rival"):
     """Gather a sufficient escort at a colony before attacking a known guardian."""
     if owner not in game.opponents or any(game.diplomacy_between(owner, other).relations < -30
+                                         and not game.diplomacy_between(owner, other).non_aggression_active
                                          for other in game.owners if other != owner):
         return set()
     targets = [g for g in game.guardians if (known_status(game, g.system_id, owner) == "alive" or

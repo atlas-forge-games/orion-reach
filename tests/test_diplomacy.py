@@ -43,33 +43,7 @@ class DiplomacyRulesTests(unittest.TestCase):
             with self.assertRaises(SaveError):
                 new_game(seed=2408, **kwargs)
 
-    def test_envoy_costs_and_cooldowns_apply_to_each_race(self):
-        for race_id, expected_gain in (("terran", 12), ("kharuun", 11), ("aelari", 8)):
-            game = new_game(seed=2408, race_id=race_id)
-            baseline = game.diplomacy.relations
-            game.diplomacy_action("envoy")
-            self.assertEqual(game.credits, 110)
-            self.assertEqual(game.diplomacy.relations, baseline+expected_gain)
-            self.assertEqual(game.opponent.credits, 120)
-            for _ in range(3):
-                before = game.to_dict()
-                with self.assertRaisesRegex(RuleError, "turn 4"):
-                    game.diplomacy_action("envoy")
-                self.assertEqual(game.to_dict(), before)
-                game.advance_turn()
-            game.diplomacy_action("envoy")
-            self.assertEqual(game.diplomacy.relations, baseline+2*expected_gain)
 
-    def test_gift_transfers_credits_once_and_saves_recipient_balance(self):
-        game = new_game(seed=2408)
-        game.diplomacy_action("gift")
-        self.assertEqual((game.credits, game.opponent.credits), (70, 170))
-        self.assertEqual(game.diplomacy.relations, score(game.race_id,game.opponent.race_id)+15)
-        before = game.to_dict()
-        with self.assertRaisesRegex(RuleError, "turn 6"):
-            game.diplomacy_action("gift")
-        self.assertEqual(game.to_dict(), before)
-        self.assertEqual(GameState.from_dict(before), game)
 
     def test_invalid_unaffordable_and_no_contact_actions_are_atomic(self):
         game = new_game(seed=2408)
@@ -81,7 +55,7 @@ class DiplomacyRulesTests(unittest.TestCase):
         game.credits = 9
         for action in ("envoy", "gift"):
             before = game.to_dict()
-            with self.assertRaisesRegex(RuleError, "credits"):
+            with self.assertRaisesRegex(RuleError, "Unknown diplomatic action"):
                 game.diplomacy_action(action)
             self.assertEqual(game.to_dict(), before)
         peaceful = new_game(seed=2408, with_ai=False)
@@ -93,7 +67,7 @@ class DiplomacyRulesTests(unittest.TestCase):
         self.assertEqual(peaceful.to_dict(), before)
 
     def test_rival_race_controls_acceptance_and_offers_share_a_cooldown(self):
-        for race, trade, research in (("terran", 20, 30), ("kharuun", 15, 45), ("aelari", 30, 15)):
+        for race, trade, research in (("terran", 10, 30), ("kharuun", 10, 45), ("aelari", 10, 15)):
             for action, threshold in (("trade", trade), ("research", research)):
                 with self.subTest(race=race, action=action):
                     game = new_game(seed=2408, rival_race_id=race)
@@ -122,13 +96,15 @@ class DiplomacyRulesTests(unittest.TestCase):
         game.diplomacy.relations = 60
         game.diplomacy.trade_active = game.diplomacy.research_active = True
         game.opponent.credits = 0  # Keep construction spending out of the bank comparison.
-        self.assertEqual(game.diplomatic_yields(PLAYER), (5, 4))
-        self.assertEqual(game.diplomatic_yields(RIVAL), (6, 3))
+        from orion.diplomacy import trade_income
+        own_trade, rival_trade = (trade_income(game, owner, other) for owner, other in ((PLAYER, RIVAL), (RIVAL, PLAYER)))
+        self.assertEqual(game.diplomatic_yields(PLAYER), (own_trade, 4))
+        self.assertEqual(game.diplomatic_yields(RIVAL), (rival_trade, 3))
         self.assertEqual(game.planet_at(0, 2).yields_per_turn, (6, 8, 0))
         report = game.advance_turn()
-        self.assertEqual((report.income, report.research), (13, 4))
-        self.assertEqual((game.credits, game.research), (133, 4))
-        self.assertEqual((game.opponent.credits, game.opponent.research), (14, 3))
+        self.assertEqual((report.income, report.research), (8+own_trade, 4))
+        self.assertEqual((game.credits, game.research), (128+own_trade, 4))
+        self.assertEqual((game.opponent.credits, game.opponent.research), (8+rival_trade, 3))
         self.assertEqual(game.diplomacy.relations, 62)
         for owner in (PLAYER, RIVAL):
             summary = summarize_empire(game, owner=owner)
@@ -156,14 +132,9 @@ class DiplomacyRulesTests(unittest.TestCase):
     def test_relations_are_bounded_and_zero_relations_do_not_cancel_agreements(self):
         game = new_game(seed=2408)
         game.diplomacy.relations = 98
-        self.assertIn("+2", game.diplomacy_action("envoy"))
-        self.assertEqual(game.diplomacy.relations, 100)
-        before = game.to_dict()
-        with self.assertRaises(RuleError):
-            game.diplomacy_action("gift")
-        self.assertEqual(game.to_dict(), before)
-        game.diplomacy.trade_active = True
+        game.diplomacy.trade_active = game.diplomacy.research_active = True
         game.advance_turn()
+        game.diplomacy.research_active = False
         self.assertEqual(game.diplomacy.relations, 100)
         game.diplomacy.relations = 0
         game.advance_turn()
@@ -198,8 +169,7 @@ class DiplomacyRulesTests(unittest.TestCase):
 class DiplomacySaveTests(unittest.TestCase):
     def test_save_resume_preserves_traits_treaties_cooldowns_and_future_turns(self):
         game = new_game(seed=2408, race_id="aelari", rival_race_id="terran")
-        game.diplomacy_action("envoy")
-        game.diplomacy_action("gift")
+        game.diplomacy.relations = 40
         game.diplomacy_action("trade")
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
@@ -368,21 +338,22 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.start()
         self.app.game.set_trade_goods(0, 2)
         self.key(pg.K_d)
-        self.click("diplomacy_envoy")
-        self.click("diplomacy_gift")
-        self.assertEqual(self.app.game.diplomacy.relations, 42)
+        keys = {b.key for b in self.app.buttons}
+        self.assertFalse(keys & {"diplomacy_envoy", "diplomacy_gift"})
+        self.assertIn("diplomacy_contact_rival", keys)
         self.click("diplomacy_trade")
         self.assertTrue(self.app.game.diplomacy.trade_active)
-        for key in ("diplomacy_envoy", "diplomacy_gift", "diplomacy_research"):
+        for key in ("diplomacy_friendship", "diplomacy_non_aggression", "diplomacy_research"):
             self.assertFalse(next(b for b in self.app.buttons if b.key == key).enabled)
         before = self.app.game.to_dict()
         self.click("diplomacy_end_trade")
         self.assertIsNotNone(self.app.dialog)
         self.click("dialog_cancel")
         self.assertEqual(self.app.game.to_dict(), before)
+        expected_credits = self.app.game.credits+self.app.game.empire_rates[0]
         self.click("diplomacy_end_turn")
         self.click("research_back")
-        self.assertEqual(self.app.game.credits, 74)
+        self.assertEqual(self.app.game.credits, expected_credits)
         self.click("diplomacy_end_trade")
         self.click("dialog_ok")
         self.assertFalse(self.app.game.diplomacy.trade_active)
@@ -401,8 +372,26 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.click("rival_back")
         self.assertEqual(self.app.screen, "diplomacy")
         self.assertIsNotNone(self.app.game.diplomacy)
-        self.click("diplomacy_envoy")
-        self.assertEqual(self.app.game.diplomacy.relations, 27)
+        self.click("diplomacy_trade")
+        self.assertTrue(self.app.game.diplomacy.trade_active)
+
+    def test_friendship_and_war_buttons_confirm_and_persist(self):
+        self.start()
+        self.app.game.diplomacy.relations = 30
+        self.key(pg.K_d)
+        self.click("diplomacy_friendship")
+        self.assertTrue(self.app.game.diplomacy.friendship_active)
+        self.assertFalse(next(b for b in self.app.buttons if b.key == "diplomacy_end_trade").enabled)
+        before = self.app.game.to_dict()
+        self.click("diplomacy_declare_war")
+        self.click("dialog_cancel")
+        self.assertEqual(self.app.game.to_dict(), before)
+        self.click("diplomacy_declare_war")
+        self.click("dialog_ok")
+        self.assertTrue(self.app.game.diplomacy.at_war)
+        self.assertFalse(self.app.game.diplomacy.friendship_active)
+        restored, _ = self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
+        self.assertEqual(restored, self.app.game)
 
 
 if __name__ == "__main__":

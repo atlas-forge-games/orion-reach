@@ -26,7 +26,7 @@ def hostile(game, first, second):
     if first == second or first not in game.owners or second not in game.owners:
         return False
     relation = game.diplomacy_between(first, second)
-    return relation.relations < -30 and not relation.trade_active and not relation.research_active
+    return relation.at_war
 
 
 def route_modifiers(game, origin, destination, owner):

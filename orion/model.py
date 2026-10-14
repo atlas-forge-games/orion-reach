@@ -723,7 +723,7 @@ class GameState:
             for enemy in self.owners[i+1:]:
                 if owner in defeated or enemy in defeated:
                     state = self.diplomacy_between(owner, enemy)
-                    state.trade_active = state.research_active = False
+                    state.end_agreements()
 
     def design_for(self, identifier):
         return next((d for d in self.designs if d.id == identifier), None)
@@ -1728,7 +1728,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=42):
+    def from_dict(cls, data, *, version=43):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

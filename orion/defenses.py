@@ -76,6 +76,9 @@ def bombardment_error(game, system_id, planet_id, owner="player"):
     planet = game.planet_at(system_id, planet_id)
     if planet.owner is None or planet.owner == owner:
         return "Choose an opposing colony."
+    from .diplomacy import aggression_error
+    if aggression_error(game, owner, planet.owner):
+        return aggression_error(game, owner, planet.owner)
     if monsters.alive_at(game, system_id):
         return "Defeat the system guardian before bombardment."
     if game.foreign_fleet(system_id, owner) or any(p.owner != owner for p in bases(game, system_id)):

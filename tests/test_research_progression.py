@@ -174,6 +174,16 @@ class ProgressionTests(unittest.TestCase):
             for identifier, entry in table.items():
                 if section == 'ships' and identifier == 'colony_ship':
                     entry = {**entry, 'resource_cost': 800, 'work_cost': 420}
+                if section == 'races':
+                    entry = {k: v for k, v in entry.items() if k not in ('trade_threshold', 'envoy_bonus')}
+                if section == 'personalities':
+                    entry = {k: v for k, v in entry.items() if k not in ('envoy', 'gift')}
+                if section == 'rules' and identifier == 'diplomacy':
+                    retired = {'ENVOY_COST', 'ENVOY_RELATIONS', 'ENVOY_COOLDOWN', 'GIFT_COST',
+                               'GIFT_RELATIONS', 'GIFT_COOLDOWN', 'TRADE_INCOME'}
+                    entry = {k: v for k, v in entry.items() if k not in retired}
+                    entry.update(TRADE_THRESHOLD=10, NON_AGGRESSION_THRESHOLD=0,
+                                 FRIENDSHIP_THRESHOLD=30, TRADE_SHARE_PERCENT=25, TRADE_DISTANCE_LY=50)
                 self.assertEqual(balance.profile_for(restored)['data'][section][identifier], entry)
         self.assertTrue(set(ADVANCED_FACILITIES) <= set(balance.profile_for(restored)['data']['buildings']))
         self.assertEqual(old, original)

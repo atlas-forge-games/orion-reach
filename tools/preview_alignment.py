@@ -29,8 +29,8 @@ with tempfile.TemporaryDirectory() as folder:
         app.dialog['alignment_matrix']=True
         capture('matrix')
         app.cancel_dialog()
-        game.diplomacy_action('envoy')
-        game.diplomacy_action('gift')
+        game.diplomacy.relations = 30
+        game.diplomacy_action('friendship')
         app.show_alignment('rival')
         capture('history')
     finally:

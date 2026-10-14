@@ -36,7 +36,7 @@ def draw(app):
         text(surface,f'{vb:+}',(970,y+7),20,INK,right=True)
         text(surface,str(abs(va-vb)),(1175,y+7),20,MUTED,right=True)
     text(surface,f'Total difference {alignment.distance(a,b)} · Fixed reference {alignment.REFERENCE_DISTANCE:.4f} · Alignment {report.alignment:+}',(264,632),16,GOLD)
-    text(surface,'Equal weights. Shared values apply once; gifts, treaties and conflict change history.',(264,667),14,MUTED)
+    text(surface,'Equal weights. Shared values apply once; treaties and conflict change history.',(264,667),14,MUTED)
     text(surface,'A poor match does not prevent agreements. Diplomacy can outweigh shared values.',(264,690),13,MUTED)
     app.button('dialog_alignment_matrix','Race matrix',(264,735,244,43),lambda:app.dialog.update(alignment_matrix=True))
     app.button('dialog_close','Close',(911,735,264,43),app.cancel_dialog,'primary')

@@ -219,3 +219,11 @@ Changing a race profile does not recalculate the reference average. This avoids
 changes to unrelated pairs. Balance profile version 8 adds these fields to older
 profiles while retaining all their existing values. Campaign saves use their own
 profile, and retain relationship totals on load.
+
+## Diplomatic treaties (v0.62)
+
+Global rules → diplomacy now contains trade, non-aggression and friendship
+thresholds (10, 0 and 30), the trade share (25%) and distance scale (50 ly).
+Research still uses each race's research threshold. Profile version 9 upgrades
+older files, removing retired envoy/gift and flat-trade fields while preserving
+other settings. Active pacts add trust; friendship bundles trade and non-aggression.

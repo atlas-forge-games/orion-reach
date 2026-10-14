@@ -62,7 +62,7 @@ class ContactRulesTests(unittest.TestCase):
         self.assertEqual(first_contact.known_opponents(game), [])
         self.assertEqual(first_contact.pending(game), [])
         before = game.to_dict()
-        for action in ("envoy", "gift", "trade", "research"):
+        for action in ("non_aggression", "friendship", "declare_war", "trade", "research"):
             with self.assertRaisesRegex(RuleError, "first contact"):
                 game.diplomacy_action(action)
         self.assertEqual(game.to_dict(), before)
@@ -178,25 +178,17 @@ class ContactRulesTests(unittest.TestCase):
 
 
 class PersonalityRulesTests(unittest.TestCase):
-    def test_envoys_and_gifts_reflect_recipient_personality(self):
-        expected = {"aelari": (15, 13), "kharuun": (12, 15), "concord": (6, 5)}
-        for race, (envoy, gift) in expected.items():
-            game = campaign(fog_of_war=False, rival_race_id=race)
-            game.diplomacy_action("envoy")
-            self.assertEqual(game.diplomacy.relations, score(game.race_id,race)+envoy)
-            game.diplomacy_action("gift")
-            self.assertEqual(game.diplomacy.relations, score(game.race_id,race)+envoy+gift)
-            self.assertEqual(game.credits, 60)
-            self.assertEqual(game.opponent.credits, 170)
 
-    def test_collective_requires_stronger_relations_for_treaties(self):
+    def test_collective_research_requires_more_trust_than_trade(self):
+        from orion.races import RACES
         game = campaign(fog_of_war=False, rival_race_id="concord")
-        game.diplomacy.relations = 30
-        self.assertIn("declined", game.diplomacy_action("trade"))
-        self.assertFalse(game.diplomacy.trade_active)
-        game.diplomacy.offer_ready_turn = game.turn
-        game.diplomacy.relations = 45
+        game.diplomacy.relations = 10
         self.assertIn("accepted", game.diplomacy_action("trade"))
+        game.diplomacy.offer_ready_turn = game.turn
+        self.assertIn("declined", game.diplomacy_action("research"))
+        game.diplomacy.offer_ready_turn = game.turn
+        game.diplomacy.relations = RACES["concord"].research_threshold
+        self.assertIn("accepted", game.diplomacy_action("research"))
 
     def test_breach_penalty_depends_on_offended_civilization(self):
         for race, penalty in (("lithar", 25), ("varkesh", 10), ("concord", 20)):

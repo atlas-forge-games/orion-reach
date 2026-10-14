@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 8
+VERSION = 9
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'alignment': ('alignment', 'PROFILES'),
@@ -51,7 +51,9 @@ RULES = {
     'population': ('population', ('GROWTH_THRESHOLD', 'GROWTH_LIMIT', 'GAIA_GROWTH_LIMIT', 'GROWTH_PER_FOOD', 'ASSEMBLY_GROWTH_LIMIT', 'GROWTH_PER_INDUSTRY', 'GAIA_CAPACITY')),
     'workers': ('research', ('WORKER_INDUSTRY', 'SCIENTIST_RESEARCH', 'POPULATION_INCOME')),
     'defenses': ('defenses', ('BASE_HULL', 'SHIELD_CAPACITY', 'SHIELD_RECOVERY', 'BASE_RECOVERY')),
-    'diplomacy': ('diplomacy', ('ENVOY_COST', 'ENVOY_RELATIONS', 'ENVOY_COOLDOWN', 'GIFT_COST', 'GIFT_RELATIONS', 'GIFT_COOLDOWN', 'OFFER_COOLDOWN', 'TRADE_INCOME', 'RESEARCH_INCOME', 'BREAK_PENALTY')),
+    'diplomacy': ('diplomacy', ('OFFER_COOLDOWN', 'RESEARCH_INCOME', 'BREAK_PENALTY',
+                             'TRADE_THRESHOLD', 'NON_AGGRESSION_THRESHOLD', 'FRIENDSHIP_THRESHOLD',
+                             'TRADE_SHARE_PERCENT', 'TRADE_DISTANCE_LY')),
     'tomb_worlds': ('tomb_worlds', ('TOMB_CHANCE', 'AWAKENING_CHANCE', 'AWAKENED_TROOPS', 'AWAKENED_POPULATION')),
     'raiding': ('raiding', ('SLAVE_CAPACITY', 'MORTALITY_CHANCE', 'CREDITS_PER_POPULATION')),
     'council': ('council', ('ELECTION_INTERVAL',)),
@@ -96,6 +98,8 @@ def _defaults():
         for identifier, spec in getattr(module(owner), attribute).items():
             entry = json_value(asdict(spec))
             entry.pop('id', None)
+            for key in {'races': ('trade_threshold', 'envoy_bonus'), 'personalities': ('envoy', 'gift')}.get(section, ()):
+                entry.pop(key, None)
             if 'effects' in entry:
                 entry['effects'] = dict(entry['effects'])
             data[section][identifier] = entry
@@ -141,6 +145,9 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if field in ('TRADE_THRESHOLD', 'NON_AGGRESSION_THRESHOLD', 'FRIENDSHIP_THRESHOLD'): return -30, 100
+    if field == 'TRADE_SHARE_PERCENT': return 0, 100
+    if field == 'TRADE_DISTANCE_LY': return 1, 200
     if section == 'alignment': return -2, 2
     if field == 'REFERENCE_DISTANCE': return 0.1, 20
     if field == 'MAX_MODIFIER': return 0, 25
@@ -395,6 +402,23 @@ def upgrade_profile(profile):
             data.setdefault('alignment', deepcopy(_defaults()['data']['alignment']))
             if isinstance(data.get('rules'), dict):
                 data['rules'].setdefault('alignment', deepcopy(_defaults()['data']['rules']['alignment']))
+        profile['version'] = 8
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 8:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            for section, keys in (('races', ('trade_threshold', 'envoy_bonus')), ('personalities', ('envoy', 'gift'))):
+                if isinstance(data.get(section), dict):
+                    for entry in data[section].values():
+                        if isinstance(entry, dict):
+                            for key in keys:
+                                entry.pop(key, None)
+            rules = data.get('rules', {}).get('diplomacy') if isinstance(data.get('rules'), dict) else None
+            if isinstance(rules, dict):
+                for key in ('ENVOY_COST', 'ENVOY_RELATIONS', 'ENVOY_COOLDOWN', 'GIFT_COST', 'GIFT_RELATIONS', 'GIFT_COOLDOWN', 'TRADE_INCOME'):
+                    rules.pop(key, None)
+                for key, value in _defaults()['data']['rules']['diplomacy'].items():
+                    rules.setdefault(key, value)
         profile['version'] = VERSION
     return profile
 

@@ -44,7 +44,17 @@ class SensorReport:
     count: int | None
 
 
-def centers(game, owner="player"):
+def sources(game, owner="player"):
+    """Direct friends share their own observations, never a friend's relay."""
+    from .first_contact import known
+    friends = [other for other in game.owners if other != owner and known(game, owner, other)
+               and game.diplomacy_between(owner, other).friendship_active]
+    if not friends or not game.colony_systems(owner):
+        return [owner]
+    return [owner]+[other for other in friends if game.colony_systems(other)]
+
+
+def local_centers(game, owner="player"):
     radius = game.bonuses_for(owner).get("sensor_range", 0)
     if not radius:
         return []
@@ -52,11 +62,15 @@ def centers(game, owner="player"):
             for s in game.colony_systems(owner)]
 
 
+def centers(game, owner="player"):
+    return [center for source in sources(game, owner) for center in local_centers(game, source)]
+
+
 def distance(x, y, system):
     return math.hypot((x-system.x)*140, (y-system.y)*100)
 
 
-def detection_level(game, ship, owner="player", coverage=None):
+def local_detection_level(game, ship, owner="player", coverage=None):
     if not black_holes.fleet_charted(game, ship, owner):
         return 0
     if ship.owner == owner or not game.fog_of_war:
@@ -64,9 +78,14 @@ def detection_level(game, ship, owner="player", coverage=None):
     if not ship.in_transit and game.system_visible(ship.system_id, owner):
         return 3
     x, y = position(game, ship)
-    if any(distance(x, y, s) <= radius+1e-9 for s, radius in (centers(game, owner) if coverage is None else coverage)):
+    if any(distance(x, y, s) <= radius+1e-9 for s, radius in (local_centers(game, owner) if coverage is None else coverage)):
         return game.bonuses_for(owner).get("sensor_level", 0)
     return 0
+
+
+def detection_level(game, ship, owner="player", coverage=None):
+    return max(local_detection_level(game, ship, source, coverage if source == owner else None)
+               for source in sources(game, owner))
 
 
 def observed(game, owner="player"):
@@ -74,12 +93,12 @@ def observed(game, owner="player"):
     colonies = game.colony_systems(owner)
     if not colonies:
         return result
-    coverage = centers(game, owner)
+    coverage = {source: local_centers(game, source) for source in sources(game, owner)}
     for ships in group_fleets(game.ships):
         ship = ships[0]
         if ship.owner == owner:
             continue
-        level = detection_level(game, ship, owner, coverage)
+        level = max(local_detection_level(game, ship, source, areas) for source, areas in coverage.items())
         if not level:
             continue
         x, y = position(game, ship)

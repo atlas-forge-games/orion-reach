@@ -134,7 +134,8 @@ class BuildingEconomyTests(unittest.TestCase):
         game.planet_at(0, 2).buildings = ["factory", "research_lab", "trade_center"]
         game.diplomacy.trade_active = True
         summary = summarize_empire(game)
-        self.assertEqual((summary.gross_income, summary.maintenance, summary.income), (21, 5, 16))
+        trade = game.diplomatic_yields()[0]
+        self.assertEqual((summary.gross_income, summary.maintenance, summary.income), (16+trade, 5, 11+trade))
         self.assertEqual(game.empire_rates[0], summary.income)
         before = game.credits
         self.assertEqual(game.advance_turn().income, summary.income)
@@ -159,7 +160,7 @@ class BuildingEconomyTests(unittest.TestCase):
         game.diplomacy_action("trade")
         self.assertTrue(game.diplomacy.trade_active)
         self.assertEqual(game.credits, -15)
-        self.assertEqual(game.empire_rates[0], 13)
+        self.assertEqual(game.empire_rates[0], 8+game.diplomatic_yields()[0])
         self.assertIsNotNone(game.diplomacy_error("gift"))
 
     def test_ai_accounts_for_paid_queues_and_recovers_an_insolvent_colony(self):
@@ -188,7 +189,7 @@ class BuildingEconomyTests(unittest.TestCase):
             storage = Storage(folder)
             path = storage.save(game)
             original = path.read_bytes()
-            self.assertEqual(json.loads(original)["version"], 42)
+            self.assertEqual(json.loads(original)["version"], 43)
             self.assertEqual(storage.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
         with self.assertRaises(SaveError):

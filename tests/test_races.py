@@ -159,9 +159,8 @@ class RaceRulesTests(unittest.TestCase):
         self.assertEqual(game.planet_yields(game.planet_at(0, 2))[1], 7)
         before = game.empire_rates
         game.diplomacy.trade_active = game.diplomacy.research_active = True
-        self.assertEqual(game.empire_rates, (before[0]+8, before[1]+4))
-        game.diplomacy_action("envoy")
-        self.assertEqual(game.diplomacy.relations, alignment.between(game,PLAYER,RIVAL)+8)
+        from orion.diplomacy import trade_income
+        self.assertEqual(game.empire_rates, (before[0]+trade_income(game, PLAYER, RIVAL), before[1]+4))
 
     def test_remnant_starting_knowledge_is_spendable_and_not_granted_again_on_load(self):
         game = solo("remnant")

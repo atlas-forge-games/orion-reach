@@ -1211,11 +1211,16 @@ class App:
                     self.notice_until=self.time+7
             except RuleError as exc:
                 self.toast(exc,True)
-        if action in ("end_trade","end_research"):
-            title="trade pact" if action=="end_trade" else "research agreement"
+        if action == "declare_war":
+            self.confirm("Declare war?",
+                         "Relations become -100. All agreements with this empire end immediately, including non-aggression and shared scanners. Fleets may attack each other.",
+                         "Declare war",perform)
+        elif action.startswith("end_"):
+            title=diplomacy_balance.TREATIES[action[4:]].lower()
+            extra = (" The included trade pact, non-aggression pact and shared scanners all end." if action=="end_friendship" else "")
             self.confirm(f"End the {title}?",
                          f"Its benefits stop immediately for both empires. Relations fall by {personality(self.game,target).breach} and new treaty offers wait {diplomacy_balance.OFFER_COOLDOWN} turns. "
-                         "If relations fall below zero, the rival ends other agreements on the next End Turn.",
+                         "Trade and research can end below zero relations."+extra,
                          "End agreement",perform)
         else:
             perform()

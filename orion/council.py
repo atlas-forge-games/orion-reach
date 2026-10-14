@@ -163,7 +163,7 @@ def accept_ruling(game, accept):
                 continue
             establish(game, "player", owner)
             relations = game.diplomacy_between("player", owner)
-            relations.trade_active = relations.research_active = False
+            relations.end_agreements()
             relations.relations = -100
             relations.offer_ready_turn = max(relations.offer_ready_turn, game.turn+3)
             message = "The council ruling was defied. All surviving computer empires declare war on your empire."

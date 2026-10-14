@@ -29,11 +29,11 @@ class RaceSpec:
     def trait(self):
         if self.abilities:
             return self.focus
-        if self.envoy_bonus:
-            return f"Envoys: +{self.envoy_bonus} extra relations"
         if self.trade_bonus:
-            return f"Trade pact: +{self.trade_bonus} extra credit / turn"
-        return f"Research pact: +{self.research_bonus} extra RP / turn"
+            return f"Trade: +{self.trade_bonus} credit before distance"
+        if self.research_bonus:
+            return f"Research pact: +{self.research_bonus} extra RP / turn"
+        return self.focus
 
     @property
     def traits(self):

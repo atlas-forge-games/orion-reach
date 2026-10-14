@@ -82,6 +82,9 @@ def invasion_error(game, system_id, planet_id, owner="player"):
     planet = game.planet_at(system_id, planet_id)
     if planet.owner is None or planet.owner == owner:
         return "Choose a colony belonging to the opposing empire."
+    from .diplomacy import aggression_error
+    if aggression_error(game, owner, planet.owner):
+        return aggression_error(game, owner, planet.owner)
     if game.foreign_fleet(system_id, owner):
         return "Clear all opposing ships from this system before invading."
     if any(p.owner != owner for p in bases(game, system_id)):
@@ -159,8 +162,8 @@ def record_ground_hostility(game, owner, defender, message):
     from .first_contact import establish
     establish(game, owner, defender)
     state = game.diplomacy_between(owner, defender)
-    state.trade_active = state.research_active = False
-    state.relations, state.offer_ready_turn = -100, game.turn+3
+    from .diplomacy import start_war
+    start_war(game, owner, defender)
     state.record(game.turn, message)
     for participant in (owner, defender):
         if participant != "player":

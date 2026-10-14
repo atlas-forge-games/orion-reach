@@ -83,11 +83,10 @@ class AlignmentTests(unittest.TestCase):
 
     def test_history_changes_without_losing_alignment(self):
         game=campaign(rival_race_id='kharuun')
-        game.diplomacy_action('envoy')
-        self.assertEqual(alignment.relationship(game,'player','rival'),alignment.Relationship(15,12,27))
+        self.assertEqual(alignment.relationship(game,'player','rival'),alignment.Relationship(15,0,15))
         self.assertIn('accepted',game.diplomacy_action('trade'))
         advance_diplomacy(game)
-        self.assertEqual(alignment.relationship(game,'player','rival').history,13)
+        self.assertEqual(alignment.relationship(game,'player','rival'),alignment.Relationship(15,1,16))
         game.diplomacy.relations=-100
         self.assertEqual(alignment.relationship(game,'player','rival'),alignment.Relationship(15,-115,-100))
         advance_diplomacy(game)

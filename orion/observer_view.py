@@ -57,7 +57,10 @@ def report_rows(app):
                 state = game.diplomacy_between(first, second)
                 contacted = known(game, first, second)
                 active = bool(game.colony_systems(first) and game.colony_systems(second))
-                pacts = [label for flag, label in ((state.trade_active, "Trade"), (state.research_active, "Research")) if flag]
+                pacts = (["Friendship"] if state.friendship_active else
+                         [label for flag, label in ((state.trade_active, "Trade"), (state.non_aggression_active, "Non-aggression")) if flag])
+                if state.research_active:
+                    pacts.append("Research")
                 values = (game.empire_name_for(first), game.empire_name_for(second),
                           "Eliminated" if not active else "Established" if contacted else "No contact",
                           f"{state.attitude} {state.relations:+}" if contacted and active else "—",

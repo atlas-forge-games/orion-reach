@@ -63,7 +63,8 @@ change that total. The visible history term is `relations − alignment`, so the
 modifier cannot accidentally be added again at first contact, each turn or load.
 History can exceed ±100 when compensating for alignment at a total-score boundary.
 Existing save totals are preserved exactly; their history includes the legacy
-starting baseline. This requires no change to save format 42.
+starting baseline. Alignment itself needed no change to save format 42. The v0.62 treaty additions
+use format 43 while preserving these totals.
 
 Treaty acceptance, treaty cancellation, council votes, opportunistic conquest,
 hostile interception and relationship labels already read the same overall score.
@@ -79,5 +80,7 @@ never silently recentres the other pairs.
 
 The full matrix describes race values, not which empires exist in the campaign.
 A bilateral values/history comparison is restricted to confirmed contacts.
-New third-party reactions, asymmetric attitudes and new treaty types are outside
-this first implementation.
+New third-party reactions and asymmetric attitudes remain future work. v0.62 adds
+non-aggression and friendship; treaty thresholds use the overall relation score.
+Trade and non-aggression each add +1 history per active turn. Friendship includes
+both once, and shares direct scanner detections. See the README for trade income.
