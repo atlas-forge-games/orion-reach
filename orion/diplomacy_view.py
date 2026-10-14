@@ -3,6 +3,7 @@
 import pygame as pg
 
 from . import diplomacy as diplomacy_balance
+from . import alignment
 from .race_art import draw_race_portrait
 from .races import RACES
 from .personalities import PERSONALITIES, envoy_gain, gift_gain, personality
@@ -32,6 +33,8 @@ def draw_diplomacy(app):
     text(surface, "Diplomacy", (64, 190), 43, INK, "title")
     text(surface, "Learn their character. Establish terms. Shape your relationship.", (66, 252), 14, MUTED)
 
+    app.button("diplomacy_alignment_matrix", "Race alignment matrix", (1084, 208, 292, 42), app.show_alignment)
+
     # Your own identity remains visible while dealing with another empire.
     panel(surface, (64, 688, 338, 90))
     draw_race_portrait(surface, game.race_id, (77, 701, 64, 64))
@@ -57,6 +60,9 @@ def draw_diplomacy(app):
 
         panel(surface, (427, 289, 949, 89))
         color = CYAN if state.relations >= 25 else RED if state.relations < 0 else GOLD
+        app.button("diplomacy_alignment", "Values & history", (1144, 296, 208, 25), lambda: app.show_alignment(owner), "ghost")
+        breakdown = alignment.relationship(game,"player",owner)
+        text(surface, f"Values {breakdown.alignment:+} · History {breakdown.history:+}", (449, 361), 11, MUTED)
         text(surface, "RELATIONS", (449, 303), 9, MUTED, "mono", 1)
         text(surface, f"{state.attitude}  {state.relations:+}", (449, 328), 24, color)
         pg.draw.line(surface, LINE, (754, 329), (1348, 329), 5)

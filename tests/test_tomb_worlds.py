@@ -333,6 +333,7 @@ class SaveTests(unittest.TestCase):
     def test_v21_load_keeps_existing_campaign_without_reseeding_tombs(self):
         from scenarios import migrated_statistics
         game = scenario()
+        game.diplomacy.relations = 0  # Authentic pre-alignment starting relations.
         for owner in game.owners:
             game.research_state(owner).legacy_starships = True
             game.research_state(owner).legacy_arsenal = True

@@ -1735,6 +1735,20 @@ class App:
     def select_colony_slot(self,index):
         self.colony_slot=index
 
+    def show_alignment(self,owner=None):
+        from .first_contact import known
+        if self.dialog or not self.game:
+            return
+        if owner is not None and not known(self.game,PLAYER,owner):
+            return
+        self.dialog={"alignment_info":True,"alignment_matrix":owner is None,"return_focus":self.focus}
+        if owner is not None:
+            self.dialog["alignment_owner"]=owner
+        self.focus="dialog_close"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
+
     def show_output_breakdown(self,kind):
         from .production_breakdown import describe
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
@@ -2046,7 +2060,7 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "alignment_info" in self.dialog:
                     self.cancel_dialog()
             else:
                 if self.screen=="planet":
@@ -2729,6 +2743,10 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        if "alignment_info" in self.dialog:
+            from .alignment_view import draw
+            draw(self)
+            return
         if "output_breakdown" in self.dialog:
             from .production_breakdown import draw
             draw(self)

@@ -1,0 +1,9 @@
+Orion Reach v0.61.0 — extract over v0.60.2.
+
+Shared-values alignment for all 11 races, matching the agreed zero-centred matrix.
+New relations begin at alignment; actions change history. No per-turn stacking.
+Diplomacy: Values & history comparison and Race alignment matrix.
+Balance editor: Diplomatic values and Global rules / alignment.
+Older saves retain current relation totals, treaties, contact and logs.
+Newly created relationships use alignment. Saved balance profiles are preserved.
+Nothing committed.

@@ -12,7 +12,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame as pg
 
-from orion import combat, exploration, monsters
+from orion import combat, exploration, monsters, alignment
 from orion.empires import PLAYER, RIVAL, RIVAL_IDS, empire_color
 from orion.model import GALAXY_SIZES, GameState, SaveError, Ship, new_game
 from orion.production import GATE_CHARGE_TURNS
@@ -108,9 +108,9 @@ class IndependentEmpireTests(unittest.TestCase):
         game.diplomacy_action("gift", target)
         self.assertEqual((game.credits, game._empire(target).credits, game.opponent.credits), (70, 170, 120))
         self.assertEqual(game.diplomacy, original)
-        self.assertEqual(game.diplomacy_between(target, "rival_3").relations, 0)
+        self.assertEqual(game.diplomacy_between(target, "rival_3").relations, alignment.between(game,target,"rival_3"))
         game.diplomacy_action("envoy", RIVAL)
-        self.assertEqual(game.diplomacy_between(PLAYER, target).relations, 12)  # Lithar response to gifts.
+        self.assertEqual(game.diplomacy_between(PLAYER, target).relations, alignment.between(game,PLAYER,target)+12)  # Lithar response to gifts.
         for owner in (RIVAL, target):
             state = game.diplomacy_between(PLAYER, owner)
             state.relations = 60

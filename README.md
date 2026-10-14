@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.60.2
+# Orion Reach — Python prototype 0.61.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,39 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.61: shared-values diplomacy
+
+Every race has five equally weighted values from −2 to +2: **Autonomy,
+Openness, Restraint, Innovation and Stewardship**. New diplomatic relationships
+start at their race alignment, including AI–AI pairs and newly awakened empires.
+The agreed standard matrix is centred on zero across distinct race pairs before
+rounding and ranges from −23 to +25. The reference is fixed for the full roster;
+the races selected for a campaign never change an existing pair's alignment.
+
+Open **Diplomacy → Values & history** to compare the five values and see
+**shared values + diplomatic history = overall relations**. **Race alignment
+matrix** displays the complete race table without revealing undiscovered empires.
+Treaty offers, council votes and AI decisions all use the same overall relations.
+Gifts, envoys, treaties and conflict change history; alignment is never added each
+turn. Passive forgiveness can repair minor grievances toward the alignment
+baseline, but cannot erase ideological differences. Major hostility still needs
+active diplomacy.
+
+Existing saves keep their current relation scores, treaties, contacts and logs.
+Their history term includes the previous baseline; loading or resaving never adds
+alignment again. New relationships created later use the new starting alignment.
+Save format 42 remains compatible; older balance profiles upgrade automatically.
+
+`python editor.py` now includes **Diplomatic values** with the five race values,
+and **Global rules → alignment** with the fixed reference distance and modifier
+cap (default 25). Campaigns retain their saved balance profile. The reference
+is not automatically recalibrated after custom edits.
+
+The exact formula and standard profiles are documented in
+[docs/diplomatic-alignment.md](docs/diplomatic-alignment.md).
+Third-party reactions to slavery or assimilation, new treaties and asymmetric
+opinions are future diplomacy work; this release adds the shared-values layer.
 
 ## Fixes in v0.60.2
 

@@ -206,3 +206,16 @@ Ctrl+O opens a profile, Ctrl+Shift+S opens Save as, Ctrl+Z undoes and Ctrl+Y red
 an applied edit. Closing with unsaved changes offers Save, Discard or Cancel.
 If a JSON file was manually damaged, correct it or move it aside before opening
 the editor; `--export-defaults` can create a fresh profile under another name.
+
+## Diplomatic values (v0.61)
+
+The **Diplomatic values** section exposes five integer scores from −2 to +2 for
+each race. All five axes have equal weight. **Global rules → alignment** exposes
+`REFERENCE_DISTANCE` (default `402/55`, approximately 7.30909) and `MAX_MODIFIER`
+(default 25, adjustable from 0 to 25). Set the latter to zero to disable alignment
+for new relationships. Existing saved relation scores remain intact.
+
+Changing a race profile does not recalculate the reference average. This avoids
+changes to unrelated pairs. Balance profile version 8 adds these fields to older
+profiles while retaining all their existing values. Campaign saves use their own
+profile, and retain relationship totals on load.

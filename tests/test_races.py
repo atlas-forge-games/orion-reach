@@ -18,6 +18,7 @@ from scenarios import fixed_start_game as new_game, place_near
 from orion.population import farmers_needed, report
 from orion.exploration import refresh
 from orion.races import RACES
+from orion import alignment
 from orion.research import gross_colony_yields
 from orion.storage import Storage
 from orion.race_art import _load_portrait, draw_race_emblem
@@ -160,7 +161,7 @@ class RaceRulesTests(unittest.TestCase):
         game.diplomacy.trade_active = game.diplomacy.research_active = True
         self.assertEqual(game.empire_rates, (before[0]+8, before[1]+4))
         game.diplomacy_action("envoy")
-        self.assertEqual(game.diplomacy.relations, 8)
+        self.assertEqual(game.diplomacy.relations, alignment.between(game,PLAYER,RIVAL)+8)
 
     def test_remnant_starting_knowledge_is_spendable_and_not_granted_again_on_load(self):
         game = solo("remnant")

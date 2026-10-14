@@ -160,7 +160,7 @@ def guides():
         )),
         Article("diplomacy", "affairs", "First contact and diplomacy", "Attitudes, envoys and agreements", (
             ("CONTACT", "Meeting another civilization unlocks its diplomatic channel and a greeting shaped by its attitude. Without fog of war, introductions can happen immediately."),
-            ("RELATIONS", "Envoys and gifts can improve relations, subject to costs and cooldowns. Civilizations have different preferences and treaty requirements."),
+            ("RELATIONS", "Shared values set new relationships: autonomy, openness, restraint, innovation and stewardship. Diplomacy shows the race matrix and Values & history breakdown. Envoys, gifts, treaties and conflict change overall relations; alignment is not added every turn."),
             ("AGREEMENTS", "Trade and research pacts provide income while active. Attacking an empire breaks agreements and makes relations hostile. The diplomacy screen shows current terms and recent exchanges."),
             ("STATISTICS", "The Statistics button beside Rival report graphs population, industry, food, mining, energy generation and net credits per turn. New campaigns record every turn from turn 1. Contact reveals the other empire's full recorded history. Hover to inspect values; click civilization names to hide or show lines. Older saves start recording at their load turn."),
         )),

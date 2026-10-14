@@ -21,6 +21,7 @@ from functools import partial
 # Preserve these pre-exploration scenarios; fog-on rules have their own tests.
 new_game = partial(new_game, fog_of_war=False)
 from orion.races import RACES
+from orion.alignment import score
 from orion.storage import Storage
 
 
@@ -33,7 +34,7 @@ class DiplomacyRulesTests(unittest.TestCase):
             if race_id in ("terran", "kharuun", "aelari"):
                 self.assertEqual(game.planet_yields(game.planet_at(0, 2)), (6, 8, 0))
             self.assertEqual(game.credits, 120)
-            self.assertEqual(game.diplomacy.relations, 0)
+            self.assertEqual(game.diplomacy.relations, score(race_id, game.opponent.race_id))
             for rival_race in RACES:
                 chosen = new_game(seed=2408, race_id=race_id, rival_race_id=rival_race)
                 self.assertEqual(chosen.opponent.race_id, rival_race)
@@ -45,9 +46,10 @@ class DiplomacyRulesTests(unittest.TestCase):
     def test_envoy_costs_and_cooldowns_apply_to_each_race(self):
         for race_id, expected_gain in (("terran", 12), ("kharuun", 11), ("aelari", 8)):
             game = new_game(seed=2408, race_id=race_id)
+            baseline = game.diplomacy.relations
             game.diplomacy_action("envoy")
             self.assertEqual(game.credits, 110)
-            self.assertEqual(game.diplomacy.relations, expected_gain)
+            self.assertEqual(game.diplomacy.relations, baseline+expected_gain)
             self.assertEqual(game.opponent.credits, 120)
             for _ in range(3):
                 before = game.to_dict()
@@ -56,13 +58,13 @@ class DiplomacyRulesTests(unittest.TestCase):
                 self.assertEqual(game.to_dict(), before)
                 game.advance_turn()
             game.diplomacy_action("envoy")
-            self.assertEqual(game.diplomacy.relations, 2*expected_gain)
+            self.assertEqual(game.diplomacy.relations, baseline+2*expected_gain)
 
     def test_gift_transfers_credits_once_and_saves_recipient_balance(self):
         game = new_game(seed=2408)
         game.diplomacy_action("gift")
         self.assertEqual((game.credits, game.opponent.credits), (70, 170))
-        self.assertEqual(game.diplomacy.relations, 15)
+        self.assertEqual(game.diplomacy.relations, score(game.race_id,game.opponent.race_id)+15)
         before = game.to_dict()
         with self.assertRaisesRegex(RuleError, "turn 6"):
             game.diplomacy_action("gift")
@@ -368,7 +370,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.key(pg.K_d)
         self.click("diplomacy_envoy")
         self.click("diplomacy_gift")
-        self.assertEqual(self.app.game.diplomacy.relations, 27)
+        self.assertEqual(self.app.game.diplomacy.relations, 42)
         self.click("diplomacy_trade")
         self.assertTrue(self.app.game.diplomacy.trade_active)
         for key in ("diplomacy_envoy", "diplomacy_gift", "diplomacy_research"):
@@ -400,7 +402,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "diplomacy")
         self.assertIsNotNone(self.app.game.diplomacy)
         self.click("diplomacy_envoy")
-        self.assertEqual(self.app.game.diplomacy.relations, 12)
+        self.assertEqual(self.app.game.diplomacy.relations, 27)
 
 
 if __name__ == "__main__":

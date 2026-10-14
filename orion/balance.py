@@ -19,9 +19,10 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 7
+VERSION = 8
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
+    'alignment': ('alignment', 'PROFILES'),
     'megastructures': ('megastructures', 'MEGASTRUCTURES'),
     'buildings': ('buildings', 'BUILDINGS'),
     'ships': ('production', 'SHIP_TYPES'),
@@ -38,6 +39,7 @@ CATALOGUES = {
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'alignment': ('alignment', ('REFERENCE_DISTANCE', 'MAX_MODIFIER')),
     'megastructures': ('megastructures', ('REPAIR_WORK', 'REPAIR_RESOURCES')),
     'administration': ('administration', ('SYSTEM_STRAIN', 'INTEGRATION_STRAIN', 'INTEGRATION_TURNS',
                          'DISTANCE_STRAIN', 'DISTANCE_UNIT_LY', 'MAX_STRAIN', 'RESEARCH_SENSITIVITY',
@@ -59,6 +61,7 @@ RULES = {
     'galaxy': ('model', ('MIN_STAR_DISTANCE',)),
 }
 LABELS = {
+    'alignment': 'Diplomatic values',
     'megastructures': 'Megastructures',
     'buildings': 'Buildings', 'ships': 'Standard ships', 'hulls': 'Designer hulls',
     'modules': 'Ship modules', 'weapons': 'Weapons', 'races': 'Races',
@@ -138,6 +141,9 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if section == 'alignment': return -2, 2
+    if field == 'REFERENCE_DISTANCE': return 0.1, 20
+    if field == 'MAX_MODIFIER': return 0, 25
     if field in ('REPAIR_WORK', 'REPAIR_RESOURCES'): return 1, 1000
     if field == 'discovery_chance_per_stage': return 0, 25
     if field == 'ship_speed_per_stage': return 0, 50
@@ -381,6 +387,14 @@ def upgrade_profile(profile):
         if isinstance(data, dict) and isinstance(data.get('rules'), dict):
             data.setdefault('megastructures', deepcopy(_defaults()['data']['megastructures']))
             data['rules'].setdefault('megastructures', deepcopy(_defaults()['data']['rules']['megastructures']))
+        profile['version'] = 7
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 7:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            data.setdefault('alignment', deepcopy(_defaults()['data']['alignment']))
+            if isinstance(data.get('rules'), dict):
+                data['rules'].setdefault('alignment', deepcopy(_defaults()['data']['rules']['alignment']))
         profile['version'] = VERSION
     return profile
 

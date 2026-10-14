@@ -1233,12 +1233,12 @@ class GameState:
                           research=RACES[race_id].starting_research)
         if owner == RIVAL:
             self.opponent = empire
-            self.diplomacy = None if self.is_observer else make_contact(self.turn, name, race_id)
+            self.diplomacy = None if self.is_observer else make_contact(self.turn, name, race_id, self.race_id)
         else:
             self.other_opponents[owner] = empire
             self.exploration.scanned_others[owner] = []
             for first in previous:
-                self.other_diplomacy[relation_key(first, owner)] = make_contact(self.turn, name, race_id)
+                self.other_diplomacy[relation_key(first, owner)] = make_contact(self.turn, name, race_id, self._empire(first).race_id)
 
     def _starting_fleet(self, owner, system_id):
         """One initial exploration and settlement fleet, created with the empire."""

@@ -22,6 +22,7 @@ from orion.exploration import record_survey, refresh
 from orion.model import GameState, RuleError, SaveError, Ship, new_game
 from orion.personalities import PERSONALITIES
 from orion.races import RACES
+from orion.alignment import score
 from orion.storage import Storage
 from scenarios import place_near
 from test_research_expansion import discover
@@ -154,6 +155,9 @@ class ContactRulesTests(unittest.TestCase):
     def test_v25_fog_migration_preserves_old_active_diplomatic_channels(self):
         game = campaign(fog_of_war=True, rival_count=3)
         game.diplomacy.trade_active = True
+        # v25 began relationships at zero, before values-based alignment.
+        for state in [game.diplomacy, *game.other_diplomacy.values()]:
+            state.relations = 0
         loaded = GameState.from_dict(legacy_research_payload(game.to_dict()), version=25)
         self.assertEqual(first_contact.known_opponents(loaded), ["rival"])
         self.assertTrue(loaded.diplomacy.introduced)
@@ -179,9 +183,9 @@ class PersonalityRulesTests(unittest.TestCase):
         for race, (envoy, gift) in expected.items():
             game = campaign(fog_of_war=False, rival_race_id=race)
             game.diplomacy_action("envoy")
-            self.assertEqual(game.diplomacy.relations, envoy)
+            self.assertEqual(game.diplomacy.relations, score(game.race_id,race)+envoy)
             game.diplomacy_action("gift")
-            self.assertEqual(game.diplomacy.relations, envoy+gift)
+            self.assertEqual(game.diplomacy.relations, score(game.race_id,race)+envoy+gift)
             self.assertEqual(game.credits, 60)
             self.assertEqual(game.opponent.credits, 170)
 
@@ -217,6 +221,7 @@ class PersonalityRulesTests(unittest.TestCase):
     def invasion_scenario(self, race="concord", fog=False):
         game = campaign(fog_of_war=fog, rival_race_id=race)
         game.turn, game.year = 12, 2311
+        game.diplomacy.relations = 0  # Isolate personality at neutral overall relations.
         sid = game.opponent.home_system
         place_near(game, sid, distance=6)
         for _ in range(3):
@@ -277,7 +282,7 @@ class PersonalityRulesTests(unittest.TestCase):
         game.opponent.credits = 1000
         ai.run_ai(game, "rival")
         self.assertTrue(any(q.item_id == "fortifications" for p in worlds for q in p.construction_queue))
-        self.assertEqual(game.diplomacy.relations, 0)
+        self.assertEqual(game.diplomacy.relations, score(game.race_id,game.opponent.race_id))
 
 
 class ContactInterfaceTests(unittest.TestCase):

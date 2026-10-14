@@ -385,6 +385,7 @@ class GuardianSaveTests(unittest.TestCase):
     def test_v16_guardians_remain_unchanged_when_loaded(self):
         from scenarios import migrated_statistics
         game, _, _ = encounter()
+        game.diplomacy.relations = 0  # Authentic pre-alignment starting relations.
         game.guardians = [g for g in game.guardians if g.kind in ("space_serpent", "crystal_guardian")]
         original = game.to_dict()
         legacy = game.to_dict()
@@ -405,6 +406,7 @@ class GuardianSaveTests(unittest.TestCase):
     def test_v15_load_does_not_add_guardians_or_change_worlds_and_orders(self):
         from scenarios import migrated_statistics
         game = new_game(seed=2408, with_guardians=False)
+        game.diplomacy.relations = 0  # Authentic pre-alignment starting relations.
         place_near(game, 1)
         game.send_ship(1, 1)
         legacy_economy(game)

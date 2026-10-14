@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 
 from .races import RACES
-from . import first_contact
+from . import first_contact, alignment
 from .personalities import diplomatic_reply, envoy_gain, gift_gain, personality
 
 ENVOY_COST, ENVOY_RELATIONS, ENVOY_COOLDOWN = 10, 8, 3
@@ -84,8 +84,10 @@ class DiplomacyState:
         return cls(**{**data, "events": events})
 
 
-def make_contact(turn, name, race_id):
-    state = DiplomacyState()
+def make_contact(turn, name, race_id, other_race_id=None):
+    # The optional argument is absent only when upgrading legacy saves.
+    initial = alignment.score(other_race_id, race_id) if other_race_id is not None else 0
+    state = DiplomacyState(relations=initial)
     state.record(turn, "Diplomatic channel awaiting first contact.")
     return state
 
@@ -192,8 +194,10 @@ def advance_diplomacy(game):
                     if reply:
                         state.record(game.turn+1, f'“{reply}”')
             state.improve(int(state.trade_active)+int(state.research_active))
-            # A wary peace can thaw. Wars still require active diplomacy to end.
+            # Past grievances can thaw toward shared values; alignment itself never decays.
+            # Wars still require active diplomacy to end.
             intervals = (personality(game, first).forgiveness, personality(game, second).forgiveness)
             interval = max(intervals)
-            if (-30 <= state.relations < 0 and all(intervals) and (game.turn+1) % interval == 0):
+            baseline = alignment.between(game, first, second)
+            if (-30 <= state.relations < baseline and all(intervals) and (game.turn+1) % interval == 0):
                 state.improve(1)
