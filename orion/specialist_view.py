@@ -33,7 +33,7 @@ def rows(app):
 
 def assignments(game, p):
     if p.spec.role == "leader":
-        return [(s.id, world.id) for s in game.systems for world in s.worlds if world.owner == "player"]
+        return [(s.id, world.id) for s, world in game.settlements("player")]
     return [(s.id, None) for s in game.systems if rules.eligible_system(game, s.id, "player")]
 
 

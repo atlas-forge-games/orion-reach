@@ -250,9 +250,11 @@ def refresh(game, *, recover=False):
 
 
 def known_rival_colonies(game, owner=None):
-    return [(known, planet) for system in game.systems
-            if (known := known_system(game, system.id)) is not None
-            for planet in known.worlds if planet.owner in game.opponents and (owner is None or planet.owner == owner)]
+    return ([(known, planet) for system in game.systems
+             if (known := known_system(game, system.id)) is not None
+             for planet in known.worlds if planet.owner in game.opponents and (owner is None or planet.owner == owner)]
+            + [(game.systems[ship.system_id], ship.habitat) for ship in game.visible_ships()
+               if ship.habitat is not None and ship.owner in game.opponents and (owner is None or ship.owner == owner)])
 
 
 def gate_location(game, system_id, planet):

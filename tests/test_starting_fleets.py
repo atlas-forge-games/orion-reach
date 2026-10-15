@@ -24,7 +24,7 @@ class StartingFleetTests(unittest.TestCase):
                     game = new_game(seed=2408, race_id=race, fog_of_war=fog)
                     for owner, home in ((PLAYER, 0), (RIVAL, game.opponent.home_system)):
                         ships = game.ships_owned_by(owner)
-                        expected = {"scout": 2, "frigate": 1, "troop_transport": 2} if game._empire(owner).race_id == "varkesh" else {"scout": 2, "colony_ship": 1}
+                        expected = {"scout": 2, "frigate": 1, "troop_transport": 2} if game._empire(owner).race_id == "varkesh" else {"scout": 2, "mothership": 1} if game._empire(owner).race_id == "wanderers" else {"scout": 2, "colony_ship": 1}
                         self.assertEqual(Counter(s.kind for s in ships), expected)
                         self.assertTrue(all(s.system_id == home and not s.has_course and s.hull == s.max_hull for s in ships))
                         self.assertEqual(game.treasury_for(owner), 120)
@@ -181,7 +181,7 @@ class PendingDepartureTests(unittest.TestCase):
                 restored.cancel_departures([41])
             self.assertEqual(path.read_bytes(), before)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 44)
+        self.assertEqual(SAVE_VERSION, 45)
 
     def test_pending_flag_is_strictly_validated(self):
         game = self.game

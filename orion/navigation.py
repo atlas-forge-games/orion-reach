@@ -30,8 +30,8 @@ def hostile(game, first, second):
 
 
 def route_modifiers(game, origin, destination, owner):
-    own_origin = [p for p in origin.worlds if p.owner == owner]
-    own_target = [p for p in destination.worlds if p.owner == owner]
+    own_origin = game.settlements_at(origin.id, owner)
+    own_target = game.settlements_at(destination.id, owner)
     bonus = 0
     if own_origin and own_target:
         bonus = game.bonuses_for(owner).get("colony_speed", 0)

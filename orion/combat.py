@@ -26,7 +26,7 @@ HOSTILE_BELOW = -30
 RESULTS = ("active", "monster_victory", *(owner+suffix for owner in OWNERS for suffix in ("_victory", "_retreat")))
 BOARD_COLUMNS = 18
 MIN_ROWS = 10
-MOVEMENT = {"frigate": 3, "scout": 5, "colony_ship": 2, "outpost_ship": 2, "troop_transport": 2}
+MOVEMENT = {"mothership": 1, "frigate": 3, "scout": 5, "colony_ship": 2, "outpost_ship": 2, "troop_transport": 2}
 MOVEMENT.update({kind: hull.movement for kind, hull in HULLS.items() if kind != "frigate"})
 MOVEMENT.update({kind: spec.movement for kind, spec in MONSTERS.items()})
 MOVEMENT["missile_base"] = 0
@@ -589,12 +589,21 @@ def resolve(game, status, destination=None):
     rows = {s.id: s for s in state.ships}
     retreating = status.rsplit("_", 1)[0] if status.endswith("_retreat") else None
     game.ships[:] = [s for s in game.ships if s.id not in rows or rows[s.id].hull > 0]
+    if game.selected_planet is not None and game.selected_planet < 0 and not any(s.habitat and s.habitat.id == game.selected_planet for s in game.ships):
+        game.selected_planet = None
+    from .specialists import normalize
+    from . import coalitions, tribute, administration
+    normalize(game)
+    coalitions.normalize(game)
+    tribute.normalize(game)
+    administration.normalize(game)
+    slow_retreat = any(s.habitat and s.owner == retreating and s.id in rows for s in game.ships)
     for ship in game.ships:
         if ship.id not in rows:
             continue
         ship.hull = rows[ship.id].hull
         if ship.owner == retreating:
-            game._dispatch_ship(ship, destination)
+            game._dispatch_ship(ship, destination, slow=slow_retreat)
     for unit in state.ships:
         if unit.kind == "missile_base":
             planet = defenses.base_planet(game, unit.id)
@@ -864,7 +873,7 @@ def retreat_destination(game, owner="player"):
             game.within_fuel_range(s.id, owner) and
             known_status(game, s.id, owner) != "alive" and
             not (game.system_visible(s.id, owner) and game.foreign_fleet(s.id, owner))]
-    friendly = [s for s in safe if any(p.owner == owner for p in s.worlds)]
+    friendly = [s for s in safe if game.settlements_at(s.id, owner)]
     return min(friendly or safe, key=lambda s: (game.travel_turns(origin, s, owner),
                (1.4*(s.x-origin.x))**2+(s.y-origin.y)**2, s.id), default=None)
 

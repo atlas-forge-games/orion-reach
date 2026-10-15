@@ -31,7 +31,7 @@ def reduced_output(value, bonuses, kind):
 
 
 def settled_systems(game, owner):
-    return {s.id for s in game.systems if any(p.colonized and p.owner == owner for p in s.worlds)}
+    return {s.id for s, _ in game.settlements(owner)}
 
 
 def snapshot(game):
@@ -101,12 +101,17 @@ class Context:
         self.systems = settled_systems(game, owner) if owner in game.owners else set()
         headquarters = game.headquarters(owner) if self.systems else None
         self.capital = headquarters[0] if headquarters else None
+        from .motherships import homes, center, ship_for
+        self.mobile_positions = {(s.habitat.id, s.habitat.name): center(game, s) for s in homes(game, owner)}
+        if headquarters and headquarters[1].habitat:
+            self.capital = center(game, ship_for(game, headquarters[1]))
         self.locations = {(p.id, p.name): s.id for s in game.systems for p in s.worlds}
+        self.locations.update({(p.id, p.name): s.id for s, p in game.settlements()})
         self.distances = {s.id: distance_ly(self.capital, s) if self.capital else 0 for s in game.systems}
         self.timers = {int(sid): until for sid, until in game.system_integration.get(owner, {}).items()
                        if int(sid) in self.systems}
 
-    def report(self, system_id, *, turns=0, acquiring=False):
+    def report(self, system_id, *, turns=0, acquiring=False, position=None):
         new = acquiring and system_id not in self.systems
         count = len(self.systems)+int(new)
         turn = self.turn+turns
@@ -114,6 +119,8 @@ class Context:
         adding_timer = new and bool(self.systems) and INTEGRATION_TURNS > turns
         integrating += int(adding_timer)
         distance = self.distances[system_id] if self.capital else 0
+        if position is not None and self.capital:
+            distance = distance_ly(self.capital, position)
         return StrainReport(count, integrating, self.capital.name if self.capital else "New capital",
                             distance, SYSTEM_STRAIN*max(0, count-1), INTEGRATION_STRAIN*integrating,
                             DISTANCE_STRAIN*max(0, distance/DISTANCE_UNIT_LY-1),
@@ -123,7 +130,7 @@ class Context:
         if not planet.colonized or planet.owner != self.owner:
             return {}
         sid = self.locations.get((planet.id, planet.name))
-        return {"administrative_strain": self.report(sid, turns=turns).total} if sid is not None else {}
+        return {"administrative_strain": self.report(sid, turns=turns, position=self.mobile_positions.get((planet.id, planet.name))).total} if sid is not None else {}
 
 
 def report(game, planet):
@@ -131,7 +138,7 @@ def report(game, planet):
         return StrainReport()
     context = Context(game, planet.owner)
     sid = context.locations.get((planet.id, planet.name))
-    return context.report(sid) if sid is not None else StrainReport()
+    return context.report(sid, position=context.mobile_positions.get((planet.id, planet.name))) if sid is not None else StrainReport()
 
 
 def settlement_preview(game, system_id, owner="player"):

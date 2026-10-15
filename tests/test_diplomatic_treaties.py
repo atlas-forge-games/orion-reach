@@ -227,9 +227,9 @@ class FriendshipSensorsTests(unittest.TestCase):
         home = game.opponent.home_system
         self.remote = next(s for s in game.systems if s.id not in {0, *(r.home_system for r in game.opponents.values())})
         place_near(game, self.remote.id, anchor=home, distance=4)
-        self.ship = Ship(1, 'frigate', self.remote.id, owner=self.other)
+        self.ship = Ship(game.next_ship_id, 'frigate', self.remote.id, owner=self.other)
         game.ships.append(self.ship)
-        game.next_ship_id = 2
+        game.next_ship_id += 1
         discover(game, 'deep_space_radar', self.friend)
         self.assertFalse(sensors.contacts(game))
 

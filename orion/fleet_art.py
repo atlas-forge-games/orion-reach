@@ -34,6 +34,10 @@ def ship_sprite(kind, height, facing=0):
 
 
 def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing=0):
+    if kind == "mothership":
+        from .mothership_art import draw
+        draw(surface, center, scale, color, facing)
+        return
     if kind in MONSTERS:
         draw_monster(surface, center, kind, scale, facing)
         return

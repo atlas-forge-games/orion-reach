@@ -50,7 +50,7 @@ class InvasionReport:
 
 
 def colonies(game, owner):
-    return [(s, p) for s in game.systems for p in s.worlds if p.owner == owner]
+    return game.settlements(owner)
 
 
 def troop_transports(game, system_id, owner="player"):
@@ -74,12 +74,17 @@ def invasion_strength(game, system_id, planet_id, owner="player"):
 
 def invasion_error(game, system_id, planet_id, owner="player"):
     from .defenses import bases, effective_shield
+    from .motherships import is_wanderer
+    if is_wanderer(game, owner):
+        return "The Wanderers cannot occupy planets; their homes are motherships."
     from .raiding import is_varkesh, homeworld
     if game.strategy_error(owner):
         return game.strategy_error(owner)
     if owner not in game.owners or not game.opponents:
         return "No opposing empire is available."
     planet = game.planet_at(system_id, planet_id)
+    if planet.habitat:
+        return "Motherships are fought in space combat, not planetary invasions."
     if planet.owner is None or planet.owner == owner:
         return "Choose a colony belonging to the opposing empire."
     from .diplomacy import aggression_error
@@ -203,7 +208,15 @@ def advance_gates(game, eligible):
     if "science" not in game.victory_conditions:
         return
     for system_id, planet_id, owner in eligible:
+        if planet_id < 0 and not any(s.habitat and s.habitat.id == planet_id for s in game.ships):
+            continue
         planet = game.planet_at(system_id, planet_id)
+        if planet.habitat:
+            from .motherships import ship_for
+            ship = ship_for(game, planet)
+            if ship.in_transit:
+                continue
+            system_id = ship.system_id
         if (planet.owner == owner and planet.ascension_gate
                 and not gate_blocked(game, system_id, owner) and game.planet_energy(planet).gate_powered):
             planet.gate_charge = min(production_balance.GATE_CHARGE_TURNS, planet.gate_charge+1)
@@ -216,7 +229,7 @@ def current_result(game):
             return CampaignResult(alive[0] if alive else None, "conquest", game.turn)
         if not game.is_observer and "player" not in alive:
             return CampaignResult(None, "elimination", game.turn)
-    ascended = {p.owner for s in game.systems for p in s.worlds
+    ascended = {p.owner for _, p in game.settlements()
                 if p.ascension_gate and p.gate_charge == production_balance.GATE_CHARGE_TURNS}
     if "science" in game.victory_conditions and ascended:
         # Production is simultaneous: two gates finishing together is a draw.
@@ -244,7 +257,7 @@ def validate(game, data):
         if (len(sites) > 1 or (sites and ("science" not in game.victory_conditions
                                        or "ascension_theory" not in game.research_state(owner).completed))):
             raise ValueError("Gate does not match research or empire limit")
-    expected = current_result(game)
+    expected = current_result(game) if game.combat is None else None
     if data is None:
         if expected is not None:
             raise ValueError("Missing campaign result")

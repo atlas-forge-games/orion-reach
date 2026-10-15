@@ -13,16 +13,18 @@ def queue_estimates(game, planet, additional=None):
         return [None]*len(planet.construction_queue)
     if megastructures.has_projects(game, planet.owner):
         return megastructure_estimates(game, planet, additional)
-    colonies = [(s.id, p) for s in game.systems for p in s.worlds if p.owner == planet.owner]
+    colonies = [(s.id, p) for s, p in game.settlements(planet.owner)]
     target = next((i for i, (_, p) in enumerate(colonies)
                    if p is planet or (p.id == planet.id and p.name == planet.name)), None)
     if target is None:
         return []
+    from .motherships import homes
+    waits = {s.habitat.id: s.turns_remaining for s in homes(game, planet.owner) if s.has_course}
     base_bonuses = dict(game.bonuses_for(planet.owner))
     bank = game.resources_for(planet.owner)
     # A cache is runtime-only, excluded from dataclass serialization. It is
     # invalidated by jobs, queues, power switches, research, bank or turn changes.
-    signature = (repr(colonies), repr(base_bonuses), bank, game.turn, game.seed, repr(game.designs),
+    signature = (repr(colonies), repr(waits), repr(base_bonuses), bank, game.turn, game.seed, repr(game.designs),
                  repr(specialists.employed(game, planet.owner)), repr(game.system_integration),
                  tuple((s.id, s.x, s.y) for s in game.systems))
     if getattr(game, "_forecast_signature", None) != signature:
@@ -65,7 +67,7 @@ def queue_estimates(game, planet, additional=None):
         bank += sum(economy.mining_output(p, bonuses)-dispatch[id(p)].fuel_used for _, p in worlds)
         starts = [population.report(p, bonuses) for _, p in worlds]
         for (sid, p), food in zip(worlds, starts):
-            complete = p.advance_construction(bonuses, fund=fund)
+            complete = p.advance_construction(bonuses, fund=fund, allow_ships=elapsed >= waits.get(p.id, 0))
             if p is focus:
                 estimates.extend([elapsed]*len(complete))
             population.advance(p, food)
@@ -82,7 +84,7 @@ def megastructure_estimates(game, planet, additional):
     from copy import deepcopy
     from . import megastructures
     from .model import ConstructionProject
-    sid = next(s.id for s in game.systems if any(p is planet for p in s.worlds))
+    sid = next(s.id for s, p in game.settlements(planet.owner) if p is planet)
     signature = (repr(game.systems), repr(game.ships), repr(game.guardians), game.turn,
                  game.resources_for(planet.owner), repr(game._base_bonuses(planet.owner)),
                  repr(game.specialists), repr(game.system_integration), repr(game.designs),
@@ -113,7 +115,7 @@ def megastructure_estimates(game, planet, additional):
         plan = megastructures.make_plan(shadow, planet.owner)
         shadow._turn_megastructures = {planet.owner: plan}
         shadow._empire(planet.owner).resources += plan.net_resources
-        worlds = [(s.id, p) for s in shadow.systems for p in s.worlds if p.owner == planet.owner]
+        worlds = [(s.id, p) for s, p in shadow.settlements(planet.owner)]
         starts = [population.report(p, plan.bonuses) for _, p in worlds]
         for (system_id, p), food in zip(worlds, starts):
             complete = p.advance_construction(plan.bonuses, fund=lambda q: shadow.fund_project(q, planet.owner))

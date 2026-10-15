@@ -59,7 +59,7 @@ def local_centers(game, owner="player"):
     if not radius:
         return []
     return [(s, radius+(ARRAY_RANGE if any(p.owner == owner and game.building_operational(p, "sensor_array") for p in s.worlds) else 0))
-            for s in game.colony_systems(owner)]
+            for s in game.supply_centers(owner) if any(p.owner == owner for p in s.worlds)]
 
 
 def centers(game, owner="player"):
@@ -162,7 +162,7 @@ def load(game, data):
                 or any(type(v) not in (int, float) or not math.isfinite(v) or not 0 <= v <= 1 for v in (c.x, c.y))
                 or (c.count is not None and not _integer(c.count, 1, 10000))
                 or (c.level == 1 and c.count is not None) or (c.level >= 2 and c.count is None)
-                or not isinstance(c.classes, list) or len(c.classes) > 10
+                or not isinstance(c.classes, list) or len(c.classes) > 11
                 or any(not isinstance(v, str) or not 1 <= len(v) <= 60 or not v.isprintable() for v in c.classes)
                 or (c.heading is not None and (type(c.heading) not in (int, float) or not math.isfinite(c.heading) or not 0 <= c.heading < 360))
                 or (c.level < 3 and (c.classes or c.heading is not None))):

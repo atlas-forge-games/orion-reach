@@ -26,7 +26,7 @@ def draw_fuel_range(app, map_rect):
         return
     rx, ry = app.map_camera.radii(game.fuel_range(), map_rect)
     ellipses = []
-    for system in game.supply_systems():
+    for system in game.supply_centers():
         x, y = app.star_pos(system)
         ellipses.append((round(x-map_rect.x-rx), round(y-map_rect.y-ry), max(1, round(rx*2)), max(1, round(ry*2))))
     app.canvas.blit(fuel_range_overlay(map_rect.size, tuple(ellipses), app.empire_color(PLAYER)), map_rect.topleft)
@@ -183,7 +183,8 @@ def fleet_markers(app, map_rect):
         preferred = (x+12, y+12) if ship.has_course else (x+18, y+23)
         width = max(44, 32+font(11, "mono_bold").size(str(len(ships)))[0])
         anchors.append((x, y))
-        preferred_rects.append(tuple(pg.Rect(*preferred, width, 23)))
+        habitat = any(s.habitat is not None for s in ships)
+        preferred_rects.append(tuple(pg.Rect(*preferred, max(108, width) if habitat else width, 42 if habitat else 23)))
     rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), tuple(preferred_rects), padding=2)
     # Very crowded full-galaxy views can need smaller badges to leave room for
     # navigation. Keep every fleet clickable instead of accepting an overlap.
@@ -194,7 +195,7 @@ def fleet_markers(app, map_rect):
         crowded |= badge.collidelist(occupied) != -1
         occupied.append(badge)
     if crowded:
-        compact = tuple((x, y, max(40, width-4), 20) for x, y, width, _ in preferred_rects)
+        compact = tuple((x, y, max(40, width-4), height if height > 23 else 20) for x, y, width, height in preferred_rects)
         rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), compact, padding=0)
     return [(ships, pg.Rect(rect), anchor) for ships, rect, anchor in zip(groups, rectangles, anchors)]
 
@@ -230,8 +231,15 @@ def draw_map_fleets(app, map_rect):
         pg.draw.line(surface, tuple(c//2 for c in color), anchor, rect.center, 1)
         pg.draw.circle(surface, color, (int(anchor[0]), int(anchor[1])), 2)
         panel(surface, rect, (11, 27, 36), color)
-        ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
-        text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono_bold")
+        habitats = [s for s in ships if s.habitat is not None]
+        if habitats:
+            ship_icon(surface, (rect.x+20, rect.centery), .5, color, kind="mothership")
+            text(surface, f"{sum(s.habitat.population for s in habitats)}/{50*len(habitats)} B", (rect.x+42, rect.y+7), 11, color, "mono_bold")
+            caption = f"{ships[0].turns_remaining} turns" if ships[0].in_transit else f"{len(ships)-len(habitats)} escorts" if len(ships)>len(habitats) else "MOTHERSHIP"
+            text(surface, caption, (rect.x+42, rect.y+25), 9, MUTED)
+        else:
+            ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
+            text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono_bold")
         app.map_button(f"map_fleet_{ships[0].id}", rect,
                        lambda sid=ships[0].id: app.open_map_fleet(sid))
     surface.set_clip(clip)
@@ -285,9 +293,12 @@ def draw_fleet_popup(app):
                 pg.draw.lines(surface, CYAN, False, [(x+29, top+20), (x+32, top+24), (x+38, top+16)], 2)
         ship_icon(surface, (x+63, top+20), .37, app.empire_color(first.owner), kind=ship.kind)
         text(surface, ship.name, (x+88, top+4), 14, INK)
-        text(surface, f"{ship.hull}/{ship.max_hull} hull", (x+89, top+24), 10, MUTED)
+        detail = f"{ship.habitat.population}/50 B · {ship.hull} hull" if ship.habitat else f"{ship.hull}/{ship.max_hull} hull"
+        text(surface, detail, (x+89, top+24), 10, MUTED)
         if editable:
             app.button(f"fleet_select_{ship.id}", "", row, lambda sid=ship.id: app.toggle_fleet_ship(sid), "hotspot")
+        if ship.habitat:
+            app.button(f"mothership_open_{ship.id}", "Home", (x+236, top+18, 65, 23), lambda sid=ship.id: app.open_mothership(sid))
     pages = max(1, (len(ships)+FLEET_SHIPS_PER_PAGE-1)//FLEET_SHIPS_PER_PAGE)
     text(surface, f"PAGE {app.manifest_page+1}/{pages}", (x+18, bottom+12), 10, FAINT, "mono")
     app.button("fleet_page_previous", "←", (x+203, bottom+4, 47, 27), lambda: app.change_manifest_page(-1), enabled=app.manifest_page>0)
@@ -300,7 +311,7 @@ def draw_fleet_popup(app):
         keeping = first.departure_pending and target.id == first.destination
         outside = not game.within_fuel_range(target.id)
         blocked = target.id != origin.id and not keeping and outside
-        duration = first.turns_remaining if keeping else game.travel_turns(origin, target)
+        duration = first.turns_remaining if keeping else game.travel_turns(origin, target, ships=[s for s in ships if s.id in app.fleet_selected_ids])
         destination = (f"To {target.name} · {turn_label(duration)}"
                        if target.id != origin.id else f"At {origin.name}")
         text(surface, shorten(destination, 290, 13), (x+18, bottom+66), 13, RED if blocked else INK)
@@ -393,7 +404,7 @@ def draw_fleet(app):
     text(surface, f"{len(selected)} {'ship' if len(selected)==1 else 'ships'}", (990, 348), 35, INK, "title")
     for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
         count = sum(s.kind == kind for s in selected)
-        x, y = 991+(index//5)*190, 406+(index%5)*19
+        x, y = 991+(index//6)*190, 406+(index%6)*19
         text(surface, shorten(spec.name, 142, 11), (x, y), 11, MUTED)
         text(surface, str(count), (x+171, y), 11, CYAN, right=True)
     pg.draw.line(surface, LINE, (990, 524), (1352, 524))
@@ -421,14 +432,14 @@ def draw_order_panel(app, target):
     if not ships:
         return
     origin = game.systems[ships[0].system_id]
-    duration = game.travel_turns(origin, target)
+    duration = game.travel_turns(origin, target, ships=ships)
     panel(surface, (1051, 180, 325, 573), border=GOLD)
     text(surface, "CHOOSE DESTINATION", (1075, 203), 10, GOLD, "mono", 1)
     text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (1075, 245), 25, INK, "title")
     text(surface, f"Departing {origin.name}", (1075, 289), 14, CYAN)
     for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
         count = sum(s.kind == kind for s in ships)
-        text(surface, shorten(f"{count} × {spec.name}", 133, 11), (1075+(index//5)*146, 325+(index%5)*18), 11, MUTED)
+        text(surface, shorten(f"{count} × {spec.name}", 133, 11), (1075+(index//6)*146, 325+(index%6)*17), 11, MUTED)
     pg.draw.line(surface, LINE, (1075, 431), (1352, 431))
     text(surface, "DESTINATION PREVIEW", (1075, 453), 10, GOLD, "mono")
     text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")

@@ -148,7 +148,7 @@ def workforce_panel(app, game, planet, live):
     surface = app.canvas
     owned = live and planet.owner == PLAYER
     panel(surface, (286, 54, 774, 244))
-    text(surface, "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
+    text(surface, "HABITAT PRODUCTION / TURN" if planet.habitat else "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
     industry, credits, research = game.planet_yields(planet) if live else (None, None, None)
     food = game.population_report(planet) if live else None
     counts = (f"{planet.population} NATIVE + {planet.slaves} SLAVES" if planet.slaves else
@@ -317,6 +317,9 @@ def construction_panel(app, game, system, planet, live):
 
 def draw_planet_overview(app):
     game, surface = app.game, app.canvas
+    if app.selected_habitat():
+        from .mothership_view import draw_overview
+        return draw_overview(app, app.selected_habitat())
     system = game.known_system(game.selected_system)
     planet = system.worlds[game.selected_planet]
     live = game.system_visible(system.id)
@@ -429,7 +432,8 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
                 details.append(f"Uses {spec.energy_use} energy")
             text(surface, shorten(" · ".join(part for part in details if part), width-100, 10), (x+85, y+78), 10, CYAN)
         else:
-            detail = (f"{design.hull} hull · {design.damage} volley · {design.shields} shields" if design
+            detail = ("50 B capacity · ¼ fleet speed · Unarmed" if item_id == "mothership" else
+                      f"{design.hull} hull · {design.damage} volley · {design.shields} shields" if design
                       else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES
                       else "Unlock a scientific victory")
             if getattr(spec, "drone_bays", 0):
@@ -455,7 +459,7 @@ def draw_production(app):
     planet = game.planet_at(sid, pid)
     text(surface, shorten(f"{planet.name} · Choose production", 604, 35, "title"), (40, 28), 35, INK, "title")
     empire_stockpile(app, (676, 28, 724, 38))
-    text(surface, "Available projects only · One of each building per planet · Click a queued project to build it first.", (40, 83), 15, MUTED)
+    text(surface, "Available projects only · One of each building per habitat · Click a queued project to build it first." if planet.habitat else "Available projects only · One of each building per planet · Click a queued project to build it first.", (40, 83), 15, MUTED)
     buildings = list(BUILDINGS)
     if "ascension_theory" in game.technology.completed:
         buildings.append(ASCENSION_GATE.id)

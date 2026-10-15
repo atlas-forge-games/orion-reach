@@ -93,7 +93,7 @@ def draw_galaxy_header(app):
     pg.draw.line(surface, LINE, (64, 129), (1376, 129))
     text(surface, shorten(game.empire_name, 550, 26, "title"), (64, 140), 26, INK, "title")
     text(surface, f"YEAR {game.year}   /   TURN {game.turn}", (718, 150), 12, CYAN, "mono")
-    colonies = "COLONY" if report.colonies == 1 else "COLONIES"
+    colonies = ("MOTHERSHIP" if report.colonies == 1 else "MOTHERSHIPS") if game.race_id == "wanderers" else "COLONY" if report.colonies == 1 else "COLONIES"
     text(surface, f"{report.colonies} {colonies} · {report.population:,} B POPULATION",
          (1376, 151), 10, MUTED, "mono", right=True)
 

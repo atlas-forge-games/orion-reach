@@ -13,6 +13,10 @@ PLANETS_PER_PAGE = 4
 
 def allegiance(game, system):
     owners = {owner for p in system.worlds for owner in (p.owner, p.outpost_owner) if owner}
+    homes = [s for s in game.visible_ships() if s.habitat and not s.in_transit and s.system_id == system.id]
+    owners.update(s.owner for s in homes)
+    if homes and len(owners) == 1:
+        return "Wanderer anchorage"
     if len(owners) > 1:
         return "Shared system"
     if "player" in owners:

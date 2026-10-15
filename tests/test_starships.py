@@ -124,7 +124,7 @@ class HullResearchTests(unittest.TestCase):
     def test_ai_includes_carriers_in_guardian_expeditions(self):
         from orion.model import new_game
         from orion.monsters import ai_orders
-        game = new_game(seed=2408, with_tombs=False, fog_of_war=False)
+        game = new_game(seed=2408, rival_race_id="kharuun", with_tombs=False, fog_of_war=False)
         guardian = game.guardians[0]
         home = game.opponent.home_system
         place_near(game, guardian.system_id, anchor=home, distance=6)

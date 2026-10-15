@@ -59,11 +59,11 @@ class CouncilState:
 
 def world_votes(game):
     return {owner: count for owner in game.owners
-            if (count := sum(p.owner == owner and p.colonized for s in game.systems for p in s.worlds))}
+            if (count := len(game.settlements(owner)))}
 
 
 def settled_systems(game):
-    return sum(any(p.colonized and p.owner in game.owners for p in s.worlds) for s in game.systems)
+    return len({s.id for s, _ in game.settlements()})
 
 
 def solar_systems(game):
@@ -216,7 +216,8 @@ def load(game, data, version):
                 or not _integer(raw["turn"], formed, game.turn)):
             raise ValueError("Invalid council election")
         weights, ballots = raw["weights"], raw["ballots"]
-        capacity = sum(len(s.worlds) for s in game.systems)
+        # Historical ballots may include habitats destroyed since the vote.
+        capacity = sum(len(s.worlds) for s in game.systems)+min(10000, game.next_ship_id-1)
         if (not isinstance(weights, dict) or not 2 <= len(weights) <= len(game.owners)
                 or any(owner not in game.owners or not _integer(count, 1, capacity) for owner, count in weights.items())
                 or sum(weights.values()) > capacity or not isinstance(ballots, dict)

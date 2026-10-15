@@ -97,7 +97,7 @@ class RaceRulesTests(unittest.TestCase):
         self.assertEqual(restored.ship_at(1).turns_remaining, duration-1)
         game.technology.completed.append("lightweight_alloys")
         self.assertEqual(game.fuel_range(), 20)
-        self.assertLess(game.planet_yields(game.planet_at(0, 2))[0], 6)
+        self.assertLess(game.planet_yields(game.headquarters()[1])[0], 6)
 
     def test_xenonflora_lush_world_growth_has_a_real_harsh_world_tradeoff(self):
         game = solo("xenonflora")
@@ -186,10 +186,14 @@ class RaceRulesTests(unittest.TestCase):
                 game.advance_turn()
                 restored.advance_turn()
                 self.assertEqual(restored, game)
-                colonies = [p for s in game.systems for p in s.worlds if p.owner == RIVAL]
+                colonies = [p for _, p in game.settlements(RIVAL)]
                 if race == "varkesh":
                     self.assertEqual(len(colonies), 1)
                     self.assertFalse(any(s.kind == "colony_ship" for s in game.ships_owned_by(RIVAL)))
+                elif race == "wanderers":
+                    self.assertGreaterEqual(len(colonies), 1)
+                    self.assertTrue(all(p.habitat and game.population_report(p).capacity == 50 for p in colonies))
+                    self.assertFalse(any(p.owner == RIVAL for s in game.systems for p in s.worlds))
                 else:
                     self.assertGreater(len(colonies), 1)
                 if race in ("nexus", "aetheri"):

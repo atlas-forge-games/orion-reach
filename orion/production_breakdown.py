@@ -79,7 +79,7 @@ def describe(game, planet, kind):
         if b.get('food_use_percent', 0) <= -100:
             lines.append('This civilization does not require food; food production is 0.')
         else:
-            raw = add('Natural food ('+planet.biome+')', population.BASE_FOOD[planet.biome])
+            raw = add('Habitat life support' if planet.habitat else 'Natural food ('+planet.biome+')', population.BASE_FOOD[planet.biome])
             raw += add('Colony / terrain bonuses', b.get('colony_food', 0)+(b.get('lush_food', 0) if planet.biome in population.LUSH_BIOMES else 0))
             raw += add(f'{planet.farmers} farmers × ({population.FARMER_OUTPUT[planet.biome]:g} base + {staff.food:g} facilities)', planet.farmers*population.farmer_output(planet,b))
             raw += buildings('food')

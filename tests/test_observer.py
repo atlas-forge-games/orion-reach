@@ -97,7 +97,7 @@ class ObserverRulesTests(unittest.TestCase):
         self.assertEqual(game.opponent.technology.active, "civil_engineering")
 
     def test_ai_ground_invasion_can_end_an_observed_campaign(self):
-        game = observation(rival_count=2, rival_race_id="terran")
+        game = observation(seed=13, rival_count=2, rival_race_id="terran")
         defender = game.opponents["rival_2"]
         sid, pid = defender.home_system, defender.home_planet
         game.ships = [Ship(i, "troop_transport", sid, owner="rival") for i in range(1, 9)]
@@ -221,7 +221,7 @@ class ObserverRulesTests(unittest.TestCase):
                 GameState.from_dict(data)
 
     def test_v039_saves_remain_normal_player_campaigns(self):
-        game = new_game(seed=2408, with_tombs=False, with_black_holes=False)
+        game = new_game(seed=2408, rival_race_id="kharuun", with_tombs=False, with_black_holes=False)
         for owner in game.owners:
             game.research_state(owner).legacy_arsenal = True
             game.research_state(owner).legacy_fuel = True

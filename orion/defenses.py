@@ -74,6 +74,8 @@ def bombardment_error(game, system_id, planet_id, owner="player"):
     if game.strategy_error(owner):
         return game.strategy_error(owner)
     planet = game.planet_at(system_id, planet_id)
+    if planet.habitat:
+        return "Motherships are fought in space combat."
     if planet.owner is None or planet.owner == owner:
         return "Choose an opposing colony."
     from .diplomacy import aggression_error

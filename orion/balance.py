@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 10
+VERSION = 11
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -439,6 +439,12 @@ def upgrade_profile(profile):
             if isinstance(data.get('rules'), dict):
                 for key in ('coalitions', 'tribute'):
                     data['rules'].setdefault(key, deepcopy(_defaults()['data']['rules'][key]))
+        profile['version'] = 10
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 10:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict) and isinstance(data.get('ships'), dict):
+            data['ships'].setdefault('mothership', deepcopy(_defaults()['data']['ships']['mothership']))
         profile['version'] = VERSION
     return profile
 

@@ -1,0 +1,25 @@
+Orion Reach v0.64.0 — extract over v0.63.0, then restart the game.
+
+Wanderers now live aboard giant motherships instead of planets.
+Each home supports 50 B population and 12 facilities, with its own workforce,
+food, growth and production. New campaigns start with one mothership and two scouts.
+
+Galaxy-map habitat-ring markers show population and escorts or arrival time.
+Click the fleet, then Home to manage the habitat. Empire and Fleets also open it.
+Set course uses the existing fleet controls. Motherships and selected escorts
+travel at one quarter of normal speed. Supply, sensors and trade distances follow
+the moving home. Its empire remains alive while travelling.
+
+Onboard income, research, resources and facility construction continue in flight.
+Ship construction and gate charging wait until arrival. New motherships cost
+1200 Resources and 600 work before the Wanderer ship discount, include initial
+settlers, and have 180 unarmed hull. AI Wanderers build and relocate their homes.
+Destroying a mothership loses its habitat; losing the last one eliminates the empire.
+Wanderers cannot colonize or occupy planets. Planetary defenses stay planet-only.
+
+Save format 45 converts old Wanderer colonies and colony ships, preserving their
+population and compatible facilities/work. Planet-only buildings and incompatible
+queued projects are refunded. Active battles finish before conversion.
+Balance profile 11 adds the mothership and preserves other settings.
+
+See docs/wanderer-motherships.md for details. Nothing committed.

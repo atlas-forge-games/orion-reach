@@ -16,9 +16,8 @@ def fixed_start_game(*args, **kwargs):
     game = make_game(*args, **kwargs)
     # These established-colony fixtures retain their historical job allocation.
     # Resource/power tests exercise the real new-game allocation directly.
-    for system in game.systems:
-        for planet in system.worlds:
-            planet.miners = 0
+    for _, planet in game.settlements():
+        planet.miners = 0
     from orion.exploration import refresh
     refresh(game)
     # Established-campaign fixtures predate the new introductory transmissions.
@@ -74,8 +73,9 @@ def empty_fleet_game(*args, **kwargs):
     # Legacy and isolated economic scenarios predate system guardians.
     kwargs.setdefault("with_guardians", False)
     game = new_game(*args, **kwargs)
-    game.ships.clear()
-    game.next_ship_id = 1
+    # Mobile homes are settlements; clearing the combat fleet must not erase an empire.
+    game.ships[:] = [s for s in game.ships if s.habitat is not None]
+    game.next_ship_id = max((s.id for s in game.ships), default=0)+1
     return game
 
 

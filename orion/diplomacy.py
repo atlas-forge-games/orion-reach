@@ -197,7 +197,7 @@ def economic_strength(game, owner):
     from .research import colony_yields, colony_maintenance
     bonuses = game.bonuses_for(owner)
     return sum(max(0, colony_yields(p, bonuses)[1]+colony_maintenance(p, bonuses))
-               for s in game.colony_systems(owner) for p in s.worlds if p.owner == owner)
+               for _, p in game.settlements(owner))
 
 
 def trade_income(game, owner, partner, *, strengths=None):
@@ -214,7 +214,9 @@ def trade_income(game, owner, partner, *, strengths=None):
         return 0
     joint = math.sqrt(strength[owner]*strength[partner])*TRADE_SHARE_PERCENT/100
     bonus = RACES[game._empire(owner).race_id].trade_bonus+game.bonuses_for(owner).get("pact_income", 0)
-    factor = 1/(1+distance_ly(homes[0][0], homes[1][0])/TRADE_DISTANCE_LY)
+    from .motherships import center, ship_for
+    positions = [center(game, ship_for(game, p)) if p.habitat else s for s, p in homes]
+    factor = 1/(1+distance_ly(*positions)/TRADE_DISTANCE_LY)
     return max(0, math.floor((joint+bonus)*factor+0.5))
 
 

@@ -89,9 +89,13 @@ def draw_empire(app):
         button = app.button(f"empire_colony_{system.id}_{planet.id}", "", rect,
                             lambda s=system.id, p=planet.id: app.open_empire_colony(s, p), "hotspot")
         active = app.is_active(button)
-        draw_planet(surface, planet, (95, y+27), 34, f"{game.seed}:{system.id}:{planet.id}")
+        if planet.habitat:
+            from .mothership_art import draw
+            draw(surface, (95, y+27), .5, app.empire_color(planet.owner))
+        else:
+            draw_planet(surface, planet, (95, y+27), 34, f"{game.seed}:{system.id}:{planet.id}")
         text(surface, shorten(planet.name, 202, 16), (125, y+7), 16, GOLD if active else INK)
-        text(surface, shorten(f"{system.name} · {planet.size}", 202, 11), (125, y+31), 11, MUTED)
+        text(surface, shorten(f"{system.name} · Habitat" if planet.habitat else f"{system.name} · {planet.size}", 202, 11), (125, y+31), 11, MUTED)
         industry, income, research = game.planet_yields(planet)
         food = game.population_report(planet)
         pop = f"{planet.population}+{planet.slaves} S" if planet.slaves else f"{planet.population}/{food.capacity} B"

@@ -171,8 +171,8 @@ def employed(game, owner=PLAYER):
 
 
 def hubs(game, owner=PLAYER):
-    return [(s.id, p.id) for s in game.systems for p in s.worlds
-            if p.owner == owner and "space_hub" in p.buildings and game.building_operational(p, "space_hub")]
+    return [(s.id, p.id) for s, p in game.settlements(owner)
+            if "space_hub" in p.buildings and game.building_operational(p, "space_hub")]
 
 
 def visitors(game, owner=PLAYER):
@@ -190,7 +190,7 @@ def colony_effects(game, planet, turns=0):
         return {}
     leader = next((p for p in employed(game, planet.owner) if p.spec.role == "leader"
                    and p.system_id is not None and p.planet_id == planet.id
-                   and game.systems[p.system_id].worlds[p.planet_id] is planet), None)
+                   and game.planet_at(p.system_id, p.planet_id) is planet), None)
     if leader is None:
         return {}
     level = max(n for n in range(1, MAX_LEVEL+1) if leader.xp+turns*XP_PER_TURN >= level_xp(n))
@@ -201,7 +201,7 @@ def colony_effects(game, planet, turns=0):
 def eligible_system(game, sid, owner):
     if type(sid) is not int or not 0 <= sid < len(game.systems):
         return False
-    worlds = game.systems[sid].worlds
+    worlds = game.settlements_at(sid)
     return any(p.owner == owner for p in worlds) and not any(p.colonized and p.owner != owner for p in worlds)
 
 
@@ -249,8 +249,7 @@ def assignment_error(game, identifier, sid, pid=None, owner=PLAYER):
     if type(sid) is not int or not 0 <= sid < len(game.systems):
         return "Choose one of your colonies or systems."
     if p.spec.role == "leader":
-        worlds = game.systems[sid].worlds
-        if type(pid) is not int or not 0 <= pid < len(worlds) or worlds[pid].owner != owner:
+        if type(pid) is not int or not any(s.id == sid and world.id == pid for s, world in game.settlements(owner)):
             return "Leaders can only govern your own colonies."
         if any(other.id != p.id and other.spec.role == "leader" and (other.system_id, other.planet_id) == (sid, pid)
                for other in employed(game, owner)):
@@ -315,7 +314,7 @@ def normalize(game):
             p.owner, p.system_id, p.planet_id = None, None, None
             p.available_after = game.turn+VISIT_INTERVAL
         if p.owner and p.system_id is not None:
-            valid = (game.planet_at(p.system_id, p.planet_id).owner == p.owner if p.spec.role == "leader"
+            valid = (any(s.id == p.system_id and w.id == p.planet_id for s, w in game.settlements(p.owner)) if p.spec.role == "leader"
                      else eligible_system(game, p.system_id, p.owner))
             if not valid:
                 record(game, p.owner, f"{p.spec.name} returned to reserve after losing their assignment.")
@@ -429,7 +428,7 @@ def ai_orders(game, owner):
             else:
                 continue
         for system in game.systems:
-            choices = [(world.id if p.spec.role == "leader" else None) for world in system.worlds if world.owner == owner]
+            choices = [(world.id if p.spec.role == "leader" else None) for s, world in game.settlements(owner) if s.id == system.id]
             for pid in choices:
                 site = site_at(game, system.id)
                 if p.spec.role == "explorer" and site and site.surveyed >= SURVEY_WORK and p.skill(site.spec.skill) < site.spec.difficulty:
@@ -442,12 +441,12 @@ def ai_orders(game, owner):
     if game.turn < 8 or empire.credits < 100 or game.empire_rates_for(owner)[0] < 5:
         return
     # Recruitment must not consume the resources saved for a first expansion.
-    colonies = [(system, world) for system in game.systems for world in system.worlds if world.owner == owner]
+    colonies = game.settlements(owner)
     if (len(colonies) < 2 and empire.race_id != "varkesh"
             and not any(ship.kind == "colony_ship" for ship in game.ships_owned_by(owner))):
         return
     if any("space_hub" in world.buildings or any(q.item_id == "space_hub" for q in world.construction_queue)
-           for system in game.systems for world in system.worlds if world.owner == owner):
+           for _, world in game.settlements(owner)):
         return
     from .ai import queue_building
     from .buildings import facility_family
@@ -483,7 +482,9 @@ def load(game, data, version):
             raise ValueError("Invalid experience or availability")
         if p.system_id is not None and not _integer(p.system_id, 0, len(game.systems)-1):
             raise ValueError("Invalid specialist system")
-        if p.planet_id is not None and (p.system_id is None or not _integer(p.planet_id, 0, len(game.systems[p.system_id].worlds)-1)):
+        if p.planet_id is not None and (p.system_id is None or type(p.planet_id) is not int or not (
+                0 <= p.planet_id < len(game.systems[p.system_id].worlds) or
+                any(s.id == p.system_id and w.id == p.planet_id for s, w in game.settlements()))):
             raise ValueError("Invalid specialist colony")
         if p.visitor:
             if p.planet_id is None or not _integer(p.expires, 1, game.turn+VISIT_DURATION):

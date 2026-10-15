@@ -96,6 +96,9 @@ def planet_image(biome, seed, diameter):
 
 
 def draw_planet(surface, planet, center, diameter, seed, selected=False):
+    if planet.habitat:
+        from .mothership_art import draw
+        return draw(surface, center, diameter/76)
     x, y = center
     atmosphere = COLORS[planet.biome][2]
     radius = diameter//2

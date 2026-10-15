@@ -20,6 +20,9 @@ LUSH_BIOMES = ("Terran", "Ocean", "Gaia")
 
 
 def population_capacity(planet, bonuses=None):
+    if planet.habitat:
+        from .motherships import CAPACITY
+        return CAPACITY
     base = POPULATION_LIMITS[planet.size] + (GAIA_CAPACITY if planet.biome == "Gaia" else 0)
     return base*(100+(bonuses or {}).get("capacity_percent", 0))//100
 

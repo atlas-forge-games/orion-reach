@@ -86,10 +86,10 @@ RACES = {
         home_system="Rhazek", homeworld="Drazhak", home_neighbors=("Skarn", "Vordash", "Kreth")),
     "wanderers": RaceSpec(
         "wanderers", "Wanderers", "Nomadic navigators",
-        "Travel-worn navigators whose shipbuilding traditions and long-range fleets keep distant horizons within reach.",
+        "Nomadic navigators who live aboard giant motherships, carrying their cities and industries between the stars.",
         "Wanderer Flotillas", (210, 181, 125), 15, 30,
         effects=(("fuel_range", 3), ("ship_discount", 15), ("industry_percent", -15)),
-        abilities=("Ships reach 3 light-years farther from colonies.", "All ships cost 15% fewer resources.",
+        abilities=("Mobile homes hold 50 B and travel at quarter speed; fleet range +3 ly.", "All ships cost 15% fewer resources.",
                    "Colony industry output is 15% lower."),
         development=("factory", "research_lab", "trade_center", "mine"),
         research_priority=("power", "materials", "construction"),

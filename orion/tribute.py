@@ -19,7 +19,7 @@ class Demand:
 
 
 def donor_world(game, target):
-    worlds = [(s, p) for s in game.colony_systems(target) for p in s.worlds if p.owner == target and p.population > 1]
+    worlds = [(s, p) for s, p in game.settlements(target) if p.population > 1]
     return max(worlds, key=lambda row: (row[1].population, -row[0].id, -row[1].id), default=None)
 
 

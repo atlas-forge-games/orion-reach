@@ -158,7 +158,7 @@ class DiplomacyRulesTests(unittest.TestCase):
                 from orion.personalities import PERSONALITIES
                 # Defensive investment and early collective fleets deliberately
                 # trade some peaceful expansion for military readiness.
-                minimum = 2 if race_id in ("concord", "remnant") else 3 if PERSONALITIES[race_id].protective else 4
+                minimum = 2 if race_id in ("concord", "remnant") else 3 if race_id == "wanderers" or PERSONALITIES[race_id].protective else 4
                 self.assertGreaterEqual(summarize_empire(game, owner=RIVAL).colonies, minimum, race_id)
             self.assertTrue(game.opponent.technology.completed, race_id)
             # Earth earns 8/turn for 10 turns, 9 for 20, then 10 thereafter.

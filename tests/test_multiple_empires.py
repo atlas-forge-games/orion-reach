@@ -53,7 +53,7 @@ class RandomStartTests(unittest.TestCase):
                     for owner in game.owners:
                         system, world = game.headquarters(owner)
                         self.assertEqual((world.owner, world.population), (owner, 8))
-                        expected = ["frigate", "scout", "scout", "troop_transport", "troop_transport"] if game._empire(owner).race_id == "varkesh" else ["colony_ship", "scout", "scout"]
+                        expected = ["frigate", "scout", "scout", "troop_transport", "troop_transport"] if game._empire(owner).race_id == "varkesh" else ["mothership", "scout", "scout"] if game._empire(owner).race_id == "wanderers" else ["colony_ship", "scout", "scout"]
                         self.assertEqual(sorted(s.kind for s in game.ships_owned_by(owner)), expected)
                         self.assertEqual({s.system_id for s in game.ships_owned_by(owner)}, {system.id})
                         self.assertEqual([s.system_id for s in game.exploration.surveys if s.owner == owner], [system.id])
@@ -155,7 +155,8 @@ class IndependentEmpireTests(unittest.TestCase):
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_capture_eliminates_one_rival_without_ending_or_revealing_to_third_party(self):
-        game = new_game(seed=2408, rival_count=3, with_guardians=False)
+        # This is a planetary-invasion fixture; seed 13 has three planet-based rivals.
+        game = new_game(seed=13, rival_count=3, with_guardians=False)
         target = "rival_2"
         home = game._empire(target).home_system
         scout = next(s for s in game.ships_owned_by(target) if s.kind == "scout")

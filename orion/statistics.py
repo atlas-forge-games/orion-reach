@@ -26,7 +26,7 @@ METRICS = {
 
 def sample(game, owner):
     from .megastructures import active
-    colonies = [p for s in game.systems for p in s.worlds if p.colonized and p.owner == owner]
+    colonies = [p for _, p in game.settlements(owner)]
     bonuses = game.bonuses_for(owner)
     yields = [game.planet_yields(p) for p in colonies]
     trade, _ = game.diplomatic_yields(owner)

@@ -183,9 +183,9 @@ class App:
             screen="galaxy"
         if screen in ("planet","colony","shipyard","production") and self.game.selected_planet is None:
             screen="system"
-        if screen in ("planet","colony","shipyard","production") and not self.game.system_explored(self.game.selected_system):
+        if screen in ("planet","colony","shipyard","production") and not self.selected_habitat() and not self.game.system_explored(self.game.selected_system):
             screen="system"
-        if screen in ("colony","shipyard","production") and not self.game.system_visible(self.game.selected_system):
+        if screen in ("colony","shipyard","production") and not self.selected_habitat() and not self.game.system_visible(self.game.selected_system):
             screen="planet"
         if screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
             screen="planet"
@@ -291,7 +291,7 @@ class App:
         if not self.game or not location or location[0]!=self.game.campaign_id or self.game.strategy_error(PLAYER):
             return False
         _,sid,pid=location
-        if pid is None:
+        if pid is None or (pid < 0 and not any(s.habitat and s.habitat.id == pid for s in self.game.ships)):
             return False
         planet=self.game.planet_at(sid,pid)
         if planet.owner!=PLAYER or not planet.production_idle:
@@ -301,8 +301,7 @@ class App:
         return True
 
     def collect_idle_colonies(self):
-        self.idle_colonies=[(s.id,p.id) for s in self.game.systems for p in s.worlds
-                            if p.owner==PLAYER and p.production_idle] if not self.game.is_observer else []
+        self.idle_colonies=[(s.id,p.id) for s,p in self.game.settlements(PLAYER) if p.production_idle] if not self.game.is_observer else []
 
     def prompt_idle_colony(self, *, force=False):
         safe=("galaxy","system","empire","fleets","fleet")
@@ -316,6 +315,8 @@ class App:
             return False
         while self.idle_colonies:
             sid,pid=self.idle_colonies.pop(0)
+            if pid < 0 and not any(s.habitat and s.habitat.id == pid for s in self.game.ships):
+                continue
             planet=self.game.planet_at(sid,pid)
             if planet.owner!=PLAYER or not planet.production_idle:
                 continue
@@ -344,6 +345,21 @@ class App:
         self.game.selected_system=system_id
         self.go("galaxy" if black_holes.at(self.game,system_id) else "system")
 
+    def selected_habitat(self):
+        if not self.game or self.game.selected_planet is None or self.game.selected_planet >= 0:
+            return None
+        return next((s for s in self.game.visible_ships() if s.habitat is not None
+                     and s.habitat.id == self.game.selected_planet), None)
+
+    def open_mothership(self, ship_id):
+        ship = next((s for s in self.game.visible_ships() if s.id == ship_id and s.habitat is not None), None)
+        if ship is None:
+            return
+        self.game.selected_system, self.game.selected_planet = ship.system_id, ship.habitat.id
+        self.planet_return = "galaxy"
+        self.colony_slot = None
+        self.go("planet")
+
     def open_planet(self,planet_id):
         if not self.game.system_explored(self.game.selected_system):
             self.go("system")
@@ -361,7 +377,7 @@ class App:
 
     def close_planet(self):
         self.go(self.planet_return)
-        if self.screen=="galaxy" and self.game.selected_planet is not None:
+        if self.screen=="galaxy" and self.game.selected_planet is not None and self.game.selected_planet >= 0:
             self.galaxy_planet_page=self.game.selected_planet//PLANETS_PER_PAGE
             self.focus=f"galaxy_world_{self.game.selected_planet}"
 
@@ -1041,7 +1057,8 @@ class App:
 
     def open_rival(self):
         if self.screen=="planet" and self.game.selected_planet is not None:
-            planet=self.game.known_system(self.game.selected_system).worlds[self.game.selected_planet]
+            planet=(self.selected_habitat().habitat if self.selected_habitat() else
+                    self.game.known_system(self.game.selected_system).worlds[self.game.selected_planet])
             if planet.owner in self.game.opponents:
                 self.rival_id=planet.owner
         self.rival_return=self.screen if self.screen in ("diplomacy","planet") else "observer" if self.game.is_observer else "empire"
@@ -1250,6 +1267,11 @@ class App:
             self.ensure_map_system(self.game.selected_system)
 
     def cycle_planet(self,delta):
+        if self.selected_habitat():
+            from .motherships import homes
+            ships = homes(self.game, self.selected_habitat().owner)
+            self.open_mothership(ships[(ships.index(self.selected_habitat())+delta)%len(ships)].id)
+            return
         known=self.game.known_system(self.game.selected_system)
         worlds=known.worlds if known else []
         if not worlds:
@@ -2618,7 +2640,8 @@ class App:
         self.canvas.set_clip(old_clip)
         draw_map_navigation(self,MAP)
         if self.map_order_ids or self.route_ship_id is not None:
-            speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus()/100)
+            slow=any(s.habitat is not None and s.id in (self.map_order_ids or (self.route_ship_id,)) for s in state.ships)
+            speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus(slow=slow)/100)
             text(self.canvas,f"RANGE {state.fuel_range()} LY · SPEED {speed:g} LY/TURN",
                  (MAP.right-16,MAP.y+18),10,CYAN,"mono",right=True)
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
@@ -2642,7 +2665,7 @@ class App:
                   "Select a star, then a planet on the right. Click a fleet to send ships.")
         else:
             ship=state.ship_at(self.route_ship_id)
-            duration=state.travel_turns(state.systems[ship.system_id],star)
+            duration=state.travel_turns(state.systems[ship.system_id],star,ships=[ship])
             blocked=not state.within_fuel_range(star.id)
             label="Out of fuel range" if blocked else f"Send ship · {turn_label(duration)}" if duration else "Current system"
             self.button("send_course",label,(1075,692,277,43),self.send_course,"command",enabled=duration>0 and not blocked,icon="course")
@@ -2791,10 +2814,19 @@ class App:
         self.button("dialog_ok",self.dialog["label"],(650,top+height-97,336,57),self.accept_dialog,"primary")
 
     def render(self):
+        if self.game and self.game.selected_planet is not None and self.game.selected_planet < 0:
+            ship = self.selected_habitat()
+            if ship:
+                self.game.selected_system = ship.system_id
+            else:
+                self.game.selected_planet = None
+                self.colony_visit = None
+                if self.screen in ("planet", "colony", "shipyard", "production"):
+                    self.go("galaxy")
         if self.game and self.screen in ("planet","colony","shipyard","production"):
-            if not self.game.system_explored(self.game.selected_system):
+            if not self.selected_habitat() and not self.game.system_explored(self.game.selected_system):
                 self.go("system")
-            elif self.screen in ("colony","shipyard","production") and not self.game.system_visible(self.game.selected_system):
+            elif self.screen in ("colony","shipyard","production") and not self.selected_habitat() and not self.game.system_visible(self.game.selected_system):
                 self.go("planet")
             elif self.screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
                 self.go("planet")

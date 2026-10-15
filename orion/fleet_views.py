@@ -16,7 +16,7 @@ QUEUE_PER_PAGE = 5
 def draw_shipyard(app):
     surface, game = app.canvas, app.game
     system = game.systems[game.selected_system]
-    planet = system.worlds[game.selected_planet]
+    planet = game.planet_at(system.id, game.selected_planet)
     app.chrome("PLANETARY SHIPYARD")
     app.button("shipyard_back", "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()} / {planet.name.upper()}", 530, 11, "mono"),
@@ -30,14 +30,16 @@ def draw_shipyard(app):
     app.button("shipyard_designer", "Custom ships / designer →", (985, 259, 391, 34), app.open_designer, enabled=planet.owner==PLAYER)
 
     estimates = game.queue_estimates(planet)
-    catalogue_last = (len(SHIP_TYPES)-1)//4
+    catalogue = [s for s in SHIP_TYPES.values() if s.id != ("colony_ship" if game._empire(planet.owner or PLAYER).race_id == "wanderers" else "mothership")]
+    catalogue_last = (len(catalogue)-1)//4
     app.shipyard_catalog_page = min(max(0, app.shipyard_catalog_page), catalogue_last)
-    for index, spec in enumerate(list(SHIP_TYPES.values())[app.shipyard_catalog_page*4:app.shipyard_catalog_page*4+4]):
+    for index, spec in enumerate(catalogue[app.shipyard_catalog_page*4:app.shipyard_catalog_page*4+4]):
         y = 306+index*122
         panel(surface, (64, y, 585, 116))
         ship_icon(surface, (112, y+44), 1.0, app.empire_color(PLAYER), kind=spec.id)
         text(surface, spec.name, (153, y+7), 23, INK, "title")
-        description = (f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
+        description = ("50 B capacity · Mobile home · ¼ fleet speed · 180 hull" if spec.id == "mothership" else
+                       f"{game.starting_colonists(planet.owner or PLAYER)} B colonists · {spec.hull} hull · Unarmed"
                        if spec.id == "colony_ship" else f"{spec.hull} hull · Planetary refuelling base · Unarmed"
                        if spec.id == "outpost_ship" else f"{spec.hull} hull · {production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
                        if spec.id == "troop_transport" else f"{spec.hull} hull · Surveys & discoveries · Unarmed"
@@ -45,7 +47,7 @@ def draw_shipyard(app):
         if spec.drone_bays:
             description = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
         text(surface, description, (154, y+37), 12, CYAN)
-        captions = {"colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
+        captions = {"mothership": "Includes initial settlers. Production stays aboard.", "colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
                     "troop_transport": "Needs barracks. Includes 8 troops; hull losses follow casualties.",
                     "scout": "Charts systems and recovers one-time discoveries."}
@@ -112,8 +114,7 @@ def draw_fleets(app):
     text(surface, "Fleet operations", (64, 190), 43, INK, "title")
     text(surface, "Explore, settle and defend. Ships in the same system fight together.", (66, 251), 14, MUTED)
     ready = sum(not s.in_transit for s in ships)
-    queued = sum(p.is_ship for system in game.systems for planet in system.worlds
-                 if planet.owner == PLAYER for p in planet.construction_queue)
+    queued = sum(p.is_ship for _, planet in game.settlements(PLAYER) for p in planet.construction_queue)
     stats = [("READY IN ORBIT", ready), ("IN TRANSIT", len(ships)-ready), ("UNDER CONSTRUCTION", queued)]
     for i, (label, value) in enumerate(stats):
         x = 64+i*446
@@ -130,7 +131,7 @@ def draw_fleets(app):
         panel(surface, (64, y, 1312, 76))
         ship_icon(surface, (100, y+38), .67, app.empire_color(ship.owner), kind=ship.kind)
         text(surface, ship.name, (142, y+12), 18, INK)
-        role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
+        role = (f"{ship.habitat.population}/50 B · Mobile home" if ship.habitat else "Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else
                 f"{production_balance.TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.ship_attack(ship)} damage / volley")
         if ship.drone_bays:
@@ -149,7 +150,8 @@ def draw_fleets(app):
             pg.draw.rect(surface, LINE, (474, y+65, 454, 2))
             pg.draw.rect(surface, GOLD, (474, y+65, int(454*(1-ship.turns_remaining/ship.travel_total)), 2))
         target = ship.destination if ship.in_transit else ship.system_id
-        app.button(f"ship_view_{ship.id}", "System", (966, y+18, 109, 42), lambda s=target: app.open_system(s))
+        app.button(f"ship_view_{ship.id}", "Habitat" if ship.habitat else "System", (966, y+18, 109, 42),
+                   (lambda sid=ship.id: app.open_mothership(sid)) if ship.habitat else (lambda s=target: app.open_system(s)))
         app.button(f"ship_send_{ship.id}", "In transit" if ship.in_transit else "Course", (1087, y+18, 137, 42),
                    lambda sid=ship.id: app.plot_course(sid), enabled=not ship.in_transit)
         app.button(f"ship_engage_{ship.id}", "Engage", (1236, y+18, 116, 42),

@@ -221,7 +221,7 @@ def make_plan(game, owner):
     an empty stockpile or contested site leaves colony production untouched.
     """
     base = game._base_bonuses(owner)
-    colonies = [(s.id, p) for s in game.systems for p in s.worlds if p.owner == owner and p.colonized]
+    colonies = [(s.id, p) for s, p in game.settlements(owner)]
     power = economy.dispatch_power([p for _, p in colonies], base, game.resources_for(owner))
     context = administration.Context(game, owner)
     local = {id(p): {**specialists.colony_effects(game, p), **context.effects(p)} for _, p in colonies}

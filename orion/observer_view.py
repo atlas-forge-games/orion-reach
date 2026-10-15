@@ -20,7 +20,7 @@ ROWS_PER_PAGE = 6
 
 def draw_observer_header(app):
     game, surface = app.game, app.canvas
-    worlds = [p for s in game.systems for p in s.worlds if p.colonized]
+    worlds = [p for _, p in game.settlements()]
     alive = sum(bool(game.colony_systems(o)) for o in game.owners)
     draw_race_portrait(surface, "observer", (64, 22, 88, 100))
     text(surface, "THE", (165, 38), 11, MUTED, "mono", 2)

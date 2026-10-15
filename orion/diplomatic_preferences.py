@@ -51,8 +51,11 @@ class Assessment:
 
 
 def known_worlds(game, observer, target):
-    return [(s, p) for actual in game.systems if (s := game.known_system(actual.id, observer))
-            for p in s.worlds if p.owner == target]
+    from .motherships import center
+    return ([(s, p) for actual in game.systems if (s := game.known_system(actual.id, observer))
+             for p in s.worlds if p.owner == target]
+            + [(center(game, ship), ship.habitat) for ship in game.visible_ships(observer)
+               if ship.owner == target and ship.habitat is not None])
 
 
 def ship_power(game, ship):

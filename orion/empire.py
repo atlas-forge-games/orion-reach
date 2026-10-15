@@ -37,8 +37,7 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
     """Return actual system/planet pairs; sorting must never change selection IDs."""
     if filter_by not in FILTERS or sort_by not in SORT_KEYS:
         raise ValueError("Unknown colony filter or sort order.")
-    rows = [(system, planet) for system in game.systems
-            for planet in system.worlds if planet.colonized and planet.owner == owner]
+    rows = game.settlements(owner)
     if filter_by == "building":
         rows = [(s, p) for s, p in rows if p.construction_queue and not p.trade_goods]
     elif filter_by == "idle":

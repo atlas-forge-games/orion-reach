@@ -313,7 +313,7 @@ def announce_raid(game, owner, defender, system):
 def military_orders(game, reserved=(), owner=RIVAL):
     """Assemble escorted invasion groups when hostile; otherwise guard colonies."""
     ships = sorted((s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and s.id not in reserved), key=lambda s: s.id)
-    colonies = [s for s in game.systems if any(p.owner == owner for p in s.worlds)]
+    colonies = game.colony_systems(owner)
     colonies.sort(key=lambda s: (s.id != game._empire(owner).home_system, s.id))
     if not colonies:
         return
@@ -427,6 +427,10 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
 def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
     nature = personality(game, owner)
+    from . import motherships
+    nomadic = motherships.is_wanderer(game, owner)
+    if nomadic:
+        motherships.ai_orders(game, owner)
     coalitions.ai_orders(game, owner)
     tribute.ai_orders(game, owner)
     from .diplomacy import ai_treaty_orders
@@ -482,7 +486,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         duration = game.send_ship(ship.id, target.id, owner=owner)
         event(game, owner, f"Sent {ship.name} to {target.name}; {duration} turns in transit.")
 
-    colonies = [(s, p) for s in game.systems for p in s.worlds if p.owner == owner]
+    colonies = game.settlements(owner)
     for system, planet in colonies:
         farmers = farmers_needed(planet, game.bonuses_for(owner))
         remaining = planet.workforce-farmers
@@ -529,8 +533,10 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                        if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
     unknown = sum(not game.system_explored(s.id, owner) for s in game.systems if s.kind != black_holes.KIND)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
-    if raiding.is_varkesh(game, owner):
+    if raiding.is_varkesh(game, owner) or nomadic:
         fleet_limit = 0
+    if nomadic:
+        troop_limit = 0
     scouts = sum(s.kind == "scout" for s in game.ships_owned_by(owner)) + sum(
         q.item_id == "scout" for _, p in colonies for q in p.construction_queue)
     outpost_ships = sum(s.kind == "outpost_ship" for s in game.ships_owned_by(owner)) + sum(
@@ -627,6 +633,11 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 game.queue_ship(system.id, planet.id, "outpost_ship", owner=owner)
                 outpost_ships += 1
                 event(game, owner, f"Started an outpost ship on {planet.name}.")
+        elif (nomadic and planet.population >= 15 and len(planet.buildings) >= 3
+              and len(colonies) < 8 and not any(q.item_id == "mothership" for _, p in colonies for q in p.construction_queue)
+              and game.ship_build_error(system.id, planet.id, "mothership", owner=owner) is None):
+            game.queue_ship(system.id, planet.id, "mothership", owner=owner)
+            event(game, owner, f"Started a new mothership at {planet.name}.")
         elif produce_ship:
             if game.ship_build_error(system.id, planet.id, owner=owner) is None:
                 game.queue_ship(system.id, planet.id, owner=owner)

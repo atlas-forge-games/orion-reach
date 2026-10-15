@@ -18,7 +18,7 @@ from orion.storage import Storage
 
 
 def scenario(counts=(4, 4, 4), *, observer=False, fog=False):
-    game = new_game(seed=2408, galaxy_size="Compact", race_id="observer" if observer else "terran",
+    game = new_game(seed=13, galaxy_size="Compact", race_id="observer" if observer else "terran",
                     rival_race_id="kharuun", rival_count=len(counts) if observer else len(counts)-1,
                     fog_of_war=fog, with_guardians=False, with_tombs=False)
     game.ships.clear()

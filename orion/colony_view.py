@@ -16,7 +16,7 @@ def draw_planet_tabs(app, active):
                                    ("tab_colony", "Colony", 1008, "colony"),
                                    ("tab_shipyard", "Shipyard", 1198, "shipyard")):
         app.button(key, label, (x, 201, 178, 49), lambda s=screen: app.go(s),
-                   enabled=screen=="planet" or app.game.system_visible(app.game.selected_system))
+                   enabled=screen=="planet" or bool(app.selected_habitat()) or app.game.system_visible(app.game.selected_system))
         if screen == active:
             pg.draw.line(app.canvas, GOLD, (x, 250), (x+178, 250), 3)
 
@@ -62,7 +62,7 @@ def turn_label(count):
 def draw_colony(app):
     surface, game = app.canvas, app.game
     system = game.systems[game.selected_system]
-    planet = system.worlds[game.selected_planet]
+    planet = game.planet_at(system.id, game.selected_planet)
     app.chrome("COLONY MANAGEMENT")
     app.button("colony_back", "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()}  /  {planet.name.upper()}", 580, 11, "mono"),
@@ -71,8 +71,12 @@ def draw_colony(app):
 
     text(surface, shorten(planet.name, 620, 43, "title"), (64, 185), 43, INK, "title")
     status = f"{planet.workforce} B · {game.empire_name_for(planet.owner)}" if planet.colonized else "Uncolonized"
-    text(surface, f"{planet.biome}  ·  {planet.size} world  ·  {status}", (66, 249), 14, MUTED)
-    draw_planet(surface, planet, (756, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
+    text(surface, f"Mobile habitat · 50 B capacity · {status}" if planet.habitat else f"{planet.biome}  ·  {planet.size} world  ·  {status}", (66, 249), 14, MUTED)
+    if planet.habitat:
+        from .mothership_art import draw
+        draw(surface, (756, 222), .9, app.empire_color(planet.owner))
+    else:
+        draw_planet(surface, planet, (756, 222), 60, f"{game.seed}:{system.id}:{planet.id}")
     draw_planet_tabs(app, "colony")
 
     industry, income, science = game.planet_yields(planet)

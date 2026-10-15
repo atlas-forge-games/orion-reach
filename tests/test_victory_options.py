@@ -170,7 +170,9 @@ class VictoryOptionRulesTests(unittest.TestCase):
     def test_observer_can_continue_after_one_empire_remains(self):
         game = campaign(race_id="observer", rival_count=2, victory_conditions=())
         for _, planet in victory.colonies(game, "rival_2"):
-            planet.owner = "rival"
+            if not planet.habitat:
+                planet.owner = "rival"
+        game.ships[:] = [s for s in game.ships if s.owner != "rival_2"]
         game.eliminate_defeated()
         advance(game)
         self.assertIsNone(game.result)

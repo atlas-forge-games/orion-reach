@@ -139,6 +139,13 @@ def guides():
             ("INSPECT", "Right-click a technology in the research screen to read its details. If you finish a turn without an active project and research choices remain, the research screen opens."),
             ("REFERENCE CATALOG", "The encyclopedia lists the complete public technology catalog, including technologies you have not researched. Reading an entry never selects or unlocks it."),
         )),
+        Article("motherships", "ships", "Wanderer motherships", "Cities that travel between stars", (
+            ("MOBILE HOMES", "Wanderers start with a mothership and two scouts. They inhabit no planets. Each mothership holds up to 50 B population and has its own workforce, growth, facilities and construction queue. Click its habitat-ring badge on the galaxy map, then Home."),
+            ("RELOCATION", "Motherships travel at one quarter of normal fleet speed. Ships sent with a mothership share that speed and arrive together. Its supply and sensors follow its actual position; it no longer observes its former system after departure."),
+            ("ONBOARD ECONOMY", "Food, research, industry, credits and resources continue during travel. Ship construction waits until arrival, and Ascension Gates charge only while anchored. Planetary missile bases, shields, fortifications, jump gates and interdictors cannot be built aboard."),
+            ("EXPANSION AND DEFENSE", "Only Wanderers can build new motherships. Each includes initial settlers; base construction costs 1200 Resources and 600 work before racial discounts. Motherships have 180 hull and no weapons. Losing a mothership loses its entire habitat; losing the last one ends the empire. They cannot settle or occupy planets."),
+            ("OLDER CAMPAIGNS", "Existing Wanderer colonies move into motherships on loading, preserving their population, compatible facilities and queued work. Existing colony ships become mobile homes. An unfinished battle is resolved before this conversion occurs."),
+        )),
         Article("travel", "ships", "Fleet movement and fuel", "Range is different from speed", (
             ("RANGE", f"The base fuel range is {production_balance.BASE_FUEL_RANGE} light-years from an owned colony or outpost. The map shows the combined supply area with one outer boundary. Scouts do not extend supply. Civilization traits and researched fuel tanks can extend it."),
             ("SPEED", "Drive research reduces voyage time. Fuel tanks extend reach without speeding up a voyage. Navigation networks and jump gates can improve travel between your colonies; enemy interdiction can slow an approach."),

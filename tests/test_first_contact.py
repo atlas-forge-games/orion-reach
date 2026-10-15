@@ -29,7 +29,7 @@ from test_research_expansion import discover
 
 
 def campaign(**kwargs):
-    return new_game(seed=2408, with_guardians=False, with_tombs=False, random_starts=False, **kwargs)
+    return new_game(seed=kwargs.pop("seed", 2408), with_guardians=False, with_tombs=False, random_starts=False, **kwargs)
 
 
 def add_ship(game, kind, sid, owner):
@@ -130,7 +130,7 @@ class ContactRulesTests(unittest.TestCase):
         self.assertEqual(first_contact.pending(loaded), ["rival_2", "rival_3"])
 
     def test_v25_migration_preserves_assets_history_and_source_file(self):
-        game = campaign(fog_of_war=False, rival_count=3)
+        game = campaign(seed=13, fog_of_war=False, rival_count=3)
         legacy_economy(game)
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
@@ -153,7 +153,7 @@ class ContactRulesTests(unittest.TestCase):
             self.assertEqual(storage.load(storage.save(loaded))[0], loaded)
 
     def test_v25_fog_migration_preserves_old_active_diplomatic_channels(self):
-        game = campaign(fog_of_war=True, rival_count=3)
+        game = campaign(seed=13, fog_of_war=True, rival_count=3)
         game.diplomacy.trade_active = True
         # v25 began relationships at zero, before values-based alignment.
         for state in [game.diplomacy, *game.other_diplomacy.values()]:
