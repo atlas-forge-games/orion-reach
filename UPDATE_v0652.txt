@@ -1,0 +1,22 @@
+Orion Reach v0.65.2 — extract over v0.65.1, then restart the game.
+
+Performance improvements are enabled automatically:
+- System visibility uses direct local checks instead of scanning the galaxy.
+- Each redraw reuses fleet visibility, system intelligence and supply queries.
+  Results are discarded after drawing, so new orders and turns remain current.
+- Routine mouse, scroll and typing events are batched. Click targets are rebuilt
+  before subsequent actions, including screen changes and camera movement.
+- A Processing turn panel appears before simulation starts. Rapid duplicate
+  turn presses and commands entered while busy are ignored. The finished turn
+  is displayed before accepting another fresh press. Production prompts cannot
+  be bypassed by duplicate turn commands in the same input batch.
+
+Gameplay rules, AI decisions and normal visual effects are preserved.
+Autosave remains independently configurable in Settings. Save format 46 and
+balance profile 11 are unchanged, and existing campaigns load directly.
+
+See docs/performance.md for measurements and verification. Run
+python tools/benchmark_performance.py to measure the same temporary scenario
+on your machine. The benchmark does not modify your campaign saves.
+
+Nothing committed.

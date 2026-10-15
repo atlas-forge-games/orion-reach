@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field, replace
 import math
 import random
 from uuid import uuid4
+from .frame_cache import cached_in_frame
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
 from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loadout_error
@@ -818,6 +819,7 @@ class GameState:
     def known_system(self, system_id, owner=PLAYER):
         return exploration_rules.known_system(self, system_id, owner)
 
+    @cached_in_frame
     def visible_ships(self, owner=PLAYER):
         return [ship for ship in self.ships if exploration_rules.ship_visible(self, ship, owner)]
 
@@ -1177,10 +1179,12 @@ class GameState:
         ids = {s.id for s, _ in self.settlements(owner)}
         return [s for s in self.systems if s.id in ids]
 
+    @cached_in_frame
     def supply_systems(self, owner=PLAYER):
         mobile = {s.system_id for s in motherships.homes(self, owner) if not s.in_transit}
         return [s for s in self.systems if s.id in mobile or any(p.owner == owner or p.outpost_owner == owner for p in s.worlds)]
 
+    @cached_in_frame
     def supply_centers(self, owner=PLAYER):
         fixed = [s for s in self.systems if any(p.owner == owner or p.outpost_owner == owner for p in s.worlds)]
         return fixed+[motherships.center(self, s) for s in motherships.homes(self, owner)]

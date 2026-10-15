@@ -18,6 +18,7 @@ from .megastructure_view import draw_megastructure
 from .hyperlane_view import draw_hyperlane
 from .hyperlane_art import draw_network
 from . import hyperlanes
+from .frame_cache import frame_queries
 from .planet_view import draw_planet_overview, draw_production, worker_row_rect, worker_selection_count
 from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
@@ -74,6 +75,7 @@ STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
 GAME_SCREENS=("galaxy", "system", "megastructure", "hyperlane", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
+TURN_INPUT_EVENTS=(pg.KEYDOWN,pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP,pg.MOUSEWHEEL,pg.TEXTINPUT)
 
 
 class App:
@@ -97,6 +99,8 @@ class App:
         self.running=True
         self.screen="menu" if capture or skip_intro else "splash"
         self.game=None
+        self.turn_busy=False
+        self.turn_generation=0
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
@@ -1506,6 +1510,9 @@ class App:
             self.contact_return="news"
 
     def advance_turn(self):
+        if self.turn_busy:
+            return
+        self.turn_generation+=1
         if self.screen=="contact":
             return
         if self.ground_reports or self.screen=="ground":
@@ -1533,6 +1540,30 @@ class App:
         # An unissued map order is a UI selection, never an automatic next-turn order.
         self.clear_worker_selection()
         self.close_fleet_popup()
+        clear_gesture(self)
+        self.pressed=None
+        self.turn_busy=True
+        try:
+            self.draw_turn_progress()
+            self.present()
+            self.finish_turn()
+        finally:
+            self.turn_busy=False
+            self.pressed=None
+            self.render()
+            self.present()
+            # Inputs entered while the progress panel was visible must not act
+            # on the new turn or a newly opened battle/report. Keep quit, window,
+            # mouse motion and key-release events so the app remains usable.
+            pg.event.clear(TURN_INPUT_EVENTS)
+
+    def draw_turn_progress(self):
+        self.backdrop.dim(self.canvas)
+        panel(self.canvas,(420,365,600,170))
+        text(self.canvas,"Processing turn…",(460,400),30,INK,"title")
+        text(self.canvas,f"Turn {self.game.turn+1} · Please wait",(462,462),16,CYAN)
+
+    def finish_turn(self):
         report=self.game.advance_turn()
         if self.game.is_observer:
             if self.game.result is not None:
@@ -2099,6 +2130,8 @@ class App:
         button.action()
 
     def handle_event(self,event):
+        if self.turn_busy and event.type in TURN_INPUT_EVENTS:
+            return
         if event.type==pg.QUIT:
             self.quit_request()
             return
@@ -2298,7 +2331,7 @@ class App:
             self.keyboard_mode=True
         elif event.key in (pg.K_RETURN,pg.K_KP_ENTER,pg.K_SPACE):
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
-            if selected:
+            if selected and not (selected.key=="end_turn" and getattr(event,"repeat",False)):
                 self.activate(selected)
         elif self.screen=="info" and not self.dialog:
             if event.key in (pg.K_LEFT,pg.K_RIGHT):
@@ -2324,7 +2357,8 @@ class App:
             if event.key==pg.K_F5:
                 self.save_game()
             elif event.key==pg.K_e:
-                self.advance_turn()
+                if not getattr(event,"repeat",False):
+                    self.advance_turn()
             elif event.key==pg.K_p:
                 self.pause()
             elif event.key==pg.K_s and self.screen=="galaxy":
@@ -2867,6 +2901,10 @@ class App:
                 self.go("planet")
             elif self.screen=="production" and self.game.planet_at(self.game.selected_system,self.game.selected_planet).owner!=PLAYER:
                 self.go("planet")
+        with frame_queries(self.game):
+            self.draw_frame()
+
+    def draw_frame(self):
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
@@ -2894,15 +2932,32 @@ class App:
         self.window.blit(pg.transform.smoothscale(self.canvas,size),self.viewport.topleft)
         pg.display.flip()
 
+    def process_events(self,events):
+        """Batch routine input; rebuild targets before a later click/key action."""
+        generation=self.turn_generation
+        regions_dirty=False
+        for event in events:
+            if self.turn_generation!=generation and event.type in TURN_INPUT_EVENTS:
+                continue
+            if regions_dirty and event.type in (pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP,pg.KEYDOWN):
+                self.render()
+                regions_dirty=False
+            self.handle_event(event)
+            if self.turn_generation!=generation:
+                # A request ends this batch's commands, including when it opens
+                # a production prompt instead of running the simulation.
+                regions_dirty=False
+            else:
+                # Hover previews may also change controls. Coalesce their
+                # events, but refresh before the next actual click or key.
+                regions_dirty=True
+
     def run(self):
         self.present()
         while self.running:
             elapsed=min(self.clock.tick(60)/1000,.1)
             self.time+=elapsed
-            for event in pg.event.get():
-                self.handle_event(event)
-                # Screen transitions must update hit regions before the next queued event.
-                self.render()
+            self.process_events(pg.event.get())
             self.update_splash()
             self.update_combat()
             update_map_input(self,elapsed,MAP)

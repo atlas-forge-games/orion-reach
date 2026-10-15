@@ -5,6 +5,7 @@ import random
 
 from .encyclopedia_artifacts import ARTIFACT_CONCEPTS
 from .production import distance_ly
+from .frame_cache import cached_in_frame
 
 KIND = "Black hole"
 SITES = {
@@ -48,6 +49,7 @@ def at(game, system_id):
     return next((site for site in game.black_holes.sites if site.system_id == system_id), None)
 
 
+@cached_in_frame
 def can_detect(game, owner="player"):
     return ((game.is_observer and owner == "player") or
             (owner in game.owners and bool(game.bonuses_for(owner).get("black_hole_detection"))))
@@ -67,8 +69,9 @@ def chart_systems(game, owner="player"):
 
 def fleet_charted(game, ship, owner="player"):
     """A visible fleet route must not disclose an undiscovered singularity."""
-    return (ship.owner == owner or can_detect(game, owner) or
-            all(game.systems[sid].kind != KIND for sid in (ship.system_id, ship.destination) if sid is not None))
+    return (ship.owner == owner or
+            all(game.systems[sid].kind != KIND for sid in (ship.system_id, ship.destination) if sid is not None)
+            or can_detect(game, owner))
 
 
 def risk(game, destination, owner="player"):

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.65.1
+# Orion Reach — Python prototype 0.65.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,25 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.65.2: smoother map and turn processing
+
+- Visibility checks inspect the requested system directly. Drawing reuses visible
+  fleets, system information and supply locations within each frame, then discards
+  those results so the next frame reflects every change.
+- Mouse motion, scrolling and text input are batched instead of redrawing the
+  entire screen after every event. Click targets refresh before later actions.
+- **Processing turn…** appears before the turn calculation. Extra commands in
+  the same input burst or entered while processing are ignored. The completed
+  turn is displayed before another fresh End Turn press is accepted. Duplicate
+  turn presses also cannot skip a newly opened production prompt.
+
+The optimizations are automatic. Gameplay rules and the existing visual effects
+are preserved. Autosave remains optional in Settings. Existing campaigns load
+directly; save format 46 and balance profile 11 are unchanged.
+
+See [performance measurements and validation](docs/performance.md). To run the
+same temporary, headless benchmark: `python tools/benchmark_performance.py`.
 
 ## New in v0.65.1: optional autosaving
 

@@ -3,6 +3,7 @@
 from dataclasses import asdict, dataclass, field, replace
 import random
 from . import black_holes
+from .frame_cache import cached_in_frame
 
 @dataclass(frozen=True)
 class DiscoverySpec:
@@ -145,11 +146,20 @@ def observed_systems(game, owner="player"):
         s.system_id for s in game.ships if s.owner == owner and not s.in_transit}
 
 
+@cached_in_frame
 def is_visible(game, system_id, owner="player"):
-    if game.systems[system_id].kind == black_holes.KIND:
-        return ((game.is_observer and owner == "player") or
-                (black_holes.can_detect(game, owner) and system_id in observed_systems(game, owner)))
-    return (game.is_observer and owner == "player") or not game.fog_of_war or system_id in observed_systems(game, owner)
+    system = game.systems[system_id]
+    if game.is_observer and owner == "player":
+        return True
+    if system.kind == black_holes.KIND:
+        if not black_holes.can_detect(game, owner):
+            return False
+    elif not game.fog_of_war:
+        return True
+    # Query this location directly instead of scanning every world's supply on
+    # every lookup. Anchored motherships count as ships; travelling homes do not.
+    return (any(p.owner == owner or p.outpost_owner == owner for p in system.worlds)
+            or any(s.owner == owner and s.system_id == system_id and not s.in_transit for s in game.ships))
 
 
 def is_explored(game, system_id, owner="player"):
@@ -164,6 +174,7 @@ def ship_visible(game, ship, owner="player"):
         not ship.in_transit and is_visible(game, ship.system_id, owner))
 
 
+@cached_in_frame
 def known_system(game, system_id, owner="player"):
     """A live system, a last-observed snapshot, or no planetary information."""
     from .model import Planet
