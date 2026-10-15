@@ -4,7 +4,7 @@ import pygame as pg
 
 from .empires import DEFAULT_PALETTE, EMPIRE_IDS, empire_color
 from .ui import FAINT, INK, MUTED, font, text_image
-from . import black_holes
+from . import black_holes, motherships
 
 LABEL_SIZE = 13
 LABEL_FAMILY = "mono_bold"
@@ -20,6 +20,7 @@ def system_label(game, system):
 def known_owners(game, system):
     survey = game.known_system(system.id)
     owners = {owner for p in survey.worlds for owner in (p.owner, p.outpost_owner) if owner} if survey else set()
+    owners.update(s.owner for s in motherships.visible_at(game, system.id))
     return tuple(owner for owner in EMPIRE_IDS if owner in owners)
 
 

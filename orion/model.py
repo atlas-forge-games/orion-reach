@@ -1144,9 +1144,10 @@ class GameState:
             value = (100+value)*motherships.SPEED_FACTOR-100
         return int(value) if value.is_integer() else value
 
-    def fuel_range(self, owner=PLAYER):
+    def fuel_range(self, owner=PLAYER, *, ships=()):
         bonuses = self.bonuses_for(owner)
-        value = (production_balance.BASE_FUEL_RANGE+bonuses.get("fuel_range", 0))*(100+bonuses.get("fuel_range_percent", 0))/100
+        reserves = motherships.FUEL_RANGE_BONUS if any(s.habitat is not None and s.owner == owner for s in ships) else 0
+        value = (production_balance.BASE_FUEL_RANGE+bonuses.get("fuel_range", 0)+reserves)*(100+bonuses.get("fuel_range_percent", 0))/100
         return int(value) if value.is_integer() else value
 
     def settlements(self, owner=None):
@@ -1177,15 +1178,15 @@ class GameState:
         target = self.systems[destination]
         return min((distance_ly(s, target) for s in self.supply_centers(owner)), default=math.inf)
 
-    def within_fuel_range(self, destination, owner=PLAYER):
-        return self.supply_distance(destination, owner) <= self.fuel_range(owner)+1e-9
+    def within_fuel_range(self, destination, owner=PLAYER, *, ships=()):
+        return self.supply_distance(destination, owner) <= self.fuel_range(owner, ships=ships)+1e-9
 
-    def fuel_range_error(self, destination, owner=PLAYER):
-        if not self.within_fuel_range(destination, owner):
+    def fuel_range_error(self, destination, owner=PLAYER, *, ships=()):
+        if not self.within_fuel_range(destination, owner, ships=ships):
             advice = "Establish a closer outpost or research fuel tanks."
             return (f"Out of fuel range: {self.systems[destination].name} is "
-                    f"{self.supply_distance(destination, owner):.1f} ly from your nearest colony or outpost "
-                    f"(range {self.fuel_range(owner)} ly). {advice}")
+                    f"{self.supply_distance(destination, owner):.1f} ly from your nearest supply point "
+                    f"(range {self.fuel_range(owner, ships=ships)} ly). {advice}")
         return None
 
     def can_settle(self, planet, owner=PLAYER):
@@ -1525,7 +1526,7 @@ class GameState:
             raise RuleError("Unknown destination system.")
         if destination == ships[0].system_id:
             raise RuleError("The selected ships are already in this system.")
-        error = self.fuel_range_error(destination, owner)
+        error = self.fuel_range_error(destination, owner, ships=ships)
         if error:
             raise RuleError(error)
         error = black_holes.order_error(self, destination, owner, accept_black_hole_risk)

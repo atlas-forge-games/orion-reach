@@ -67,4 +67,5 @@ def draw_overview(app, ship):
     app.button("mothership_course", "In transit" if ship.in_transit else "Set course", (1077, 785, 314, 37),
                lambda: app.plot_course(ship.id), enabled=own and not ship.in_transit)
     text(surface, "E: End turn · R: Research · I: Empire · F5: Save", (24, 866), 12, MUTED)
-    app.button("planet_return", "Galaxy map", (1210, 851, 206, 42), lambda: app.go("galaxy"), "primary")
+    app.button("planet_return", "System view" if app.planet_return == "system" else "Galaxy map",
+               (1210, 851, 206, 42), app.close_planet, "primary")

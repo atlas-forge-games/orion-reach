@@ -47,7 +47,7 @@ def draw_shipyard(app):
         if spec.drone_bays:
             description = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
         text(surface, description, (154, y+37), 12, CYAN)
-        captions = {"mothership": "Includes initial settlers. Production stays aboard.", "colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
+        captions = {"mothership": "Adds 15 ly range to ships travelling with it.", "colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
                     "troop_transport": "Needs barracks. Includes 8 troops; hull losses follow casualties.",
                     "scout": "Charts systems and recovers one-time discoveries."}

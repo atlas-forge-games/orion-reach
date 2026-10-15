@@ -19,12 +19,17 @@ from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, pan
 FLEET_SHIPS_PER_PAGE = 6
 
 
+def ordered_ships(app):
+    identifiers = app.map_order_ids or ((app.route_ship_id,) if app.route_ship_id is not None else ())
+    return [s for s in app.game.ships if s.id in identifiers]
+
+
 def draw_fuel_range(app, map_rect):
     """The actual union of supply areas, with no lines inside overlapping circles."""
     game = app.game
     if not (app.map_order_ids or app.route_ship_id is not None):
         return
-    rx, ry = app.map_camera.radii(game.fuel_range(), map_rect)
+    rx, ry = app.map_camera.radii(game.fuel_range(ships=ordered_ships(app)), map_rect)
     ellipses = []
     for system in game.supply_centers():
         x, y = app.star_pos(system)
@@ -184,7 +189,7 @@ def fleet_markers(app, map_rect):
         width = max(44, 32+font(11, "mono_bold").size(str(len(ships)))[0])
         anchors.append((x, y))
         habitat = any(s.habitat is not None for s in ships)
-        preferred_rects.append(tuple(pg.Rect(*preferred, max(108, width) if habitat else width, 42 if habitat else 23)))
+        preferred_rects.append(tuple(pg.Rect(*preferred, max(72, width) if habitat else width, 42 if habitat else 23)))
     rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), tuple(preferred_rects), padding=2)
     # Very crowded full-galaxy views can need smaller badges to leave room for
     # navigation. Keep every fleet clickable instead of accepting an overlap.
@@ -221,7 +226,7 @@ def draw_map_fleets(app, map_rect):
             target = app.fleet_route_target() if app.map_order_ids else game.selected_system
             end = app.star_pos(game.systems[target])
             keeping = ship.departure_pending and target == ship.destination
-            blocked = target != ship.system_id and not keeping and not game.within_fuel_range(target)
+            blocked = target != ship.system_id and not keeping and not game.within_fuel_range(target, ships=ordered_ships(app))
             pg.draw.line(surface, RED if blocked else GOLD, origin, end, 2)
     for ships, rect, anchor in markers:
         color = app.empire_color(ships[0].owner)
@@ -234,9 +239,9 @@ def draw_map_fleets(app, map_rect):
         habitats = [s for s in ships if s.habitat is not None]
         if habitats:
             ship_icon(surface, (rect.x+20, rect.centery), .5, color, kind="mothership")
-            text(surface, f"{sum(s.habitat.population for s in habitats)}/{50*len(habitats)} B", (rect.x+42, rect.y+7), 11, color, "mono_bold")
-            caption = f"{ships[0].turns_remaining} turns" if ships[0].in_transit else f"{len(ships)-len(habitats)} escorts" if len(ships)>len(habitats) else "MOTHERSHIP"
-            text(surface, caption, (rect.x+42, rect.y+25), 9, MUTED)
+            text(surface, str(len(ships)), (rect.x+42, rect.y+7), 11, color, "mono_bold")
+            caption = f"{ships[0].turns_remaining}T" if ships[0].in_transit else "SHIPS" if len(ships)>1 else "HOME"
+            text(surface, caption, (rect.x+42, rect.y+25), 8, MUTED)
         else:
             ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
             text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono_bold")
@@ -308,16 +313,17 @@ def draw_fleet_popup(app):
     danger = False
     if editable:
         target = game.systems[app.fleet_route_target()]
+        selected = [s for s in ships if s.id in app.fleet_selected_ids]
         keeping = first.departure_pending and target.id == first.destination
-        outside = not game.within_fuel_range(target.id)
+        outside = not game.within_fuel_range(target.id, ships=selected)
         blocked = target.id != origin.id and not keeping and outside
-        duration = first.turns_remaining if keeping else game.travel_turns(origin, target, ships=[s for s in ships if s.id in app.fleet_selected_ids])
+        duration = first.turns_remaining if keeping else game.travel_turns(origin, target, ships=selected)
         destination = (f"To {target.name} · {turn_label(duration)}"
                        if target.id != origin.id else f"At {origin.name}")
         text(surface, shorten(destination, 290, 13), (x+18, bottom+66), 13, RED if blocked else INK)
         distance = game.supply_distance(target.id)
         fuel = ("Saved course kept · outside current range" if keeping and outside else
-                f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range()} ly from supply")
+                f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range(ships=selected)} ly from supply")
         route, radius, slow = ((first.route_bonus, first.approach_range, first.approach_slow) if keeping else
                                navigation.route_modifiers(game, origin, target, PLAYER))
         if not blocked and not outside and (route or slow):
@@ -445,8 +451,8 @@ def draw_order_panel(app, target):
     text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")
     if duration:
         text(surface, f"Arrival in {turn_label(duration)}", (1075, 530), 16, CYAN)
-        blocked = not game.within_fuel_range(target.id)
-        text(surface, f"{'Out of range' if blocked else 'In range'} · {game.supply_distance(target.id):.1f} / {game.fuel_range()} ly",
+        blocked = not game.within_fuel_range(target.id, ships=ships)
+        text(surface, f"{'Out of range' if blocked else 'In range'} · {game.supply_distance(target.id):.1f} / {game.fuel_range(ships=ships)} ly",
              (1075, 588), 12, RED if blocked else CYAN)
         known = game.known_system(target.id)
         enemy_count = len(game.foreign_fleet(target.id)) if game.system_visible(target.id) else 0

@@ -5,6 +5,8 @@ from types import SimpleNamespace
 
 CAPACITY = 50
 SPEED_FACTOR = .25
+# Standard 7 LY + Wanderer 3 LY + onboard reserves 15 LY = 25 LY.
+FUEL_RANGE_BONUS = 15
 STATIONARY_BUILDINGS = frozenset({"missile_base", "planetary_shield", "interdictor", "jump_gate", "fortifications"})
 
 
@@ -14,6 +16,12 @@ def is_wanderer(game, owner="player"):
 
 def homes(game, owner=None):
     return [s for s in game.ships if s.habitat is not None and (owner is None or s.owner == owner)]
+
+
+def visible_at(game, system_id):
+    """Only currently detected, anchored homes belong in a system's overview."""
+    return [s for s in game.visible_ships() if s.habitat is not None
+            and not s.in_transit and s.system_id == system_id]
 
 
 def ship_for(game, habitat):
@@ -139,7 +147,7 @@ def ai_orders(game, owner):
         if not crowded and not threatened:
             continue
         candidates = [s for s in game.systems if s.id not in occupied and s.kind != black_holes.KIND
-                      and game.system_explored(s.id, owner) and game.within_fuel_range(s.id, owner)
+                      and game.system_explored(s.id, owner) and game.within_fuel_range(s.id, owner, ships=[ship])
                       and monsters.known_status(game, s.id, owner) != "alive"
                       and not any(hostile(game, owner, p.owner) for p in game.known_system(s.id, owner).worlds if p.owner)
                       and not any(hostile(game, owner, f.owner) for f in game.visible_ships(owner)

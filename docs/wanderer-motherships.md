@@ -10,6 +10,7 @@ an ordinary unclaimed planet. Two scouts accompany the starting mothership.
 | Facilities | 12 slots per mothership |
 | Strategic speed | 25% of normal ship speed, with the same researched speed modifiers |
 | Starting speed | 0.5 light-years per turn |
+| Initial convoy range | 25 LY with standard balance; 15 LY more than an ordinary Wanderer fleet |
 | Hull | 180, unarmed |
 | New construction | 1200 Resources, 600 work before racial discounts |
 | New inhabitants | Normal starting-colonist amount, included in construction |
@@ -18,15 +19,28 @@ an ordinary unclaimed planet. Two scouts accompany the starting mothership.
 
 ## Controls and movement
 
-The galaxy fleet badge uses a gold habitat-ring silhouette, population/capacity,
-and escort count. During travel, it shows the remaining turns. Select the fleet
-and use its Home button, or open the home from Empire or Fleets. The home overview
+The galaxy fleet badge uses a gold habitat-ring silhouette and ship count, with
+no population label. During travel, it also shows remaining turns. Select the
+fleet and use its Home button, or click the habitat in the solar-system overview
+or galaxy system sidebar. Empire and Fleets also open it. The home overview
 has the normal workforce controls, right-click output calculations, production
 queue and a Set course button. Movement remains editable until End Turn.
 
 A fleet containing a mothership travels at its speed. Selecting only ordinary
 ships allows them to leave at normal speed. Escorts retreating with a mothership
 also use the same slow speed. The current route and ETA survive saving.
+
+A selected mothership adds 15 LY of onboard fuel reserves to its entire convoy.
+Standard range is 7 LY + the Wanderers' 3 LY bonus + 15 LY = 25 LY. Fuel research
+and percentage modifiers apply normally. Additional motherships do not stack
+the reserve bonus. Independent escorts retain ordinary fleet range; the map's
+range overlay, route preview and warnings follow the current selection.
+
+Anchored homes contribute population and settlement counts in the system view,
+and give the system their empire's ownership color. Shared systems retain all
+visible owners' colors. Pending departure still counts as anchored; after launch,
+the home contributes to neither endpoint until arrival. Undetected foreign homes
+do not appear in the overview or disclose ownership through colors.
 
 Supply and scanner centers follow the actual interpolated ship position. Leaving
 a system ends the home's live view of its planets; the dated survey remains.
@@ -66,3 +80,6 @@ battle and its participants. Other civilizations' saves and planets are unchange
 Balance profile 11 adds the mothership's cost, work, hull and tactical movement
 while keeping existing profile values. Capacity 50 and the quarter-speed ratio
 are fixed civilization rules in this first version.
+
+Version 0.64.1 keeps save format 45 and balance profile 11. Existing campaigns
+gain the system controls and extended convoy range without conversion.

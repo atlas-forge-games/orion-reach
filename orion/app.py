@@ -52,8 +52,9 @@ from .empires import PLAYER_PALETTES, empire_color
 from . import diplomacy as diplomacy_balance
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
-from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects
-from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel
+from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects, ordered_ships
+from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel, system_entries, entry_key
+from .motherships import visible_at
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_background import draw_galaxy_background
 from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
@@ -356,8 +357,9 @@ class App:
         if ship is None:
             return
         self.game.selected_system, self.game.selected_planet = ship.system_id, ship.habitat.id
-        self.planet_return = "galaxy"
+        self.planet_return = "system" if self.screen == "system" else "galaxy"
         self.colony_slot = None
+        self.shipyard_page = self.shipyard_catalog_page = 0
         self.go("planet")
 
     def open_planet(self,planet_id):
@@ -377,17 +379,22 @@ class App:
 
     def close_planet(self):
         self.go(self.planet_return)
-        if self.screen=="galaxy" and self.game.selected_planet is not None and self.game.selected_planet >= 0:
-            self.galaxy_planet_page=self.game.selected_planet//PLANETS_PER_PAGE
-            self.focus=f"galaxy_world_{self.game.selected_planet}"
+        if self.screen=="galaxy" and self.game.selected_planet is not None:
+            known=self.game.known_system(self.game.selected_system)
+            entries=system_entries(self.game,known) if known else []
+            selected=next((i for i,p in enumerate(entries) if p.id==self.game.selected_planet),None)
+            if selected is not None:
+                self.galaxy_planet_page=selected//PLANETS_PER_PAGE
+                self.focus=entry_key(entries[selected])
 
     def change_galaxy_planet_page(self,delta):
         known=self.game.known_system(self.game.selected_system)
-        if known is None or not known.worlds:
+        entries=system_entries(self.game,known) if known else []
+        if not entries:
             return
-        last=(len(known.worlds)-1)//PLANETS_PER_PAGE
+        last=(len(entries)-1)//PLANETS_PER_PAGE
         self.galaxy_planet_page=max(0,min(last,self.galaxy_planet_page+delta))
-        self.focus=f"galaxy_world_{known.worlds[self.galaxy_planet_page*PLANETS_PER_PAGE].id}"
+        self.focus=entry_key(entries[self.galaxy_planet_page*PLANETS_PER_PAGE])
 
     def reset_fleet_view(self):
         self.map_camera=GalaxyCamera()
@@ -400,6 +407,8 @@ class App:
         self.planet_return="system"
         self.galaxy_planet_page=0
         self.galaxy_page_system=None
+        self.system_mothership_page=0
+        self.system_mothership_system=None
         self.fleet_return="galaxy"
         self.fleet_return_selection=(0,None)
         self.fleet_page=0
@@ -581,7 +590,7 @@ class App:
                 return
             else:
                 warning=black_holes.risk(self.game,destination)
-                if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination):
+                if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination, ships=ordered_ships(self)):
                     self.confirm("Unsafe black-hole expedition",f"{count} ships → {self.game.systems[destination].name}. "+warning,
                                  "Send anyway",lambda:self.send_map_fleet(destination,True))
                     return
@@ -668,14 +677,15 @@ class App:
                 self.galaxy_planet_page=0
             self.game.selected_system=system_id
             known=self.game.known_system(system_id)
-            worlds=known.worlds if known else []
+            worlds=system_entries(self.game,known) if known else []
             self.focus="open_system"
             if worlds:
-                first=next((p.id for p in worlds if p.colonized),0)
+                first=next((p.id for p in worlds if p.colonized),worlds[0].id)
                 chosen=self.game.selected_planet if self.game.selected_planet is not None else first
+                index=next((i for i,p in enumerate(worlds) if p.id==chosen),0)
                 self.galaxy_page_system=system_id
-                self.galaxy_planet_page=chosen//PLANETS_PER_PAGE
-                self.focus=f"galaxy_world_{chosen}"
+                self.galaxy_planet_page=index//PLANETS_PER_PAGE
+                self.focus=entry_key(worlds[index])
         else:
             self.game.selected_system=system_id
             self.game.selected_planet=None
@@ -686,7 +696,7 @@ class App:
             ship=self.game.ship_at(self.route_ship_id)
             destination=self.game.selected_system
             warning=black_holes.risk(self.game,destination)
-            if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination):
+            if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination, ships=[ship]):
                 self.confirm("Unsafe black-hole expedition",f"{ship.name} → {self.game.systems[destination].name}. "+warning,
                              "Send anyway",lambda:self.send_course(True))
                 return
@@ -2594,6 +2604,7 @@ class App:
         draw_coverage(self,MAP)
         draw_fuel_range(self,MAP)
         labels=star_label_rects(self,MAP)
+        moving=ordered_ships(self)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
         for star in self.map_systems():
             x,y=self.star_pos(star)
@@ -2615,11 +2626,12 @@ class App:
             if selected:
                 ordering=bool(self.map_order_ids or self.route_ship_id is not None)
                 queued=next((s for s in state.ships if s.id in self.map_order_ids and s.departure_pending and s.destination==star.id),None)
-                selection_color=RED if ordering and not queued and not state.within_fuel_range(star.id) else GOLD
+                selection_color=RED if ordering and not queued and not state.within_fuel_range(star.id, ships=moving) else GOLD
                 pg.draw.circle(self.canvas,selection_color,(int(x),int(y)),19,1)
                 for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
                     pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
             owners={p.owner for p in known.worlds if p.colonized} if known else set()
+            owners.update(s.owner for s in visible_at(state, star.id))
             base_owner=next((p.outpost_owner for p in known.worlds if p.outpost_owner),None) if known else None
             if base_owner:
                 pg.draw.rect(self.canvas,self.empire_color(base_owner),(round(x)-5,round(y)+15,10,7),1)
@@ -2640,9 +2652,9 @@ class App:
         self.canvas.set_clip(old_clip)
         draw_map_navigation(self,MAP)
         if self.map_order_ids or self.route_ship_id is not None:
-            slow=any(s.habitat is not None and s.id in (self.map_order_ids or (self.route_ship_id,)) for s in state.ships)
+            slow=any(s.habitat is not None for s in moving)
             speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus(slow=slow)/100)
-            text(self.canvas,f"RANGE {state.fuel_range()} LY · SPEED {speed:g} LY/TURN",
+            text(self.canvas,f"RANGE {state.fuel_range(ships=moving)} LY · SPEED {speed:g} LY/TURN",
                  (MAP.right-16,MAP.y+18),10,CYAN,"mono",right=True)
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             self.button("sensor_overlay", "Sensors on · S" if self.show_sensors else "Sensor range · S",
@@ -2666,7 +2678,7 @@ class App:
         else:
             ship=state.ship_at(self.route_ship_id)
             duration=state.travel_turns(state.systems[ship.system_id],star,ships=[ship])
-            blocked=not state.within_fuel_range(star.id)
+            blocked=not state.within_fuel_range(star.id, ships=[ship])
             label="Out of fuel range" if blocked else f"Send ship · {turn_label(duration)}" if duration else "Current system"
             self.button("send_course",label,(1075,692,277,43),self.send_course,"command",enabled=duration>0 and not blocked,icon="course")
             known=state.known_system(star.id)
@@ -2674,7 +2686,7 @@ class App:
             detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
             if black_holes.at(state,star.id):
                 detail="FATAL APPROACH: this ship will be lost." if black_holes.risk(state,star.id) else "Safe approach unlocked. Guardian combat possible."
-            hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest colony or outpost · Range {state.fuel_range()} ly. "
+            hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest supply point · Range {state.fuel_range(ships=[ship])} ly. "
                   +("Establish an outpost or research fuel tanks." if blocked else detail))
         ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
         text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,775),13,MUTED)

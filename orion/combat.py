@@ -869,8 +869,10 @@ def retreat_destination(game, owner="player"):
     if not any(s.kind not in ("missile_base", "combat_drone") for s in game.combat.fleet(owner)):
         return None
     origin = game.systems[game.combat.system_id]
+    survivors = {s.id for s in game.combat.fleet(owner)}
+    ships = [s for s in game.ships if s.id in survivors and s.owner == owner]
     safe = [s for s in game.systems if s.id != origin.id and s.kind != black_holes.KIND and
-            game.within_fuel_range(s.id, owner) and
+            game.within_fuel_range(s.id, owner, ships=ships) and
             known_status(game, s.id, owner) != "alive" and
             not (game.system_visible(s.id, owner) and game.foreign_fleet(s.id, owner))]
     friendly = [s for s in safe if game.settlements_at(s.id, owner)]

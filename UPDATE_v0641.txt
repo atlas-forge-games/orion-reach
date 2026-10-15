@@ -1,0 +1,22 @@
+Orion Reach v0.64.1 — extract over v0.64.0, then restart the game.
+
+Anchored Wanderer motherships are visible and clickable in the solar-system
+overview and the galaxy map's system panel. Their inhabitants and habitats count
+in the system summary. Opening a home from the system view returns there.
+
+A mothership gives its system the Wanderer empire's ownership color, including
+the galaxy name and star ring. Shared systems keep both owners' colors. The
+color follows actual anchorage and disappears after departure. Hidden enemy
+homes do not reveal their location through ownership labels.
+
+Galaxy mothership badges show the ring silhouette and ship count, with an
+arrival countdown during flight. Population is no longer printed on the badge.
+
+A mothership and the ships selected to accompany it have an initial 25 LY range
+with standard settings. Onboard reserves add 15 LY to ordinary Wanderer range;
+fuel research increases it further. Extra motherships do not stack the bonus.
+Scouts and other ships travelling independently keep their ordinary range.
+The range overlay, route controls, AI relocation and combat retreats agree.
+
+Existing saves load directly. Save format 45 and balance profile 11 are unchanged.
+See docs/wanderer-motherships.md for details. Nothing committed.

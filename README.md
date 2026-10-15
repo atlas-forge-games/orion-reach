@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.64.0
+# Orion Reach — Python prototype 0.64.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -7,13 +7,29 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ![Main menu](screenshots/menu.png)
 
+## New in v0.64.1: mothership system controls and range
+
+- Anchored motherships appear as clickable habitats in the solar-system overview
+  and the galaxy map's system panel. System totals include their inhabitants.
+- Their systems use the Wanderer empire's ownership color. Shared systems retain
+  all known owners' colors; a travelling mothership does not claim either endpoint.
+- Galaxy fleet badges show the habitat-ring icon, ship count and arrival time,
+  without a population label.
+- Motherships and selected escorts have **25 LY initial range**. Onboard reserves
+  add 15 LY to ordinary Wanderer range and benefit from fuel research. Selecting
+  only ordinary ships restores their normal range; extra motherships do not stack.
+
+Existing v0.64 saves load directly. Save format 45 and balance profile 11 remain.
+
+![Clickable mothership in the solar-system view](screenshots/v0641_mothership_system.png)
+
 ## New in v0.64: Wanderer motherships
 
 Wanderers live aboard mobile homes rather than planets. A new campaign starts
 with one mothership and two scouts. Each home holds **50 B population** and
 **12 facility slots**, with its own workforce, food, research and production.
 
-- On the galaxy map, a large **habitat-ring badge** shows population and escorts,
+- On the galaxy map, a **habitat-ring badge** shows ship count,
   or an arrival countdown during flight. Click the fleet, then **Home** to manage
   the habitat. The Empire directory and Fleets screen also open it.
 - Motherships travel at **one quarter of normal fleet speed**; selected escorts
