@@ -6,6 +6,7 @@ import pygame as pg
 from .fleet_art import ship_icon
 from .production import HULL_TECHNOLOGIES
 from .research import BRANCHES, TECHNOLOGIES, TIER_NAMES, branch_tiers, choices
+from . import hyperlanes
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, paragraph, shorten, text, wrapped_lines
 
 
@@ -26,6 +27,11 @@ def project_eta(game, technology, rate):
         return "No RP output"
     turns = math.ceil(remaining / rate)
     return f"{turns} {'turn' if turns == 1 else 'turns'}"
+
+
+def output_caption(game):
+    diverted = sum(hyperlanes.allocations(game, "player").values())
+    return f"after {diverted} RP to hyperlanes" if diverted else "per turn"
 
 
 def draw_project_summary(app, rate):
@@ -51,7 +57,7 @@ def draw_project_summary(app, rate):
                    "Select a technology below. Unused research points are banked.")
         text(surface, shorten(caption, 716, 12), (84, 255), 12, MUTED)
     for x, label, value, caption in (
-        (886, "RESEARCH OUTPUT", f"+{rate} RP", "per turn"),
+        (886, "RESEARCH OUTPUT", f"+{rate} RP", output_caption(game)),
         (1130, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
     ):
         pg.draw.line(surface, LINE, (x-20, 207), (x-20, 271))
@@ -172,7 +178,7 @@ def draw_branch_detail(app):
         if capstone or done:
             app.button("research_objectives", "View", (740, 326, 100, 40), app.open_objectives)
     for x, label, value, caption in (
-        (885, "RESEARCH OUTPUT", f"+{rate} RP", "per turn"),
+        (885, "RESEARCH OUTPUT", f"+{rate} RP", output_caption(game)),
         (1082, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
     ):
         pg.draw.line(surface, LINE, (x-22, 307), (x-22, 378))

@@ -95,7 +95,7 @@ def scouting_orders(game, owner=RIVAL):
             continue
         candidates = [s for s in game.systems if s.kind != black_holes.KIND and s.id != ship.system_id and s.id not in incoming
                       and monsters.known_status(game, s.id, owner) != "alive"
-                      and s.id not in game.exploration.scanned(owner) and game.within_fuel_range(s.id, owner)]
+                      and s.id not in game.exploration.scanned(owner) and game.can_reach(s.id, owner, ships=[ship])]
         if not candidates:
             continue
         origin = game.systems[ship.system_id]
@@ -319,13 +319,11 @@ def military_orders(game, reserved=(), owner=RIVAL):
         return
     hostile = enemies(game, owner)
     targets = [s for s in game.systems if game.system_visible(s.id, owner)
-               and any(ship.owner in hostile for ship in game.foreign_fleet(s.id, owner))
-               and game.within_fuel_range(s.id, owner)] if hostile else []
-    targets += [s for s in game.systems if game.within_fuel_range(s.id, owner)
-                and (known := game.known_system(s.id, owner)) is not None
+               and any(ship.owner in hostile for ship in game.foreign_fleet(s.id, owner))] if hostile else []
+    targets += [s for s in game.systems if (known := game.known_system(s.id, owner)) is not None
                 and any(p.outpost_owner in hostile for p in known.worlds)]
     worlds = [(s, p) for s, p in known_enemy_colonies(game, owner)
-              if p.owner in hostile and game.within_fuel_range(s.id, owner)]
+              if p.owner in hostile]
     ordered = set()
     staging, _ = max(empire_colonies(game, owner), key=lambda row: (game.planet_yields(row[1])[0], row[1].population, -row[0].id, -row[1].id))
     for system in game.systems:
@@ -333,7 +331,8 @@ def military_orders(game, reserved=(), owner=RIVAL):
         escorts = [s for s in ships if not s.has_course and s.system_id == system.id]
         if not troops:
             continue
-        candidates = [(s, p) for s, p in worlds if resolve(len(troops)*production_balance.TROOP_STRENGTH, forces(p, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {})).captured]
+        candidates = [(s, p) for s, p in worlds if game.can_reach(s.id, owner, ships=troops+escorts)
+                      and resolve(len(troops)*production_balance.TROOP_STRENGTH, forces(p, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {})).captured]
         if game.foreign_fleet(system.id, owner):
             if raiding.is_varkesh(game, owner) and escorts:
                 for destination, planet in candidates:
@@ -356,7 +355,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
                     game.send_ship(ship.id, destination.id, owner=owner)
             action = "raiding" if raiding.is_varkesh(game, owner) else "invasion"
             event(game, owner, f"Sent a {action} group toward {destination.name}.")
-        elif system.id != staging.id:
+        elif system.id != staging.id and game.can_reach(staging.id, owner, ships=troops):
             for ship in troops:
                 game.send_ship(ship.id, staging.id, owner=owner)
     threats = [c for c in sensors.contacts(game, owner) if c.active and c.owner in hostile]
@@ -369,20 +368,23 @@ def military_orders(game, reserved=(), owner=RIVAL):
         if ship.hull < ship.max_hull and game.can_repair(ship):
             continue
         origin = game.systems[ship.system_id]
-        if gate and index == 0:
+        reachable_targets = [s for s in targets if game.can_reach(s.id, owner, ships=[ship])]
+        reachable_worlds = [(s, p) for s, p in worlds if game.can_reach(s.id, owner, ships=[ship])]
+        reachable_threats = [game.systems[sid] for sid in threatened if game.can_reach(sid, owner, ships=[ship])]
+        if gate and index == 0 and game.can_reach(gate[0].id, owner, ships=[ship]):
             destination = gate[0]
-        elif threatened:
-            destination = min((game.systems[sid] for sid in threatened), key=lambda s: (game.travel_turns(origin, s, owner), s.id))
-        elif hostile and worlds:
+        elif reachable_threats:
+            destination = min(reachable_threats, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
+        elif hostile and reachable_worlds:
             # Keep escorts with newly built transports until the group is ready.
             destination = staging
-            if not troop_transports(game, staging.id, owner) and targets:
-                destination = min(targets, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
-        elif targets:
-            destination = min(targets, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
+            if not troop_transports(game, staging.id, owner) and reachable_targets:
+                destination = min(reachable_targets, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
+        elif reachable_targets:
+            destination = min(reachable_targets, key=lambda s: (game.travel_turns(origin, s, owner), s.id))
         else:
             destination = colonies[index % len(colonies)]
-        if destination.id != ship.system_id:
+        if destination.id != ship.system_id and game.can_reach(destination.id, owner, ships=[ship]):
             game.send_ship(ship.id, destination.id, owner=owner)
             event(game, owner, f"Sent {ship.name} to guard {destination.name}." if not hostile else
                              f"Sent {ship.name} toward opposing ships at {destination.name}.")
@@ -431,6 +433,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     nomadic = motherships.is_wanderer(game, owner)
     if nomadic:
         motherships.ai_orders(game, owner)
+        from .hyperlanes import ai_orders as hyperlane_orders
+        hyperlane_orders(game, owner)
     coalitions.ai_orders(game, owner)
     tribute.ai_orders(game, owner)
     from .diplomacy import ai_treaty_orders

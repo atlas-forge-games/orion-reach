@@ -1,0 +1,22 @@
+Orion Reach v0.65.0 — extract over v0.64.1, then restart the game.
+
+Wanderers can research Forgotten hyperlanes from the solar-system overview or
+the galaxy sidebar. Each system project costs 300 RP and discovers a random
+permanent connection to another ordinary star system. The destination is only
+revealed on completion. This does not occupy the megastructure slot.
+
+Station a mothership, then allocate 0–100% of local research or invest banked RP.
+Multiple stationary homes pool their research. These RP are deducted from normal
+technology research, not created for free. Departing or pausing retains progress.
+
+Only the discovering empire can use its routes. Ships at either endpoint travel
+to the other in one turn, including motherships and escorts, without fuel limits.
+The route remains after the homes leave. Guardians and hostile fleets still
+intercept arrivals. AI Wanderers can research and use their own routes.
+
+Includes original portal artwork, clickable system symbols, galaxy connections,
+one-turn course previews, discovery news and encyclopedia guidance.
+
+Existing saves load directly. Save format is now 46; older source saves are not
+rewritten on loading. Balance profile 11 remains compatible. Nothing committed.
+Detailed rules: docs/forgotten-hyperlanes.md.

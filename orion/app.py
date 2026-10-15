@@ -15,6 +15,9 @@ from .buildings import BUILDINGS
 from .storage import Storage
 from .system_views import draw_system
 from .megastructure_view import draw_megastructure
+from .hyperlane_view import draw_hyperlane
+from .hyperlane_art import draw_network
+from . import hyperlanes
 from .planet_view import draw_planet_overview, draw_production, worker_row_rect, worker_selection_count
 from .colony_view import draw_colony, turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
@@ -70,7 +73,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "megastructure", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
+GAME_SCREENS=("galaxy", "system", "megastructure", "hyperlane", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 
 
 class App:
@@ -409,6 +412,8 @@ class App:
         self.galaxy_page_system=None
         self.system_mothership_page=0
         self.system_mothership_system=None
+        self.hyperlane_system=None
+        self.hyperlane_page=0
         self.fleet_return="galaxy"
         self.fleet_return_selection=(0,None)
         self.fleet_page=0
@@ -590,7 +595,7 @@ class App:
                 return
             else:
                 warning=black_holes.risk(self.game,destination)
-                if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination, ships=ordered_ships(self)):
+                if warning and not accept_black_hole_risk and self.game.can_reach(destination, ships=ordered_ships(self)):
                     self.confirm("Unsafe black-hole expedition",f"{count} ships → {self.game.systems[destination].name}. "+warning,
                                  "Send anyway",lambda:self.send_map_fleet(destination,True))
                     return
@@ -696,7 +701,7 @@ class App:
             ship=self.game.ship_at(self.route_ship_id)
             destination=self.game.selected_system
             warning=black_holes.risk(self.game,destination)
-            if warning and not accept_black_hole_risk and self.game.within_fuel_range(destination, ships=[ship]):
+            if warning and not accept_black_hole_risk and self.game.can_reach(destination, ships=[ship]):
                 self.confirm("Unsafe black-hole expedition",f"{ship.name} → {self.game.systems[destination].name}. "+warning,
                              "Send anyway",lambda:self.send_course(True))
                 return
@@ -2221,7 +2226,7 @@ class App:
                 self.go("galaxy")
             elif self.screen=="system":
                 self.go("galaxy")
-            elif self.screen=="megastructure":
+            elif self.screen in ("megastructure","hyperlane"):
                 self.go("system")
             elif self.screen=="planet":
                 if self.worker_source:
@@ -2603,6 +2608,7 @@ class App:
         self.canvas.set_clip(MAP)
         draw_coverage(self,MAP)
         draw_fuel_range(self,MAP)
+        draw_network(self,MAP)
         labels=star_label_rects(self,MAP)
         moving=ordered_ships(self)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
@@ -2626,7 +2632,7 @@ class App:
             if selected:
                 ordering=bool(self.map_order_ids or self.route_ship_id is not None)
                 queued=next((s for s in state.ships if s.id in self.map_order_ids and s.departure_pending and s.destination==star.id),None)
-                selection_color=RED if ordering and not queued and not state.within_fuel_range(star.id, ships=moving) else GOLD
+                selection_color=RED if ordering and not queued and not state.can_reach(star.id, ships=moving) else GOLD
                 pg.draw.circle(self.canvas,selection_color,(int(x),int(y)),19,1)
                 for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
                     pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
@@ -2654,7 +2660,10 @@ class App:
         if self.map_order_ids or self.route_ship_id is not None:
             slow=any(s.habitat is not None for s in moving)
             speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus(slow=slow)/100)
-            text(self.canvas,f"RANGE {state.fuel_range(ships=moving)} LY · SPEED {speed:g} LY/TURN",
+            keeping=bool(moving) and moving[0].departure_pending and moving[0].destination==preview
+            lane=moving[0].hyperlane if keeping else bool(moving) and hyperlanes.connects(state,moving[0].system_id,preview)
+            label="FORGOTTEN HYPERLANE · 1 TURN" if lane else f"RANGE {state.fuel_range(ships=moving)} LY · SPEED {speed:g} LY/TURN"
+            text(self.canvas,label,
                  (MAP.right-16,MAP.y+18),10,CYAN,"mono",right=True)
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             self.button("sensor_overlay", "Sensors on · S" if self.show_sensors else "Sensor range · S",
@@ -2678,8 +2687,9 @@ class App:
         else:
             ship=state.ship_at(self.route_ship_id)
             duration=state.travel_turns(state.systems[ship.system_id],star,ships=[ship])
-            blocked=not state.within_fuel_range(star.id, ships=[ship])
-            label="Out of fuel range" if blocked else f"Send ship · {turn_label(duration)}" if duration else "Current system"
+            blocked=not state.can_reach(star.id, ships=[ship])
+            lane=hyperlanes.connects(state,ship.system_id,star.id)
+            label="Out of fuel range" if blocked else "Use hyperlane · 1 turn" if lane else f"Send ship · {turn_label(duration)}" if duration else "Current system"
             self.button("send_course",label,(1075,692,277,43),self.send_course,"command",enabled=duration>0 and not blocked,icon="course")
             known=state.known_system(star.id)
             targets=sum(not p.colonized and state.can_settle(p) for p in known.worlds) if known else 0
@@ -2688,6 +2698,8 @@ class App:
                 detail="FATAL APPROACH: this ship will be lost." if black_holes.risk(state,star.id) else "Safe approach unlocked. Guardian combat possible."
             hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest supply point · Range {state.fuel_range(ships=[ship])} ly. "
                   +("Establish an outpost or research fuel tanks." if blocked else detail))
+            if lane:
+                hint=f"{ship.name}: Forgotten hyperlane · 1 turn · No fuel limit. "+detail
         ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
         text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,775),13,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
@@ -2717,6 +2729,14 @@ class App:
 
     def draw_megastructure(self):
         draw_megastructure(self)
+
+    def draw_hyperlane(self):
+        draw_hyperlane(self)
+
+    def open_hyperlane(self, system_id):
+        self.game.selected_system=system_id
+        self.game.selected_planet=None
+        self.go("hyperlane")
 
     def draw_planet(self):
         draw_planet_overview(self)

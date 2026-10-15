@@ -30,6 +30,7 @@ from . import administration
 from . import megastructures
 from . import coalitions, tribute
 from . import motherships
+from . import hyperlanes
 from . import specialists as specialist_rules
 from . import outposts as outpost_rules
 from . import observer as observer_rules
@@ -155,6 +156,7 @@ class Ship:
     approach_slow: float = 0
     bombarded_turn: int = 0
     habitat: Planet | None = None
+    hyperlane: bool = False
 
     def __post_init__(self):
         if self.hull is None:
@@ -187,7 +189,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=45):
+    def from_dict(cls, data, systems, *, version=46):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -203,6 +205,9 @@ class Ship:
         remaining, total = data["turns_remaining"], data["travel_total"]
         speed_bonus = data["speed_bonus"] if version >= 7 else 0
         pending = data["departure_pending"] if version >= 14 else False
+        hyperlane = data["hyperlane"] if version >= 46 else False
+        if type(hyperlane) is not bool:
+            raise ValueError("Invalid hyperlane voyage")
         cruise_speed = (data["cruise_speed"] if version >= 15 else
                         data.get("cruise_speed", LEGACY_SHIP_SPEED if destination is not None else production_balance.SHIP_SPEED))
         if type(cruise_speed) is not float or cruise_speed not in (production_balance.SHIP_SPEED, LEGACY_SHIP_SPEED):
@@ -225,15 +230,18 @@ class Ship:
             raise ValueError("Invalid voyage modifiers")
         if destination is None:
             if (not _integer(remaining, 0, 0) or not _integer(total, 0, 0) or speed_bonus or pending or cruise_speed != production_balance.SHIP_SPEED
-                    or route["route_bonus"] or route["approach_range"] or route["approach_slow"]):
+                    or route["route_bonus"] or route["approach_range"] or route["approach_slow"] or hyperlane):
                 raise ValueError
         else:
             if not _integer(destination, 0, len(systems)-1) or destination == data["system_id"]:
                 raise ValueError
             if route["approach_range"] > distance_ly(systems[data["system_id"]], systems[destination])+1e-9:
                 raise ValueError("Interdiction range exceeds the voyage")
-            expected = navigation.duration(systems[data["system_id"]], systems[destination], speed_bonus, cruise_speed=cruise_speed,
-                                           **{k: v for k, v in route.items() if k != "bombarded_turn"})
+            if hyperlane and (speed_bonus or route["route_bonus"] or route["approach_range"] or route["approach_slow"]):
+                raise ValueError("Hyperlane voyage has ordinary speed modifiers")
+            expected = hyperlanes.TRAVEL_TURNS if hyperlane else navigation.duration(
+                systems[data["system_id"]], systems[destination], speed_bonus, cruise_speed=cruise_speed,
+                **{k: v for k, v in route.items() if k != "bombarded_turn"})
             if not _integer(total, expected, expected) or not _integer(remaining, 1, total):
                 raise ValueError
             if pending and remaining != total:
@@ -256,6 +264,7 @@ class Ship:
         record["hull"] = hull
         record["speed_bonus"] = speed_bonus
         record["departure_pending"] = pending
+        record["hyperlane"] = hyperlane
         record["cruise_speed"] = cruise_speed
         if version < 5:
             record["owner"] = PLAYER
@@ -711,6 +720,7 @@ class GameState:
     diplomatic_news: list[coalitions.Dispatch] = field(default_factory=list)
     diplomatic_news_read: int = 0
     wanderer_migration_pending: bool = False
+    hyperlane_projects: list[hyperlanes.HyperlaneProject] = field(default_factory=list)
 
     @property
     def is_observer(self):
@@ -1133,6 +1143,8 @@ class GameState:
         return max(1, math.ceil(self.project_spec(item_id, owner).resource_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER, *, ships=()):
+        if hyperlanes.connects(self, origin.id, destination.id, owner):
+            return hyperlanes.TRAVEL_TURNS
         bonus, radius, slow = navigation.route_modifiers(self, origin, destination, owner)
         return navigation.duration(origin, destination, self.ship_speed_bonus(owner, slow=any(s.habitat for s in ships)),
                                    route_bonus=bonus, approach_range=radius, approach_slow=slow)
@@ -1181,8 +1193,16 @@ class GameState:
     def within_fuel_range(self, destination, owner=PLAYER, *, ships=()):
         return self.supply_distance(destination, owner) <= self.fuel_range(owner, ships=ships)+1e-9
 
+    def can_reach(self, destination, owner=PLAYER, *, ships=()):
+        """Only a discovered route's exact endpoints bypass ordinary fuel range."""
+        ships = tuple(ships)
+        if (ships and all(s.owner == owner and s.system_id == ships[0].system_id and not s.in_transit for s in ships)
+                and hyperlanes.connects(self, ships[0].system_id, destination, owner)):
+            return True
+        return self.within_fuel_range(destination, owner, ships=ships)
+
     def fuel_range_error(self, destination, owner=PLAYER, *, ships=()):
-        if not self.within_fuel_range(destination, owner, ships=ships):
+        if not self.can_reach(destination, owner, ships=ships):
             advice = "Establish a closer outpost or research fuel tanks."
             return (f"Out of fuel range: {self.systems[destination].name} is "
                     f"{self.supply_distance(destination, owner):.1f} ly from your nearest supply point "
@@ -1544,6 +1564,7 @@ class GameState:
         ship.departure_pending = False
         ship.cruise_speed = production_balance.SHIP_SPEED
         ship.route_bonus, ship.approach_range, ship.approach_slow = 0, 0.0, 0
+        ship.hyperlane = False
 
     def cancel_departures(self, ship_ids, *, owner=PLAYER):
         """Cancel a whole selection atomically, only before its first travel step."""
@@ -1566,12 +1587,14 @@ class GameState:
     def _dispatch_ship(self, ship, destination, *, pending=False, slow=False):
         """Route an order; battle retreats are already committed and cannot be cancelled."""
         exploration_rules.refresh(self)
-        ship.speed_bonus = self.ship_speed_bonus(ship.owner, slow=slow or ship.habitat is not None)
-        ship.route_bonus, ship.approach_range, ship.approach_slow = navigation.route_modifiers(
-            self, self.systems[ship.system_id], self.systems[destination], ship.owner)
+        ship.hyperlane = hyperlanes.connects(self, ship.system_id, destination, ship.owner)
+        ship.speed_bonus = 0 if ship.hyperlane else self.ship_speed_bonus(ship.owner, slow=slow or ship.habitat is not None)
+        ship.route_bonus, ship.approach_range, ship.approach_slow = ((0, 0.0, 0) if ship.hyperlane else navigation.route_modifiers(
+            self, self.systems[ship.system_id], self.systems[destination], ship.owner))
         ship.cruise_speed = production_balance.SHIP_SPEED
-        duration = navigation.duration(self.systems[ship.system_id], self.systems[destination], ship.speed_bonus,
-                                       route_bonus=ship.route_bonus, approach_range=ship.approach_range, approach_slow=ship.approach_slow)
+        duration = hyperlanes.TRAVEL_TURNS if ship.hyperlane else navigation.duration(
+            self.systems[ship.system_id], self.systems[destination], ship.speed_bonus,
+            route_bonus=ship.route_bonus, approach_range=ship.approach_range, approach_slow=ship.approach_slow)
         ship.destination = destination
         ship.turns_remaining = ship.travel_total = duration
         ship.departure_pending = pending
@@ -1657,6 +1680,7 @@ class GameState:
             _, credits, points = self.planet_yields(planet)
             income += credits
             research += points
+        research -= sum(hyperlanes.allocations(self, owner).values())
         return income, research
 
     def advance_turn(self):
@@ -1665,6 +1689,7 @@ class GameState:
         finally:
             self.__dict__.pop("_turn_power", None)
             self.__dict__.pop("_turn_megastructures", None)
+            self.__dict__.pop("_turn_hyperlanes", None)
             self.__dict__.pop("_array_chances", None)
 
     def _advance_turn(self):
@@ -1700,6 +1725,7 @@ class GameState:
                 return TurnReport(0, 0, [], alerts=alerts, ground_battles=ground_battles)
         advance_diplomacy(self)
         self._settle_power()
+        hyperlanes.freeze(self)
         gates = [(s.id, p.id, p.owner) for s, p in self.settlements() if p.ascension_gate and self.planet_energy(p).gate_powered]
         income, research = self.empire_rates
         rival_rates = {owner: self.empire_rates_for(owner) for owner in self.opponents}
@@ -1755,6 +1781,7 @@ class GameState:
         completed.extend(megastructures.finish_work(self))
         self.turn += 1
         self.year += 1
+        completed.extend(hyperlanes.finish_work(self))
         administration.normalize(self)
         black_holes.resolve_arrivals(self, alerts)
         motherships.relocate_specialists(self)
@@ -1795,6 +1822,7 @@ class GameState:
                 alerts.append(f"{self.empire_name_for(owner)} gate at {location} will activate next turn unless blocked")
         self.__dict__.pop("_turn_power", None)
         self.__dict__.pop("_turn_megastructures", None)
+        self.__dict__.pop("_turn_hyperlanes", None)
         self.__dict__.pop("_array_chances", None)
         tomb_rules.advance(self, alerts, ground_battles)
         specialist_rules.advance_visitors(self)
@@ -1812,7 +1840,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=45):
+    def from_dict(cls, data, *, version=46):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1972,6 +2000,7 @@ class GameState:
                         or not any(t.remnant_owner == "rival_6" for t in game.tomb_worlds)):
                     raise ValueError("The extra rival must be an awakened Remnant enclave")
             black_holes.load(game, data, version)
+            hyperlanes.load(game, data, version)
             megastructures.load(game, data, version)
             if version >= 16:
                 game.guardians = monster_rules.parse_guardians(data["guardians"], game, version=version)

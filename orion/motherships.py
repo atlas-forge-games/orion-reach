@@ -135,7 +135,6 @@ def relocate_specialists(game):
 def ai_orders(game, owner):
     """Disperse new habitats to nearby surveyed, peaceful anchorages."""
     from . import monsters, black_holes
-    from .production import distance_ly
     from .navigation import hostile
     fleet = homes(game, owner)
     occupied = {s.destination if s.has_course else s.system_id for s in fleet}
@@ -147,13 +146,13 @@ def ai_orders(game, owner):
         if not crowded and not threatened:
             continue
         candidates = [s for s in game.systems if s.id not in occupied and s.kind != black_holes.KIND
-                      and game.system_explored(s.id, owner) and game.within_fuel_range(s.id, owner, ships=[ship])
+                      and game.system_explored(s.id, owner) and game.can_reach(s.id, owner, ships=[ship])
                       and monsters.known_status(game, s.id, owner) != "alive"
                       and not any(hostile(game, owner, p.owner) for p in game.known_system(s.id, owner).worlds if p.owner)
                       and not any(hostile(game, owner, f.owner) for f in game.visible_ships(owner)
                                   if not f.in_transit and f.system_id == s.id)]
         if candidates:
-            target = min(candidates, key=lambda s: (distance_ly(game.systems[ship.system_id], s), s.id))
+            target = min(candidates, key=lambda s: (game.travel_turns(game.systems[ship.system_id], s, owner, ships=[ship]), s.id))
             game.send_ship(ship.id, target.id, owner=owner)
             occupied.add(target.id)
             game.rival_event(f"Relocating {ship.name} to {target.name}.", owner=owner)

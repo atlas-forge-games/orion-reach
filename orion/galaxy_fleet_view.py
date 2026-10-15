@@ -9,7 +9,8 @@ from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .galaxy_labels import LABEL_FAMILY, LABEL_SIZE, system_label
-from . import monsters, navigation, black_holes
+from . import monsters, navigation, black_holes, hyperlanes
+from .hyperlane_art import LANE_COLOR
 from .black_hole_view import hit_rect
 from .production import SHIP_TYPES
 from . import production as production_balance
@@ -214,7 +215,7 @@ def draw_map_fleets(app, map_rect):
     for ships in group_fleets(game.visible_ships()):
         ship = ships[0]
         if ship.has_course:
-            color = app.empire_color(ship.owner)
+            color = LANE_COLOR if ship.hyperlane and ship.owner == PLAYER else app.empire_color(ship.owner)
             origin = app.star_pos(game.systems[ship.system_id])
             end = app.star_pos(game.systems[ship.destination])
             pg.draw.line(surface, tuple(c//3 for c in color), origin, end, 1)
@@ -226,7 +227,7 @@ def draw_map_fleets(app, map_rect):
             target = app.fleet_route_target() if app.map_order_ids else game.selected_system
             end = app.star_pos(game.systems[target])
             keeping = ship.departure_pending and target == ship.destination
-            blocked = target != ship.system_id and not keeping and not game.within_fuel_range(target, ships=ordered_ships(app))
+            blocked = target != ship.system_id and not keeping and not game.can_reach(target, ships=ordered_ships(app))
             pg.draw.line(surface, RED if blocked else GOLD, origin, end, 2)
     for ships, rect, anchor in markers:
         color = app.empire_color(ships[0].owner)
@@ -315,7 +316,8 @@ def draw_fleet_popup(app):
         target = game.systems[app.fleet_route_target()]
         selected = [s for s in ships if s.id in app.fleet_selected_ids]
         keeping = first.departure_pending and target.id == first.destination
-        outside = not game.within_fuel_range(target.id, ships=selected)
+        outside = not game.can_reach(target.id, ships=selected)
+        lane = first.hyperlane if keeping else hyperlanes.connects(game, origin.id, target.id)
         blocked = target.id != origin.id and not keeping and outside
         duration = first.turns_remaining if keeping else game.travel_turns(origin, target, ships=selected)
         destination = (f"To {target.name} · {turn_label(duration)}"
@@ -326,8 +328,10 @@ def draw_fleet_popup(app):
                 f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range(ships=selected)} ly from supply")
         route, radius, slow = ((first.route_bonus, first.approach_range, first.approach_slow) if keeping else
                                navigation.route_modifiers(game, origin, target, PLAYER))
-        if not blocked and not outside and (route or slow):
+        if not lane and not blocked and not outside and (route or slow):
             fuel = f"Route speed +{route}%"+(f" · Final {radius:g} ly: −{slow:g}%" if slow else " · In fuel range")
+        if lane:
+            fuel = "Hyperlane · 1 turn · No fuel limit"
         text(surface, shorten(fuel, 290, 11), (x+18, bottom+90), 11, RED if blocked else CYAN)
         hint = ("Establish an outpost or research fuel tanks." if blocked else
                 f"Click {origin.name} to cancel before End Turn." if first.departure_pending
@@ -342,7 +346,9 @@ def draw_fleet_popup(app):
         elif black_holes.at(game, target.id) and not keeping and not danger:
             hint = "Black-hole expedition · Guardian combat possible"
     else:
-        if own and (first.route_bonus or first.approach_slow):
+        if own and first.hyperlane:
+            text(surface, "Forgotten hyperlane · 1-turn passage", (x+18, bottom+90), 11, CYAN)
+        elif own and (first.route_bonus or first.approach_slow):
             details = f"Route +{first.route_bonus}% · Approach −{first.approach_slow:g}%"
             text(surface, details, (x+18, bottom+90), 11, CYAN)
         text(surface, "Orders are locked during flight." if own else "Only your empire's ships accept orders.", (x+18, bottom+66), 12, MUTED)
@@ -451,8 +457,10 @@ def draw_order_panel(app, target):
     text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")
     if duration:
         text(surface, f"Arrival in {turn_label(duration)}", (1075, 530), 16, CYAN)
-        blocked = not game.within_fuel_range(target.id, ships=ships)
-        text(surface, f"{'Out of range' if blocked else 'In range'} · {game.supply_distance(target.id):.1f} / {game.fuel_range(ships=ships)} ly",
+        blocked = not game.can_reach(target.id, ships=ships)
+        fuel = ("Hyperlane · No fuel limit" if hyperlanes.connects(game, origin.id, target.id) else
+                f"{'Out of range' if blocked else 'In range'} · {game.supply_distance(target.id):.1f} / {game.fuel_range(ships=ships)} ly")
+        text(surface, fuel,
              (1075, 588), 12, RED if blocked else CYAN)
         known = game.known_system(target.id)
         enemy_count = len(game.foreign_fleet(target.id)) if game.system_visible(target.id) else 0

@@ -4,7 +4,7 @@
 def fleet_key(ship):
     # Flights with different departure times or speeds remain separate on the map.
     return (ship.owner, ship.system_id, ship.destination,
-            ship.travel_total, ship.turns_remaining, ship.speed_bonus, ship.departure_pending, ship.cruise_speed, ship.route_bonus, ship.approach_range, ship.approach_slow)
+            ship.travel_total, ship.turns_remaining, ship.speed_bonus, ship.departure_pending, ship.cruise_speed, ship.route_bonus, ship.approach_range, ship.approach_slow, ship.hyperlane)
 
 
 def group_fleets(ships):

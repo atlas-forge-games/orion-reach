@@ -89,7 +89,7 @@ RACES = {
         "Nomadic navigators who live aboard giant motherships, carrying their cities and industries between the stars.",
         "Wanderer Flotillas", (210, 181, 125), 15, 30,
         effects=(("fuel_range", 3), ("ship_discount", 15), ("industry_percent", -15)),
-        abilities=("Mobile homes: 50 B, quarter speed, initial 25 ly convoy range.", "All ships cost 15% fewer resources.",
+        abilities=("Mobile homes: 50 B, 25 ly range; recover forgotten hyperlanes.", "All ships cost 15% fewer resources.",
                    "Colony industry output is 15% lower."),
         development=("factory", "research_lab", "trade_center", "mine"),
         research_priority=("power", "materials", "construction"),

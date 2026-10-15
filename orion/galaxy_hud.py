@@ -8,6 +8,7 @@ from .command_buttons import command_icon
 from .empire import summarize_empire
 from . import news
 from .research import TECHNOLOGIES
+from . import hyperlanes
 from .ui import ASSETS, CYAN, GOLD, INK, LINE, MUTED, RED, emblem, font, panel, shorten, text
 
 RESOURCE_RECTS = tuple((270+i*223, 22, 213, 100) for i in range(5))
@@ -66,8 +67,9 @@ def draw_galaxy_header(app):
                   f"{report.income:+,} CR net / turn", f"Upkeep {report.maintenance:,} CR/turn",
                   GOLD, detail_color=RED if report.income < 0 else MUTED)
     active = game.research_state().active
+    diverted = sum(hyperlanes.allocations(game, "player").values())
     resource_card(surface, RESOURCE_RECTS[1], "research", "RESEARCH · R", f"{game.research:,} RP",
-                  f"{report.research:+,} RP / turn",
+                  f"{report.research:+,} RP / turn"+(f" · {diverted} to hyperlanes" if diverted else ""),
                   TECHNOLOGIES[active].name if active else "No active project", CYAN)
     app.button("open_research", "", RESOURCE_RECTS[1], app.open_research, "hotspot")
     if active:

@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 import pygame as pg
 
-from . import megastructures as rules
+from . import megastructures as rules, motherships
 from .model import RuleError
 from .planet_art import draw_star
 from .research import BRANCHES
@@ -89,6 +89,8 @@ def draw_megastructure(app):
     system = game.known_system(game.selected_system)
     app.chrome("SYSTEM ENGINEERING")
     app.button("mega_back", "← Solar system", (64, 126, 220, 46), lambda: app.go("system"))
+    if motherships.is_wanderer(game):
+        app.button("mega_hyperlanes", "Forgotten hyperlanes", (304, 126, 266, 46), lambda: app.go("hyperlane"))
     if system is None:
         text(surface, "Survey this system to inspect its megastructures.", (64, 235), 24, MUTED)
         return

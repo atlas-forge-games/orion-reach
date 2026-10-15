@@ -2,7 +2,7 @@
 
 import pygame as pg
 
-from . import monsters, defenses, motherships
+from . import monsters, defenses, motherships, hyperlanes
 from .galaxy_labels import known_owners
 from .planet_art import draw_planet, draw_star
 from .system_views import STAR_COLORS, visual_seed
@@ -70,8 +70,12 @@ def draw_system_panel(app, star):
         paragraph(surface, "A scout can also search for discoveries.", (x, 579), width, 12, GOLD, 20)
         app.button("galaxy_build_scout", "Build a scout", (x, 628, width, 39), app.open_scout_shipyard,
                    "command", icon="fleets", enabled=game.headquarters() is not None)
-        app.button("open_system", "Full system view", (x, 705, width, 32),
+        routes = hyperlanes.connections(game, star.id)
+        app.button("open_system", "System view" if routes else "Full system view", (x, 705, 127 if routes else width, 32),
                    lambda: app.open_system(star.id), "command", icon="system")
+        if routes:
+            text(surface, f"{len(routes)} forgotten hyperlane{'s' if len(routes) != 1 else ''} · 1-turn passages", (x, 682), 11, CYAN)
+            app.button("galaxy_hyperlanes", "Hyperlanes", (x+136, 705, width-136, 32), lambda: app.go("hyperlane"), "command")
         return
 
     owners = known_owners(game, known)
@@ -155,6 +159,10 @@ def draw_system_panel(app, star):
     if known.megastructure and not (own_bases or enemy_bases):
         m = known.megastructure
         scan = f"{m.spec.name} · stage {m.stage}/4"+(" · last seen" if not live else "")
+    if routes := hyperlanes.connections(game, star.id):
+        scan = f"{len(routes)} forgotten hyperlane{'s' if len(routes) != 1 else ''} · 1-turn passages"
+    elif project := hyperlanes.project_at(game, star.id):
+        scan = f"Hyperlane research · {project.progress}/{project.cost} RP"
     opponents = game.opponents_at(star.id) if live else []
     can_face = live and (ships or own_bases) and (rivals or enemy_bases or guardian_status == "alive")
     target = app.rival_id if app.rival_id in opponents else opponents[0] if opponents else None
@@ -166,9 +174,12 @@ def draw_system_panel(app, star):
         arrow(surface, button.rect.center, GOLD)
     else:
         text(surface, shorten(reason or scan, width, 9), (x, 687), 9, MUTED)
-    full_width = 127 if can_face else width
-    app.button("open_system", "System view" if can_face else "Full system view", (x, 707, full_width, 30),
+    show_hyperlane = not can_face and motherships.is_wanderer(game)
+    full_width = 127 if can_face or show_hyperlane else width
+    app.button("open_system", "System view" if can_face or show_hyperlane else "Full system view", (x, 707, full_width, 30),
                lambda: app.open_system(star.id), "command")
     if can_face:
         app.button("galaxy_engage", "Face guardian" if guardian_status == "alive" else "Engage defenses" if enemy_bases else "Engage fleet",
                    (x+136, 707, width-136, 30), lambda: app.engage_request(star.id, target), "command", enabled=reason is None)
+    elif show_hyperlane:
+        app.button("galaxy_hyperlanes", "Hyperlanes", (x+136, 707, width-136, 30), lambda: app.go("hyperlane"), "command")

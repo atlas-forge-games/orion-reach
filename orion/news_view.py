@@ -34,6 +34,10 @@ def draw_news(app):
         text(surface, shorten(tomb.headline, 1240, 15), (87, y+80), 15, INK)
         paragraph(surface, tomb.detail, (87, y+106), 1240, 13, MUTED, 19)
         key = f"news_system_{tomb.system_id}_{tomb.planet_id}"+(f"_raid_{tomb.order}" if tomb.order else "")
+        if tomb.category == "FORGOTTEN HYPERLANE" and not game.is_observer:
+            app.button(key, "View hyperlane", (1188, y+41, 164, 37),
+                       lambda sid=system.id: app.open_hyperlane(sid), enabled=game.result is None)
+            continue
         app.button(key, "View system" if planet else "View sensors", (1188, y+41, 164, 37),
                    (lambda sid=system.id: app.open_system(sid)) if planet else
                    (lambda sid=system.id: app.open_sensor_map(sid)), enabled=game.result is None)

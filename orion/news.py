@@ -1,7 +1,7 @@
 """A common view of private tomb-world and raid dispatches."""
 
 from dataclasses import dataclass
-from . import raiding, tomb_worlds, black_holes
+from . import raiding, tomb_worlds, black_holes, hyperlanes
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,10 @@ def entries(game):
              for i, e in enumerate(game.specialists.events) if e.owner == "player" or game.is_observer]
     rows += [NewsEntry(e.turn, None, None, 'DIPLOMACY', 'Diplomatic dispatch', e.message, e.id)
              for e in game.diplomatic_news]
+    rows += [NewsEntry(p.completed_turn, p.system_id, None, "FORGOTTEN HYPERLANE",
+                      f"{game.systems[p.system_id].name} ↔ {game.systems[p.destination].name}",
+                      f"{game.empire_name_for(p.owner)} recovered a private, permanent passage. Travel takes one turn in either direction.")
+             for p in hyperlanes.visible_routes(game)]
     return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id if n.system_id is not None else -1,
                                       n.planet_id if n.planet_id is not None else -1), reverse=True)
 
@@ -50,7 +54,8 @@ def unread_count(game):
             sum(e.id > game.black_holes.news_read for e in black_holes.events(game))+
             sum(i >= game.specialists.news_read and (e.owner == "player" or game.is_observer)
                 for i, e in enumerate(game.specialists.events))+
-            sum(e.id > game.diplomatic_news_read for e in game.diplomatic_news))
+            sum(e.id > game.diplomatic_news_read for e in game.diplomatic_news)+
+            sum(not p.news_read for p in hyperlanes.visible_routes(game)))
 
 
 def mark_read(game):
@@ -62,3 +67,5 @@ def mark_read(game):
     game.black_holes.news_read = len(game.black_holes.events)
     game.specialists.news_read = len(game.specialists.events)
     game.diplomatic_news_read = game.diplomatic_news[-1].id if game.diplomatic_news else 0
+    for project in hyperlanes.visible_routes(game):
+        project.news_read = True

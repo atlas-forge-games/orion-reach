@@ -7,6 +7,7 @@ from .model import PLAYER, RIVAL
 from . import monsters, defenses, motherships
 from .fleet_art import ship_icon
 from .exploration_view import draw_unsurveyed_system
+from .hyperlane_view import draw_system_portal
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
 STAR_COLORS = {"Yellow dwarf": (230, 207, 141), "Blue star": (113, 181, 231),
@@ -78,6 +79,9 @@ def draw_system(app):
     system = game.known_system(game.selected_system)
     if system is None:
         draw_unsurveyed_system(app, game.systems[game.selected_system])
+        from .hyperlanes import connections
+        if connections(game, game.selected_system):
+            app.button("system_hyperlanes", "Forgotten hyperlanes", (810, 124, 256, 48), lambda: app.go("hyperlane"))
         return
     live = game.system_visible(system.id)
     homes = motherships.visible_at(game, system.id)
@@ -90,6 +94,8 @@ def draw_system(app):
     text(surface, f"{system.kind}   /   {len(system.worlds)} planets"+
          (f"   /   {len(homes)} mothership{'s' if len(homes) != 1 else ''}" if homes else ""), (67, 260), 16, MUTED)
     app.button("system_megastructures", "Megastructures", (570, 124, 224, 48), lambda: app.go("megastructure"))
+    if motherships.is_wanderer(game):
+        app.button("system_hyperlanes", "Forgotten hyperlanes", (810, 124, 256, 48), lambda: app.go("hyperlane"))
     ships, rivals = len(game.fleet_at(system.id)), len(game.foreign_fleet(system.id)) if live else 0
     guardian_status = monsters.known_status(game, system.id)
     guardian = monsters.at(game, system.id) if guardian_status else None
@@ -165,6 +171,7 @@ def draw_system(app):
                   (480, 458), 619, 16, MUTED, 27)
 
     draw_motherships(app, system, homes)
+    draw_system_portal(app, system)
     colonies = sum(p.colonized for p in system.worlds)
     habitable = sum(p.habitability >= 35 for p in system.worlds)
     population = sum(p.workforce for p in system.worlds)+sum(s.habitat.workforce for s in homes)

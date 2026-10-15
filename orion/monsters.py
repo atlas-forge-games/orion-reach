@@ -245,21 +245,23 @@ def ai_orders(game, owner="rival"):
                                          and not game.diplomacy_between(owner, other).coalition_target
                                          for other in game.owners if other != owner):
         return set()
+    ships = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and not s.has_course]
+    colonies = game.colony_systems(owner)
+    if not ships or not colonies:
+        return set()
+    staging = max(colonies, key=lambda s: (sum(ship.system_id == s.id for ship in ships), -s.id))
+    ready = [s for s in ships if s.system_id == staging.id]
     targets = [g for g in game.guardians if (known_status(game, g.system_id, owner) == "alive" or
                (black_holes.at(game, g.system_id) and black_holes.can_explore(game, owner)
                 and known_status(game, g.system_id, owner) is None))
                and (not black_holes.at(game, g.system_id) or black_holes.can_explore(game, owner))
-               and game.within_fuel_range(g.system_id, owner)]
-    ships = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and not s.has_course]
-    colonies = game.colony_systems(owner)
-    if not targets or not ships or not colonies:
+               and game.can_reach(g.system_id, owner, ships=ready)]
+    if not targets:
         return set()
-    staging = max(colonies, key=lambda s: (sum(ship.system_id == s.id for ship in ships), -s.id))
-    target = min(targets, key=lambda g: (g.spec.hull, distance_ly(staging, game.systems[g.system_id]), g.system_id))
-    ready = [s for s in ships if s.system_id == staging.id]
+    target = min(targets, key=lambda g: (g.spec.hull, game.travel_turns(staging, game.systems[g.system_id], owner), g.system_id))
     attack = sum(s.hull for s in ready) >= target.spec.hull*1.25 and len(ready) >= 3
     for ship in ships:
         destination = target.system_id if attack and ship in ready else staging.id
-        if ship.system_id != destination:
+        if ship.system_id != destination and game.can_reach(destination, owner, ships=[ship]):
             game.send_ship(ship.id, destination, owner=owner)
     return {s.id for s in ships}

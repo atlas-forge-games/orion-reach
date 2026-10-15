@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.64.1
+# Orion Reach — Python prototype 0.65.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,31 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.65: Forgotten hyperlanes
+
+Wanderers can recover ancient shortcuts through **system-wide research**.
+Station a mothership and open **Solar system → Forgotten hyperlanes**, or use
+**Hyperlanes** in the galaxy sidebar. Each discovery costs **300 RP** and opens
+one random, permanent, two-way route. Its destination stays hidden until completion.
+
+- Assign 0–100% of the research produced by stationary homes in that system,
+  initially 50%, or invest banked RP. These points are deducted from ordinary
+  technology research. Departing homes pause their contribution without losing progress.
+- Every ship of the discovering empire travels through its route in **one turn**,
+  including motherships and escorts, regardless of distance or ordinary fuel limits.
+  Other empires cannot use it, including friends and other Wanderer empires.
+- One project per system per empire. Routes remain after homes leave; their
+  endpoints can be used in both directions. No megastructure slot is consumed.
+- Original portal artwork, clickable system symbols, galaxy connections,
+  route previews and persistent discovery news are included. AI Wanderers research
+  and navigate their own network. Enemy fleets and guardians still defend arrivals.
+
+Existing saves load directly. **Save format 46** adds research projects and
+hyperlane voyage records; balance profile 11 remains compatible.
+See [the detailed rules](docs/forgotten-hyperlanes.md).
+
+![Forgotten hyperlane research](screenshots/v065_hyperlane_research.png)
 
 ## New in v0.64.1: mothership system controls and range
 
