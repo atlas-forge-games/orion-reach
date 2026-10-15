@@ -1476,6 +1476,8 @@ class App:
     def save_game(self,autosave=False):
         if self.game is None:
             return True
+        if autosave and not self.settings["autosave"]:
+            return True
         try:
             self.storage.save(self.game,autosave=autosave)
             if not autosave:
@@ -2068,8 +2070,10 @@ class App:
         action()
 
     def quit_request(self):
-        self.confirm("Leave the stars?", "Your current campaign will be autosaved before the game closes." if self.game else
-                     "You can return whenever you are ready to begin your expedition.","Quit game",self.quit_saved)
+        message=("Your current campaign will be autosaved before the game closes." if self.settings["autosave"] else
+                 "Autosave is off. Only progress saved with F5 / Save game will be kept.") if self.game else (
+                 "You can return whenever you are ready to begin your expedition.")
+        self.confirm("Leave the stars?",message,"Quit game",self.quit_saved)
 
     def quit_saved(self):
         if not self.save_game(autosave=True):
@@ -2527,20 +2531,21 @@ class App:
 
     def draw_settings(self):
         self.chrome("PREFERENCES",lambda:self.go(self.settings_return))
-        self.heading("03  /  MAKE IT YOURS","Set your course.","Changes take effect immediately and are saved automatically.")
-        options=[("fullscreen","Fullscreen","Use the entire display. F11 also toggles this setting."),
+        self.heading("03  /  MAKE IT YOURS","Set your course.","Preferences are remembered. Campaign autosaving is optional.")
+        options=[("autosave","Autosave","Automatically save campaign progress. When off, use F5 or Save game."),
+                 ("fullscreen","Fullscreen","Use the entire display. F11 also toggles this setting."),
                  ("animated_background","Animated background","Moving ships and softly twinkling stars."),
                  ("galaxy_background","Galaxy background","Nebula artwork behind the galaxy map."),
                  ("sound","Interface sounds","A quiet tone when you activate a control."),
                  ("music","Background music",self.audio.music_description)]
         for i,(key,label,description) in enumerate(options):
-            y=302+i*64
-            panel(self.canvas,(256,y,928,60))
-            text(self.canvas,label,(280,y+7),21,INK)
-            text(self.canvas,description,(280,y+36),14,MUTED)
-            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+8,135,44),lambda k=key:self.toggle_setting(k))
+            y=302+i*53
+            panel(self.canvas,(256,y,928,50))
+            text(self.canvas,label,(280,y+4),19,INK)
+            text(self.canvas,description,(280,y+30),13,MUTED)
+            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+6,135,38),lambda k=key:self.toggle_setting(k))
             if self.settings[key]:
-                pg.draw.circle(self.canvas,CYAN,(1132,y+30),4)
+                pg.draw.circle(self.canvas,CYAN,(1132,y+25),4)
         volume=self.settings["music_volume"]
         muted=not self.settings["music"] or volume==0
         panel(self.canvas,(256,625,928,66))
@@ -2560,7 +2565,7 @@ class App:
             self.button("galaxy_palette_"+palette,label,(x,727,209,44),
                         lambda value=palette:self.set_galaxy_palette(value),"tab_active" if selected else "tab")
             pg.draw.line(self.canvas,PLAYER_PALETTES[palette],(x+12,775),(x+197,775),3)
-        text(self.canvas,"Music and interface sounds have separate controls.",(256,834),14,MUTED)
+        text(self.canvas,"F5 / Save game always creates a manual snapshot.",(256,834),14,MUTED)
         self.button("settings_done","Done",(933,817,251,52),lambda:self.go(self.settings_return),"primary")
 
     def map_pos(self,x,y):

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.65.0
+# Orion Reach — Python prototype 0.65.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,20 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.65.1: optional autosaving
+
+**Settings → Autosave** turns campaign autosaving on or off immediately. The
+preference is remembered across restarts and campaigns; existing installations
+default to **ON**. During a campaign, use **Menu → Settings** to change it.
+
+With autosave off, turns, orders, construction, diplomacy, new campaigns and
+exiting no longer write an autosave. Existing saves remain available. **F5** and
+**Save game** still create manual snapshots. Preferences are saved independently
+of campaign autosaving, and the quit message reflects the current setting.
+
+This removes automatic save writes; AI calculations and screen rendering can
+still cause pauses between turns. Save format 46 and balance profile 11 remain.
 
 ## New in v0.65: Forgotten hyperlanes
 
@@ -3130,6 +3144,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Withdraw from combat | Retreat, then confirm the destination |
 | Pause / resume combat | Escape or Menu; Resume returns to the same battle |
 | Mute music / adjust its volume | Settings → Background music / Music volume |
+| Enable / disable campaign autosaves | Settings → Autosave; F5 still saves manually |
 | Choose your race | New Game → first screen |
 | Set galaxy options and rival count | Continue → Galaxy options |
 
@@ -3145,10 +3160,15 @@ User data is stored separately from the extracted source folder:
 
 Saves are in `saves/`; preferences are in `settings.json`. To choose a different
 location, use `python main.py --data-dir ./my_data` or set
-`ORION_REACH_DATA_DIR`. Starting another campaign replaces the single autosave;
+`ORION_REACH_DATA_DIR`. With **Settings → Autosave** enabled, starting another
+campaign replaces the single autosave;
 use **Save Game** to retain a manual snapshot first. Manual snapshots are never
 overwritten. Saves use validated, versioned JSON, not executable serialization.
 Writes use a temporary file followed by an atomic replacement.
+
+Autosave defaults to on. Turn it off to use manual saves only; this preference
+survives restarting the game and applies to every campaign. Existing autosave
+and manual-save files are kept when the option is disabled.
 
 **Compatibility:** v0.39 loads all earlier prototype saves without rewriting the
 source file during loading. Existing treasuries and paid construction are retained;

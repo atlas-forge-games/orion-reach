@@ -1,0 +1,14 @@
+Orion Reach v0.65.1 — extract over v0.65.0, then restart the game.
+
+Campaign autosaving is now optional. Open Settings -> Autosave, or during a
+campaign use Menu -> Settings -> Autosave. The setting takes effect immediately
+and is remembered across restarts and campaigns. Existing settings default to ON.
+
+When OFF, no autosave is written after turns, actions, starting a campaign,
+returning to the menu or quitting. Existing save files are kept. F5 and Save game
+still create manual snapshots, and preferences continue to be remembered.
+The quit message states whether the current campaign will be autosaved.
+
+Turning autosaving off avoids automatic save writes. It does not remove AI
+processing or rendering delays. Save format 46 and balance profile 11 are
+unchanged. Nothing committed.
