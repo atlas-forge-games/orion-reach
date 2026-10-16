@@ -109,6 +109,7 @@ def invasion_strength(game, system_id, planet_id, owner="player"):
 
 
 def invasion_error(game, system_id, planet_id, owner="player"):
+    from . import encounters
     from .defenses import bases, effective_shield
     planet = game.planet_at(system_id, planet_id)
     if planet.habitat:
@@ -132,6 +133,8 @@ def invasion_error(game, system_id, planet_id, owner="player"):
         return aggression_error(game, owner, planet.owner)
     if game.foreign_fleet(system_id, owner):
         return "Clear all opposing ships from this system before invading."
+    if reason := encounters.settlement_error(game, system_id, planet_id):
+        return reason
     if any(p.owner != owner for p in bases(game, system_id)):
         return "Destroy the opposing missile bases before landing troops."
     if effective_shield(game, planet):

@@ -13,6 +13,7 @@ def fixed_start_game(*args, **kwargs):
     kwargs.setdefault("with_tombs", False)
     # These fixtures isolate earlier features. Black-hole tests use new_game directly.
     kwargs.setdefault("with_black_holes", False)
+    kwargs.setdefault("with_encounters", False)
     game = make_game(*args, **kwargs)
     # These established-colony fixtures retain their historical job allocation.
     # Resource/power tests exercise the real new-game allocation directly.

@@ -140,12 +140,17 @@ def draw_system_panel(app, star):
 
     ships = len(game.fleet_at(star.id))
     rivals = len(game.foreign_fleet(star.id)) if live else 0
+    from . import encounters
+    pirates = [e for e in encounters.known_at(game, star.id) if encounters.known_status(game, e) in ("active", "incoming")]
     orbit = f"Orbit: {rivals} ships · Computer-controlled" if game.is_observer else f"Orbit: {ships} yours · {rivals} rival ships"
     if guardian:
         note = (("GUARDED" if live else "LAST SEEN GUARDED")+" · "+guardian.spec.name
                 if guardian_status == "alive" else "Guardian defeated · Worlds accessible")
         text(surface, shorten(note, width, 11), (x, 670), 11, RED if guardian_status == "alive" else CYAN)
         scan = orbit if live else "Stored survey · Enemy activity unknown"
+    elif pirates:
+        text(surface, "PIRATE ACTIVITY · Inspect the orange flag", (x, 670), 11, encounters.COLOR)
+        scan = orbit if live else "Last known pirate contact"
     else:
         note = orbit if live else "Stored survey · Enemy activity unknown"
         text(surface, note, (x, 670), 11, CYAN if live else MUTED)
@@ -174,12 +179,15 @@ def draw_system_panel(app, star):
         arrow(surface, button.rect.center, GOLD)
     else:
         text(surface, shorten(reason or scan, width, 9), (x, 687), 9, MUTED)
-    show_hyperlane = not can_face and motherships.is_wanderer(game)
-    full_width = 127 if can_face or show_hyperlane else width
-    app.button("open_system", "System view" if can_face or show_hyperlane else "Full system view", (x, 707, full_width, 30),
+    show_pirates = bool(pirates) and not can_face
+    show_hyperlane = not can_face and not show_pirates and motherships.is_wanderer(game)
+    full_width = 127 if can_face or show_hyperlane or show_pirates else width
+    app.button("open_system", "System view" if can_face or show_hyperlane or show_pirates else "Full system view", (x, 707, full_width, 30),
                lambda: app.open_system(star.id), "command")
     if can_face:
         app.button("galaxy_engage", "Face guardian" if guardian_status == "alive" else "Engage defenses" if enemy_bases else "Engage fleet",
                    (x+136, 707, width-136, 30), lambda: app.engage_request(star.id, target), "command", enabled=reason is None)
+    elif show_pirates:
+        app.button("galaxy_pirates", "Pirates", (x+136, 707, width-136, 30), lambda: app.open_encounters(star.id), "command")
     elif show_hyperlane:
         app.button("galaxy_hyperlanes", "Hyperlanes", (x+136, 707, width-136, 30), lambda: app.go("hyperlane"), "command")

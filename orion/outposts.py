@@ -1,6 +1,6 @@
 """Unpopulated planetary refuelling bases, separate from colonies and their yields."""
 
-from . import defenses, monsters, black_holes
+from . import defenses, monsters, black_holes, encounters
 from .navigation import hostile
 from .production import distance_ly
 
@@ -30,6 +30,8 @@ def deployment_error(game, system_id, planet_id, owner="player"):
         return "Only one outpost may exist in each solar system."
     if monsters.alive_at(game, system_id):
         return "Defeat the system guardian before establishing an outpost."
+    if reason := encounters.settlement_error(game, system_id, planet_id):
+        return reason
     if game.foreign_fleet(system_id, owner) or any(p.owner != owner for p in defenses.bases(game, system_id)):
         return "Clear opposing ships and missile bases before establishing an outpost."
     if not ships_at(game, system_id, owner):

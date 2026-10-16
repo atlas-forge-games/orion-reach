@@ -130,6 +130,7 @@ def stationed_homes(game, system_id, owner):
 
 
 def work_error(game, system_id, owner="player"):
+    from . import encounters
     if not motherships.is_wanderer(game, owner):
         return "Only the Wanderers can decipher forgotten hyperlanes."
     if game.systems[system_id].kind == black_holes.KIND:
@@ -138,6 +139,8 @@ def work_error(game, system_id, owner="player"):
         return "Station a mothership here without a departure order to conduct research."
     if monsters.alive_at(game, system_id):
         return "Defeat the system guardian before researching its hyperlane."
+    if encounters.blockade(game, system_id):
+        return "Pirate ships are blocking hyperlane research."
     if any(hostile(game, owner, s.owner) and (s.damage or s.drone_bays)
            for s in game.ships if not s.in_transit and s.system_id == system_id):
         return "Hostile armed ships are blocking research."

@@ -1,0 +1,30 @@
+Orion Reach v0.68.0 — extract over v0.67, then restart the game.
+
+New pirate encounters:
+- Existing guardians still attack ships entering their systems.
+- Pirate guards protect one planet. Other worlds in that system stay accessible.
+  Challenge them through System overview → Encounters & search.
+- A deliberate two-turn scout search can uncover a pirate flotilla, salvage,
+  research archives or no useful discovery. Bring an armed escort. Moving or
+  losing the scout pauses progress; a replacement can resume it.
+- Rare event raids give three turns of warning, remain for five turns and can
+  steal credits once from an undefended settlement. Defeat them for a bounty
+  and to recover any stolen credits. Pirates do not capture planets.
+- Known pirates have orange map pennants; guarded planets have labels and an
+  encounter button. Discoveries, sightings, warnings and rewards appear in News.
+- Pirates use the existing tactical combat system and ship artwork, with their
+  own flag and color. Fighting them has no diplomatic penalty.
+- AI empires use the same searches and combat rules. Search rewards and pirate
+  bounties cannot be collected repeatedly.
+
+Settings and saves:
+- New-game Pirate encounters defaults to ON; switch it OFF if preferred.
+  This controls the new pirate/search features, not the earlier guardians.
+- Start a new campaign for these encounters. Older saves load normally with the
+  new features disabled, preserving their rules and existing hyperlane network.
+- Save format 49 stores searches, hidden sites, pirate damage and active battles.
+  Balance profile 12 and existing victory choices are unchanged.
+
+Details: docs/neutral-encounters.md and Info → Combat → Pirates and scout searches.
+Validation: python -m unittest discover -s tests -v
+Preview: python tools/preview_encounters.py

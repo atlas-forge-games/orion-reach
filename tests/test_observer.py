@@ -222,7 +222,7 @@ class ObserverRulesTests(unittest.TestCase):
 
     def test_v039_saves_remain_normal_player_campaigns(self):
         game = new_game(seed=2408, rival_race_id="kharuun", with_tombs=False, with_black_holes=False,
-                        victory_conditions=LEGACY_CONDITIONS)
+                        with_encounters=False, victory_conditions=LEGACY_CONDITIONS)
         for owner in game.owners:
             game.research_state(owner).legacy_arsenal = True
             game.research_state(owner).legacy_fuel = True

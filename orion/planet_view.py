@@ -254,6 +254,15 @@ def construction_panel(app, game, system, planet, live):
         else:
             text(surface, "OBSERVING" if live else "LAST OBSERVED OUTPOST", (1090, 268), 11, MUTED, "mono")
         return
+    from . import encounters
+    guard = next((e for e in encounters.known_at(game, system.id) if e.kind == "planet"
+                  and e.planet_id == planet.id and encounters.known_status(game, e) == "active"), None)
+    if guard and not planet.colonized:
+        text(surface, "Guarded by pirates", (1090, 97), 22, encounters.COLOR)
+        paragraph(surface, "Defeat this world's guards before building a colony or outpost. Other planets in the system remain accessible.",
+                  (1090, 143), 306, 14, MUTED, 24)
+        app.button("planet_pirates", "Inspect pirate guards", (1090, 257, 310, 29), lambda: app.open_encounters(system.id))
+        return
     owned = live and planet.owner == PLAYER
     queue = planet.construction_queue
     visible = owned or game.is_observer or not live or planet.owner not in game.opponents

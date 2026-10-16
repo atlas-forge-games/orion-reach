@@ -87,10 +87,13 @@ def settled_owners(system):
 
 
 def work_error(game, system, owner):
+    from . import encounters
     if settled_owners(system) != {owner}:
         return "Construction requires sole control of all settlements in this system."
     if monsters.alive_at(game, system.id):
         return "Defeat the system guardian first."
+    if encounters.blockade(game, system.id):
+        return "Clear the pirate fleet before continuing construction."
     if any(hostile(game, s.owner, owner) and (s.damage or s.drone_bays)
            for s in game.ships if not s.in_transit and s.system_id == system.id):
         return "Hostile armed ships are blocking construction."

@@ -301,8 +301,8 @@ class HyperlaneSaveTests(unittest.TestCase):
             recovered(restored)
             restored.send_ships([s.id for s in restored.ships], restored.hyperlane_projects[0].destination)
             loaded, meta = storage.load(storage.save(restored))
-            self.assertEqual((loaded, meta['version']), (restored, 48))
-            self.assertEqual(SAVE_VERSION, 48)
+            self.assertEqual((loaded, meta['version']), (restored, 49))
+            self.assertEqual(SAVE_VERSION, 49)
 
     def test_invalid_projects_and_forged_voyages_are_rejected(self):
         game = campaign()

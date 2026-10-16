@@ -19,6 +19,7 @@ from . import council as council_rules
 from . import exploration as exploration_rules
 from . import population as population_rules
 from . import monsters as monster_rules
+from . import encounters as encounter_rules
 from . import black_holes
 from . import ground_combat as ground_rules
 from . import tomb_worlds as tomb_rules
@@ -194,7 +195,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=48):
+    def from_dict(cls, data, systems, *, version=49):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -736,6 +737,7 @@ class GameState:
     hyperlane_projects: list[hyperlanes.HyperlaneProject] = field(default_factory=list)
     hidden_hyperlanes: list[hyperlanes.HiddenHyperlane] = field(default_factory=list)
     hyperlane_surveys: dict[str, list[int]] = field(default_factory=dict)
+    encounters: encounter_rules.EncounterState = field(default_factory=encounter_rules.EncounterState)
 
     @property
     def is_observer(self):
@@ -1262,6 +1264,8 @@ class GameState:
             return "Unclaimed"
         if owner == monster_rules.MONSTER:
             return "System guardian"
+        if owner == encounter_rules.PIRATES:
+            return "Independent pirates"
         return self.empire_name if owner == PLAYER else self._empire(owner).name
 
     def ships_owned_by(self, owner=PLAYER):
@@ -1640,6 +1644,8 @@ class GameState:
         guardian = monster_rules.alive_at(self, system_id)
         if guardian:
             return f"Defeat the {guardian.spec.name} guarding this system first."
+        if reason := encounter_rules.settlement_error(self, system_id, planet_id):
+            return reason
         if not self.can_settle(planet, owner):
             technology = "Radiation Shields" if planet.biome == "Barren" else "Thermal Barriers"
             return f"Research {technology} to settle this world."
@@ -1722,6 +1728,8 @@ class GameState:
         exploration_rules.refresh(self)
         if monster_rules.intercept(self):
             return TurnReport(0, 0, [])
+        if encounter_rules.intercept(self):
+            return TurnReport(0, 0, [])
         if combat_rules.intercept(self):
             return TurnReport(0, 0, [])
         # Freeze the outgoing turn's live totals before AI orders and simulation.
@@ -1747,6 +1755,7 @@ class GameState:
         advance_diplomacy(self)
         self._settle_power()
         hyperlanes.freeze(self)
+        searches_ready = encounter_rules.ready_searches(self)
         gates = [(s.id, p.id, p.owner) for s, p in self.settlements() if p.ascension_gate and self.planet_energy(p).gate_powered]
         income, research = self.empire_rates
         rival_rates = {owner: self.empire_rates_for(owner) for owner in self.opponents}
@@ -1850,8 +1859,10 @@ class GameState:
         self.__dict__.pop("_array_chances", None)
         tomb_rules.advance(self, alerts, ground_battles)
         specialist_rules.advance_visitors(self)
+        encounter_rules.finish_turn(self, searches_ready)
         exploration_rules.refresh(self)
         monster_rules.intercept(self)
+        encounter_rules.intercept(self)
         self.check_victory(convene=False)
         combat_rules.intercept(self)
         council_rules.schedule(self)
@@ -1864,7 +1875,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=48):
+    def from_dict(cls, data, *, version=49):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2035,6 +2046,7 @@ class GameState:
             if version >= 16:
                 game.guardians = monster_rules.parse_guardians(data["guardians"], game, version=version)
             black_holes.validate_guardians(game)
+            encounter_rules.load(game, data, version)
             if version >= 8 and data["combat"] is not None:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
@@ -2080,13 +2092,17 @@ class GameState:
 def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
              race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
              rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS,
-             with_black_holes=None):
+             with_black_holes=None, with_encounters=None):
     if not _name(empire_name) or galaxy_size not in GALAXY_SIZES:
         raise SaveError("Enter an empire name and choose a galaxy size.")
     if type(fog_of_war) is not bool:
         raise SaveError("Fog of war must be on or off.")
     if type(with_guardians) is not bool:
         raise SaveError("Guardians must be on or off.")
+    if with_encounters is None:
+        with_encounters = with_guardians
+    if type(with_encounters) is not bool:
+        raise SaveError("Neutral encounters must be on or off.")
     if with_black_holes is None:
         with_black_holes = with_guardians
     if type(with_black_holes) is not bool:
@@ -2177,6 +2193,7 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
     if with_tombs:
         tomb_rules.seed_worlds(game)
     hyperlanes.seed_network(game)
+    encounter_rules.seed(game, with_encounters)
     exploration_rules.refresh(game)
     from . import statistics as statistics_rules
     statistics_rules.record(game)
@@ -2186,7 +2203,7 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
 def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, with_ai=True,
              race_id="terran", rival_race_id=None, fog_of_war=True, with_guardians=True,
              rival_count=None, random_starts=True, with_tombs=True, victory_conditions=victory_rules.CONDITIONS,
-             with_black_holes=None):
+             with_black_holes=None, with_encounters=None):
     from . import balance
     previous = balance.active_profile()
     try:
@@ -2195,7 +2212,8 @@ def new_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, *, w
                             rival_race_id=rival_race_id, fog_of_war=fog_of_war,
                             with_guardians=with_guardians, rival_count=rival_count,
                             random_starts=random_starts, with_tombs=with_tombs,
-                            victory_conditions=victory_conditions, with_black_holes=with_black_holes)
+                            victory_conditions=victory_conditions, with_black_holes=with_black_holes,
+                            with_encounters=with_encounters)
         return balance.tag_game(game)
     except Exception:
         balance.activate(previous)

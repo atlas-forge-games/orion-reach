@@ -4,7 +4,7 @@ import pygame as pg
 
 from .planet_art import draw_planet, draw_star
 from .model import PLAYER, RIVAL
-from . import monsters, defenses, motherships
+from . import monsters, defenses, motherships, encounters
 from .fleet_art import ship_icon
 from .exploration_view import draw_unsurveyed_system
 from .hyperlane_view import draw_system_portal
@@ -156,6 +156,9 @@ def draw_system(app):
         if guardian and world.id in monsters.prize_ids(system, guardian):
             text(surface, "ANCIENT RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE WORLD",
                  (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")
+        if any(e.planet_id == world.id and encounters.known_status(game, e) == "active"
+               for e in encounters.known_at(game, system.id) if e.kind == "planet"):
+            text(surface, "PIRATE GUARD", (hit.x+2, y+diameter/2+60), 9, encounters.COLOR, "mono")
         if world.colonized:
             pg.draw.circle(surface, app.empire_color(world.owner),
                            (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
@@ -200,5 +203,7 @@ def draw_system(app):
     text(surface, shorten(hint, 1310, 14), (65, 792), 14, MUTED)
     app.button("system_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
+    if game.encounters.enabled:
+        app.button("system_encounters", "Encounters & search", (444, 832, 300, 46), lambda: app.open_encounters(system.id))
     app.button("system_previous", "← Previous system", (846, 832, 249, 46), lambda: app.cycle_system(-1))
     app.button("system_next", "Next system →", (1109, 832, 267, 46), lambda: app.cycle_system(1))

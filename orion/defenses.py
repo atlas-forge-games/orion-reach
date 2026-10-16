@@ -71,6 +71,7 @@ def bombardment_fleet(game, system_id, owner):
 
 
 def bombardment_error(game, system_id, planet_id, owner="player"):
+    from . import encounters
     if game.strategy_error(owner):
         return game.strategy_error(owner)
     planet = game.planet_at(system_id, planet_id)
@@ -83,6 +84,8 @@ def bombardment_error(game, system_id, planet_id, owner="player"):
         return aggression_error(game, owner, planet.owner)
     if monsters.alive_at(game, system_id):
         return "Defeat the system guardian before bombardment."
+    if reason := encounters.settlement_error(game, system_id, planet_id):
+        return reason
     if game.foreign_fleet(system_id, owner) or any(p.owner != owner for p in bases(game, system_id)):
         return "Defeat the opposing ships and missile bases before bombardment."
     if not bombardment_fleet(game, system_id, owner):

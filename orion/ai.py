@@ -90,14 +90,17 @@ def diplomatic_orders(game, owner):
 
 
 def scouting_orders(game, owner=RIVAL):
+    from . import encounters
     if not game.fog_of_war:
         return
     incoming = {s.destination for s in game.ships_owned_by(owner) if s.has_course and s.kind == "scout"}
     for ship in sorted(game.ships_owned_by(owner), key=lambda s: s.id):
-        if ship.kind != "scout" or ship.has_course:
+        if ship.kind != "scout" or ship.has_course or encounters.reserved(game, ship):
             continue
         candidates = [s for s in game.systems if s.kind != black_holes.KIND and s.id != ship.system_id and s.id not in incoming
                       and monsters.known_status(game, s.id, owner) != "alive"
+                      and not any(e.kind != "planet" and encounters.known_status(game, e, owner) == "active"
+                                  for e in encounters.known_at(game, s.id, owner))
                       and s.id not in game.exploration.scanned(owner) and game.can_reach(s.id, owner, ships=[ship])]
         if not candidates:
             continue
@@ -438,7 +441,8 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
 def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
     nature = personality(game, owner)
-    from . import motherships
+    from . import motherships, encounters
+    encounters.ai_orders(game, owner)
     nomadic = motherships.is_wanderer(game, owner)
     motherships.ai_orders(game, owner)
     if nomadic:

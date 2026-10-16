@@ -66,9 +66,12 @@ def draw_setup(app):
             pg.draw.line(surface, GOLD, (x, 518), (x+306, 518), 2)
     app.button("fog_of_war", ("AI fog of war: " if observer else "Fog of war: ")+("ON" if app.fog_of_war else "OFF"),
                (430, 534, 306, 43), app.toggle_fog_of_war)
-    paragraph(surface, ("You see everything. Computer empires must explore." if app.fog_of_war else "You and every computer empire see the whole galaxy.") if observer else
-              "Explore to reveal planets and fleets." if app.fog_of_war else "All systems and fleets are visible from the start.",
-              (761, 547), 595, 14, MUTED, 20)
+    app.button("neutral_encounters", "Pirate encounters: "+("ON" if app.with_encounters else "OFF"),
+               (750, 534, 306, 43), app.toggle_encounters)
+    text(surface, "Pirates, searches & raids", (1071, 549), 13, MUTED)
+    text(surface, "You see everything; AI explores." if observer and app.fog_of_war else
+         "Explore to reveal planets and fleets." if app.fog_of_war else "All systems and fleets are visible.",
+         (432, 583), 10, MUTED)
     text(surface, "COMPUTER EMPIRES" if observer else "NUMBER OF RIVALS", (430, 600), 11, GOLD, "mono", 1)
     for count in range(MAX_RIVALS+1):
         x = 430+count*160

@@ -14,6 +14,8 @@ COLORS = (PLAYER_PALETTES[DEFAULT_PALETTE], (250, 168, 111), (203, 169, 255),
 
 def empire_color(owner, palette=DEFAULT_PALETTE):
     """Resolve display colors without changing campaign state or global colors."""
+    if owner == "pirates":
+        return (243, 132, 99)
     if owner == PLAYER:
         return PLAYER_PALETTES.get(palette, PLAYER_PALETTES[DEFAULT_PALETTE])
     return COLORS[EMPIRE_IDS.index(owner)] if owner in EMPIRE_IDS else (172, 172, 172)

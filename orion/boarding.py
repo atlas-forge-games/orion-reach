@@ -33,7 +33,7 @@ def target(game, ship_id):
 
 
 def error(game, ship_id, mode="capture", owner="player"):
-    from . import defenses, diplomacy, monsters
+    from . import defenses, diplomacy, monsters, encounters
     if mode not in ("capture", "raid", "destroy"):
         return "Choose boarding, a raid or destruction."
     if game.strategy_error(owner):
@@ -47,6 +47,8 @@ def error(game, ship_id, mode="capture", owner="player"):
         return "Defeat the mothership's space defenses first."
     if monsters.alive_at(game, ship.system_id):
         return "Defeat the system guardian first."
+    if encounters.blockade(game, ship.system_id):
+        return "Clear the pirate fleet before approaching the mothership."
     from .navigation import hostile
     opponents = {ship.owner} | {o for o in game.owners if o != owner and hostile(game, owner, o)}
     if any(s.owner in opponents and not s.disabled_turns for s in game.foreign_fleet(ship.system_id, owner)):

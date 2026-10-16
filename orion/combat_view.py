@@ -116,7 +116,7 @@ def draw_battlefield(app):
         if ship.max_shields:
             pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.max_shields), 2))
         if not planetary:
-            text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+            text(surface, "GUARD" if ship.owner == MONSTER else "RAIDER" if ship.owner == "pirates" else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.graviton_slow:
             text(surface, "SLOW", (cx-16, cy+28), 7, BEAMS["graviton"].color, "mono")
         if ship.owner == PLAYER and ship.hull > 0 and not planetary:
@@ -270,6 +270,9 @@ def draw_combat(app):
         caption = "Surviving ships remain in orbit. Hull damage is retained; colonies keep their current owners."
         if battle.retreat_destination is not None:
             caption = f"The withdrawing fleet is travelling to {game.systems[battle.retreat_destination].name}. Surviving ships retain their hull damage."
+        elif battle.encounter_id is not None:
+            caption = ("Pirates defeated. Their bounty and recovered stores have been added to your reserves. Return to the system to review any remaining threats."
+                       if battle.status == "player_victory" else "The pirate fleet remains. Surviving raiders retain their hull damage; bring a stronger escort.")
         elif battle.guardian:
             spec = MONSTERS[battle.guardian.kind]
             caption = (f"{spec.reward}. Protected worlds are now open for colonization. Bring colony ships to settle them."

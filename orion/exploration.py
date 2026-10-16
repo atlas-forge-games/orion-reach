@@ -216,7 +216,7 @@ def discovery_at(game, system_id):
 def refresh(game, *, recover=False):
     """Snapshot observed worlds; scouts can claim an encounter only once globally."""
     from .monsters import alive_at, observe
-    from . import sensors, first_contact
+    from . import sensors, first_contact, encounters
     sensors.refresh(game)
     messages = []
     for owner in game.owners:
@@ -228,6 +228,7 @@ def refresh(game, *, recover=False):
                     system = game.systems[sid]
                     messages.append(f"Surveyed {system.name}: {system.planets} planets")
     first_contact.refresh(game)
+    encounters.observe(game)
     if not recover:
         return messages
     claimed = {d.system_id for d in game.exploration.discoveries}

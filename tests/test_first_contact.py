@@ -298,6 +298,8 @@ class ContactInterfaceTests(unittest.TestCase):
 
     def test_real_start_queue_save_reload_and_skip(self):
         self.app.fog_of_war = False
+        # This test isolates the greeting queue from independent pirate dispatches.
+        self.app.with_encounters = False
         self.app.rival_count = 5
         self.app.seed = "2408"
         self.app.start_game()

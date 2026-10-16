@@ -167,6 +167,35 @@ def draw_map_guardians(app, map_rect):
     app.canvas.set_clip(old_clip)
 
 
+def pirate_markers(app, map_rect):
+    from . import encounters
+    systems = sorted({e.system_id for e in app.game.encounters.fleets
+                      if encounters.known_status(app.game, e) in ("active", "incoming")
+                      and map_rect.collidepoint(app.star_pos(app.game.systems[e.system_id]))})
+    if not systems:
+        return []
+    obstacles = star_obstacles(app, map_rect)+[guardian_legend_rect(map_rect).inflate(4, 4)]
+    obstacles.append(pg.Rect(map_rect.x, map_rect.y, map_rect.w, 38))
+    obstacles.extend(rect.inflate(3, 3) for _, rect, _ in guardian_markers(app, map_rect))
+    anchors = [app.star_pos(app.game.systems[sid]) for sid in systems]
+    preferred = [(round(x)+17, round(y)-33, 24, 24) for x, y in anchors]
+    rectangles = marker_layout(tuple(map_rect.inflate(-8, -8)), tuple(tuple(r) for r in obstacles), tuple(preferred))
+    return [(sid, pg.Rect(rect), anchor) for sid, rect, anchor in zip(systems, rectangles, anchors)]
+
+
+def draw_map_pirates(app, map_rect):
+    from .encounter_view import draw_pirate_badge
+    from .encounters import COLOR
+    clip = app.canvas.get_clip()
+    app.canvas.set_clip(map_rect)
+    for sid, rect, anchor in pirate_markers(app, map_rect):
+        pg.draw.line(app.canvas, tuple(c//3 for c in COLOR), anchor, rect.center, 1)
+        panel(app.canvas, rect, (9, 17, 28), COLOR)
+        draw_pirate_badge(app.canvas, rect.center, 18)
+        app.map_button(f"pirates_{sid}", rect, lambda system_id=sid: app.open_encounters(system_id))
+    app.canvas.set_clip(clip)
+
+
 def fleet_markers(app, map_rect):
     """Visible fleet badges avoid stars, guardian symbols and their legend."""
     # Reserve each star's full click target; extra halo padding can consume the
@@ -174,6 +203,7 @@ def fleet_markers(app, map_rect):
     obstacles = star_obstacles(app, map_rect, radius=18)
     obstacles.append(pg.Rect(map_rect.x, map_rect.y, map_rect.w, 38))
     obstacles.extend(rect.inflate(4, 4) for _, rect, _ in guardian_markers(app, map_rect))
+    obstacles.extend(rect.inflate(4, 4) for _, rect, _ in pirate_markers(app, map_rect))
     if known_guardian_kinds(app.game):
         obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     bounds = map_rect.inflate(-8, -8)

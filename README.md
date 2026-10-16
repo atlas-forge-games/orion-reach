@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.67.0
+# Orion Reach — Python prototype 0.68.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,30 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.68: pirates and scout searches
+
+Four ways to encounter neutral enemies now coexist: existing guardians attack
+on arrival, pirates guard individual planets, deliberate scout searches may
+uncover hidden flotillas, and rare events send raiders toward settled systems.
+
+Open **System overview → Encounters & search** to assign a scout for two turns
+or challenge a known pirate fleet. Peaceful discoveries yield salvage or research.
+Pirate raids give **three turns of warning**, steal credits at most once, and
+withdraw after five turns. Defeating pirates awards a one-time bounty. Pirate
+combat has no diplomatic penalty, and damage persists between battles.
+
+Known threats have orange map pennants and planet labels. **Turn News** records
+sightings, discoveries, warnings and rewards. AI empires use the same rules.
+New-game **Pirate encounters: ON/OFF** enables this expansion independently of
+victory choices. Existing guardians keep their earlier behavior.
+
+Save format **49** keeps all encounter state and tactical battles. Older campaigns
+retain their existing rules with the new encounters disabled; start a new game
+to use them. Balance profile **12** is unchanged. See the
+[full encounter rules and initial balance](docs/neutral-encounters.md).
+
+![Pirate guards and scout searches](screenshots/v068_planet_guards.png)
 
 ## New in v0.67: race-specific victories and known-empire progress
 

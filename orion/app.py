@@ -17,6 +17,7 @@ from .storage import Storage
 from .system_views import draw_system
 from .megastructure_view import draw_megastructure
 from .hyperlane_view import draw_hyperlane
+from .encounter_view import draw_encounters
 from .hyperlane_art import draw_network
 from . import hyperlanes
 from .frame_cache import frame_queries
@@ -57,7 +58,7 @@ from .empires import PLAYER_PALETTES, empire_color
 from . import diplomacy as diplomacy_balance
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
-from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, star_label_rects, ordered_ships
+from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, draw_map_pirates, pirate_markers, star_label_rects, ordered_ships
 from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel, system_entries, entry_key
 from .motherships import visible_at
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
@@ -75,7 +76,7 @@ from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "megastructure", "hyperlane", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
+GAME_SCREENS=("galaxy", "system", "megastructure", "hyperlane", "encounters", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 TURN_INPUT_EVENTS=(pg.KEYDOWN,pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP,pg.MOUSEWHEEL,pg.TEXTINPUT)
 
 
@@ -128,6 +129,7 @@ class App:
         self.rival_id=RIVAL
         self.fog_of_war=True
         self.victory_conditions=CONDITIONS
+        self.with_encounters=True
         self.field=None
         self.select_all=False
         self.settings_return="menu"
@@ -204,7 +206,7 @@ class App:
         location=(self.game.campaign_id,self.game.selected_system,self.game.selected_planet) if self.game else None
         temporary=(screen not in GAME_SCREENS or screen in
                    ("research","designer","exploration","empire","diplomacy","statistics","specialists","fleets","fleet","rival","objectives",
-                    "contact","news","ground","combat","council","result"))
+                    "contact","news","ground","combat","council","result","encounters"))
         if self.colony_visit and not temporary:
             leaving=(screen not in colony_screens or self.colony_visit!=location)
             closing_builder=self.screen in ("production","colony","shipyard") and screen=="planet" and not idle_prompt
@@ -419,6 +421,8 @@ class App:
         self.system_mothership_system=None
         self.hyperlane_system=None
         self.hyperlane_page=0
+        self.encounter_system=None
+        self.encounter_page=0
         self.fleet_return="galaxy"
         self.fleet_return_selection=(0,None)
         self.fleet_page=0
@@ -571,6 +575,9 @@ class App:
     def fleet_route_target(self):
         if not self.keyboard_mode and not self.map_drag and MAP.collidepoint(self.mouse) and self.mouse[1]>=MAP.y+38:
             # Match the click handler's topmost-first hit testing in dense clusters.
+            for sid, rect, _ in reversed(pirate_markers(self,MAP)):
+                if rect.collidepoint(self.mouse):
+                    return sid
             for guardian, rect, _ in reversed(guardian_markers(self,MAP)):
                 if rect.collidepoint(self.mouse):
                     return guardian.system_id
@@ -1411,7 +1418,7 @@ class App:
         try:
             self.game=new_game(self.empire,self.size,int(self.seed) if self.seed else None,
                                race_id=self.race_id,rival_count=self.rival_count,fog_of_war=self.fog_of_war,
-                               victory_conditions=self.victory_conditions)
+                               victory_conditions=self.victory_conditions,with_encounters=self.with_encounters)
         except (ValueError,SaveError) as exc:
             self.toast(str(exc),True)
             return
@@ -1423,6 +1430,9 @@ class App:
         self.go("galaxy")
         self.save_game(autosave=True)
         self.show_first_contact()
+
+    def toggle_encounters(self):
+        self.with_encounters=not self.with_encounters
 
     def toggle_fog_of_war(self):
         self.fog_of_war=not self.fog_of_war
@@ -2306,7 +2316,7 @@ class App:
                 self.go("galaxy")
             elif self.screen=="system":
                 self.go("galaxy")
-            elif self.screen in ("megastructure","hyperlane"):
+            elif self.screen in ("megastructure","hyperlane","encounters"):
                 self.go("system")
             elif self.screen=="planet":
                 if self.worker_source:
@@ -2735,6 +2745,7 @@ class App:
             self.map_button(f"star_{star.id}",(int(x)-18,int(y)-18,36,36),lambda s=star.id:self.select_star(s))
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)
+        draw_map_pirates(self,MAP)
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             draw_contacts(self,MAP)
         self.canvas.set_clip(old_clip)
@@ -2811,6 +2822,14 @@ class App:
 
     def draw_megastructure(self):
         draw_megastructure(self)
+
+    def draw_encounters(self):
+        draw_encounters(self)
+
+    def open_encounters(self, system_id):
+        self.game.selected_system=system_id
+        self.game.selected_planet=None
+        self.go("encounters")
 
     def draw_hyperlane(self):
         draw_hyperlane(self)
