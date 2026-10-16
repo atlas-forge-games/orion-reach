@@ -12,6 +12,7 @@ from .branding import SPLASH_SECONDS, StudioBrand
 from . import __version__
 from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
+from .habitat_modules import display_name
 from .storage import Storage
 from .system_views import draw_system
 from .megastructure_view import draw_megastructure
@@ -2020,7 +2021,7 @@ class App:
             self.production_page=max(0,(len(planet.construction_queue)-1)//6)
             if self.save_game(autosave=True):
                 message=("Trade Goods selected · Queued projects keep their progress" if planet.trade_goods else
-                         f"{self.game.project_spec(item_id).name} added to queue · Choose another project or return to colony")
+                         f"{display_name(self.game.project_spec(item_id), planet.habitat)} added to queue · Choose another project or return to overview")
                 self.toast(message)
         except RuleError as exc:
             self.toast(exc,True)
@@ -2039,8 +2040,9 @@ class App:
         if error:
             self.toast(error,True)
             return
-        project=self.game.planet_at(sid,pid).construction_queue[0]
-        name=project.spec.name
+        planet=self.game.planet_at(sid,pid)
+        project=planet.construction_queue[0]
+        name=display_name(project.spec, planet.habitat)
         price=self.game.buy_construction_cost(sid,pid)
         def buy():
             try:
@@ -2057,8 +2059,13 @@ class App:
 
     def inspect_surface_building(self,index):
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
-        if planet.owner==PLAYER and index<len(planet.buildings) and planet.buildings[index]=="space_hub":
+        if not 0 <= index < planet.building_capacity:
+            return
+        if planet.owner==PLAYER and not self.game.is_observer and index<len(planet.buildings) and planet.buildings[index]=="space_hub":
             self.open_specialists()
+            return
+        if planet.habitat and planet.owner==PLAYER and not self.game.is_observer and index>=planet.used_slots:
+            self.open_production()
             return
         self.colony_slot=index
         self.go("colony")
@@ -2070,7 +2077,7 @@ class App:
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
             self.colony_slot=planet.used_slots-1
             if self.save_game(autosave=True):
-                self.toast(f"{BUILDINGS[building_id].name} queued · {planet.construction_queue[-1].resource_cost} RES on start")
+                self.toast(f"{display_name(BUILDINGS[building_id], planet.habitat)} queued · {planet.construction_queue[-1].resource_cost} RES on start")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -2096,17 +2103,18 @@ class App:
         planet=self.game.planet_at(system_id,planet_id)
         if not 0 <= index < len(planet.buildings):
             return
-        name=BUILDINGS[planet.buildings[index]].name
+        name=display_name(BUILDINGS[planet.buildings[index]], planet.habitat)
+        verb="Dismantle" if planet.habitat else "Demolish"
         def remove():
             try:
                 self.game.demolish_building(system_id,planet_id,index)
                 self.colony_slot=None
                 if self.save_game(autosave=True):
-                    self.toast(f"{name} demolished · One slot is now available")
+                    self.toast(f"{name} {'dismantled' if planet.habitat else 'demolished'} · One slot is now available")
             except RuleError as exc:
                 self.toast(exc,True)
-        self.confirm(f"Demolish {name.lower()}?", "Its output will stop immediately and its slot will become available. Construction costs are not refunded.",
-                     "Demolish",remove)
+        self.confirm(f"{verb} {name.lower()}?", "Its output will stop immediately and its slot will become available. Construction costs are not refunded.",
+                     verb,remove)
 
     def to_menu(self):
         if self.save_game(autosave=True):

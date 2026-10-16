@@ -43,7 +43,7 @@ def draw_specialists(app):
     app.button("specialists_back", "← Back · Esc", (64, 124, 210, 46), app.close_specialists, "ghost")
     app.button("specialists_empire", "Empire overview", (289, 124, 210, 46), app.open_empire, "ghost")
     text(surface, "Specialists", (64, 195), 38, INK, "title")
-    text(surface, "Recruit at Space Hubs. Assign leaders to colonies and explorers to your own systems.", (66, 247), 14, MUTED)
+    text(surface, "Recruit at Space Hubs. Assign leaders to colonies or motherships, explorers to your systems.", (66, 247), 14, MUTED)
     staff, wages = rules.employed(game), rules.salaries(game)
     text(surface, f"{len(staff)}/{rules.MAX_EMPLOYED} HIRED   ·   {wages} CR/TURN SALARIES", (1376, 201), 13, GOLD, "mono", right=True)
     text(surface, f"Treasury {game.credits:,} CR   ·   Net income {game.empire_rates[0]:+,} CR/turn", (1376, 226), 13, MUTED, right=True)
@@ -97,12 +97,18 @@ def draw_specialists(app):
 def draw_empty(app):
     game, surface = app.game, app.canvas
     text(surface, "A meeting place on the frontier", (462, 321), 29, INK, "title")
-    paragraph(surface, "Build a Space Hub on any of your colonies. Once operational, your first Hub welcomes a leader and an explorer if they are available. More specialists visit over time.", (464, 380, 810, 100), 18, MUTED)
+    if rules.hubs(game):
+        message = "Your Space Hub is operational. Specialists arrive as turns advance; your first Hub welcomes a leader and an explorer if available. Use Visitors to review arrivals and hire them."
+    elif any('space_hub' in p.buildings for _, p in game.settlements('player')):
+        message = "Your Space Hub is offline. Enable it in facility management and supply enough energy to attract visitors. Motherships use Manage modules for these controls."
+    else:
+        message = "Build a Space Hub on a colony or a Space Hub module aboard a mothership. Once operational, your first Hub welcomes a leader and an explorer if available. More specialists visit over time."
+    paragraph(surface, message, (464, 380, 810, 100), 18, MUTED)
     details = [
         f"Operational Hubs: {len(rules.hubs(game))} · Visitor chance: {rules.visit_chance(game, 'player')}% every {rules.VISIT_INTERVAL} turns.",
         f"Visitors stay {rules.VISIT_DURATION} turns. Extra Hubs provide more meeting places; arrivals stay capped per empire.",
-        f"Up to {rules.MAX_EMPLOYED} hires per empire. One leader per colony and one explorer per system.",
-        "Hiring and salaries cost credits. Leaders work anywhere in your empire; their colony does not need a Hub.",
+        f"Up to {rules.MAX_EMPLOYED} hires per empire. One leader per colony or mothership, one explorer per system.",
+        "Hiring and salaries cost credits. Leaders can work at colonies or motherships without a Hub.",
         "Explorers survey first, then use Hacking, Salvaging or Archaeology to recover a finite reward.",
     ]
     for i, line in enumerate(details):

@@ -9,6 +9,7 @@ from uuid import uuid4
 from .frame_cache import cached_in_frame
 
 from .buildings import BUILDINGS, BUILDING_SLOTS
+from .habitat_modules import display_name
 from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loadout_error
 from .production import ASCENSION_GATE, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, SHIP_TYPES, TRADE_GOODS, distance_ly, travel_turns
 from . import production as production_balance
@@ -1376,11 +1377,11 @@ class GameState:
             return "Requires "+TECHNOLOGIES[technology].name+"."
         if (building_id in planet.buildings or
                 any(p.item_id == building_id for p in planet.construction_queue)):
-            return "Only one of this building is allowed per colony."
+            return "Only one of this module is allowed per mothership." if planet.habitat else "Only one of this building is allowed per colony."
         if len(planet.construction_queue) >= MAX_QUEUE:
             return "The construction queue is full."
         if planet.free_slots <= 0:
-            return f"All {planet.building_capacity} building slots are occupied or reserved."
+            return f"All {planet.building_capacity} {'module bays' if planet.habitat else 'building slots'} are occupied or reserved."
         return None
 
     def queue_building(self, system_id, planet_id, building_id, *, owner=PLAYER):
@@ -1509,7 +1510,8 @@ class GameState:
         if planet.owner != owner:
             return "This colony belongs to another empire."
         if kind == "troop_transport" and not self.building_operational(planet, "barracks"):
-            return "Build and power barracks on this colony to train transport troops."
+            return ("Build and power a training module aboard this mothership to train transport troops." if planet.habitat else
+                    "Build and power barracks on this colony to train transport troops.")
         if kind == "mothership" and not motherships.is_wanderer(self, owner):
             return "Only the Wanderers build motherships."
         if kind == "colony_ship" and motherships.is_wanderer(self, owner):
@@ -1772,7 +1774,7 @@ class GameState:
         for planet, _ in population_start:
             if planet.owner == PLAYER and self.planet_energy(planet).balance < 0:
                 report = self.planet_energy(planet)
-                affected = f"{len(report.offline)} buildings offline"
+                affected = f"{len(report.offline)} {'modules' if planet.habitat else 'buildings'} offline"
                 if planet.ascension_gate and not report.gate_powered:
                     affected += "; Ascension Gate unpowered"
                 alerts.append(f"Energy shortage on {planet.name}: {affected}")
@@ -1784,7 +1786,7 @@ class GameState:
                 defense_rules.commissioned(self, planet, project.item_id)
                 item_id = project.item_id
                 self._complete_ship(project, system.id, planet.owner)
-                message = f"{project.spec.name} on {planet.name}"
+                message = f"{display_name(project.spec, planet.habitat)} on {planet.name}"
                 if planet.owner == PLAYER:
                     completed.append(message)
                 else:

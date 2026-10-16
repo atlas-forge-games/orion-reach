@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from . import economy, population, research, administration
 from .buildings import BUILDINGS, MINERAL_FACTORS, facility_family, workforce_bonuses
+from .habitat_modules import display_name
 
 KINDS = ('credits', 'food', 'industry', 'research', 'mining', 'energy')
 ROLES = dict(farmers='food', workers='industry', scientists='research', miners='mining')
@@ -31,7 +32,7 @@ def describe(game, planet, kind):
         for identifier in active:
             value = getattr(BUILDINGS[identifier], field)*factor
             if value:
-                total += add(BUILDINGS[identifier].name, value)
+                total += add(display_name(BUILDINGS[identifier], planet.habitat), value)
         return total
     def strain(value):
         r = game.strain_report(planet)
@@ -60,7 +61,7 @@ def describe(game, planet, kind):
         for identifier in active:
             value = research.building_yields(BUILDINGS[identifier], planet.richness, b)[index]
             if value:
-                raw += add(BUILDINGS[identifier].name+' (incl. upgrades)', value)
+                raw += add(display_name(BUILDINGS[identifier], planet.habitat)+' (incl. upgrades)', value)
         scaled = research.scaled_output(raw, percent)
         lines.append(f'Subtotal {raw:g} × {1+percent/100:g} = {scaled:g} (whole-unit rounding)')
         adjusted = strain(scaled)
@@ -113,7 +114,7 @@ def describe(game, planet, kind):
             for i,identifier in enumerate(planet.buildings):
                 spec = BUILDINGS[identifier]
                 if i not in planet.disabled_buildings and spec.energy_output and not spec.energy_per_resource:
-                    add(spec.name,spec.energy_output)
+                    add(display_name(spec, planet.habitat),spec.energy_output)
             add('Actual backup generation',power.backup_generated)
             add('Resources burned by backup plants',power.fuel_used)
             total = power.generated
@@ -122,7 +123,7 @@ def describe(game, planet, kind):
         lines.append('Energy is local and is not reduced by administrative strain.')
     unavailable = len(planet.buildings)-len(active)
     if unavailable:
-        lines.append(f'{unavailable} disabled/unpowered building(s) excluded from output; upkeep still applies.')
+        lines.append(f"{unavailable} disabled/unpowered {'module(s)' if planet.habitat else 'building(s)'} excluded from output; upkeep still applies.")
     lines.append('TOTAL '+TITLES[kind].upper()+f': {total:g} per turn')
     return Breakdown(TITLES[kind]+' — '+planet.name, tuple(lines), total)
 
@@ -137,7 +138,9 @@ def draw(app):
     page = min(app.dialog.get('info_page',0), pages-1)
     panel(app.canvas,(240,110,960,690),PANEL,GOLD)
     text(app.canvas,data.title,(272,137),28,INK,'title')
-    text(app.canvas,'LIVE COLONY CALCULATION · only operational buildings contribute',(272,184),12,MUTED)
+    caption = ('LIVE HABITAT CALCULATION · only operational modules contribute' if app.selected_habitat()
+               else 'LIVE COLONY CALCULATION · only operational buildings contribute')
+    text(app.canvas,caption,(272,184),12,MUTED)
     for i,line in enumerate(lines[page*per_page:(page+1)*per_page]):
         text(app.canvas,line,(272,217+i*26),16,GOLD if line.startswith('TOTAL ') else INK)
     text(app.canvas,f'{page+1} / {pages} · Right-click or Esc to close',(272,747),12,MUTED)

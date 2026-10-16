@@ -5,6 +5,7 @@ import pygame as pg
 
 from .ui import ASSETS
 from .buildings import BUILDINGS, FACILITY_FAMILIES, facility_family
+from .habitat_modules import art_id
 
 BUILDING_ART_IDS = ("headquarters", "shipyard", *BUILDINGS, "ascension_gate")
 
@@ -165,11 +166,38 @@ def fallback_building(building_id):
     return image
 
 
-@lru_cache(maxsize=96)
-def building_sprite(building_id, size):
-    source = load_building_art(building_id)
+@lru_cache(maxsize=16)
+def load_module_art(identifier):
+    try:
+        image = pg.image.load(str(ASSETS / "modules" / f"{identifier}-v1.png"))
+        bounds = image.get_bounding_rect(min_alpha=32)
+        if not bounds.w or not bounds.h:
+            return None
+        source = image.subsurface(bounds)
+        # Keep the full PNG on disk, but cache only what these small UI tiles need.
+        fit = source.get_rect().fit(pg.Rect(0, 0, 384, 384))
+        return pg.transform.smoothscale(source, fit.size) if max(bounds.size) > 384 else source.copy()
+    except (OSError, pg.error):
+        return None
+
+
+def fallback_module():
+    """A shipboard compartment remains selectable if its PNG is unavailable."""
+    image = pg.Surface((120, 110), pg.SRCALPHA)
+    pg.draw.polygon(image, (139, 116, 82), [(9, 36), (58, 12), (111, 36), (111, 84), (61, 105), (9, 79)])
+    pg.draw.polygon(image, (38, 61, 72), [(17, 41), (58, 22), (103, 41), (103, 76), (61, 95), (17, 72)])
+    pg.draw.ellipse(image, (111, 217, 226), (39, 37, 44, 36), 5)
+    for x, y in ((10, 51), (102, 51)):
+        pg.draw.rect(image, (202, 207, 192), (x, y, 9, 20))
+    return image
+
+
+@lru_cache(maxsize=192)
+def building_sprite(building_id, size, habitat=False):
+    module = art_id(building_id) if habitat else None
+    source = load_module_art(module) if module else load_building_art(building_id)
     if source is None:
-        source = fallback_building(building_id)
+        source = fallback_module() if module else fallback_building(building_id)
     fit = source.get_rect().fit(pg.Rect((0, 0), size))
     sprite = pg.transform.smoothscale(source, fit.size)
     family = facility_family(building_id)
@@ -184,9 +212,9 @@ def building_sprite(building_id, size):
     return sprite
 
 
-def draw_building_art(surface, building_id, rect, *, alpha=255):
+def draw_building_art(surface, building_id, rect, *, alpha=255, habitat=False):
     rect = pg.Rect(rect)
-    sprite = building_sprite(building_id, rect.size)
+    sprite = building_sprite(building_id, rect.size, habitat)
     if alpha != 255:
         sprite = sprite.copy()
         sprite.set_alpha(alpha)

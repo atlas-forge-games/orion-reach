@@ -1,6 +1,7 @@
 """Empire-wide economy and a sortable, paginated colony directory."""
 
 import pygame as pg
+from .habitat_modules import display_name
 
 from .production import PROJECTS
 from .colony_view import turn_label
@@ -121,7 +122,7 @@ def draw_empire(app):
             project = planet.construction_queue[0]
             definition = project.spec
             eta = game.queue_estimates(planet)[0]
-            text(surface, definition.name, (950, y+7), 15, INK)
+            text(surface, shorten(display_name(definition, planet.habitat), 250, 15), (950, y+7), 15, INK)
             text(surface, turn_label(eta), (1318, y+8), 12, GOLD, right=True)
             waiting = len(planet.construction_queue)-1
             caption = f"{project.progress} / {definition.work_cost} work"

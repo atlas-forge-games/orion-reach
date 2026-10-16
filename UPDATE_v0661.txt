@@ -1,0 +1,24 @@
+Orion Reach v0.66.1 — extract over v0.66.0, then restart the game.
+
+Mothership modules:
+- All 19 compatible facilities now have module names aboard motherships.
+- Thirteen transparent shipboard illustrations cover all module families.
+  Advanced industry, extraction and research use family art with tier markers.
+- Names and artwork follow the home through overview, management, production,
+  shipyard, empire queue, completion messages and right-click output breakdowns.
+- Click installed modules to manage them; click queued modules to inspect or
+  cancel them. Click an empty bay to open the construction catalogue.
+- Click the Space Hub module to recruit and assign specialists. Manage modules
+  also offers Visit Space Hub alongside enable/disable and dismantle controls.
+  Recruitment still requires an operational hub and an available visitor.
+
+Costs, output, upkeep, power, research requirements and capacity are unchanged.
+Planetary buildings keep their normal names and artwork. Existing motherships,
+including captured homes, receive the new presentation automatically. Save
+format 47 and balance profile 12 are unchanged; no conversion is required.
+
+Artwork and full prompts: assets/modules/.
+Detailed mapping and controls: docs/wanderer-motherships.md.
+Preview screens: python tools/preview_habitat_modules.py.
+
+Nothing staged or committed.

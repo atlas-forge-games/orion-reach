@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .colony_view import draw_planet_tabs, turn_label
+from .habitat_modules import display_name
 from .fleet_art import ship_icon
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
 from . import production as production_balance
@@ -17,8 +18,8 @@ def draw_shipyard(app):
     surface, game = app.canvas, app.game
     system = game.systems[game.selected_system]
     planet = game.planet_at(system.id, game.selected_planet)
-    app.chrome("PLANETARY SHIPYARD")
-    app.button("shipyard_back", "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
+    app.chrome("ONBOARD SHIPYARD" if planet.habitat else "PLANETARY SHIPYARD")
+    app.button("shipyard_back", "←  Mothership overview" if planet.habitat else "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()} / {planet.name.upper()}", 530, 11, "mono"),
          (347, 143), 11, MUTED, "mono")
     app.button("shipyard_fleets", "Open fleets →", (924, 124, 190, 46), app.open_fleets)
@@ -49,7 +50,7 @@ def draw_shipyard(app):
         text(surface, description, (154, y+37), 12, CYAN)
         captions = {"mothership": "Adds 15 ly range to ships travelling with it.", "colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
-                    "troop_transport": "Needs barracks. Includes 8 troops; hull losses follow casualties.",
+                    "troop_transport": "Needs a training module. Includes 8 troops; hull losses follow casualties." if planet.habitat else "Needs barracks. Includes 8 troops; hull losses follow casualties.",
                     "scout": "Charts systems and recovers one-time discoveries."}
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
@@ -68,7 +69,7 @@ def draw_shipyard(app):
     text(surface, "SHARED CONSTRUCTION QUEUE", (697, 328), 11, GOLD, "mono", 1)
     text(surface, f"{len(planet.construction_queue)} / {MAX_QUEUE} projects", (1353, 328), 11, MUTED, "mono", right=True)
     text(surface, "Trade Goods active · Queue a ship to resume construction." if planet.trade_goods else
-         "Ships and buildings use the same local industry.", (698, 355), 13, MUTED)
+         "Ships and modules use the same onboard industry." if planet.habitat else "Ships and buildings use the same local industry.", (698, 355), 13, MUTED)
     last = max(0, (len(planet.construction_queue)-1)//QUEUE_PER_PAGE)
     app.shipyard_page = min(max(0, app.shipyard_page), last)
     start = app.shipyard_page*QUEUE_PER_PAGE
@@ -78,7 +79,7 @@ def draw_shipyard(app):
         y = 394+(index-start)*65
         panel(surface, (697, y, 656, 58), (8, 18, 26))
         text(surface, f"{index+1:02}", (711, y+12), 11, GOLD, "mono")
-        text(surface, definition.name, (748, y+7), 16, INK)
+        text(surface, display_name(definition, planet.habitat), (748, y+7), 16, INK)
         text(surface, "Paused" if planet.trade_goods else turn_label(estimates[index]), (1178, y+9), 12, CYAN, right=True)
         detail = f"{project.progress}/{definition.work_cost} work · Refund {project.refund_text}"
         if index == 0:
@@ -92,6 +93,7 @@ def draw_shipyard(app):
         text(surface, "Trade Goods · Ongoing" if planet.trade_goods else "No projects queued.", (699, 419), 23, INK, "title")
         message = ("The rival chooses its own projects when you end the turn."
                    if planet.owner not in (None, PLAYER) else
+                   "Build ships here, or choose modules in the Modules tab." if planet.habitat else
                    "Build ships here, or choose buildings in the Colony tab.")
         paragraph(surface, message, (700, 462), 608, 15, MUTED, 25)
     text(surface, f"PAGE {app.shipyard_page+1} / {last+1}", (699, 754), 10, FAINT, "mono")

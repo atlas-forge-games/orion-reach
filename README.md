@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.66.0
+# Orion Reach — Python prototype 0.66.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,24 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.66.1: mothership modules
+
+Motherships now build **modules** with dedicated shipboard artwork: farming,
+industry, extraction, research, commerce, training, sensors, power and a Space
+Hub. Click an installed module in the home overview to manage it, a queued
+module to inspect/cancel it, or an empty bay to choose construction.
+
+Click the **Space Hub module** to recruit and assign specialists. Its management
+panel also has a Visit Space Hub button alongside the power and dismantle controls.
+An operational Hub still needs power and time for visitors to arrive.
+
+Costs, outputs, research unlocks and the 12-bay limit are unchanged. Existing
+facilities and queued projects receive their module presentation automatically;
+planetary buildings retain their names and artwork. Save format 47 and balance
+profile 12 remain compatible.
+
+![Mothership modules](screenshots/v0661_mothership_modules.png)
 
 ## New in v0.66: mothership defenses, boarding and spoils
 

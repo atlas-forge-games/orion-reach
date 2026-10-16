@@ -7,7 +7,7 @@ an ordinary unclaimed planet. Two scouts accompany the starting mothership.
 | Property | Initial rule |
 | --- | --- |
 | Population | Hard maximum of 50 B per mothership, including researched capacity bonuses |
-| Facilities | 12 slots per mothership |
+| Modules | 12 bays per mothership |
 | Strategic speed | 25% of normal ship speed, with the same researched speed modifiers |
 | Starting speed | 0.5 light-years per turn |
 | Initial convoy range | 25 LY with standard balance; 15 LY more than an ordinary Wanderer fleet |
@@ -49,6 +49,36 @@ An anchored home can supply and repair nearby fleets. Trade distance and capital
 distance use mobile positions. Travel does not eliminate an empire.
 
 ## Economy and combat
+
+The home overview uses shipboard module names and artwork. Installed modules
+open management controls; queued modules open their progress/cancellation panel;
+empty bays open the production catalogue. The Space Hub module opens specialists
+directly. Manage modules also exposes its power switch, dismantling and a Visit
+Space Hub button. Operational hubs attract the same visitors as planetary hubs;
+leaders can be assigned to the mothership and retain that assignment on travel.
+
+| Planetary facility | Mothership module |
+| --- | --- |
+| Factory / Robotic factory / Nanofactory | Industry / Robotic industry / Nanoassembly module |
+| Mining complex / Deep-core mine / Automated refinery | Extraction / Advanced extraction / Refinery module |
+| Research lab / Advanced research lab / Quantum research lab | Research / Advanced research / Quantum research module |
+| Hydroponic farm | Farming module |
+| Trade centre | Commerce module |
+| Barracks | Training module |
+| Sensor array | Sensor module |
+| Solar array | Solar power module |
+| Fusion plant | Fusion reactor module |
+| Geothermal plant | Thermal recovery module |
+| Thermal backup plant | Backup generator module |
+| Singularity plant | Singularity reactor module |
+| Space Hub | Space Hub module |
+
+This is a presentation change: modules keep the equivalent facility's costs,
+outputs, upkeep, energy dispatch, research unlocks and stacking rules. Advanced
+industry, extraction and research modules use their family's artwork with tier
+markers. Existing saves keep the same IDs and queued progress; planetary
+facilities retain their normal presentation, including on empires that own a
+captured mothership. No new save or balance migration is needed for v0.66.1.
 
 Each habitat uses an enclosed Terran-equivalent environment and average resource
 yields, retaining existing economic rules and the Wanderers' industry penalty.

@@ -6,7 +6,8 @@ from .model import PLAYER
 from .mothership_art import draw
 from .building_art import draw_building_art
 from .buildings import BUILDINGS
-from .ui import CYAN, GOLD, INK, LINE, MUTED, panel, shorten, text
+from .habitat_modules import display_name
+from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, shorten, text, wrapped_lines
 
 
 def draw_overview(app, ship):
@@ -47,27 +48,41 @@ def draw_overview(app, ship):
     text(surface, "Living rings · Hydroponics · Workshops · Research decks", (44, 801), 13, GOLD)
 
     panel(surface, (758, 314, 658, 526), (10, 22, 31))
-    text(surface, "ONBOARD FACILITIES", (780, 334), 12, GOLD, "mono", 1)
+    text(surface, "ONBOARD MODULES", (780, 334), 12, GOLD, "mono", 1)
     text(surface, f"{len(home.buildings)} built / {home.building_capacity} slots", (1394, 336), 12, MUTED, right=True)
+    projects = home.building_projects
     for index in range(12):
         x, y = 780+(index%3)*206, 373+(index//3)*78
         rect = pg.Rect(x, y, 192, 68)
-        panel(surface, rect, (12, 27, 36))
+        button = app.button(f"mothership_module_{index}", "", rect,
+                            lambda i=index: app.inspect_surface_building(i), "hotspot",
+                            enabled=index < home.used_slots or own or game.is_observer)
+        panel(surface, rect, (12, 27, 36), GOLD if app.is_active(button) else LINE)
         if index < len(home.buildings):
             identifier = home.buildings[index]
-            draw_building_art(surface, identifier, (x+4, y+6, 62, 50))
-            text(surface, shorten(BUILDINGS[identifier].name, 118, 12), (x+69, y+15), 12, INK)
             from .economy import building_status
-            text(surface, building_status(home, index, game.bonuses_for(ship.owner)), (x+69, y+41), 10, CYAN)
+            status = building_status(home, index, game.bonuses_for(ship.owner))
+            if identifier == "space_hub" and own and status == "OPERATIONAL":
+                status = "Recruit specialists →"
+            alpha = 255
+        elif index < home.used_slots:
+            _, project = projects[index-len(home.buildings)]
+            identifier, status, alpha = project.item_id, "Queued · Click to inspect", 130
         else:
-            text(surface, f"Deck {index+1:02}", (x+15, y+15), 13, MUTED)
-            text(surface, "Reserved" if index < home.used_slots else "Available", (x+15, y+42), 11, GOLD if index < home.used_slots else MUTED)
-    text(surface, "Food, research, industry and resource output stay aboard.", (780, 700), 13, INK)
+            text(surface, f"Module bay {index+1:02}", (x+15, y+15), 13, MUTED)
+            text(surface, "Click to build" if own else "Available", (x+15, y+42), 11, MUTED)
+            continue
+        draw_building_art(surface, identifier, (x+4, y+6, 62, 50), alpha=alpha, habitat=True)
+        for line, label in enumerate(wrapped_lines(display_name(BUILDINGS[identifier], True), 118, 12)[:2]):
+            text(surface, label, (x+69, y+9+line*15), 12, INK)
+        status_color = RED if status in ("DISABLED", "NO POWER", "NO FUEL") else CYAN if alpha == 255 else GOLD
+        text(surface, shorten(status, 119, 9), (x+69, y+49), 9, status_color)
+    text(surface, "Click a module to manage it · Space Hub: recruit specialists", (780, 700), 12, INK)
     text(surface, "Ship construction and gate charging pause during flight.", (780, 725), 12, MUTED)
     strain = game.strain_report(home)
     text(surface, f"Administration: {strain.total:.1f}% strain · {strain.systems} home systems", (780, 752), 12, MUTED)
     if own or game.is_observer:
-        app.button("mothership_facilities", "Manage facilities", (780, 785, 284, 37), lambda: app.go("colony"))
+        app.button("mothership_facilities", "Manage modules", (780, 785, 284, 37), lambda: app.go("colony"))
         app.button("mothership_course", "Repairing" if ship.disabled_turns else "In transit" if ship.in_transit else "Set course", (1077, 785, 314, 37),
                    lambda: app.plot_course(ship.id), enabled=own and not ship.in_transit and not ship.disabled_turns)
     elif not ship.disabled_turns:

@@ -1,0 +1,197 @@
+[
+  {
+    "file": "backup_generator-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      39,
+      1240,
+      1254
+    ],
+    "bytes": 2282227,
+    "sha256": "3e95409f7931e8e924d65e4916fa3caa13ae6bcaf8bfbd72a2ffc24b4d776b94"
+  },
+  {
+    "file": "commerce-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      17,
+      1222,
+      1254
+    ],
+    "bytes": 2295270,
+    "sha256": "a3165c1f5a6b1288ea6911b7266b3a1f203eda68fbad5584077d65c5cdd1b850"
+  },
+  {
+    "file": "extraction-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      30,
+      1237,
+      1228
+    ],
+    "bytes": 2169377,
+    "sha256": "83ef37e7018aef7f2658dbb586adc53b2820be46fedd135fc0426cd1f1423fc7"
+  },
+  {
+    "file": "farming-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      57,
+      1205,
+      1254
+    ],
+    "bytes": 2295614,
+    "sha256": "1227c29f19d10b61234f75905a49d58124a1f6c507ea3d428dd95120d0cf1477"
+  },
+  {
+    "file": "fusion-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      31,
+      1238,
+      1254
+    ],
+    "bytes": 2084843,
+    "sha256": "2a5a9f43ca23386625cafa88954ab0b5fc595e649f054f3f039ba6e0cd148d3c"
+  },
+  {
+    "file": "industry-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      48,
+      1222,
+      1254
+    ],
+    "bytes": 2246417,
+    "sha256": "80d0869eaaf4378ffbf6e9285f30932283e9fa849b9294fb278c65bd316126c9"
+  },
+  {
+    "file": "research-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      32,
+      1237,
+      1254
+    ],
+    "bytes": 2162365,
+    "sha256": "71a6b08b84043d5525350b0832e5c12d85c9a79dc1e7759d39efc7a2ee48755c"
+  },
+  {
+    "file": "sensor-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      6,
+      1240,
+      1224
+    ],
+    "bytes": 2226431,
+    "sha256": "caec014951b62580f2923d707343678b93a2e191e2619135608ef9969cc0fc9d"
+  },
+  {
+    "file": "singularity-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      67,
+      1240,
+      1254
+    ],
+    "bytes": 2022866,
+    "sha256": "d250aecb0dddf5d40e30d6c86908f5b56010465fb9f3f578c3809cc031fa237a"
+  },
+  {
+    "file": "solar-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      33,
+      1238,
+      1254
+    ],
+    "bytes": 2100830,
+    "sha256": "1bb30e4d1bbf4676391ccb66133e683c15091ebbf66fc87807a44616b0d5f9fe"
+  },
+  {
+    "file": "space_hub-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      17,
+      1242,
+      1254
+    ],
+    "bytes": 2175636,
+    "sha256": "e306189ba5f79651d3a2fce6484a680c42aa17bd0e531583342aa5ee74c5df63"
+  },
+  {
+    "file": "thermal_recovery-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      41,
+      40,
+      1236,
+      1254
+    ],
+    "bytes": 2059717,
+    "sha256": "31bf2334df01bcfab2815de2af8f081601705d1c2eea67688b1194ae9fc30565"
+  },
+  {
+    "file": "training-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "alpha_bounds": [
+      0,
+      4,
+      1237,
+      1254
+    ],
+    "bytes": 2178579,
+    "sha256": "335939e50e2d3bf51c9a47321d5c59730a5b6197b78b1a39a695d2edc53dc0dd"
+  }
+]
