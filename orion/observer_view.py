@@ -10,7 +10,7 @@ from .personalities import PERSONALITIES
 from .race_art import draw_race_portrait
 from .races import RACES, OBSERVER
 from .research import TECHNOLOGIES
-from .victory import CONDITION_NAMES, colonies, gate_site
+from .victory import CONDITION_NAMES, colonies, gate_site, race_goal
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, shorten, text
 
 TABS = {"empires": "Empires", "diplomacy": "Diplomacy", "research": "Research",
@@ -114,6 +114,9 @@ def report_rows(app):
                 if "science" not in game.victory_conditions:
                     values = (*values[:4], "Disabled", "—")
                     detail = "Science victory is disabled for every empire in this campaign."
+                goal = race_goal(game, owner)
+                racial = f"Hyperlanes {goal.current}/{goal.total}" if goal else "No race-specific goal yet"
+                detail = f"Race victory {'ON' if 'race' in game.victory_conditions else 'OFF'} · {racial} · {detail}"
             rows.append((values, detail, color, lambda oid=owner: app.open_observed_empire(oid)))
     return columns, rows
 

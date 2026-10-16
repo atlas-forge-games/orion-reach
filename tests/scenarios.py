@@ -121,6 +121,8 @@ def legacy_economy(game):
     saves. Keep their other targeted legacy fields and stale surveys intact.
     A separate fixture from the actual v0.35.1 executable checks real migration.
     """
+    from orion.victory import LEGACY_CONDITIONS
+    game.victory_conditions = LEGACY_CONDITIONS
     for owner in game.owners:
         game._empire(owner).resources = 120
         state = game.research_state(owner)
@@ -146,10 +148,11 @@ def legacy_economy(game):
 
 
 def migrated_statistics(game):
-    """Expected pre-v38 migration: start a new history at the loaded turn."""
+    """Pre-v38 history starts on load; later victory options remain disabled."""
     import copy
     from orion.statistics import sample
     expected = copy.deepcopy(game)
+    expected.victory_conditions = tuple(c for c in expected.victory_conditions if c != 'race')
     expected.statistics = {owner: [sample(expected, owner)] for owner in expected.owners}
     return expected
 

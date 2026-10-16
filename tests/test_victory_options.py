@@ -60,7 +60,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
         self.assertEqual(campaign().victory_conditions, victory.CONDITIONS)
         with tempfile.TemporaryDirectory() as directory:
             storage = Storage(directory)
-            for count in range(4):
+            for count in range(len(victory.CONDITIONS)+1):
                 for enabled in combinations(victory.CONDITIONS, count):
                     with self.subTest(enabled=enabled):
                         game = campaign(victory_conditions=list(reversed(enabled)))
@@ -190,7 +190,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
         game = scenario()
         convene(game)
         restored = GameState.from_dict(v32_data(game), version=32)
-        self.assertEqual(restored.victory_conditions, victory.CONDITIONS)
+        self.assertEqual(restored.victory_conditions, victory.LEGACY_CONDITIONS)
         self.assertEqual(restored.council, game.council)
         self.assertTrue(all(restored.research_state(o).legacy_fuel for o in game.owners))
         self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
@@ -320,11 +320,12 @@ class VictorySetupScreenTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "setup")
         self.click("victory_science")
         self.click("victory_council")
+        self.click("victory_race")
         self.click("setup_back")
         self.click("setup_next")
         self.assertEqual(self.app.victory_conditions, ("conquest",))
         buttons = [b for b in self.app.buttons if b.key.startswith("victory_")]
-        self.assertEqual(len(buttons), 3)
+        self.assertEqual(len(buttons), 4)
         self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in buttons))
         self.click("launch")
         self.assertEqual(self.app.game.victory_conditions, ("conquest",))

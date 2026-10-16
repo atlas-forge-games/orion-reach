@@ -14,6 +14,7 @@ from orion import balance
 from orion.balance_document import BalanceDocument
 from orion.model import new_game, GameState, PLAYER, Ship, SaveError
 from orion.storage import Storage
+from orion.victory import LEGACY_CONDITIONS
 
 
 def game():
@@ -187,6 +188,7 @@ class BalanceTests(BalanceTestCase):
         first=store.save(g)
         balance.activate(balance.default_profile())
         normal=game()
+        normal.victory_conditions=LEGACY_CONDITIONS
         second=store.save(normal)
         normal_profile=balance.active_profile()
         rows=store.list_saves()

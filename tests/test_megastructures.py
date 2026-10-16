@@ -16,6 +16,7 @@ from orion import balance, economy, exploration, megastructures as mega, statist
 from orion.model import new_game, GameState, SaveError, RuleError, Ship, ConstructionProject
 from orion.research import choices, TECHNOLOGIES, ResearchState
 from orion.storage import Storage
+from orion.victory import LEGACY_CONDITIONS
 
 
 def campaign(ai=False):
@@ -296,6 +297,7 @@ class MegastructureTests(unittest.TestCase):
             GameState.from_dict(bad)
 
     def test_old_save_and_balance_upgrade(self):
+        self.g.victory_conditions = LEGACY_CONDITIONS
         data = self.g.to_dict()
         data.pop("megastructure_history")
         for s in data["systems"]:

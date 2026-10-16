@@ -17,6 +17,20 @@ an ordinary unclaimed planet. Two scouts accompany the starting mothership.
 | Workforce | Farming, industry, research and mining, managed independently per home |
 | Expansion | Build another mothership; settle and planetary occupation are unavailable |
 
+## Race-specific victory
+
+Enable **Race-specific** in new-game setup to let Wanderers win by discovering
+every forgotten hyperlane. The network is fixed at galaxy creation: roughly
+50% of ordinary systems have at least one connection, 25% at least two, and so
+on. Research costs 300 RP per route, with one project at a time in each system.
+Each two-way link counts once. Other empires' discoveries do not count as yours.
+
+**Objectives → Race-specific goals** shows your progress and the goals and
+progress of empires you have met. Hidden routes stay private. Research and
+travel remain available when the victory is disabled. Older saves retain their
+victory settings. See [Forgotten hyperlanes](forgotten-hyperlanes.md) for the
+research, network, AI and compatibility rules.
+
 ## Controls and movement
 
 The galaxy fleet badge uses the dedicated city-ark illustration and ship count, with

@@ -15,6 +15,8 @@ def perform(app, action):
     try:
         message = action()
         app.save_game(autosave=True)
+        if app.game.result is not None:
+            app.go("result")
         app.toast(message if isinstance(message, str) else "Hyperlane research updated")
     except RuleError as exc:
         app.toast(exc, True)
@@ -51,7 +53,7 @@ def draw_hyperlane(app):
     app.button("hyperlane_back", "← Solar system", (64, 126, 220, 46), lambda: app.go("system"))
     text(surface, "WANDERER NAVIGATION QUEST", (1376, 142), 11, GOLD, "mono", right=True)
     text(surface, shorten(system.name+" · Forgotten hyperlanes", 1300, 37, "title"), (64, 193), 37, INK, "title")
-    text(surface, "System research · Random destination · Permanent two-way passage · Only your empire can use it", (67, 251), 14, MUTED)
+    text(surface, "Hidden network fixed at game start · Permanent two-way passages · Only your empire can use its discoveries", (67, 251), 14, MUTED)
     if not motherships.is_wanderer(game):
         paragraph(surface, "Only the Wanderers can decipher these ancient navigation paths.", (64, 319), 800, 24, MUTED, 34)
         return
@@ -63,12 +65,18 @@ def draw_hyperlane(app):
     points = rules.local_research(game, system.id)
     destinations = rules.connections(game, system.id)
     editable = game.strategy_error() is None
+    surveyed = system.id in game.hyperlane_surveys.get("player", []) or rules.work_error(game, system.id) is None
+    remaining = len(rules.candidates(game, system.id, "player")) if surveyed else None
+    signals = ("Bring a stationary mothership to inspect this system." if remaining is None else
+               f"{remaining} unresearched route{'s' if remaining != 1 else ''} available here" if remaining else
+               "No undiscovered, unreserved routes remain here.")
     if project is None:
         text(surface, f"{rules.RESEARCH_COST} RP", (832, 314), 35, LANE_COLOR, "title")
-        paragraph(surface, "Recover a forgotten route to a random star system. The destination is revealed when research finishes.", (832, 373), 518, 18, INK, 28)
+        paragraph(surface, "Recover one of this system's hidden routes. Its destination is revealed when research finishes. Some systems have no routes; others have several.", (832, 373), 518, 18, INK, 28)
         paragraph(surface, "Station a mothership here. Pool local research from every stationary home, or invest banked RP. This leaves the megastructure slot available.", (832, 465), 518, 14, MUTED, 23)
         reason = rules.start_error(game, system.id)
-        text(surface, f"Local research available: {points} RP / turn", (832, 555), 14, CYAN)
+        text(surface, signals, (832, 537), 11, GOLD)
+        text(surface, f"Local research available: {points} RP / turn", (832, 558), 14, CYAN)
         app.button("hyperlane_start", f"Start research · {rules.RESEARCH_COST} RP", (832, 594, 518, 43),
                    lambda: perform(app, lambda: rules.start(game, system.id)), "primary", enabled=reason is None)
         if reason:
@@ -78,8 +86,11 @@ def draw_hyperlane(app):
         text(surface, shorten(game.systems[project.destination].name, 514, 33, "title"), (832, 357), 33, INK, "title")
         text(surface, "1 TURN · BOTH DIRECTIONS", (832, 415), 17, LANE_COLOR, "mono")
         paragraph(surface, "Every ship in your empire can use this passage, including motherships and their escorts. Normal fuel range and travel speed do not limit the jump.", (832, 461), 518, 15, MUTED, 25)
-        paragraph(surface, "The route remains available after your homes leave. It reveals no planets or fleets before arrival; guardians and hostile fleets still defend the destination.", (832, 559), 518, 13, MUTED, 22)
-        text(surface, f"Completed on turn {project.completed_turn} · {project.cost} RP invested", (832, 650), 11, GOLD)
+        text(surface, signals, (832, 557), 12, GOLD)
+        reason = rules.start_error(game, system.id)
+        app.button("hyperlane_start", f"Research another route · {rules.RESEARCH_COST} RP", (832, 594, 518, 43),
+                   lambda: perform(app, lambda: rules.start(game, system.id)), "primary", enabled=reason is None)
+        text(surface, shorten(reason or f"Last discovery: turn {project.completed_turn} · {project.cost} RP invested", 518, 11), (832, 651), 11, MUTED)
     else:
         contribution = rules.contribution(game, project)
         text(surface, f"{project.progress} / {project.cost} RP", (832, 315), 31, INK, "title")
@@ -123,6 +134,6 @@ def draw_hyperlane(app):
         app.button(f"hyperlane_plot_{sid}", "Plot course · 1 turn", (x+207, 798, 199, 34), lambda target=sid: plot(app, target),
                    enabled=editable and bool(game.fleet_at(system.id)))
     if not destinations:
-        text(surface, "No recovered connections here yet. Research opens one permanent route.", (66, 759), 16, MUTED)
-    text(surface, "One discovery per system · Incoming routes also work in reverse · No research points are spent on travel", (66, 871), 12, MUTED)
+        text(surface, "No recovered connections here yet.", (66, 759), 16, MUTED)
+    text(surface, "Research one route at a time · Incoming routes work in reverse · Travel costs no RP", (66, 871), 12, MUTED)
     app.button("hyperlane_end_turn", "End turn · E", (1100, 851, 276, 40), app.advance_turn, enabled=editable)

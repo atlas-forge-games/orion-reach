@@ -824,6 +824,7 @@ class App:
         self.research_prompt_pending=False
         self.objectives_return="galaxy"
         self.gate_colony_index=0
+        self.objectives_tab="overview"
 
     def open_objectives(self):
         if self.screen=="objectives":

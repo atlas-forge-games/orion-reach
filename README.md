@@ -1,11 +1,38 @@
-# Orion Reach — Python prototype 0.66.1
+# Orion Reach — Python prototype 0.67.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
-MOO2-inspired space strategy game.
+MOO2-inspired space strategy game. Optional race-specific victories begin with
+the Wanderers' quest to recover every forgotten hyperlane.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.67: race-specific victories and known-empire progress
+
+**Race-specific victory** is a fourth independent toggle in new-game setup.
+Wanderers win by discovering every unique forgotten route in the galaxy with
+their own empire. Other races have no special goal yet. Turning this victory
+off keeps hyperlane research and travel available.
+
+The hidden, two-way network is fixed when a galaxy is created. Roughly **50%**
+of ordinary systems have at least one route, **25%** at least two, **12.5%** at
+least three, and so on. Systems can have no routes or several. Research each
+route for 300 RP, one at a time per system; each connection counts once even
+though it can be discovered from either end. Only Wanderers can discover or
+use these private links.
+
+Open **Objectives → Race-specific goals** for your goal and discovery count.
+Portraits, goals, counts, percentages and progress bars show how close empires
+you have met are to winning. Unmet empires and hidden destinations stay private.
+Wanderer AI empires also explore and pursue the goal.
+
+Save format **48** retains existing discoveries, unfinished projects and voyages.
+Older campaigns keep their chosen victories; the new victory is enabled through
+new-game setup. Balance profile **12** is unchanged. See
+[the full hyperlane and victory rules](docs/forgotten-hyperlanes.md).
+
+![Race-specific objectives](screenshots/v067_race_objectives.png)
 
 ## New in v0.66.1: mothership modules
 

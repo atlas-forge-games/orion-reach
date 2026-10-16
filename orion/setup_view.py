@@ -81,16 +81,17 @@ def draw_setup(app):
               (431, 682), 930, 13, MUTED, 18)
     text(surface, "VICTORY CONDITIONS", (430, 721), 11, GOLD, "mono", 1)
     text(surface, "All off = open-ended play", (1376, 721), 12, MUTED, right=True)
-    captions = ("Last surviving empire with colonies", "Research and activate an Ascension Gate", "Elect an emperor through colony votes")
+    captions = ("Last surviving empire", "Activate an Ascension Gate", "Win the galactic election", "Wanderers: discover every hyperlane")
     for i, condition in enumerate(CONDITIONS):
-        x = 430+i*320
+        x = 430+i*240
         enabled = condition in app.victory_conditions
         app.button("victory_"+condition, f"{CONDITION_NAMES[condition]}: {'ON' if enabled else 'OFF'}",
-                   (x, 745, 306, 43), lambda c=condition: app.toggle_victory_condition(c))
+                   (x, 745, 226, 43), lambda c=condition: app.toggle_victory_condition(c))
         if enabled:
-            pg.draw.line(surface, GOLD, (x, 788), (x+306, 788), 2)
-        text(surface, captions[i], (x+2, 798), 11, MUTED)
-    starting = ("Start: 2 scouts, 1 frigate, 2 troop transports · Range: 10.5 ly" if race.id == "varkesh" else
+            pg.draw.line(surface, GOLD, (x, 788), (x+226, 788), 2)
+        paragraph(surface, captions[i], (x+2, 797), 224, 11, MUTED, 15)
+    starting = ("Start: two scouts and a mothership · Convoy range: 25 ly" if race.id == "wanderers" else
+                "Start: 2 scouts, 1 frigate, 2 troop transports · Range: 10.5 ly" if race.id == "varkesh" else
                 "Start: two scouts and one colony ship · Base fuel range: 7 ly")
     footer = ("No victory limit. Losing all your colonies still ends your campaign." if not app.victory_conditions and not observer else
               "Watch. Advance turns. Save and return whenever you like." if observer else starting)

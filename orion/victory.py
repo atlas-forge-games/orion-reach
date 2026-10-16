@@ -7,8 +7,37 @@ from . import production as production_balance
 from .ground_combat import GroundRound, forces, resolve
 from .population import liberate
 
-CONDITIONS = ("conquest", "science", "council")
-CONDITION_NAMES = {"conquest": "Conquest", "science": "Science", "council": "Galactic Council"}
+LEGACY_CONDITIONS = ("conquest", "science", "council")
+CONDITIONS = (*LEGACY_CONDITIONS, "race")
+CONDITION_NAMES = {"conquest": "Conquest", "science": "Science", "council": "Galactic Council", "race": "Race-specific"}
+
+
+@dataclass(frozen=True)
+class RaceGoal:
+    title: str
+    description: str
+    current: int
+    total: int
+
+    @property
+    def complete(self):
+        return self.total > 0 and self.current == self.total
+
+
+def race_goal(game, owner="player"):
+    """Extend here as further races receive goals; raw progress is UI-filtered."""
+    from . import hyperlanes, motherships
+    if motherships.is_wanderer(game, owner):
+        return RaceGoal("Recover every forgotten hyperlane",
+                        "Discover every unique route in the galaxy with your own empire. Each two-way connection counts once.",
+                        hyperlanes.discovery_count(game, owner), len(game.hidden_hyperlanes))
+    return None
+
+
+def known_race_goals(game):
+    """Contact is required even when querying progress outside the Objectives UI."""
+    from .first_contact import known_opponents
+    return [(owner, race_goal(game, owner)) for owner in known_opponents(game)]
 
 
 def parse_conditions(values):
@@ -252,6 +281,11 @@ def current_result(game):
     election = game.council.election
     if "council" in game.victory_conditions and election is not None and election.status == "accepted":
         return CampaignResult(election.winner, "council", game.turn)
+    if "race" in game.victory_conditions:
+        winners = [owner for owner in game.owners if colonies(game, owner)
+                   and (goal := race_goal(game, owner)) is not None and goal.complete]
+        if winners:
+            return CampaignResult(winners[0] if len(winners) == 1 else None, "race", game.turn)
     return None
 
 
@@ -279,7 +313,7 @@ def validate(game, data):
         return None
     if (not isinstance(data, dict) or set(data) != {"winner", "condition", "turn"}
             or data["winner"] not in (*game.owners, None)
-            or data["condition"] not in ("conquest", "science", "elimination", "council")
+            or data["condition"] not in (*CONDITIONS, "elimination")
             or not _integer(data["turn"], game.turn, game.turn)):
         raise ValueError("Invalid campaign result")
     result = CampaignResult(**data)

@@ -20,7 +20,7 @@ from orion.races import RACES, SETUP_RACES
 from orion.storage import Storage
 from orion.research import TECHNOLOGIES
 from orion.ui import text_image
-from orion.victory import current_result
+from orion.victory import current_result, LEGACY_CONDITIONS
 
 
 def observation(**kwargs):
@@ -221,7 +221,8 @@ class ObserverRulesTests(unittest.TestCase):
                 GameState.from_dict(data)
 
     def test_v039_saves_remain_normal_player_campaigns(self):
-        game = new_game(seed=2408, rival_race_id="kharuun", with_tombs=False, with_black_holes=False)
+        game = new_game(seed=2408, rival_race_id="kharuun", with_tombs=False, with_black_holes=False,
+                        victory_conditions=LEGACY_CONDITIONS)
         for owner in game.owners:
             game.research_state(owner).legacy_arsenal = True
             game.research_state(owner).legacy_fuel = True

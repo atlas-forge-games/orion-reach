@@ -138,10 +138,35 @@ def relocate_specialists(game):
         game.selected_planet = None
 
 
+def _exploration_step(game, owner, ship, sites, goals, reachable):
+    """Backtrack through inspected stars when a fresh system needs several hops."""
+    from collections import deque
+    from . import hyperlanes
+    from .production import distance_ly
+    radius = game.fuel_range(owner, ships=[ship])
+    first_steps = sorted(reachable, key=lambda s: (game.travel_turns(
+        game.systems[ship.system_id], s, owner, ships=[ship]), s.id))
+    pending = deque((s.id, s.id) for s in first_steps)
+    seen = {ship.system_id, *(s.id for s in first_steps)}
+    while pending:
+        sid, first = pending.popleft()
+        if sid in goals:
+            return game.systems[first]
+        connections = hyperlanes.connections(game, sid, owner)
+        for target in sites:
+            if target.id not in seen and (target.id in connections or
+                    distance_ly(game.systems[sid], target) <= radius+1e-9):
+                seen.add(target.id)
+                pending.append((target.id, first))
+    return None
+
+
 def ai_orders(game, owner):
-    """Disperse new habitats to nearby surveyed, peaceful anchorages."""
-    from . import monsters, black_holes
+    """Disperse habitats and pursue race goals using only inspected systems."""
+    from . import monsters, black_holes, hyperlanes
     from .navigation import hostile
+    quest = is_wanderer(game, owner) and "race" in game.victory_conditions
+    hyperlanes.survey_stationed(game, owner)
     fleet = homes(game, owner)
     occupied = {s.destination if s.has_course else s.system_id for s in fleet}
     for ship in fleet:
@@ -149,16 +174,38 @@ def ai_orders(game, owner):
             continue
         crowded = sum(s.system_id == ship.system_id and not s.has_course for s in fleet) > 1
         threatened = any(hostile(game, owner, s.owner) for s in game.foreign_fleet(ship.system_id, owner))
-        if not crowded and not threatened:
+        project = hyperlanes.project_at(game, ship.system_id, owner) if quest else None
+        busy = quest and ((project is not None and not project.complete)
+                          or bool(hyperlanes.candidates(game, ship.system_id, owner)))
+        searching = quest and not busy
+        if not crowded and not threatened and not searching:
             continue
-        candidates = [s for s in game.systems if s.id not in occupied and s.kind != black_holes.KIND
-                      and game.system_explored(s.id, owner) and game.can_reach(s.id, owner, ships=[ship])
+        surveyed = game.hyperlane_surveys.get(owner, [])
+        def unfinished(sid):
+            project = hyperlanes.project_at(game, sid, owner)
+            return project is not None and not project.complete
+        def hostile_colony(sid):
+            known = game.known_system(sid, owner)
+            return known is not None and any(hostile(game, owner, p.owner) for p in known.worlds if p.owner)
+        hostile_systems = {f.system_id for f in game.visible_ships(owner)
+                           if not f.in_transit and hostile(game, owner, f.owner)}
+        sites = [s for s in game.systems if s.id not in occupied and s.kind != black_holes.KIND
+                      and (quest or game.system_explored(s.id, owner))
                       and monsters.known_status(game, s.id, owner) != "alive"
-                      and not any(hostile(game, owner, p.owner) for p in game.known_system(s.id, owner).worlds if p.owner)
-                      and not any(hostile(game, owner, f.owner) for f in game.visible_ships(owner)
-                                  if not f.in_transit and f.system_id == s.id)]
+                      and not hostile_colony(s.id)
+                      and s.id not in hostile_systems]
+        reachable = [s for s in sites if game.can_reach(s.id, owner, ships=[ship])]
+        goals = {s.id for s in sites if not searching or s.id not in surveyed or unfinished(s.id)
+                 or hyperlanes.candidates(game, s.id, owner)}
+        candidates = [s for s in reachable if s.id in goals]
+        target = None
         if candidates:
-            target = min(candidates, key=lambda s: (game.travel_turns(game.systems[ship.system_id], s, owner, ships=[ship]), s.id))
+            target = min(candidates, key=lambda s: (0 if searching and unfinished(s.id) else
+                                                    1 if searching and s.id in surveyed else 2,
+                                                    game.travel_turns(game.systems[ship.system_id], s, owner, ships=[ship]), s.id))
+        elif searching:
+            target = _exploration_step(game, owner, ship, sites, goals, reachable)
+        if target is not None:
             game.send_ship(ship.id, target.id, owner=owner)
             occupied.add(target.id)
             game.rival_event(f"Relocating {ship.name} to {target.name}.", owner=owner)

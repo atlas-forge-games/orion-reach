@@ -194,7 +194,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=47):
+    def from_dict(cls, data, systems, *, version=48):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -734,6 +734,8 @@ class GameState:
     diplomatic_news_read: int = 0
     wanderer_migration_pending: bool = False
     hyperlane_projects: list[hyperlanes.HyperlaneProject] = field(default_factory=list)
+    hidden_hyperlanes: list[hyperlanes.HiddenHyperlane] = field(default_factory=list)
+    hyperlane_surveys: dict[str, list[int]] = field(default_factory=dict)
 
     @property
     def is_observer(self):
@@ -1803,6 +1805,7 @@ class GameState:
         from . import boarding
         boarding.advance(self)
         completed.extend(hyperlanes.finish_work(self))
+        hyperlanes.survey_stationed(self)
         administration.normalize(self)
         black_holes.resolve_arrivals(self, alerts)
         motherships.relocate_specialists(self)
@@ -1861,7 +1864,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=47):
+    def from_dict(cls, data, *, version=48):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1959,6 +1962,10 @@ class GameState:
                 raise ValueError("Invalid pending habitat migration")
             if version >= 33:
                 game.victory_conditions = victory_rules.parse_conditions(data["victory_conditions"])
+            else:
+                game.victory_conditions = victory_rules.LEGACY_CONDITIONS
+            if version < 48:
+                game.victory_conditions = tuple(c for c in game.victory_conditions if c != "race")
             game.resources = data["resources"] if version >= 27 else economy.STARTING_RESOURCES
             if not _integer(game.resources, 0, 1_000_000_000):
                 raise ValueError("Invalid resource stockpile")
@@ -2060,6 +2067,8 @@ class GameState:
                 elif motherships.migrate(game):
                     exploration_rules.refresh(game)
             motherships.relocate_specialists(game)
+            if version < 48:
+                hyperlanes.survey_stationed(game)
             if not black_holes.charted(game, game.systems[game.selected_system]):
                 game.selected_system, game.selected_planet = 0, None
             from .balance import tag_game
@@ -2167,6 +2176,7 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         black_holes.seed_sites(game)
     if with_tombs:
         tomb_rules.seed_worlds(game)
+    hyperlanes.seed_network(game)
     exploration_rules.refresh(game)
     from . import statistics as statistics_rules
     statistics_rules.record(game)

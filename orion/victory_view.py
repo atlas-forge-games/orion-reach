@@ -8,7 +8,9 @@ from .production import ASCENSION_GATE
 from . import production as production_balance
 from .research import TECHNOLOGIES
 from .council_view import council_summary
-from .victory import CONDITION_NAMES, colonies, gate_blocked, gate_site
+from .victory import CONDITION_NAMES, colonies, gate_blocked, gate_site, race_goal, known_race_goals
+from .race_art import draw_race_portrait
+from .races import RACES
 from .exploration import known_rival_colonies
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
@@ -35,6 +37,54 @@ def progress(surface, rect, fraction, color=CYAN):
     pg.draw.rect(surface, color, (*rect[:2], round(rect[2]*min(1, fraction)), rect[3]))
 
 
+def draw_race_objectives(app):
+    game, surface = app.game, app.canvas
+    enabled = "race" in game.victory_conditions
+    goal = race_goal(game)
+    panel(surface, (64, 286, 1312, 154))
+    draw_race_portrait(surface, game.race_id, (88, 310, 82, 104))
+    text(surface, RACES[game.race_id].name.upper(), (190, 307), 12, GOLD, "mono")
+    text(surface, goal.title if goal else "No race-specific goal defined yet", (190, 334), 26, INK, "title")
+    paragraph(surface, goal.description if goal else
+              "Race victories currently have a Wanderer goal. Other civilizations can pursue the enabled standard victories.",
+              (192, 377), 866, 14, MUTED, 22)
+    if goal:
+        text(surface, f"{goal.current} / {goal.total} routes", (1110, 309), 23, CYAN)
+        progress(surface, (1110, 349, 242, 5), goal.current/max(1, goal.total))
+        text(surface, "VICTORY ENABLED" if enabled else "DISABLED IN SETUP", (1110, 369), 10, GOLD, "mono")
+        from .motherships import homes
+        home = next(iter(homes(game, "player")), None)
+        app.button("objectives_hyperlanes", "Hyperlane research →", (1110, 397, 242, 31),
+                   lambda: app.open_hyperlane(home.system_id if home else game.selected_system))
+    else:
+        text(surface, "ON" if enabled else "OFF", (1352, 317), 18, CYAN if enabled else MUTED, right=True)
+    text(surface, "EMPIRES YOU HAVE MET", (64, 462), 12, GOLD, "mono", 1)
+    text(surface, "VICTORY PROGRESS" if enabled else "PROGRESS TRACKED · RACE VICTORY DISABLED", (1376, 462), 11, MUTED, right=True)
+    rows = known_race_goals(game)
+    for i, (owner, other) in enumerate(rows):
+        y = 494+i*60
+        race = RACES[game._empire(owner).race_id]
+        panel(surface, (64, y, 1312, 54))
+        draw_race_portrait(surface, race.id, (76, y+5, 44, 44))
+        text(surface, shorten(game.empire_name_for(owner), 260, 16), (136, y+7), 16, INK)
+        active = bool(colonies(game, owner))
+        text(surface, "Active empire" if active else "Eliminated", (137, y+33), 10, CYAN if active else MUTED)
+        text(surface, race.name, (415, y+18), 15, GOLD)
+        text(surface, other.title if other else "No race-specific goal defined yet", (590, y+17), 14, INK if other else MUTED)
+        if other:
+            text(surface, f"{other.current} / {other.total} routes", (1086, y+8), 15, CYAN)
+            text(surface, f"{100*other.current/max(1,other.total):.0f}%", (1352, y+8), 15, CYAN, right=True)
+            progress(surface, (1086, y+38, 266, 4), other.current/max(1,other.total))
+        else:
+            text(surface, "—", (1352, y+17), 15, MUTED, right=True)
+    if not rows:
+        paragraph(surface, "Meet other empires to see their race goals and progress here.", (88, 523), 1200, 22, MUTED, 30)
+    text(surface, "Progress is shared after contact. Hidden route locations and destinations stay private.", (66, 801), 12, MUTED)
+    app.button("objectives_pause", "Menu", (64, 834, 126, 45), app.pause)
+    app.button("objectives_save", "Save · F5", (204, 834, 172, 45), app.save_game)
+    app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
+
+
 def draw_objectives(app):
     surface, game = app.canvas, app.game
     state = game.technology
@@ -43,9 +93,19 @@ def draw_objectives(app):
     app.button("objectives_galaxy", "Galaxy map", (274, 124, 182, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     enabled = game.victory_conditions
-    text(surface, "Campaign victory conditions" if enabled else "An open-ended galaxy", (64, 190), 43, INK, "title")
+    racial = app.objectives_tab == "race"
+    text(surface, "Race-specific victory" if racial else "Campaign victory conditions" if enabled else "An open-ended galaxy", (64, 190), 43, INK, "title")
     text(surface, "Enabled: "+" · ".join(CONDITION_NAMES[c] for c in enabled) if enabled else
          "No victory limit. Losing all your colonies still ends your campaign.", (66, 251), 14, MUTED)
+    app.button("objectives_race", "Standard goals →" if racial else "Race-specific goals →", (1030, 192, 346, 45),
+               lambda: setattr(app, "objectives_tab", "overview" if racial else "race"), "primary" if racial else "normal")
+    goal = race_goal(game)
+    caption = ("Race victory disabled in setup" if "race" not in enabled else
+               f"Your progress: {goal.current} / {goal.total} hyperlanes" if goal else "View goals and progress of known empires")
+    text(surface, caption, (1376, 251), 12, CYAN if "race" in enabled else MUTED, right=True)
+    if racial:
+        draw_race_objectives(app)
+        return
 
     panel(surface, (64, 286, 410, 284))
     text(surface, "01 / CONQUEST", (88, 309), 11, GOLD, "mono", 2)
@@ -179,7 +239,7 @@ def draw_result(app):
     if game.is_observer:
         title = "A shared ascension" if draw and result.condition == "science" else "Campaign complete"
     text(surface, title, (92, 187), 66, color, "title")
-    subtitle = "Council victory" if result.condition == "council" else "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
+    subtitle = "Race-specific victory" if result.condition == "race" else "Council victory" if result.condition == "council" else "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
     text(surface, f"{subtitle.upper()}  /  YEAR {game.year}  /  TURN {result.turn}", (96, 280), 12, MUTED, "mono", 2)
     panel(surface, (92, 331, 1256, 225))
     if result.condition == "elimination":
@@ -193,11 +253,18 @@ def draw_result(app):
                    "The galaxy recognizes its new ruler.")
     elif result.condition == "science":
         message = f"{game.empire_name_for(result.winner)} completed the Ascension Gate and charged it for five clear-orbit turns. A new age begins."
+    elif result.condition == "race":
+        goal = race_goal(game, result.winner)
+        message = (f"{game.empire_name_for(result.winner)} discovered all {goal.total} forgotten hyperlanes. "
+                   "The Wanderers have restored their lost paths between the stars.")
     else:
         message = f"{game.empire_name_for(result.winner)} is the last empire with colonies. The campaign is complete."
     paragraph(surface, message, (122, 370), 870, 24, INK, 38)
     if result.condition == "science":
         gate_icon(surface, (1200, 441), 65, color)
+    elif result.condition == "race":
+        from .hyperlane_art import draw_portal
+        draw_portal(surface, (1200, 441), 80, True)
     else:
         for radius in (74, 49, 24):
             pg.draw.circle(surface, color, (1200, 441), radius, 2)

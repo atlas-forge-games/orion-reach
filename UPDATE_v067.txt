@@ -1,0 +1,35 @@
+Orion Reach v0.67.0 — extract over v0.66.1, then restart the game.
+
+Race-specific victory:
+- A fourth independent new-game toggle enables race-specific victories.
+- Wanderers win by discovering every unique forgotten hyperlane themselves.
+  Other races display "No race-specific goal defined yet".
+- Objectives → Race-specific goals shows your count and progress, plus portraits,
+  goals, counts, percentages and progress bars for empires you have met.
+  Unknown empires and hidden route locations are not disclosed.
+- Turning the condition off preserves research, travel and progress tracking.
+- Rivals can also win. Simultaneous final discoveries share the win.
+
+Forgotten hyperlanes:
+- All hidden connections are fixed when the galaxy is created.
+- Approximately 50% of ordinary systems have at least one route, 25% at least
+  two, 12.5% at least three, and so on. Black holes are excluded.
+- A system can have zero or several routes. Research costs 300 RP for each,
+  with one unfinished project per empire per system. Research another route
+  appears after a completed discovery if more connections remain.
+- Each two-way connection counts once, regardless of which end discovers it.
+- Only Wanderers can discover and use routes. Every empire researches its own
+  private access; another empire's discoveries do not count as yours.
+- AI Wanderers research local routes, then explore reachable unvisited systems
+  when pursuing this victory. Remote hidden endpoints are not used to guide them.
+
+Compatibility:
+- Save format 48 preserves existing routes, projects and hyperlane voyages.
+- Older saves receive a stable hidden network containing their existing routes,
+  while retaining their original victory settings. Start a new campaign to
+  enable the new victory. Loading does not rewrite the original save file.
+- Balance profile 12 is unchanged.
+
+Rules: docs/forgotten-hyperlanes.md.
+Preview screens: python tools/preview_race_victory.py.
+Nothing staged or committed.

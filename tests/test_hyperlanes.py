@@ -233,7 +233,7 @@ class HyperlaneMovementTests(unittest.TestCase):
         game.send_ship(scout.id, project.destination)
         game.cancel_departures([scout.id])
         self.assertFalse(scout.hyperlane)
-        ordinary = next(s for s in game.systems if s.id not in (0, project.destination))
+        ordinary = game.systems[next(sid for sid in lanes.candidates(game, 0, 'player') if sid != project.destination)]
         ordinary.x, ordinary.y = game.systems[0].x+6/140, game.systems[0].y
         game.send_ship(scout.id, ordinary.id)
         duration = scout.travel_total
@@ -284,7 +284,7 @@ class HyperlaneMovementTests(unittest.TestCase):
 
 class HyperlaneSaveTests(unittest.TestCase):
     def test_version_45_migrates_without_rewriting_source_and_current_round_trips(self):
-        game = campaign()
+        game = campaign(victory_conditions=('conquest', 'science', 'council'))
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(Path(folder))
             path = storage.save(game)
@@ -301,8 +301,8 @@ class HyperlaneSaveTests(unittest.TestCase):
             recovered(restored)
             restored.send_ships([s.id for s in restored.ships], restored.hyperlane_projects[0].destination)
             loaded, meta = storage.load(storage.save(restored))
-            self.assertEqual((loaded, meta['version']), (restored, 47))
-            self.assertEqual(SAVE_VERSION, 47)
+            self.assertEqual((loaded, meta['version']), (restored, 48))
+            self.assertEqual(SAVE_VERSION, 48)
 
     def test_invalid_projects_and_forged_voyages_are_rejected(self):
         game = campaign()

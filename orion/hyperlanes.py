@@ -10,6 +10,82 @@ RESEARCH_COST = 300
 TRAVEL_TURNS = 1
 
 
+@dataclass(frozen=True)
+class HiddenHyperlane:
+    first: int
+    second: int
+
+    @property
+    def pair(self):
+        return self.first, self.second
+
+
+def generate_network(game):
+    """Sample geometric endpoint degrees, then join them into a simple graph.
+
+    P(desired degree >= n) = 0.5**n. Pairing may trim an impossible degree
+    sequence; isolated selected endpoints are repaired. No home is privileged.
+    A separate RNG leaves planets, guardians and ordinary campaign rolls alone.
+    """
+    rng = random.Random(f"{game.seed}:forgotten-network:v1")
+    stars = [s.id for s in game.systems if s.kind != black_holes.KIND]
+    degrees = {}
+    for sid in stars:
+        degree = 0
+        while degree < len(stars)-1 and rng.random() < .5:
+            degree += 1
+        if degree:
+            degrees[sid] = degree
+    if len(stars) >= 2 and len(degrees) < 2:
+        # Avoid a vacuous or impossible exploration objective in tiny galaxies.
+        for sid in rng.sample([sid for sid in stars if sid not in degrees], 2-len(degrees)):
+            degrees[sid] = 1
+    nodes = list(degrees)
+    rng.shuffle(nodes)
+    rank = {sid: i for i, sid in enumerate(nodes)}
+    remaining = {sid: min(degree, len(nodes)-1) for sid, degree in degrees.items()}
+    if sum(remaining.values()) % 2:
+        largest = max(nodes, key=lambda sid: (remaining[sid], rank[sid]))
+        remaining[largest] += -1 if remaining[largest] > 1 else 1
+    pairs = set()
+    while remaining:
+        source = max(remaining, key=lambda sid: (remaining[sid], rank[sid]))
+        degree = remaining.pop(source)
+        targets = sorted(remaining, key=lambda sid: (-remaining[sid], rank[sid]))[:degree]
+        for destination in targets:
+            pairs.add(tuple(sorted((source, destination))))
+            remaining[destination] -= 1
+        remaining = {sid: degree for sid, degree in remaining.items() if degree > 0}
+    connected = {sid for pair in pairs for sid in pair}
+    for sid in nodes:
+        if sid not in connected:
+            destination = rng.choice([other for other in nodes if other != sid])
+            pairs.add(tuple(sorted((sid, destination))))
+            connected.update((sid, destination))
+    return [HiddenHyperlane(*pair) for pair in sorted(pairs)]
+
+
+def seed_network(game):
+    game.hidden_hyperlanes = generate_network(game)
+    survey_stationed(game)
+
+
+def survey_stationed(game, owner=None):
+    """Remember inspected systems without revealing their undiscovered endpoints."""
+    for empire in game.owners if owner is None else (owner,):
+        if not motherships.is_wanderer(game, empire):
+            continue
+        known = set(game.hyperlane_surveys.get(empire, []))
+        known.update(s.system_id for s in motherships.homes(game, empire)
+                     if not s.has_course and work_error(game, s.system_id, empire) is None)
+        game.hyperlane_surveys[empire] = sorted(known)
+
+
+def discovery_count(game, owner="player"):
+    return len({tuple(sorted((p.system_id, p.destination))) for p in game.hyperlane_projects
+                if p.owner == owner and p.complete})
+
+
 @dataclass
 class HyperlaneProject:
     owner: str
@@ -29,7 +105,8 @@ class HyperlaneProject:
 
 
 def project_at(game, system_id, owner="player"):
-    return next((p for p in game.hyperlane_projects if p.owner == owner and p.system_id == system_id), None)
+    projects = [p for p in game.hyperlane_projects if p.owner == owner and p.system_id == system_id]
+    return next((p for p in projects if not p.complete), projects[-1] if projects else None)
 
 
 def connections(game, system_id, owner="player"):
@@ -72,7 +149,8 @@ def candidates(game, system_id, owner):
     linked = {p.destination if p.system_id == system_id else p.system_id
               for p in game.hyperlane_projects if p.owner == owner
               and system_id in (p.system_id, p.destination)}
-    return [s.id for s in game.systems if s.id != system_id and s.id not in linked and s.kind != black_holes.KIND]
+    return sorted(p.second if p.first == system_id else p.first for p in game.hidden_hyperlanes
+                  if system_id in p.pair and (p.second if p.first == system_id else p.first) not in linked)
 
 
 def start_error(game, system_id, owner="player"):
@@ -80,12 +158,13 @@ def start_error(game, system_id, owner="player"):
         return reason
     if type(system_id) is not int or not 0 <= system_id < len(game.systems):
         return "Choose a star system."
-    if project_at(game, system_id, owner):
-        return "Your empire can research one forgotten hyperlane per system."
+    project = project_at(game, system_id, owner)
+    if project is not None and not project.complete:
+        return "Research one forgotten hyperlane at a time in this system."
     if reason := work_error(game, system_id, owner):
         return reason
     if not candidates(game, system_id, owner):
-        return "All possible connections from this system are already charted."
+        return "No undiscovered, unreserved forgotten hyperlanes remain in this system."
     return None
 
 
@@ -93,7 +172,8 @@ def start(game, system_id, owner="player"):
     from .model import RuleError
     if reason := start_error(game, system_id, owner):
         raise RuleError(reason)
-    rng = random.Random(f"{game.seed}:forgotten-hyperlane:{owner}:{system_id}")
+    survey_stationed(game, owner)
+    rng = random.Random(f"{game.seed}:forgotten-hyperlane:{owner}:{system_id}:{len(game.hyperlane_projects)}")
     destination = rng.choice(candidates(game, system_id, owner))
     project = HyperlaneProject(owner, system_id, destination, started_turn=game.turn)
     game.hyperlane_projects.append(project)
@@ -176,12 +256,16 @@ def invest(game, system_id, owner="player"):
         raise RuleError("No banked research points are available.")
     empire.research -= amount
     project.progress += amount
-    return complete(game, project) if project.complete else f"Invested {amount} RP in forgotten hyperlane research."
+    message = complete(game, project) if project.complete else f"Invested {amount} RP in forgotten hyperlane research."
+    if project.complete:
+        game.check_victory(convene=False)
+    return message
 
 
 def ai_orders(game, owner):
     if not motherships.is_wanderer(game, owner):
         return
+    survey_stationed(game, owner)
     for sid in sorted({s.system_id for s in motherships.homes(game, owner) if not s.has_course}):
         if start_error(game, sid, owner) is None and local_research(game, sid, owner) > 0:
             start(game, sid, owner)
@@ -190,8 +274,38 @@ def ai_orders(game, owner):
 
 def load(game, data, version):
     from .model import _integer
+    if version >= 48:
+        network = data["hidden_hyperlanes"]
+        if not isinstance(network, list) or len(network) > len(game.systems)*(len(game.systems)-1)//2:
+            raise ValueError("Invalid hidden hyperlane network")
+        pairs = set()
+        for row in network:
+            if not isinstance(row, dict) or set(row) != {"first", "second"}:
+                raise ValueError("Invalid hidden hyperlane")
+            a, b = row["first"], row["second"]
+            if (not _integer(a, 0, len(game.systems)-1) or not _integer(b, 0, len(game.systems)-1)
+                    or a >= b or (a, b) in pairs
+                    or any(game.systems[sid].kind == black_holes.KIND for sid in (a, b))):
+                raise ValueError("Invalid hidden hyperlane endpoints")
+            pairs.add((a, b))
+            game.hidden_hyperlanes.append(HiddenHyperlane(a, b))
+        if len([s for s in game.systems if s.kind != black_holes.KIND]) >= 2 and not pairs:
+            raise ValueError("Empty hidden hyperlane network")
+        surveys = data["hyperlane_surveys"]
+        if not isinstance(surveys, dict):
+            raise ValueError("Invalid hyperlane surveys")
+        for owner, systems in surveys.items():
+            if (not motherships.is_wanderer(game, owner) or not isinstance(systems, list)
+                    or any(not _integer(sid, 0, len(game.systems)-1)
+                           or game.systems[sid].kind == black_holes.KIND for sid in systems)
+                    or len(set(systems)) != len(systems)):
+                raise ValueError("Invalid hyperlane survey")
+            game.hyperlane_surveys[owner] = systems.copy()
+    else:
+        game.hidden_hyperlanes = generate_network(game)
     rows = data["hyperlane_projects"] if version >= 46 else []
-    if not isinstance(rows, list) or len(rows) > len(game.systems)*len(game.owners):
+    limit = len(game.systems)*(len(game.systems)-1)//2*len(game.owners)
+    if not isinstance(rows, list) or len(rows) > limit:
         raise ValueError("Invalid hyperlane research")
     sources, pairs = set(), set()
     for row in rows:
@@ -210,11 +324,23 @@ def load(game, data, version):
             raise ValueError("Invalid hyperlane research progress")
         source = (p.owner, p.system_id)
         pair = (p.owner, *sorted((p.system_id, p.destination)))
-        if source in sources or pair in pairs:
+        if (not p.complete and source in sources) or pair in pairs:
             raise ValueError("Duplicate hyperlane research")
-        sources.add(source)
+        if not p.complete:
+            sources.add(source)
         pairs.add(pair)
+        lane = HiddenHyperlane(*pair[1:])
+        if lane not in game.hidden_hyperlanes:
+            if version >= 48:
+                raise ValueError("Project is not part of the hidden network")
+            game.hidden_hyperlanes.append(lane)
+        if version < 48:
+            visited = game.hyperlane_surveys.setdefault(p.owner, [])
+            if p.system_id not in visited:
+                visited.append(p.system_id)
         game.hyperlane_projects.append(p)
+    if version < 48:
+        game.hidden_hyperlanes.sort(key=lambda lane: lane.pair)
     for ship in game.ships:
         if ship.hyperlane and not connects(game, ship.system_id, ship.destination, ship.owner):
             raise ValueError("Ship using an undiscovered hyperlane")
