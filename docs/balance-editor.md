@@ -243,3 +243,10 @@ Population tribute remains fixed at one citizen, using existing slave capacity.
 Balance profile 10 upgrades previous profiles without overwriting their existing
 settings. See [coalition and tribute rules](coalitions-and-tribute.md) for formulas,
 intelligence limits, defensive commitments and persistent Lithar betrayal memory.
+
+## Mothership defenses (profile 12)
+
+Loading a profile from version 11 upgrades the previous zero-damage mothership
+default to 5. Custom nonzero armament values and other balance settings are
+preserved. The 12-point built-in shield generator, three-turn emergency repairs,
+25% boarding defense bonus and ten-turn raid cooldown are fixed rules.

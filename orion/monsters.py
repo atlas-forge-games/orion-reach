@@ -221,13 +221,13 @@ def intercept(game):
     if game.combat or game.result:
         return False
     for guardian in game.guardians:
-        if (guardian.alive and game.fleet_at(guardian.system_id, "player") and
+        if (guardian.alive and combat.combat_fleet(game, guardian.system_id, "player") and
                 (not black_holes.at(game, guardian.system_id) or black_holes.can_explore(game))):
             combat.begin_guardian_combat(game, guardian.system_id, "player")
             return True
     for guardian in game.guardians:
         for owner in game.opponents:
-            if not guardian.alive or not game.fleet_at(guardian.system_id, owner):
+            if not guardian.alive or not combat.combat_fleet(game, guardian.system_id, owner):
                 continue
             if black_holes.at(game, guardian.system_id) and not black_holes.can_explore(game, owner):
                 continue
@@ -245,7 +245,7 @@ def ai_orders(game, owner="rival"):
                                          and not game.diplomacy_between(owner, other).coalition_target
                                          for other in game.owners if other != owner):
         return set()
-    ships = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and not s.has_course]
+    ships = [s for s in game.ships_owned_by(owner) if not s.habitat and game.military_strength(s) > 0 and not s.has_course]
     colonies = game.colony_systems(owner)
     if not ships or not colonies:
         return set()

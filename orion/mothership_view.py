@@ -21,7 +21,8 @@ def draw_overview(app, ship):
     text(surface, "WANDERER MOTHERSHIP", (38, 69), 11, GOLD, "mono")
     draw(surface, (148, 147), 1.45, color)
     text(surface, f"{home.population} / 50 B inhabitants", (38, 204), 17, INK)
-    text(surface, f"{ship.hull} / {ship.max_hull} hull", (38, 232), 13, CYAN)
+    text(surface, f"{ship.hull}/{ship.max_hull} hull · {0 if ship.disabled_turns else motherships.BASIC_SHIELDS} shields", (38, 232), 13, CYAN)
+    text(surface, "Defensive systems offline" if ship.disabled_turns else f"Defensive lasers · {game.ship_attack(ship)} damage", (38, 252), 11, MUTED)
     text(surface, "MOBILE HOME · ¼ FLEET SPEED", (38, 272), 10, MUTED, "mono")
     workforce_panel(app, game, home, True)
     construction_panel(app, game, system, home, True)
@@ -36,6 +37,8 @@ def draw_overview(app, ship):
     status = (f"Departure queued · {ship.turns_remaining} turns" if ship.departure_pending else
               f"In transit · Arrival in {ship.turns_remaining} turns" if ship.in_transit else
               "Self-sufficient habitat · Protect it with an escort")
+    if ship.disabled_turns:
+        status = f"DISABLED · Emergency repairs: {ship.disabled_turns} turns · Vulnerable to boarding"
     text(surface, status, (44, 369), 14, CYAN)
     if home.ascension_gate:
         from .production import GATE_CHARGE_TURNS
@@ -63,9 +66,23 @@ def draw_overview(app, ship):
     text(surface, "Ship construction and gate charging pause during flight.", (780, 725), 12, MUTED)
     strain = game.strain_report(home)
     text(surface, f"Administration: {strain.total:.1f}% strain · {strain.systems} home systems", (780, 752), 12, MUTED)
-    app.button("mothership_facilities", "Manage facilities", (780, 785, 284, 37), lambda: app.go("colony"), enabled=own or game.is_observer)
-    app.button("mothership_course", "In transit" if ship.in_transit else "Set course", (1077, 785, 314, 37),
-               lambda: app.plot_course(ship.id), enabled=own and not ship.in_transit)
+    if own or game.is_observer:
+        app.button("mothership_facilities", "Manage facilities", (780, 785, 284, 37), lambda: app.go("colony"))
+        app.button("mothership_course", "Repairing" if ship.disabled_turns else "In transit" if ship.in_transit else "Set course", (1077, 785, 314, 37),
+                   lambda: app.plot_course(ship.id), enabled=own and not ship.in_transit and not ship.disabled_turns)
+    elif not ship.disabled_turns:
+        app.button("mothership_engage", "Engage space defenses", (780, 785, 611, 37),
+                   lambda: app.engage_request(ship.system_id, target=ship.owner),
+                   enabled=not ship.in_transit and game.engagement_error(ship.system_id, target=ship.owner) is None)
+    else:
+        from . import boarding
+        for index, (mode, title) in enumerate((("capture", "Board and capture"), ("raid", "Raid stores"), ("destroy", "Destroy for salvage"))):
+            app.button("mothership_"+mode, title, (780+index*206, 785, 199, 37),
+                       lambda mode=mode: app.mothership_action_request(ship.id, mode),
+                       enabled=boarding.error(game, ship.id, mode) is None)
+        problem = boarding.error(game, ship.id, "capture") or boarding.error(game, ship.id, "raid")
+        if problem:
+            text(surface, shorten(problem, 610, 11), (780, 769), 11, GOLD)
     text(surface, "E: End turn · R: Research · I: Empire · F5: Save", (24, 866), 12, MUTED)
     app.button("planet_return", "System view" if app.planet_return == "system" else "Galaxy map",
                (1210, 851, 206, 42), app.close_planet, "primary")

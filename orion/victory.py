@@ -47,6 +47,8 @@ class InvasionReport:
     slaves_taken: int = 0
     credits_stolen: int = 0
     colony_razed: bool = False
+    resources_stolen: int = 0
+    target_name: str = ""
 
 
 def colonies(game, owner):
@@ -68,12 +70,21 @@ def transport_losses(count, survivors):
 
 
 def invasion_strength(game, system_id, planet_id, owner="player"):
+    planet = game.planet_at(system_id, planet_id)
+    if planet.habitat:
+        from . import boarding, motherships
+        return (len(troop_transports(game, system_id, owner))*production_balance.TROOP_STRENGTH,
+                boarding.defending_forces(game, motherships.ship_for(game, planet)).strength)
     return (len(troop_transports(game, system_id, owner))*production_balance.TROOP_STRENGTH,
             forces(game.planet_at(system_id, planet_id), game.bonuses_for(game.planet_at(system_id, planet_id).owner)).strength)
 
 
 def invasion_error(game, system_id, planet_id, owner="player"):
     from .defenses import bases, effective_shield
+    planet = game.planet_at(system_id, planet_id)
+    if planet.habitat:
+        from . import boarding, motherships
+        return boarding.error(game, motherships.ship_for(game, planet).id, owner=owner)
     from .motherships import is_wanderer
     if is_wanderer(game, owner):
         return "The Wanderers cannot occupy planets; their homes are motherships."
@@ -107,6 +118,10 @@ def invade(game, system_id, planet_id, owner="player"):
     from . import administration
     from .model import RuleError
     from .raiding import is_varkesh, raid
+    planet = game.planet_at(system_id, planet_id)
+    if planet.habitat:
+        from . import boarding, motherships
+        return boarding.assault(game, motherships.ship_for(game, planet).id, owner=owner)
     if is_varkesh(game, owner):
         return raid(game, system_id, planet_id, owner)
     error = invasion_error(game, system_id, planet_id, owner)

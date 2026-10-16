@@ -189,7 +189,7 @@ class BuildingEconomyTests(unittest.TestCase):
             storage = Storage(folder)
             path = storage.save(game)
             original = path.read_bytes()
-            self.assertEqual(json.loads(original)["version"], 46)
+            self.assertEqual(json.loads(original)["version"], 47)
             self.assertEqual(storage.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
         with self.assertRaises(SaveError):

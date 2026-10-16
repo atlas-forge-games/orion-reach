@@ -854,6 +854,33 @@ class App:
                      f"Reserve 500 Resources when work begins on {planet.name}, then complete 300 work. Supply 10 energy while charging for five turns without opposing ships in orbit. "
                      "Capturing this colony destroys the gate.","Build gate",build)
 
+    def mothership_action_request(self, ship_id, mode):
+        from . import boarding
+        error = boarding.error(self.game, ship_id, mode)
+        if error:
+            self.toast(error, True)
+            return
+        ship = boarding.target(self.game, ship_id)
+        if mode == "destroy":
+            def destroy():
+                try:
+                    recovered = boarding.assault(self.game, ship_id, "destroy")
+                    self.game.selected_planet = None
+                    self.go("system")
+                    self.toast(f"Mothership destroyed. Recovered {recovered} resources.")
+                    self.save_game(autosave=True)
+                except RuleError as exc:
+                    self.toast(exc, True)
+            self.confirm("Destroy "+ship.name+"?",
+                         f"The habitat and its population will be lost. Recover {boarding.salvage(self.game, ship)} RES in salvage.",
+                         "Destroy mothership", destroy)
+            return
+        self.ground_target = (ship.system_id, ship.habitat.id)
+        self.ground_mode = mode
+        self.ground_return = "planet"
+        self.ground_page = 0
+        self.go("ground")
+
     def invade_request(self):
         system_id,planet_id=self.game.selected_system,self.game.selected_planet
         error=self.game.invasion_error(system_id,planet_id)
@@ -861,11 +888,13 @@ class App:
             self.toast(error,True)
             return
         self.ground_target=(system_id,planet_id)
+        self.ground_mode="capture"
         self.ground_return="planet"
         self.ground_page=0
         self.go("ground")
 
     def reset_ground_view(self):
+        self.ground_mode="capture"
         self.ground_target=None
         self.ground_reports=[]
         self.ground_return="galaxy"
@@ -875,7 +904,12 @@ class App:
         if self.ground_target is None or self.ground_reports:
             return
         try:
-            report=self.game.invade(*self.ground_target)
+            planet=self.game.planet_at(*self.ground_target)
+            if planet.habitat:
+                from . import boarding, motherships
+                report=boarding.assault(self.game, motherships.ship_for(self.game, planet).id, self.ground_mode)
+            else:
+                report=self.game.invade(*self.ground_target)
         except RuleError as exc:
             self.toast(exc,True)
             return

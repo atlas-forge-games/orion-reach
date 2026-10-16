@@ -7,6 +7,7 @@ CAPACITY = 50
 SPEED_FACTOR = .25
 # Standard 7 LY + Wanderer 3 LY + onboard reserves 15 LY = 25 LY.
 FUEL_RANGE_BONUS = 15
+BASIC_SHIELDS = 12
 STATIONARY_BUILDINGS = frozenset({"missile_base", "planetary_shield", "interdictor", "jump_gate", "fortifications"})
 
 
@@ -26,6 +27,11 @@ def visible_at(game, system_id):
 
 def ship_for(game, habitat):
     return next((s for s in game.ships if s.habitat is habitat), None)
+
+
+def shipyard_paused(game, habitat):
+    ship = ship_for(game, habitat)
+    return ship.in_transit or bool(ship.disabled_turns)
 
 
 def center(game, ship):
@@ -139,7 +145,7 @@ def ai_orders(game, owner):
     fleet = homes(game, owner)
     occupied = {s.destination if s.has_course else s.system_id for s in fleet}
     for ship in fleet:
-        if ship.has_course:
+        if ship.has_course or ship.disabled_turns:
             continue
         crowded = sum(s.system_id == ship.system_id and not s.has_course for s in fleet) > 1
         threatened = any(hostile(game, owner, s.owner) for s in game.foreign_fleet(ship.system_id, owner))

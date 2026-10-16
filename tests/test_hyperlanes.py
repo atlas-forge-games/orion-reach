@@ -283,7 +283,7 @@ class HyperlaneMovementTests(unittest.TestCase):
 
 
 class HyperlaneSaveTests(unittest.TestCase):
-    def test_version_45_migrates_without_rewriting_source_and_46_round_trips(self):
+    def test_version_45_migrates_without_rewriting_source_and_current_round_trips(self):
         game = campaign()
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(Path(folder))
@@ -301,8 +301,8 @@ class HyperlaneSaveTests(unittest.TestCase):
             recovered(restored)
             restored.send_ships([s.id for s in restored.ships], restored.hyperlane_projects[0].destination)
             loaded, meta = storage.load(storage.save(restored))
-            self.assertEqual((loaded, meta['version']), (restored, 46))
-            self.assertEqual(SAVE_VERSION, 46)
+            self.assertEqual((loaded, meta['version']), (restored, 47))
+            self.assertEqual(SAVE_VERSION, 47)
 
     def test_invalid_projects_and_forged_voyages_are_rejected(self):
         game = campaign()

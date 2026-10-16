@@ -113,8 +113,8 @@ def draw_battlefield(app):
         hull_y = cy+23 if planetary else cy+19
         pg.draw.rect(surface, LINE, (cx-18, hull_y, 36, 3))
         pg.draw.rect(surface, color, (cx-18, hull_y, round(36*hull/ship.max_hull), 3))
-        if ship.design and ship.design.shields:
-            pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.design.shields), 2))
+        if ship.max_shields:
+            pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.max_shields), 2))
         if not planetary:
             text(surface, "GUARD" if ship.owner == MONSTER else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
         if ship.graviton_slow:
@@ -174,8 +174,8 @@ def draw_combat(app):
             text(surface, f"{'BASE' if planet else 'HULL'}  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
             if planet:
                 text(surface, "Surface missile base · "+planet.biome, (x, 286), 10, MUTED)
-            if ship.design:
-                text(surface, f"SHIELDS {ship.shields}/{ship.design.shields} · PD {interception(battle, ship)}%", (x, 286), 10, MUTED, "mono")
+            if ship.design or ship.max_shields:
+                text(surface, f"SHIELDS {ship.shields}/{ship.max_shields} · PD {interception(battle, ship)}%", (x, 286), 10, MUTED, "mono")
             for left, title, available, value in ((x, "MOVEMENT", battle.can_move(ship), f"{ship.movement} cells"+(" · −1" if ship.graviton_slow else "")),
                                                    (1239, "LAUNCH / FIRE" if ship.drone_bays else "WEAPON", battle.can_fire(ship) or battle.can_launch(ship),
                                                     "Ready" if ship.damage or ship.drone_bays else "Unarmed")):
@@ -252,10 +252,14 @@ def draw_combat(app):
         title = ("Victory" if battle.status == "player_victory" else "Fleet withdrawn" if battle.status == "player_retreat"
                  else "Enemy withdrew" if battle.status.endswith("_retreat") else "Defeat")
         text(surface, title, (x, 221), 29, GOLD, "title")
-        lost = {side: sum(s.hull == 0 and s.kind not in ("combat_drone", "missile_base") for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
+        lost = {side: sum(s.hull == 0 and s.kind not in ("combat_drone", "missile_base", "mothership") for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
         text(surface, f"Your ships lost: {lost[PLAYER]}", (x, 288), 16, CYAN)
         text(surface, f"{'Guardians' if battle.guardian else 'Enemy ships'} lost: {lost[enemy]}", (x, 321), 16, RIVAL_COLOR)
         details_y = 350
+        disabled = sum(s.kind == "mothership" and s.hull == 0 for s in battle.ships)
+        if disabled:
+            text(surface, f"{disabled} motherships disabled · 3-turn repair window", (x, details_y), 11, GOLD)
+            details_y += 27
         if any(s.kind == "missile_base" for s in battle.ships):
             bases_lost = {side: sum(s.hull == 0 and s.kind == "missile_base" for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
             text(surface, f"Missile bases lost: {bases_lost[PLAYER]} yours · {bases_lost[enemy]} enemy", (x, details_y), 12, MUTED)
@@ -276,6 +280,8 @@ def draw_combat(app):
                            if battle.status == "player_victory" else "The legendary guardian still protects the relic. A retreat or defeat earns no reward.")
             if battle.status == "player_victory" and spec.research_reward:
                 caption = f"Ancient ruins recovered: +{spec.research_reward} RP added to your research. The rich world is now open for colonization."
+        if disabled:
+            caption = "Open a disabled mothership in the system view to board it with troop transports, raid its stores or destroy it for salvage."
         paragraph(surface, caption, (x, max(377, details_y)), 302, 15, MUTED, 26)
         app.button("combat_continue", "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
 

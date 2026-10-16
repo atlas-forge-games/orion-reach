@@ -33,8 +33,11 @@ def available_worlds(game, system, owner=RIVAL):
 
 
 def known_enemy_colonies(game, owner=RIVAL):
-    return [(known, p) for s in game.systems if (known := game.known_system(s.id, owner)) is not None
-            for p in known.worlds if p.owner is not None and p.owner != owner]
+    worlds = [(known, p) for s in game.systems if (known := game.known_system(s.id, owner)) is not None
+              for p in known.worlds if p.owner is not None and p.owner != owner]
+    worlds.extend((game.systems[s.system_id], s.habitat) for s in game.visible_ships(owner)
+                  if s.habitat and s.owner != owner and not s.in_transit)
+    return worlds
 
 
 def enemies(game, owner):
@@ -172,7 +175,7 @@ def research_choice(game, owner=RIVAL):
 def warship_choice(game, owner):
     """Build researched hulls when affordable, keeping carriers in a mixed fleet."""
     state = game.research_state(owner)
-    available = [kind for kind, spec in SHIP_TYPES.items() if (spec.damage or spec.drone_bays)
+    available = [kind for kind, spec in SHIP_TYPES.items() if kind != "mothership" and (spec.damage or spec.drone_bays)
                  and state.hull_unlocked(kind) and game.project_price(kind, owner) <= game.resources_for(owner)]
     if "carrier" in available:
         fleet = [s for s in game.ships_owned_by(owner) if game.military_strength(s)]
@@ -312,7 +315,7 @@ def announce_raid(game, owner, defender, system):
 
 def military_orders(game, reserved=(), owner=RIVAL):
     """Assemble escorted invasion groups when hostile; otherwise guard colonies."""
-    ships = sorted((s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0 and s.id not in reserved), key=lambda s: s.id)
+    ships = sorted((s for s in game.ships_owned_by(owner) if not s.habitat and game.military_strength(s) > 0 and s.id not in reserved), key=lambda s: s.id)
     colonies = game.colony_systems(owner)
     colonies.sort(key=lambda s: (s.id != game._empire(owner).home_system, s.id))
     if not colonies:
@@ -324,6 +327,12 @@ def military_orders(game, reserved=(), owner=RIVAL):
                 and any(p.outpost_owner in hostile for p in known.worlds)]
     worlds = [(s, p) for s, p in known_enemy_colonies(game, owner)
               if p.owner in hostile]
+    def target_forces(system, planet):
+        defending = forces(planet, game.bonuses_for(planet.owner) if game.system_visible(system.id, owner) else {})
+        if planet.habitat:
+            from .boarding import DECK_DEFENCE
+            defending = replace(defending, defence_bonus=defending.defence_bonus+DECK_DEFENCE)
+        return defending
     ordered = set()
     staging, _ = max(empire_colonies(game, owner), key=lambda row: (game.planet_yields(row[1])[0], row[1].population, -row[0].id, -row[1].id))
     for system in game.systems:
@@ -332,7 +341,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
         if not troops:
             continue
         candidates = [(s, p) for s, p in worlds if game.can_reach(s.id, owner, ships=troops+escorts)
-                      and resolve(len(troops)*production_balance.TROOP_STRENGTH, forces(p, game.bonuses_for(p.owner) if game.system_visible(s.id, owner) else {})).captured]
+                      and resolve(len(troops)*production_balance.TROOP_STRENGTH, target_forces(s, p)).captured]
         if game.foreign_fleet(system.id, owner):
             if raiding.is_varkesh(game, owner) and escorts:
                 for destination, planet in candidates:
@@ -431,8 +440,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     nature = personality(game, owner)
     from . import motherships
     nomadic = motherships.is_wanderer(game, owner)
+    motherships.ai_orders(game, owner)
     if nomadic:
-        motherships.ai_orders(game, owner)
         from .hyperlanes import ai_orders as hyperlane_orders
         hyperlane_orders(game, owner)
     coalitions.ai_orders(game, owner)
@@ -441,6 +450,10 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     ai_treaty_orders(game, owner)
     invasions = diplomatic_orders(game, owner)
     invasions.extend(outposts.ai_orders(game, owner, enemies(game, owner)))
+    from . import boarding
+    invasions.extend(boarding.ai_orders(game, owner, ground_reports))
+    if game.result is not None:
+        return invasions
     invasions.extend(invasion_orders(game, owner, ground_reports=ground_reports))
     if game.result is not None:
         return invasions
@@ -518,8 +531,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     unclaimed = sum(len(available_worlds(game, s, owner)) for s in game.systems)
     fleet_size = sum(s.kind == "colony_ship" for s in game.ships_owned_by(owner)) + sum(
         project.item_id == "colony_ship" for _, p in colonies for project in p.construction_queue)
-    warships = sum(game.military_strength(s) > 0 for s in game.ships_owned_by(owner)) + sum(
-        project.is_ship and (project.spec.damage or project.spec.drone_bays) > 0
+    warships = sum(not s.habitat and game.military_strength(s) > 0 for s in game.ships_owned_by(owner)) + sum(
+        project.is_ship and project.item_id != "mothership" and (project.spec.damage or project.spec.drone_bays) > 0
         for _, p in colonies for project in p.construction_queue)
     military_limit = min(6, max(1, len(colonies)//2)+nature.fleet_bonus)
     guarded = [g for g in game.guardians if monsters.known_status(game, g.system_id, owner) == "alive"

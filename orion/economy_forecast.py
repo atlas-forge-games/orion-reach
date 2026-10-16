@@ -19,7 +19,8 @@ def queue_estimates(game, planet, additional=None):
     if target is None:
         return []
     from .motherships import homes
-    waits = {s.habitat.id: s.turns_remaining for s in homes(game, planet.owner) if s.has_course}
+    waits = {s.habitat.id: max(s.turns_remaining, s.disabled_turns+1 if s.disabled_turns else 0)
+             for s in homes(game, planet.owner) if s.has_course or s.disabled_turns}
     base_bonuses = dict(game.bonuses_for(planet.owner))
     bank = game.resources_for(planet.owner)
     # A cache is runtime-only, excluded from dataclass serialization. It is
@@ -108,6 +109,9 @@ def megastructure_estimates(game, planet, additional):
             project = ConstructionProject(design.id if design else additional,
                                           resource_cost=game.project_price(additional, planet.owner), design=design)
         focus.construction_queue.append(project)
+    from .motherships import homes
+    waits = {s.habitat.id: max(s.turns_remaining, s.disabled_turns+1 if s.disabled_turns else 0)
+             for s in homes(game, planet.owner) if s.has_course or s.disabled_turns}
     count, estimates = len(focus.construction_queue), []
     for elapsed in range(1, 2001):
         if not focus.construction_queue:
@@ -118,7 +122,8 @@ def megastructure_estimates(game, planet, additional):
         worlds = [(s.id, p) for s, p in shadow.settlements(planet.owner)]
         starts = [population.report(p, plan.bonuses) for _, p in worlds]
         for (system_id, p), food in zip(worlds, starts):
-            complete = p.advance_construction(plan.bonuses, fund=lambda q: shadow.fund_project(q, planet.owner))
+            complete = p.advance_construction(plan.bonuses, fund=lambda q: shadow.fund_project(q, planet.owner),
+                                              allow_ships=elapsed >= waits.get(p.id, 0))
             if p is focus:
                 estimates.extend([elapsed]*len(complete))
             population.advance(p, food)

@@ -281,6 +281,7 @@ def construction_panel(app, game, system, planet, live):
                   "This civilization chooses its own construction and worker assignments." if game.is_observer and planet.colonized else
                   "An unsettled world. Watch which civilization reaches it first." if game.is_observer else
                   "Build a structure or launch a ship from this colony." if owned else
+                  "Defeat the space defenses, then use the actions below to board, raid or destroy this mobile home." if planet.habitat else
                   f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
                   "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
                   "A colony ship settles this world. An outpost ship builds a refuelling base on any biome.",
@@ -298,6 +299,8 @@ def construction_panel(app, game, system, planet, live):
                    enabled=game.buy_construction_error(system.id, planet.id) is None)
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
+    elif planet.habitat and planet.owner in game.opponents:
+        text(surface, "Mothership actions below", (1090, 266), 12, GOLD)
     elif planet.owner in game.opponents:
         app.button("bombard_planet", "Bombard defenses", (1090, 220, 310, 29), app.bombard_request,
                    enabled=game.bombardment_error(system.id, planet.id) is None)

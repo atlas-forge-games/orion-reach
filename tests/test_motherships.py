@@ -205,7 +205,7 @@ class HabitatRulesTests(unittest.TestCase):
         self.assertEqual(home.population,1)
         self.assertIsNone(tribute.donor_world(game,'player'))
 
-    def test_space_combat_destroys_habitat_and_finished_battle_can_be_saved(self):
+    def test_space_combat_disables_habitat_and_finished_battle_can_be_saved(self):
         game=campaign(with_ai=True,rival_race_id='terran')
         home=motherships.homes(game,'player')[0]
         attacker=Ship(game.next_ship_id,'frigate',0,owner='rival')
@@ -214,10 +214,14 @@ class HabitatRulesTests(unittest.TestCase):
         game.start_combat(0,owner='rival',target='player')
         victim=game.combat.ship(home.id);victim.hull=victim.shields=0
         combat.check_losses(game)
-        self.assertFalse(motherships.homes(game,'player'))
-        self.assertIsNone(game.selected_planet)
+        self.assertEqual(home.disabled_turns,3)
+        self.assertEqual(home.hull,1)
+        self.assertEqual(game.selected_planet,home.habitat.id)
         self.assertEqual(GameState.from_dict(game.to_dict()),game)
         game.finish_combat()
+        self.assertIsNone(game.result)
+        from orion import boarding
+        boarding.assault(game,home.id,'destroy',owner='rival')
         self.assertEqual(game.result.winner,'rival')
         self.assertEqual(GameState.from_dict(game.to_dict()),game)
 

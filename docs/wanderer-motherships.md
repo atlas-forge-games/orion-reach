@@ -11,7 +11,7 @@ an ordinary unclaimed planet. Two scouts accompany the starting mothership.
 | Strategic speed | 25% of normal ship speed, with the same researched speed modifiers |
 | Starting speed | 0.5 light-years per turn |
 | Initial convoy range | 25 LY with standard balance; 15 LY more than an ordinary Wanderer fleet |
-| Hull | 180, unarmed |
+| Hull and defenses | 180 hull, defensive lasers (5 damage with standard balance), 12 shield points |
 | New construction | 1200 Resources, 600 work before racial discounts |
 | New inhabitants | Normal starting-colonist amount, included in construction |
 | Workforce | Farming, industry, research and mining, managed independently per home |
@@ -19,7 +19,7 @@ an ordinary unclaimed planet. Two scouts accompany the starting mothership.
 
 ## Controls and movement
 
-The galaxy fleet badge uses a gold habitat-ring silhouette and ship count, with
+The galaxy fleet badge uses the dedicated city-ark illustration and ship count, with
 no population label. During travel, it also shows remaining turns. Select the
 fleet and use its Home button, or click the habitat in the solar-system overview
 or galaxy system sidebar. Empire and Fleets also open it. The home overview
@@ -28,7 +28,8 @@ queue and a Set course button. Movement remains editable until End Turn.
 
 A fleet containing a mothership travels at its speed. Selecting only ordinary
 ships allows them to leave at normal speed. Escorts retreating with a mothership
-also use the same slow speed. The current route and ETA survive saving.
+also use the same slow speed. A disabled home is left behind and does not slow
+escaping escorts. Both ordinary and hyperlane retreat orders survive saving.
 
 A selected mothership adds 15 LY of onboard fuel reserves to its entire convoy.
 Standard range is 7 LY + the Wanderers' 3 LY bonus + 15 LY = 25 LY. Fuel research
@@ -58,9 +59,9 @@ Ascension Gates can be built aboard, but charge only while anchored.
 
 Missile bases, planetary shields, fortifications, jump gates and interdictors
 cannot be built aboard. Motherships participate in space combat and can be
-repaired while anchored. Destroying one removes its population, facilities and
-queue. Surviving homes keep the empire alive. Losing the last home eliminates
-it. Each inhabited mothership supplies one council vote, matching the existing
+repaired while anchored. Space defeat disables a home instead of destroying it.
+Explicit destruction removes its population, facilities and queue. Surviving
+homes keep the empire alive. Losing the last home eliminates it. Each inhabited mothership supplies one council vote, matching the existing
 one-settlement/one-vote rule. Population tribute cannot empty a home.
 
 ## Existing campaigns and balance profiles
@@ -83,3 +84,59 @@ are fixed civilization rules in this first version.
 
 Version 0.64.1 keeps save format 45 and balance profile 11. Existing campaigns
 gain the system controls and extended convoy range without conversion.
+
+## Boarding, raiding and salvage (v0.66)
+
+A mothership reduced to zero hull in space combat remains at **1 hull** in the
+campaign, disabled for **three completed turns**. It cannot move, fight or launch
+ships. Its economy, facility construction, supply and scanners continue. It does
+not restart combat while disabled. When the timer expires, defenses and engines
+return with at least 10% hull; ordinary repairs can restore more.
+
+Defeat the defending fleet, hostile missile bases and any guardian before
+approaching. Open the detected home in the system view. Existing non-aggression,
+friendship and coalition protection rules apply. Boarding or destruction starts
+war. Only one boarding attempt per home is allowed each turn.
+
+| Action | Requirements | Result |
+| --- | --- | --- |
+| Board and capture | Troop transports; win the ground battle | Ownership of the ship and habitat transfers. Population, facilities and ordinary paid projects survive. Ascension Gate is removed. |
+| Raid stores | Troop transports; win the ground battle | Transfer capped credits/resources from the victim's actual stocks. Owner retains the habitat. Varkesh may also take captives. |
+| Destroy for salvage | An operational armed ship in the system | Remove the habitat and recover modest Resources. No troops required. |
+
+Habitat decks add **25% defending firepower** to existing militia and garrison
+bonuses. The preview uses the same simultaneous ground battle calculation as
+resolution. Transport losses follow troop casualties, rounded up to whole loads.
+Full surviving squads re-embark. Capture assigns leftover troops as the new
+garrison; a successful raid returns them to a friendly settlement.
+
+A raid can take at most **10 CR per inhabitant + 20 CR per installed facility**
+and **3 RES per inhabitant + 10 RES per installed facility**. Actual loot is also
+capped by the defender's available stocks and the attacker's stockpile capacity.
+There is no separate cargo inventory and no technology loot. A successful raid
+starts a **ten-turn cooldown** stored on that home, including after capture or
+another space battle. Failed raids take no loot and still lose their casualties.
+
+Varkesh captives are limited to one quarter of the population (rounded down),
+available homeworld slave capacity, and leaving at least one inhabitant aboard.
+A missing or full homeworld yields no captives. Ordinary empires take no slaves.
+
+Salvage is **10% of the mothership's base Resource cost plus its installed
+facilities' base Resource costs**, rounded down and capped by stockpile capacity.
+It does not grant the victim's remaining treasury, research or technology.
+
+Every civilization can operate captured homes with its own economic modifiers.
+Only Wanderers can construct new homes. On a foreign capture, queued mothership
+projects are cancelled with the normal refund for unfinished paid work. Private
+battle dispatches preserve the home's name even after it is destroyed. AI
+empires use the same requirements, favor a viable capture (or a Varkesh raid),
+and can destroy a disabled enemy home when boarding is not viable.
+
+Save format **47** persists emergency repairs, captured ownership and raid
+cooldowns. Balance profile **12** upgrades the former zero-damage mothership
+default to its basic armament, preserving custom nonzero values. Existing active
+battles keep their shield damage; the generator begins charged in the next
+engagement. Captured ships do not inherit the former owner's forgotten hyperlanes.
+
+The dedicated PNG is cached and scaled in memory for galaxy, fleet, system,
+habitat and tactical views. It uses no new animation or per-frame file loading.

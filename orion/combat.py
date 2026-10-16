@@ -88,6 +88,10 @@ class CombatShip:
         return self.design.hull if self.design else COMBAT_TYPES[self.kind].hull
 
     @property
+    def max_shields(self):
+        return shield_capacity(self)
+
+    @property
     def damage(self):
         return self.design.damage if self.design else BEAMS[self.weapon].damage
 
@@ -283,6 +287,8 @@ class CombatState:
                     not _integer(row["initial_hull"], 1, design.hull if design else COMBAT_TYPES[row["kind"]].hull) or
                     not _integer(row["hull"], 0, row["initial_hull"])):
                 raise ValueError("Invalid combat ship health")
+            if version < 47 and row["kind"] == "mothership" and row.get("weapon") == "none":
+                row = {**row, "weapon": weapon_for(game, "mothership", row["owner"])}
             if version < 13:
                 row = {**row, "weapon": weapon_for(game, row["kind"], row["owner"])}
             elif (not isinstance(row["weapon"], str) or row["weapon"] not in BEAMS
@@ -290,7 +296,7 @@ class CombatState:
                                        else weapon_for(game, row["kind"], row["owner"]))):
                 raise ValueError("Invalid combat weapon")
             shields = row["shields"] if version >= 18 else 0
-            if not _integer(shields, 0, design.shields if design else 0) or (row["hull"] == 0 and shields):
+            if not _integer(shields, 0, design.shields if design else shield_capacity_kind(row["kind"])) or (row["hull"] == 0 and shields):
                 raise ValueError("Invalid shields")
             row = {**row, "design": design, "shields": shields}
             if version < 31:
@@ -392,7 +398,10 @@ class CombatState:
                 continue
             original = campaign.get(ship.id)
             if state.status != "active" and ship.hull == 0:
-                if original is not None:
+                if original is not None and not (
+                        version >= 47 and ship.kind == "mothership" and original.habitat
+                        and original.owner == ship.owner and original.system_id == state.system_id
+                        and original.disabled_turns and original.hull == 1):
                     raise ValueError("Destroyed ship survived in the campaign")
                 continue
             if (original is None or original.owner != ship.owner or original.kind != ship.kind
@@ -403,14 +412,17 @@ class CombatState:
             if ship.owner == retreating:
                 # Ship validation already checked its saved speed and complete voyage length.
                 expected = original.travel_total
+                convoy = any(s.kind == "mothership" and s.hull > 0 and s.owner == retreating for s in ships)
+                speeds = ((0,) if original.hyperlane else
+                          (game.bonuses_for(ship.owner).get("ship_speed", 0),
+                           game.ship_speed_bonus(ship.owner, slow=convoy)))
                 if (original.departure_pending or original.destination != state.retreat_destination or original.turns_remaining != expected
                         or original.travel_total != expected
-                        or original.speed_bonus not in (game.bonuses_for(ship.owner).get("ship_speed", 0),
-                                                        game.ship_speed_bonus(ship.owner))):
+                        or original.speed_bonus not in speeds):
                     raise ValueError("Invalid retreat voyage")
             elif original.in_transit or original.departure_pending:
                 raise ValueError("Travelling ship in battle")
-        orbiting = {s.id for s in game.ships if s.owner in sides and not s.in_transit and s.system_id == state.system_id}
+        orbiting = {s.id for s in game.ships if s.owner in sides and not s.in_transit and not s.disabled_turns and s.system_id == state.system_id}
         expected_orbit = {s.id for s in ships if (state.status == "active" or s.hull > 0)
                           and s.owner != retreating and s.owner != MONSTER and s.kind not in ("missile_base", "combat_drone")}
         if orbiting != expected_orbit:
@@ -465,8 +477,21 @@ def reachable(state, ship):
     return paths
 
 
+def combat_fleet(game, system_id, owner="player"):
+    return [s for s in game.fleet_at(system_id, owner) if not s.disabled_turns]
+
+
+def shield_capacity_kind(kind):
+    from .motherships import BASIC_SHIELDS
+    return BASIC_SHIELDS if kind == "mothership" else 0
+
+
+def shield_capacity(ship):
+    return ship.design.shields if ship.design else shield_capacity_kind(ship.kind)
+
+
 def engagement_target(game, system_id, owner="player", target=None):
-    candidates = game.opponents_at(system_id, owner)
+    candidates = [o for o in game.opponents_at(system_id, owner) if combat_fleet(game, system_id, o) or defenses.bases(game, system_id, o)]
     return target if target is not None else (candidates[0] if candidates else None)
 
 
@@ -475,7 +500,7 @@ def engagement_error(game, system_id, owner="player", target=None):
         return game.strategy_error(owner)
     if type(system_id) is not int or not 0 <= system_id < len(game.systems):
         return "Unknown solar system."
-    if alive_at(game, system_id) and owner in OWNERS and game.fleet_at(system_id, owner):
+    if alive_at(game, system_id) and owner in OWNERS and combat_fleet(game, system_id, owner):
         return None
     if owner not in game.owners or not game.opponents:
         return "No opposing empire is available."
@@ -485,7 +510,7 @@ def engagement_error(game, system_id, owner="player", target=None):
     from .diplomacy import aggression_error
     if aggression_error(game, owner, target):
         return aggression_error(game, owner, target)
-    own, enemy = game.fleet_at(system_id, owner), game.fleet_at(system_id, target)
+    own, enemy = combat_fleet(game, system_id, owner), combat_fleet(game, system_id, target)
     own_bases, enemy_bases = defenses.bases(game, system_id, owner), defenses.bases(game, system_id, target)
     if not (own or own_bases) or not (enemy or enemy_bases):
         return "Both empires need ships in orbit in this system."
@@ -497,7 +522,7 @@ def engagement_error(game, system_id, owner="player", target=None):
 def battle_ship(game, ship):
     return CombatShip(ship.id, ship.kind, ship.owner, ship.hull, ship.hull,
                       weapon=ship.design.weapon if ship.design else weapon_for(game, ship.kind, ship.owner),
-                      design=ship.design, shields=ship.design.shields if ship.design else 0,
+                      design=ship.design, shields=shield_capacity(ship),
                       repair_remaining=ship.design.repair_capacity if ship.design else 0)
 
 
@@ -513,7 +538,7 @@ def begin_combat(game, system_id, owner="player", target=None):
     if alive_at(game, system_id):
         return begin_guardian_combat(game, system_id, owner)
     target = engagement_target(game, system_id, owner, target)
-    fleet = sorted(game.fleet_at(system_id, owner)+game.fleet_at(system_id, target), key=lambda s: s.id)
+    fleet = sorted(combat_fleet(game, system_id, owner)+combat_fleet(game, system_id, target), key=lambda s: s.id)
     # An engagement happens before departure. Orders cannot survive the battle unnoticed.
     for ship in fleet:
         if ship.departure_pending:
@@ -541,7 +566,7 @@ def begin_guardian_combat(game, system_id, owner="player"):
     require(not black_holes.at(game, system_id) or black_holes.can_explore(game, owner),
             "Event Horizon Navigation is required to approach this guardian.")
     guardian = alive_at(game, system_id)
-    fleet = game.fleet_at(system_id, owner) if owner in game.owners else []
+    fleet = combat_fleet(game, system_id, owner) if owner in game.owners else []
     require(guardian is not None and bool(fleet), "A guardian and an arriving fleet are required.")
     for ship in fleet:
         if ship.departure_pending:
@@ -588,7 +613,7 @@ def resolve(game, status, destination=None):
     state.status, state.active_owner, state.retreat_destination = status, None, destination
     rows = {s.id: s for s in state.ships}
     retreating = status.rsplit("_", 1)[0] if status.endswith("_retreat") else None
-    game.ships[:] = [s for s in game.ships if s.id not in rows or rows[s.id].hull > 0]
+    game.ships[:] = [s for s in game.ships if s.id not in rows or rows[s.id].hull > 0 or s.habitat]
     if game.selected_planet is not None and game.selected_planet < 0 and not any(s.habitat and s.habitat.id == game.selected_planet for s in game.ships):
         game.selected_planet = None
     from .specialists import normalize
@@ -597,9 +622,14 @@ def resolve(game, status, destination=None):
     coalitions.normalize(game)
     tribute.normalize(game)
     administration.normalize(game)
-    slow_retreat = any(s.habitat and s.owner == retreating and s.id in rows for s in game.ships)
+    slow_retreat = any(s.habitat and s.owner == retreating and s.id in rows and rows[s.id].hull > 0 for s in game.ships)
     for ship in game.ships:
         if ship.id not in rows:
+            continue
+        if ship.habitat and rows[ship.id].hull == 0:
+            from .boarding import disable
+            disable(game, ship)
+            state.record(f"{ship.name} disabled. Board, raid or destroy it before emergency repairs finish.")
             continue
         ship.hull = rows[ship.id].hull
         if ship.owner == retreating:
@@ -841,7 +871,7 @@ def fire(game, ship_id, target_id, owner="player"):
                 target.graviton_slow = True
                 slowed = True
     state.acted.append(attacker.id)
-    suffix = " Destroyed." if target.hull == 0 else f" {target.hull}/{target.max_hull} hull remains."
+    suffix = (" Disabled." if target.kind == "mothership" else " Destroyed.") if target.hull == 0 else f" {target.hull}/{target.max_hull} hull remains."
     protection = f" Shields absorbed {absorbed}." if absorbed else ""
     effect = " Target slowed." if slowed else ""
     state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{effect}{suffix}")
@@ -979,7 +1009,12 @@ def autoresolve(game):
                 remove_building(planet, planet.buildings.index("missile_base"))
         elif ship.owner != MONSTER and ship.kind != "combat_drone" and ship.hull > 0:
             game.ship_at(ship.id, owner=ship.owner).hull = ship.hull
-    game.ships[:] = [s for s in game.ships if not game.combat.ship(s.id) or game.combat.ship(s.id).hull > 0]
+    from .boarding import disable
+    for ship in game.ships:
+        unit = game.combat.ship(ship.id)
+        if ship.habitat and unit and unit.hull == 0:
+            disable(game, ship)
+    game.ships[:] = [s for s in game.ships if not game.combat.ship(s.id) or game.combat.ship(s.id).hull > 0 or s.habitat]
     if game.combat.guardian:
         guardian_at(game, game.combat.system_id).hull = game.combat.guardian.hull
     game.combat = None

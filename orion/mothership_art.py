@@ -47,5 +47,9 @@ def sprite(size, color, facing=0):
 
 
 def draw(surface, center, scale=1, color=(210, 181, 125), facing=0):
-    image = sprite(max(1, round(76*scale)), tuple(color), facing)
+    from .fleet_art import ship_sprite
+    height = max(1, round(76*scale))
+    image = ship_sprite("mothership", height, facing)
+    if image is None:
+        image = sprite(height, tuple(color), facing)
     surface.blit(image, image.get_rect(center=center))

@@ -1,0 +1,39 @@
+Orion Reach v0.66.0 — extract over v0.65.2, then restart the game.
+
+Mothership defenses and artwork:
+- Dedicated transparent city-ark illustration throughout the galaxy, system,
+  fleet, habitat and combat views. The old drawing remains a missing-file fallback.
+- Standard motherships start with 180 hull, defensive lasers (5 damage with
+  standard balance) and a 12-point shield generator. Escorts remain useful.
+
+Boarding and spoils:
+- Space defeat disables a mothership for three completed turns. Its population,
+  economy and facilities survive. Engines, weapons and ship construction are
+  unavailable until repairs finish; it returns with at least 10% hull.
+- Open an enemy mothership in the system view after defeating its escorts.
+  Board and capture: troop transports fight militia and garrison with a +25%
+  deck defense bonus. Population and facilities survive capture. Surviving full
+  troop squads keep their transports; remaining troops become the garrison.
+  Raid stores: a successful boarding action takes credits and resources from
+  actual enemy stocks. Ownership remains unchanged. The same home can be raided
+  again after ten turns. Varkesh can also take up to a quarter of its population
+  as slaves, subject to homeworld capacity and leaving at least one inhabitant.
+  Destroy for salvage: an operational armed ship destroys the disabled habitat
+  and recovers 10% of its base Resource cost plus installed facility costs.
+- Any empire can operate a captured mothership; only Wanderers can build new
+  ones. Foreign captures cancel and refund unfinished mothership orders.
+- Retreat saves preserve a surviving mothership convoy; disabled homes stay
+  behind and do not slow escaping escorts.
+- The ground preview shows predicted casualties. Dispatches retain the results.
+  AI empires use the same rules and keep their homes out of offensive fleet orders.
+
+Existing campaigns load directly. Save format 47 preserves damage, emergency
+repair timers, ownership and raid cooldowns. Balance profile 12 equips previously
+unarmed standard motherships while preserving other balance settings. An old
+unfinished battle retains its existing shield damage; the generator is charged
+at the next engagement. Forgotten hyperlanes stay with their original discoverer.
+
+See docs/wanderer-motherships.md for rules and exact loot limits.
+Run python tools/preview_mothership_boarding.py to reproduce the preview screens.
+
+Nothing staged or committed.

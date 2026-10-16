@@ -158,6 +158,9 @@ class Ship:
     bombarded_turn: int = 0
     habitat: Planet | None = None
     hyperlane: bool = False
+    disabled_turns: int = 0
+    raided_turn: int = 0
+    assaulted_turn: int = 0
 
     def __post_init__(self):
         if self.hull is None:
@@ -190,7 +193,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=46):
+    def from_dict(cls, data, systems, *, version=47):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -260,6 +263,14 @@ class Ship:
             record["habitat"] = habitat
         elif data["kind"] == "mothership":
             raise ValueError("Mothership missing its habitat")
+        from .boarding import DISABLED_TURNS
+        for key, limit in (("disabled_turns", DISABLED_TURNS), ("raided_turn", 1_000_000), ("assaulted_turn", 1_000_000)):
+            value = record.get(key, 0) if version >= 47 else 0
+            if not _integer(value, 0, limit) or (value and data["kind"] != "mothership"):
+                raise ValueError("Invalid mothership assault state")
+            record[key] = value
+        if record["disabled_turns"] and destination is not None:
+            raise ValueError("Disabled mothership cannot travel")
         record.update(route)
         record["design"] = design
         record["hull"] = hull
@@ -808,7 +819,7 @@ class GameState:
         return ship.design.damage if ship.design else self.beam_for(ship.kind, ship.owner).damage
 
     def military_strength(self, ship):
-        return self.ship_attack(ship)+ship.drone_bays*combat_rules.DRONES_PER_BAY*combat_rules.DRONE_SPEC.damage
+        return 0 if ship.disabled_turns else self.ship_attack(ship)+ship.drone_bays*combat_rules.DRONES_PER_BAY*combat_rules.DRONE_SPEC.damage
 
     def system_visible(self, system_id, owner=PLAYER):
         return exploration_rules.is_visible(self, system_id, owner)
@@ -1113,8 +1124,8 @@ class GameState:
         return True
 
     def construction_status(self, planet):
-        if planet.habitat and planet.construction_queue and planet.construction_queue[0].is_ship and motherships.ship_for(self, planet).in_transit:
-            return "Ship construction paused until arrival"
+        if planet.habitat and planet.construction_queue and planet.construction_queue[0].is_ship and motherships.shipyard_paused(self, planet):
+            return "Ship construction paused during flight or emergency repairs"
         if planet.trade_goods:
             return "Trade Goods · ongoing"+(" · construction paused" if planet.construction_queue else "")
         if not planet.construction_queue:
@@ -1451,8 +1462,8 @@ class GameState:
             return "Trade Goods are ongoing production and cannot be bought."
         if not planet.construction_queue:
             return "Choose a construction project first."
-        if planet.habitat and motherships.ship_for(self, planet).in_transit and planet.construction_queue[0].is_ship:
-            return "Ship construction resumes when the mothership arrives."
+        if planet.habitat and motherships.shipyard_paused(self, planet) and planet.construction_queue[0].is_ship:
+            return "Ship construction resumes when the mothership arrives and completes emergency repairs."
         if planet.construction_queue[0].needs_resources > self.resources_for(owner):
             return "Not enough resources to finish this project."
         if self.treasury_for(owner) < self.buy_construction_cost(system_id, planet_id):
@@ -1503,8 +1514,8 @@ class GameState:
             return "Only the Wanderers build motherships."
         if kind == "colony_ship" and motherships.is_wanderer(self, owner):
             return "The Wanderers live aboard motherships instead of colonizing planets."
-        if planet.habitat and motherships.ship_for(self, planet).in_transit:
-            return "Ship construction resumes when the mothership arrives."
+        if planet.habitat and motherships.shipyard_paused(self, planet):
+            return "Ship construction resumes when the mothership arrives and completes emergency repairs."
         if kind == "colony_ship" and raid_rules.is_varkesh(self, owner):
             return "The Varkesh cannot colonize. Build a raiding fleet instead."
         if len(planet.construction_queue) >= MAX_QUEUE:
@@ -1542,6 +1553,8 @@ class GameState:
         ships = [self.ship_at(identifier, owner=owner) for identifier in identifiers]
         if len({ship.id for ship in ships}) != len(ships):
             raise RuleError("Each ship can only be selected once.")
+        if any(ship.disabled_turns for ship in ships):
+            raise RuleError("Disabled motherships must restore their engines before departure.")
         if any(ship.in_transit for ship in ships):
             raise RuleError("This ship is already travelling. Wait until it arrives.")
         if any(ship.system_id != ships[0].system_id for ship in ships):
@@ -1767,7 +1780,7 @@ class GameState:
         for system, planet in self.settlements():
             for project in planet.advance_construction(self.bonuses_for(planet.owner), projects=True,
                     fund=lambda project: self.fund_project(project, planet.owner),
-                    allow_ships=not planet.habitat or not motherships.ship_for(self, planet).in_transit):
+                    allow_ships=not planet.habitat or not motherships.shipyard_paused(self, planet)):
                 defense_rules.commissioned(self, planet, project.item_id)
                 item_id = project.item_id
                 self._complete_ship(project, system.id, planet.owner)
@@ -1785,6 +1798,8 @@ class GameState:
         completed.extend(megastructures.finish_work(self))
         self.turn += 1
         self.year += 1
+        from . import boarding
+        boarding.advance(self)
         completed.extend(hyperlanes.finish_work(self))
         administration.normalize(self)
         black_holes.resolve_arrivals(self, alerts)
@@ -1844,7 +1859,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=46):
+    def from_dict(cls, data, *, version=47):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1961,7 +1976,9 @@ class GameState:
             if (any(p.owner is not None and p.owner not in game.owners for s in systems for p in s.worlds)
                     or any(s.owner not in game.owners for s in ships)):
                 raise ValueError("Unknown empire owns a colony or ship")
-            if any(s.habitat is not None and not motherships.is_wanderer(game, s.owner) for s in ships):
+            if any(s.raided_turn > game.turn or s.assaulted_turn > game.turn for s in ships):
+                raise ValueError("Mothership assault happened in the future")
+            if version < 47 and any(s.habitat is not None and not motherships.is_wanderer(game, s.owner) for s in ships):
                 raise ValueError("Only Wanderers can own motherships")
             if version >= 45 and not game.wanderer_migration_pending and any(motherships.is_wanderer(game, p.owner) for s in systems for p in s.worlds if p.owner):
                 raise ValueError("Wanderers cannot inhabit planets")

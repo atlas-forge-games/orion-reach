@@ -25,7 +25,7 @@ HULL_TECHNOLOGIES = {
 
 
 SHIP_TYPES = {
-    "mothership": ShipSpec("mothership", "Mothership", 1200, 600, hull=180),
+    "mothership": ShipSpec("mothership", "Mothership", 1200, 600, hull=180, damage=5),
     "colony_ship": ShipSpec("colony_ship", "Colony ship", 800, 420, hull=12),
     "frigate": ShipSpec("frigate", "Frigate", 60, 36, hull=20, damage=5),
     "troop_transport": ShipSpec("troop_transport", "Troop transport", 80, 42, hull=16),

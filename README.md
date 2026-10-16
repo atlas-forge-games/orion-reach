@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.65.2
+# Orion Reach — Python prototype 0.66.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,34 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.66: mothership defenses, boarding and spoils
+
+Motherships now have dedicated city-ark artwork, **defensive lasers** and a
+**12-point shield generator**. Their 180 hull remains unchanged.
+
+Space defeat leaves a home **disabled for three completed turns**. Open it in
+the system view after clearing its escorts to choose:
+
+- **Board and capture:** troop transports fight through defended decks (+25%
+  defending firepower). Keep the surviving population and facilities. Any empire
+  can operate a prize; only Wanderers can construct new motherships.
+- **Raid stores:** take credits and resources from actual enemy stocks, capped
+  by population and development. Varkesh can also take limited population as
+  slaves. Raids have a ten-turn cooldown and leave ownership unchanged.
+- **Destroy for salvage:** an armed ship destroys the habitat and recovers 10%
+  of its base Resource cost and installed facility costs.
+
+The boarding preview shows casualties before launch. Surviving full troop
+squads retain their transports. Disabled homes keep their onboard economy but
+cannot move, fight or launch ships until repairs finish. The AI follows the
+same rules and preserves motherships for defense and relocation.
+
+Save format **47** loads older campaigns, including unfinished battles. Balance
+profile **12** equips older standard motherships with defenses while retaining
+other settings. See [the detailed rules](docs/wanderer-motherships.md).
+
+![Mothership artwork and defenses](screenshots/v066_mothership_home.png)
 
 ## New in v0.65.2: smoother map and turn processing
 

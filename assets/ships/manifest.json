@@ -163,5 +163,20 @@
       1430
     ],
     "sha256": "a79fb304a2ea006de381bd5b5844c0ad9ea4a9e7ffcbea7a921849228ca502f2"
+  },
+  {
+    "id": "mothership",
+    "file": "mothership-v1.png",
+    "dimensions": [
+      1024,
+      1536
+    ],
+    "alpha_bounds": [
+      68,
+      3,
+      957,
+      1527
+    ],
+    "sha256": "a128afad95591c69f7a621940dd1fcc253563b8df843ff0d73b2b473b83d0b28"
   }
 ]
