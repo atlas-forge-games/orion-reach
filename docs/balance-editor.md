@@ -19,7 +19,7 @@ The editor includes 259 entries and rule groups across 18 catalogues:
 | Catalogue | Examples |
 | --- | --- |
 | Buildings | Resource/work costs, upkeep, production, worker bonuses, energy, prerequisites |
-| Standard ships | Costs, hull, strategic attack rating, tactical movement, drone bays, prerequisites |
+| Standard ships | Costs, credit maintenance, hull, strategic attack rating, tactical movement, drone bays, prerequisites |
 | Designer hulls | Hull points, movement, category slots, module size/scale and tracking penalty |
 | Ship modules | Base costs, damage/range, armor, shields, interception, repair and movement bonuses |
 | Weapons | Damage, range, accuracy, shots, reload, shield effects, interception piercing |
@@ -250,3 +250,15 @@ Loading a profile from version 11 upgrades the previous zero-damage mothership
 default to 5. Custom nonzero armament values and other balance settings are
 preserved. The 12-point built-in shield generator, three-turn emergency repairs,
 25% boarding defense bonus and ten-turn raid cooldown are fixed rules.
+
+## Ship maintenance (profile 13)
+
+Each entry in **Standard ships** has a **Maintenance** value in CR per turn.
+Custom designs use the same value as their hull class; fitted equipment does
+not add a second upkeep charge. Mothership hull maintenance is separate from
+its installed modules. The setting applies to existing and future ships.
+
+Older profiles gain the standard maintenance values while retaining their
+other edits. New saves keep the upgraded profile. Buildings, habitat modules
+and the Ascension Gate always require normal construction; credit purchases
+remain available only for ships.

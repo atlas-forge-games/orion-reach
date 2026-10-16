@@ -82,16 +82,16 @@ class ResourceRulesTests(unittest.TestCase):
 
     def test_rush_cannot_bypass_resources_and_only_pays_credits_for_remaining_work(self):
         g, p = self.game, self.planet
-        g.queue_building(0, 2, "factory")
-        g.resources = 44
+        g.queue_ship(0, 2, "scout")
+        g.resources = 24
         before = g.to_dict()
         with self.assertRaisesRegex(RuleError, "resources"):
             g.buy_construction(0, 2)
         self.assertEqual(g.to_dict(), before)
-        g.resources = 45
+        g.resources = 25
         price = g.buy_construction_cost(0, 2)
         g.buy_construction(0, 2)
-        self.assertEqual((g.resources, g.credits, p.buildings), (0, 120-price, ["factory"]))
+        self.assertEqual((g.resources, g.credits, g.ships[-1].kind), (0, 120-price, "scout"))
 
     def test_cost_snapshot_keeps_discount_after_later_research_and_reordering(self):
         g, p = self.game, self.planet

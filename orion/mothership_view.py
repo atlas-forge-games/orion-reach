@@ -24,7 +24,7 @@ def draw_overview(app, ship):
     text(surface, f"{home.population} / 50 B inhabitants", (38, 204), 17, INK)
     text(surface, f"{ship.hull}/{ship.max_hull} hull · {0 if ship.disabled_turns else motherships.BASIC_SHIELDS} shields", (38, 232), 13, CYAN)
     text(surface, "Defensive systems offline" if ship.disabled_turns else f"Defensive lasers · {game.ship_attack(ship)} damage", (38, 252), 11, MUTED)
-    text(surface, "MOBILE HOME · ¼ FLEET SPEED", (38, 272), 10, MUTED, "mono")
+    text(surface, f"¼ FLEET SPEED · {ship.maintenance} CR/turn upkeep", (38, 272), 10, MUTED, "mono")
     workforce_panel(app, game, home, True)
     construction_panel(app, game, system, home, True)
 

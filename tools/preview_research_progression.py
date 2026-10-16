@@ -57,7 +57,8 @@ def main():
             capture('advanced_facilities_catalogue')
             for identifier in ('advanced_research_lab', 'robotic_factory', 'deep_core_mine', 'solar_array'):
                 game.queue_building(0, 2, identifier)
-                game.buy_construction(0, 2)
+                while game.planet_at(0, 2).construction_queue:
+                    game.advance_turn()
             app.go('planet')
             capture('advanced_facilities_surface')
         finally:

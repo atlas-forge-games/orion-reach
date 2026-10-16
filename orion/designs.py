@@ -189,6 +189,11 @@ class ShipDesign:
         return tuple(fitted_module(self.kind, m, self.fit_version) for m in self.modules)
 
     @property
+    def maintenance(self):
+        from .production import SHIP_TYPES
+        return SHIP_TYPES[self.kind].maintenance
+
+    @property
     def hull(self):
         return HULLS[self.kind].hull+sum(m.hull_bonus for m in self.specs)
 

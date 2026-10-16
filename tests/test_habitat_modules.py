@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from scenarios import finish_building_next_turn
 from orion import motherships, specialists, production_breakdown
 from orion.model import GameState
 from test_motherships import campaign
@@ -58,6 +59,7 @@ class HabitatModuleFlowTests(unittest.TestCase):
         self.assertEqual(self.home.construction_queue[-1].item_id, 'trade_center')
         self.assertIn('Commerce module', self.drawn_text())
         self.click('production_return')
+        self.assertFalse(any(b.key == 'planet_buy' for b in self.app.buttons))
         self.click('mothership_module_5')
         self.assertEqual((self.app.screen, self.app.colony_slot), ('colony', 5))
         self.click('cancel_construction')
@@ -74,7 +76,7 @@ class HabitatModuleFlowTests(unittest.TestCase):
 
     def test_built_hub_opens_hiring_and_assigns_leader_to_home(self):
         self.game.queue_building(self.ship.system_id, self.home.id, 'space_hub')
-        self.game.buy_construction(self.ship.system_id, self.home.id)
+        finish_building_next_turn(self.game, self.ship.system_id, self.home.id)
         specialists.advance_visitors(self.game)
         self.assertIn((self.ship.system_id, self.home.id), specialists.hubs(self.game))
         leader = next(p for p in specialists.visitors(self.game) if p.spec.role == 'leader')

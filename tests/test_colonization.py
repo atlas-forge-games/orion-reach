@@ -129,7 +129,7 @@ class ColonizationRulesTests(unittest.TestCase):
         self.assertEqual(self.game.ships, [Ship(2, "colony_ship", 0)])
         self.assertEqual(self.game.credits, 120)
         self.assertEqual(summarize_empire(self.game).colonies, 2)
-        self.assertEqual(self.game.advance_turn().income, 9)
+        self.assertEqual(self.game.advance_turn().income, 7)  # Remaining colony ship costs 2 CR.
         self.game.queue_building(0, 3, "mine")
         self.game.queue_ship(0, 3)
         self.assertEqual(mars.used_slots, 1)

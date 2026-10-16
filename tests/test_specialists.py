@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from scenarios import finish_building_next_turn
 from orion import balance, specialists as s, news, statistics
 from orion.model import GameState, RuleError, SaveError, new_game, ConstructionProject
 from orion.storage import Storage, SAVE_VERSION
@@ -63,7 +64,7 @@ class SpecialistTests(SpecialistFixtures, unittest.TestCase):
         game.queue_building(0, 2, "space_hub")
         self.assertEqual(planet.free_slots, before-1)
         with self.assertRaises(RuleError): game.queue_building(0, 2, "space_hub")
-        game.buy_construction(0, 2)
+        finish_building_next_turn(game)
         self.assertIn((0, 2), s.hubs(game))
         with self.assertRaises(RuleError): game.queue_building(0, 2, "space_hub")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)

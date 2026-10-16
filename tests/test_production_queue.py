@@ -300,7 +300,7 @@ class ProductionInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "planet")
         self.assertTrue(self.planet.trade_goods)
         self.app.render()
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "planet_buy").enabled)
+        self.assertFalse(any(b.key == "planet_buy" for b in self.app.buttons))
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], self.game)
 
     def test_explicit_trade_goods_stays_open_and_build_button_resumes_queue(self):

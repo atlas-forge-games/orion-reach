@@ -32,6 +32,21 @@ def fixed_start_game(*args, **kwargs):
 new_game = fixed_start_game
 
 
+def finish_building_next_turn(game, system_id=0, planet_id=2):
+    """Prepare a funded building's last unit of work, then use a real turn.
+
+    Infrastructure fixtures used to buy their setup buildings. Completing the
+    last unit now exercises normal commissioning without simulating decades.
+    """
+    planet = game.planet_at(system_id, planet_id)
+    project = planet.construction_queue[0]
+    assert not project.is_ship
+    assert game.fund_project(project, planet.owner)
+    project.progress = project.spec.work_cost-1
+    game.advance_turn()
+    assert project not in planet.construction_queue
+
+
 def research_to(game, *identifiers, owner='player'):
     """Fund the requested choices and any missing earlier tiers in the active tree."""
     from orion.research import TECHNOLOGIES, choices

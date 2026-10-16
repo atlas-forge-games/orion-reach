@@ -15,7 +15,7 @@ from .population import farmers_needed, food_required
 from . import monsters, defenses, sensors, black_holes, outposts, administration
 from . import raiding
 from . import first_contact
-from . import coalitions, tribute
+from . import coalitions, tribute, specialists
 from .personalities import personality
 from .ground_combat import forces, resolve, transports_needed
 from .victory import colonies as empire_colonies, gate_site, invasion_strength, troop_transports
@@ -178,8 +178,10 @@ def research_choice(game, owner=RIVAL):
 def warship_choice(game, owner):
     """Build researched hulls when affordable, keeping carriers in a mixed fleet."""
     state = game.research_state(owner)
+    budget = projected_income(game, owner)-1
     available = [kind for kind, spec in SHIP_TYPES.items() if kind != "mothership" and (spec.damage or spec.drone_bays)
-                 and state.hull_unlocked(kind) and game.project_price(kind, owner) <= game.resources_for(owner)]
+                 and state.hull_unlocked(kind) and game.project_price(kind, owner) <= game.resources_for(owner)
+                 and spec.maintenance <= budget]
     if "carrier" in available:
         fleet = [s for s in game.ships_owned_by(owner) if game.military_strength(s)]
         if sum(s.drone_bays > 0 for s in fleet)*3 <= len(fleet):
@@ -212,12 +214,17 @@ def projected_colony(planet, extra=None):
 
 
 def projected_income(game, owner, extra=None):
-    """Budget for all queued building orders as well as the proposed next one."""
-    income = game.diplomatic_yields(owner)[0]
+    """Budget for queued buildings and ships, current fleets and salaries."""
+    income = game.diplomatic_yields(owner)[0]-game.fleet_maintenance(owner)-specialists.salaries(game, owner)
     for system, planet in empire_colonies(game, owner):
         item = extra[2] if extra and extra[:2] == (system.id, planet.id) else None
         income += game.planet_yields(projected_colony(planet, item))[1]
+        income -= sum(q.spec.maintenance for q in planet.construction_queue if q.is_ship)
     return income
+
+
+def can_maintain_ship(game, owner, kind):
+    return projected_income(game, owner) >= SHIP_TYPES[kind].maintenance+1
 
 
 def steady_power_plant(game, planet, owner):
@@ -633,33 +640,35 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                              and warships > 0 and transports < troop_limit)
         produce_scout = (game.fog_of_war and index == 0 and len(game.exploration.scanned(owner)) < len(game.systems)
                          and scouts < min(2, 1+len(colonies)//3))
-        if produce_scout:
+        warship_kind = warship_choice(game, owner) if produce_warship else None
+        if produce_scout and can_maintain_ship(game, owner, "scout"):
             if game.ship_build_error(system.id, planet.id, "scout", owner=owner) is None:
                 game.queue_ship(system.id, planet.id, "scout", owner=owner)
                 scouts += 1
                 event(game, owner, f"Queued a scout on {planet.name}.")
-        elif produce_warship:
-            kind = warship_choice(game, owner)
+        elif produce_warship and can_maintain_ship(game, owner, warship_kind):
+            kind = warship_kind
             if game.ship_build_error(system.id, planet.id, kind, owner=owner) is None:
                 game.queue_ship(system.id, planet.id, kind, owner=owner)
                 warships += 1
                 event(game, owner, f"Started a {SHIP_TYPES[kind].name.lower()} on {planet.name}.")
-        elif produce_transport:
+        elif produce_transport and can_maintain_ship(game, owner, "troop_transport"):
             if game.ship_build_error(system.id, planet.id, "troop_transport", owner=owner) is None:
                 game.queue_ship(system.id, planet.id, "troop_transport", owner=owner)
                 transports += 1
                 event(game, owner, f"Started a troop transport on {planet.name}.")
-        elif produce_outpost:
+        elif produce_outpost and can_maintain_ship(game, owner, "outpost_ship"):
             if game.ship_build_error(system.id, planet.id, "outpost_ship", owner=owner) is None:
                 game.queue_ship(system.id, planet.id, "outpost_ship", owner=owner)
                 outpost_ships += 1
                 event(game, owner, f"Started an outpost ship on {planet.name}.")
         elif (nomadic and planet.population >= 15 and len(planet.buildings) >= 3
               and len(colonies) < 8 and not any(q.item_id == "mothership" for _, p in colonies for q in p.construction_queue)
+              and can_maintain_ship(game, owner, "mothership")
               and game.ship_build_error(system.id, planet.id, "mothership", owner=owner) is None):
             game.queue_ship(system.id, planet.id, "mothership", owner=owner)
             event(game, owner, f"Started a new mothership at {planet.name}.")
-        elif produce_ship:
+        elif produce_ship and can_maintain_ship(game, owner, "colony_ship"):
             if game.ship_build_error(system.id, planet.id, owner=owner) is None:
                 game.queue_ship(system.id, planet.id, owner=owner)
                 fleet_size += 1

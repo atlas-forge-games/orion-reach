@@ -123,7 +123,7 @@ def draw_designer(app):
     app.input_box("design_name", "BLUEPRINT NAME", app.design_name, (1002, 255, 356, 55), "Name your ship")
     ship_icon(surface, (1180, 391), 2.1, kind=design.kind, facing=1)
     text(surface, f"{hull.name.upper()} · {hull.module_size.upper()} MODULES", (1003, 329), 10, GOLD, "mono", 1)
-    text(surface, "LIVE PREVIEW", (1003, 444), 10, MUTED, "mono", 1)
+    text(surface, f"LIVE PREVIEW · UPKEEP {design.maintenance} CR/TURN", (1003, 444), 10, MUTED, "mono", 1)
     discount = game.bonuses_for().get("ship_discount", 0)
     cost = max(1, math.ceil(design.resource_cost*(100-discount)/100))
     values = (("Hull / shields", f"{design.hull} / {design.shields}"),

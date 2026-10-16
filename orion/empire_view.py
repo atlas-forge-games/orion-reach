@@ -159,8 +159,9 @@ def draw_empire(app):
     app.button("empire_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("empire_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     from .specialists import salaries
-    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn · {salaries(game)} CR salaries included"
+    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn"
     text(surface, shorten(caption, 650, 12), (400, 835), 12, MUTED)
-    text(surface, "Future income repays debt; buildings keep operating." if game.credits < 0 else
-         "Page Up / Down or mouse wheel: browse colonies", (400, 857), 11, FAINT)
+    fleet, pay = game.fleet_maintenance(), salaries(game)
+    text(surface, f"Upkeep: {summary.maintenance-fleet-pay} buildings/modules · {fleet} ships · {pay} salaries (CR/turn)",
+         (400, 857), 11, FAINT)
     app.button("empire_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)

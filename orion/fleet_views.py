@@ -47,7 +47,7 @@ def draw_shipyard(app):
                        if spec.id == "scout" else f"{spec.hull} hull · {game.beam_for(spec.id, planet.owner or PLAYER).damage} damage per shot")
         if spec.drone_bays:
             description = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
-        text(surface, description, (154, y+37), 12, CYAN)
+        text(surface, description+f" · {spec.maintenance} CR/turn", (154, y+37), 12, CYAN)
         captions = {"mothership": "Adds 15 ly range to ships travelling with it.", "colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
                     "troop_transport": "Needs a training module. Includes 8 troops; hull losses follow casualties." if planet.habitat else "Needs barracks. Includes 8 troops; hull losses follow casualties.",
@@ -114,7 +114,7 @@ def draw_fleets(app):
     app.button("fleets_designer", "Ship designer", (459, 124, 212, 46), app.open_designer)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Fleet operations", (64, 190), 43, INK, "title")
-    text(surface, "Explore, settle and defend. Ships in the same system fight together.", (66, 251), 14, MUTED)
+    text(surface, f"Fleet maintenance: {game.fleet_maintenance()} CR/turn · Paid in orbit and in transit.", (66, 251), 14, MUTED)
     ready = sum(not s.in_transit for s in ships)
     queued = sum(p.is_ship for _, planet in game.settlements(PLAYER) for p in planet.construction_queue)
     stats = [("READY IN ORBIT", ready), ("IN TRANSIT", len(ships)-ready), ("UNDER CONSTRUCTION", queued)]
@@ -138,7 +138,8 @@ def draw_fleets(app):
                 f"{production_balance.TROOP_STRENGTH} invasion attack · Unarmed" if ship.kind == "troop_transport" else f"{game.ship_attack(ship)} damage / volley")
         if ship.drone_bays:
             role = f"{ship.drone_bays*2} active drones · {ship.drone_bays*4} launches/battle"
-        text(surface, f"{ship.hull}/{ship.max_hull} hull · {role}", (143, y+43), 11, MUTED)
+        text(surface, shorten(f"{ship.hull}/{ship.max_hull} hull · {role}", 317, 11), (143, y+38), 11, MUTED)
+        text(surface, f"Maintenance: {ship.maintenance} CR/turn", (143, y+56), 10, GOLD)
         origin = game.systems[ship.system_id]
         location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.has_course else f"{origin.name} orbit"
         text(surface, shorten(location, 467, 18), (473, y+12), 18, CYAN)

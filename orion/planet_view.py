@@ -303,10 +303,12 @@ def construction_panel(app, game, system, planet, live):
         else:
             text(surface, "OBSERVING · NO ORDERS", (1090, 268), 11, MUTED, "mono")
     elif owned:
-        cost = game.buy_construction_cost(system.id, planet.id)
-        app.button("planet_change", "Change", (1090, 257, 146, 29), app.open_production)
-        app.button("planet_buy", f"Buy · {cost} CR" if queue and not planet.trade_goods else "Buy", (1246, 257, 154, 29), app.buy_production_request,
-                   enabled=game.buy_construction_error(system.id, planet.id) is None)
+        can_buy = bool(queue and not planet.trade_goods and queue[0].is_ship)
+        app.button("planet_change", "Change", (1090, 257, 146 if can_buy else 310, 29), app.open_production)
+        if can_buy:
+            cost = game.buy_construction_cost(system.id, planet.id)
+            app.button("planet_buy", f"Buy · {cost} CR", (1246, 257, 154, 29), app.buy_production_request,
+                       enabled=game.buy_construction_error(system.id, planet.id) is None)
     elif not live:
         text(surface, f"SURVEY: TURN {game.exploration.survey(system.id).last_seen}", (1090, 268), 11, MUTED, "mono")
     elif planet.habitat and planet.owner in game.opponents:

@@ -119,7 +119,7 @@ def guides():
             ("GROWTH", "Food balance, planet capacity and racial abilities affect population growth. Machine and energy civilizations have different food and growth rules; see Civilizations for their traits."),
         )),
         Article("resources", "economy", "The six resources", "What the top bar tells you", (
-            ("CREDITS", "Credits pay building maintenance, specialist hiring fees and salaries, and diplomatic expenses. The top bar shows your treasury and net income per turn."),
+            ("CREDITS", "Credits pay building and ship maintenance, specialist hiring fees and salaries, and diplomatic expenses. The top bar shows your treasury and net income per turn. Buildings, habitat modules and the Ascension Gate cannot be bought; ship production can still be rushed."),
             ("RESEARCH", "Research points fund discoveries. Unused RP is banked until you select a project."),
             ("RESOURCES", "Resources are a shared empire stockpile produced by miners and mines. Construction spends Resources; thermal backup plants can also consume them as fuel."),
             ("INDUSTRY", "Industry supplies construction work locally. Buildings and ships require both Resources and enough completed work."),
@@ -134,9 +134,11 @@ def guides():
         )),
         Article("construction", "economy", "Construction and upkeep", "Base costs and local production", (
             ("COSTS", "Orders enter a construction queue. A project spends its Resources when construction begins; insufficient Resources delay the work. Local industry completes the project over subsequent turns. Building slots limit how much a planet can accommodate."),
+            ("BUILDING CONSTRUCTION", "Buildings, mothership modules and the Ascension Gate must be completed with local industry. Credits cannot finish them instantly. The Buy button is available only for ships and still requires their Resources."),
             ("QUEUE EDITING", "Queue adds each project at the end and keeps the production screen open. Click an existing queued project to make it current. Return to colony or Escape finishes editing. End Turn opens colonies without production orders; leaving an empty colony or building screen selects Trade Goods."),
             ("TRADE GOODS", "This ongoing production mode converts 30% of available industry to credits, rounded down separately for each colony each turn. It uses no Resources or building slots. Existing queued projects keep their progress while paused. Add a project or click one in the queue to resume construction. Trade Goods colonies do not trigger idle reminders."),
             ("ONGOING COSTS", "Buildings can require credit maintenance and energy after construction. A larger economy must support both the new building and the jobs it is intended to improve."),
+            ("FLEET UPKEEP", "Every owned ship pays credit maintenance by hull class, both in orbit and in transit. Custom designs pay the same as their standard class. Queued ships cost no upkeep; normal completions start paying next turn. Mothership hull upkeep is additional to onboard modules. Destroyed or consumed ships stop costing upkeep. Deficits follow the usual treasury debt rules."),
             ("REFERENCE VALUES", "Catalog entries show base values. Racial traits, research, mineral richness and current operating conditions can change the results shown on a colony or in a shipyard."),
         )),
         Article("research_guide", "research", "How research works", "Sequential tiers and exclusive choices", (
@@ -235,6 +237,7 @@ def articles():
     for spec in SHIP_TYPES.values():
         sections = [("ROLE", roles.get(spec.id, "An armed warship. Standard ships or custom blueprints can be built after unlocking this hull.")),
                     ("STANDARD SHIP", f"Base cost: {spec.resource_cost} Resources · {spec.work_cost} work\nBase hull: {spec.hull}"),
+                    ("MAINTENANCE", f"{spec.maintenance} CR per turn per ship, including custom designs of this hull class."),
                     ("RESEARCH REQUIRED", technology_name(spec.technology))]
         if spec.id in HULLS:
             hull = HULLS[spec.id]

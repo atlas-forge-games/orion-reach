@@ -11,6 +11,7 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
+from scenarios import finish_building_next_turn
 from orion import ai, combat, defenses, navigation, news, sensors
 from orion.designs import ShipDesign
 from orion.exploration import refresh
@@ -93,7 +94,7 @@ class ExpansionResearchTests(unittest.TestCase):
         discover(game, "planetary_shielding")
         game.credits = 1000
         game.queue_building(0, 2, "planetary_shield")
-        game.buy_construction(0, 2)
+        finish_building_next_turn(game)
         self.assertEqual(game.planet_at(0, 2).shield_points, 100)
         self.assertIsNotNone(game.build_error(0, 2, "planetary_shield"))
 

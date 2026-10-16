@@ -13,6 +13,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame as pg
+from scenarios import finish_building_next_turn
 from orion import ai
 from orion.legacy_research import LEGACY_TECHNOLOGIES
 from orion.model import GameState
@@ -87,7 +88,7 @@ class TierRulesTests(unittest.TestCase):
                 self.assertIsNone(game.build_error(0, 2, building))
                 game.resources, game.credits = 1000, 1000
                 game.queue_building(0, 2, building)
-                game.buy_construction(0, 2)
+                finish_building_next_turn(game)
                 self.assertIn(building, game.planet_at(0, 2).buildings)
                 if building == "planetary_shield":
                     self.assertEqual(game.planet_at(0, 2).shield_points, 200)

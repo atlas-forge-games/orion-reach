@@ -64,7 +64,7 @@ def draw_galaxy_header(app):
     text(surface, "REACH", (65, 66), 24, INK, spacing=3)
     text(surface, "GALAXY COMMAND", (66, 106), 9, MUTED, "mono", 1)
     resource_card(surface, RESOURCE_RECTS[0], "credits", "CREDITS", f"{game.credits:,} CR",
-                  f"{report.income:+,} CR net / turn", f"Upkeep {report.maintenance:,} CR/turn",
+                  f"{report.income:+,} CR net / turn", f"Upkeep {report.maintenance:,} · Ships {game.fleet_maintenance():,} CR/turn",
                   GOLD, detail_color=RED if report.income < 0 else MUTED)
     active = game.research_state().active
     diverted = sum(hyperlanes.allocations(game, "player").values())

@@ -173,6 +173,10 @@ class Ship:
         return self.design.hull if self.design else SHIP_TYPES[self.kind].hull
 
     @property
+    def maintenance(self):
+        return SHIP_TYPES[self.kind].maintenance
+
+    @property
     def damage(self):
         return self.design.damage if self.design else SHIP_TYPES[self.kind].damage
 
@@ -1457,7 +1461,7 @@ class GameState:
     def buy_construction_cost(self, system_id, planet_id):
         planet = self.planet_at(system_id, planet_id)
         queue = [] if planet.trade_goods else planet.construction_queue
-        return 2*queue[0].remaining_work if queue else 0
+        return 2*queue[0].remaining_work if queue and queue[0].is_ship else 0
 
     def buy_construction_error(self, system_id, planet_id, *, owner=PLAYER):
         if self.strategy_error(owner):
@@ -1469,6 +1473,8 @@ class GameState:
             return "Trade Goods are ongoing production and cannot be bought."
         if not planet.construction_queue:
             return "Choose a construction project first."
+        if not planet.construction_queue[0].is_ship:
+            return "Buildings, modules and the Ascension Gate must be constructed with industry; only ships can be bought."
         if planet.habitat and motherships.shipyard_paused(self, planet) and planet.construction_queue[0].is_ship:
             return "Ship construction resumes when the mothership arrives and completes emergency repairs."
         if planet.construction_queue[0].needs_resources > self.resources_for(owner):
@@ -1702,13 +1708,21 @@ class GameState:
 
     def empire_rates_for(self, owner):
         income, research = self.diplomatic_yields(owner)
-        income -= specialist_rules.salaries(self, owner)
+        income -= specialist_rules.salaries(self, owner)+self.fleet_maintenance(owner)
         for _, planet in self.settlements(owner):
             _, credits, points = self.planet_yields(planet)
             income += credits
             research += points
         research -= sum(hyperlanes.allocations(self, owner).values())
         return income, research
+
+    def fleet_maintenance(self, owner=PLAYER):
+        """Charge each commissioned hull once, including travelling/disabled homes.
+
+        Neutral enemies and battle-only drones live outside the empire fleet.
+        Queued ships start paying on the turn after they are completed.
+        """
+        return sum(ship.maintenance for ship in self.ships if ship.owner == owner)
 
     def advance_turn(self):
         try:

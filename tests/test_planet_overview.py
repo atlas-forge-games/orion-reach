@@ -1,5 +1,6 @@
 from scenarios import legacy_research_payload
 from scenarios import legacy_economy
+from scenarios import finish_building_next_turn
 """Workforce decisions, buying/prioritizing projects, migration and real UI flows."""
 
 import copy
@@ -105,20 +106,21 @@ class ProductionTests(unittest.TestCase):
         self.earth = self.game.planet_at(0, 2)
 
     def test_buy_uses_remaining_work_completes_now_and_preserves_next_project(self):
+        self.game.queue_ship(0, 2, "frigate")
         self.game.queue_building(0, 2, "hydroponic_farm")
-        self.game.queue_ship(0, 2, "scout")
         self.game.advance_turn()
         next_project = copy.deepcopy(self.earth.construction_queue[1])
         before = self.game.to_dict()
-        self.assertEqual(self.game.buy_construction_cost(0, 2), 24)
+        self.assertEqual(self.game.buy_construction_cost(0, 2), 60)
         item = self.game.buy_construction(0, 2)
-        self.assertEqual(item, "hydroponic_farm")
-        self.assertEqual(self.game.credits, before["credits"]-24)
+        self.assertEqual(item, "frigate")
+        self.assertEqual(self.game.credits, before["credits"]-60)
         self.assertEqual(self.game.turn, before["turn"])
         self.assertEqual(self.earth.growth_progress, 10)
-        self.assertEqual(self.earth.buildings, ["hydroponic_farm"])
+        self.assertEqual(self.earth.buildings, [])
+        self.assertEqual([s.kind for s in self.game.ships], ["frigate"])
         self.assertEqual(self.earth.construction_queue, [next_project])
-        self.assertEqual(self.game.population_report(self.earth).produced, 16)
+        self.assertEqual(self.game.population_report(self.earth).produced, 10)
 
     def test_buying_ships_commissions_once_with_unique_ids_and_owner(self):
         game = new_game(seed=2408, fog_of_war=False)
@@ -134,7 +136,7 @@ class ProductionTests(unittest.TestCase):
             game.buy_construction(0, 2)
         self.assertEqual(game.to_dict(), before)
 
-    def test_buying_a_gate_starts_its_five_turn_charge_without_skipping_time(self):
+    def test_gate_requires_industry_then_five_more_turns_of_charging(self):
         from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
         self.game.credits = self.game.resources = 2000
         self.game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+TECHNOLOGIES["ascension_theory"].cost
@@ -143,9 +145,12 @@ class ProductionTests(unittest.TestCase):
                 self.game.choose_research(choices(branch, tier)[0].id)
         self.game.choose_research("ascension_theory")
         self.game.change_production(0, 2, "ascension_gate")
-        self.assertEqual(self.game.buy_construction_cost(0, 2), 600)
-        self.game.buy_construction(0, 2)
-        self.assertEqual((self.game.credits, self.game.turn, self.earth.ascension_gate, self.earth.gate_charge), (1400, 1, True, 0))
+        before = self.game.to_dict()
+        with self.assertRaisesRegex(RuleError, "industry"):
+            self.game.buy_construction(0, 2)
+        self.assertEqual(self.game.to_dict(), before)
+        finish_building_next_turn(self.game)
+        self.assertEqual((self.game.turn, self.earth.ascension_gate, self.earth.gate_charge), (2, True, 0))
         self.assertEqual(GameState.from_dict(self.game.to_dict()), self.game)
         for _ in range(4):
             self.game.advance_turn()
@@ -315,23 +320,20 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         for expected in ("NET CREDITS", "FOOD / USED", "INDUSTRY", "RESEARCH", "+2", "10 / 8", "5"):
             self.assertIn(expected, strings)
 
-    def test_change_buy_confirmation_and_return_follow_real_controls(self):
+    def test_building_has_no_buy_control_but_normal_completion_opens_inspection(self):
         self.click("planet_change")
         self.assertEqual(self.app.screen, "production")
         self.click("production_build_factory")
         self.assertEqual(self.app.screen, "production")
         self.click("production_return")
         self.assertEqual(self.app.screen, "planet")
-        self.click("planet_buy")
-        before = self.app.game.to_dict()
-        self.click("dialog_cancel")
-        self.assertEqual(self.app.game.to_dict(), before)
-        self.click("planet_buy")
-        self.click("dialog_ok")
+        self.assertFalse(any(b.key == "planet_buy" for b in self.app.buttons))
+        finish_building_next_turn(self.app.game)
+        self.app.render()
         self.assertEqual(self.app.game.planet_at(0, 2).buildings, ["factory"])
-        self.assertEqual(self.app.game.credits, 72)
-        self.assertEqual(self.app.game.turn, 1)
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "planet_buy").enabled)
+        self.assertEqual(self.app.game.credits, 128)
+        self.assertEqual(self.app.game.turn, 2)
+        self.assertFalse(any(b.key == "planet_buy" for b in self.app.buttons))
         self.click("surface_factory")
         self.assertEqual(self.app.screen, "colony")
         self.click("tab_overview")

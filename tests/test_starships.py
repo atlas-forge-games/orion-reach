@@ -117,6 +117,10 @@ class HullResearchTests(unittest.TestCase):
         self.assertEqual(ai.warship_choice(game, RIVAL), "carrier")
         game.ships = [Ship(1, "carrier", 0, owner=RIVAL)]
         game.next_ship_id = 2
+        # The carrier already costs six credits per turn. A developed economy
+        # is needed before another capital hull is affordable.
+        self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")
+        game.headquarters(RIVAL)[1].buildings = ["trade_center"]
         self.assertEqual(ai.warship_choice(game, RIVAL), "cruiser")
         game.opponent.resources = 0
         self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")

@@ -36,7 +36,8 @@ def main():
             app.open_specialists()
             capture("getting_started")
             game.queue_building(0, 2, "space_hub")
-            game.buy_construction(0, 2)
+            while game.planet_at(0, 2).construction_queue:
+                game.advance_turn()
             game.advance_turn()
             app.open_specialists()
             capture("visitors")

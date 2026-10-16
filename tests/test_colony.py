@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 
+from scenarios import finish_building_next_turn
 from orion.buildings import BUILDINGS, BUILDING_SLOTS
 from orion.model import GameState, RuleError, SaveError
 from scenarios import empty_fleet_game as new_game
@@ -36,7 +37,7 @@ class ColonyRulesTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuleError, "slots"):
                     game.queue_building(0, 2, "solar_array")
                 self.assertEqual(game.to_dict(), before)
-                game.buy_construction(0, 2)
+                finish_building_next_turn(game)
                 self.assertEqual(len(planet.buildings), capacity)
                 self.assertEqual(planet.free_slots, 0)
                 game.demolish_building(0, 2, capacity-1)

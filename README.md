@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.68.0
+# Orion Reach — Python prototype 0.68.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,40 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.68.1: ship maintenance and construction rules
+
+Every owned ship now costs credits each turn, including ships in transit and
+disabled motherships. Custom designs use their hull class's maintenance. Fleet
+costs appear in net income, the Empire budget, Fleets, ship catalogues and the
+designer. Mothership hull upkeep is additional to its onboard modules.
+
+| Ship class | CR per turn |
+| --- | ---: |
+| Scout, outpost ship, troop transport | 1 |
+| Colony ship, frigate | 2 |
+| Destroyer | 3 |
+| Mothership | 4 |
+| Cruiser | 5 |
+| Drone carrier | 6 |
+| Battleship | 8 |
+| Titan | 12 |
+
+Queued ships pay nothing. Ships completed during a turn begin paying on the
+following turn; bought ships join the fleet immediately and pay at the next
+End Turn. Consumed or destroyed ships leave the budget, and captured ships
+become their new owner's expense. Deficits use the existing debt rules.
+AI budgets include active fleets and queued ships before ordering more.
+
+**Buildings, mothership modules and the Ascension Gate can no longer be bought.**
+They require normal Resource-funded construction using local industry. The
+**Buy** button appears only for ships; their existing rush price is unchanged.
+
+Existing campaigns load normally and begin paying upkeep on future turns;
+there is no retroactive charge. Save format **49** is unchanged. Balance
+profiles upgrade to **13**, adding ship maintenance while retaining saved
+custom costs, research and other settings. Maintenance is editable under
+**Standard ships**, and applies to custom designs of that hull too.
 
 ## New in v0.68: pirates and scout searches
 
@@ -734,7 +768,7 @@ strip at the top: total Credits, Resources and stored Research, each with its
 empire-wide change per turn. Credit income includes maintenance and Trade Goods;
 Resources show net mining after power-plant fuel. Debt and negative rates are
 highlighted. The values update immediately as you change production or workers,
-buy projects or cancel construction.
+buy ships or cancel construction.
 
 The production cards below remain local to the selected colony, including food,
 industry and energy. The Observer keeps its read-only header. This is a display
@@ -1418,7 +1452,7 @@ This update keeps save format 27 and works with existing v0.36 saves.
 **Resources** is one shared construction stockpile for each empire. Colonies
 now have four jobs: **farming, industry, research and mining**. Miners produce
 Resources; industrial workers turn them into buildings and ships. Credits still
-pay building upkeep, diplomacy and rush production. There are no separate ores,
+pay building and ship upkeep, diplomacy and rushed ship production. There are no separate ores,
 resource shipments or energy workers to manage.
 
 - Every empire starts with **120 Resources**. New homeworlds assign two miners;
@@ -1489,7 +1523,7 @@ removed from the galaxy screen. The exploration archive remains available with
 **X**. Fleet-selection close/cancel controls remain beside their course hint.
 
 Three original illustrated panels at the top show treasury and net credits per
-turn (including building upkeep), banked research and RP per turn, and total
+turn (including building and ship upkeep), banked research and RP per turn, and total
 food production minus consumption across your own colonies. **Food is still
 local**: the bar reports colonies with shortages even when the empire total is
 positive. The counters use the same reports as the Empire screen, including
@@ -2206,7 +2240,8 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   planet data and distinct illustrations for six environment types.
 - The planet screen centres on the colony landscape. A system directory sits at
   top left, visual output totals and worker assignments across the top, and
-  the current construction project with **Change** and **Buy** at top right.
+  the current construction project with **Change** at top right. Ships also
+  have a **Buy** button.
   **Return** at bottom right goes to the solar-system overview.
 - Each billion inhabitants is one worker, assigned to farming, industry,
   research or mining. Earth starts with two farmers, four industrial workers
@@ -2334,9 +2369,10 @@ status and completion estimate. **Change** opens the building/ship catalogue:
 - Click an existing project to make it current without paying again.
 - Use **×** to cancel and refund its unused reserved materials. An unpaid order
   returns nothing. Longer queues have pages.
-- **Buy** finishes the current project immediately for **2 credits per remaining
+- **Buy** finishes the current ship immediately for **2 credits per remaining
   work**, also reserving any unpaid Resource cost. The confirmation shows both
-  amounts. Other projects keep their progress; bought gates start uncharged.
+  amounts. Other projects keep their progress. Buildings, habitat modules and
+  the Ascension Gate must complete normally through industry.
 
 Completed buildings open their inspection screen with **Disable / Enable** and
 **Demolish** controls when clicked; the
@@ -3220,7 +3256,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Return to the galaxy map or full system view | Galaxy map / System view button, or Escape after cancelling any worker selection |
 | Assign workers | Click a worker or gap to select everyone to its right, then a destination role; Left/Right adjusts quantity |
 | Choose / prioritize production | Change on the planet overview |
-| Buy the current project | Buy on the planet overview, then confirm the price |
+| Buy the current ship | Buy on the planet or mothership overview, then confirm the price |
 | Manage buildings | Change to build; click a surface building to inspect |
 | Inspect, cancel or demolish | Click a building slot in the Colony tab |
 | Open / close Empire Overview | I, or the Empire button while playing |

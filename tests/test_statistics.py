@@ -54,7 +54,7 @@ class StatisticsRulesTests(unittest.TestCase):
         self.assertEqual(row, [game.turn, summary.population, summary.industry, summary.food_produced,
                                summary.resources, summary.energy_generated, summary.income])
         self.assertEqual(row[1], earth.population+earth.slaves)
-        self.assertEqual(row[6], game.planet_yields(earth)[1]+game.diplomatic_yields()[0])
+        self.assertEqual(row[6], game.planet_yields(earth)[1]+game.diplomatic_yields()[0]-game.fleet_maintenance())
         self.assertGreater(game.diplomatic_yields()[0], 0)
         # A fueled local grid consumes mining resources; statistics shows gross mining.
         from orion.buildings import BUILDINGS

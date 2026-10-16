@@ -10,6 +10,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame as pg
+from scenarios import finish_building_next_turn
 from orion import ai, economy
 from orion.buildings import BUILDINGS
 from orion.model import GameState
@@ -168,7 +169,7 @@ class PowerProgressionTests(unittest.TestCase):
             self.assertIsNone(g.build_error(0, 2, identifier))
             g.resources = g.credits = 1000
             g.queue_building(0, 2, identifier)
-            g.buy_construction(0, 2)
+            finish_building_next_turn(g)
         self.assertEqual(GameState.from_dict(g.to_dict()), g)
 
     def test_backup_cost_is_charged_once_before_new_construction(self):

@@ -16,6 +16,7 @@ class ShipSpec:
     damage: int = 0
     technology: str | None = None
     drone_bays: int = 0
+    maintenance: int = 0
 
 
 HULL_TECHNOLOGIES = {
@@ -25,17 +26,17 @@ HULL_TECHNOLOGIES = {
 
 
 SHIP_TYPES = {
-    "mothership": ShipSpec("mothership", "Mothership", 1200, 600, hull=180, damage=5),
-    "colony_ship": ShipSpec("colony_ship", "Colony ship", 800, 420, hull=12),
-    "frigate": ShipSpec("frigate", "Frigate", 60, 36, hull=20, damage=5),
-    "troop_transport": ShipSpec("troop_transport", "Troop transport", 80, 42, hull=16),
-    "scout": ShipSpec("scout", "Scout", 25, 12, hull=8),
-    "outpost_ship": ShipSpec("outpost_ship", "Outpost ship", 80, 42, hull=12),
-    "destroyer": ShipSpec("destroyer", "Destroyer", 90, 54, hull=30, damage=10, technology="destroyer_hulls"),
-    "cruiser": ShipSpec("cruiser", "Cruiser", 150, 90, hull=42, damage=12, technology="cruiser_hulls"),
-    "battleship": ShipSpec("battleship", "Battleship", 260, 156, hull=75, damage=18, technology="battleship_hulls"),
-    "carrier": ShipSpec("carrier", "Drone carrier", 210, 126, hull=55, damage=5, technology="drone_carriers", drone_bays=2),
-    "titan": ShipSpec("titan", "Titan", 420, 252, hull=125, damage=26, technology="titan_hulls"),
+    "mothership": ShipSpec("mothership", "Mothership", 1200, 600, hull=180, damage=5, maintenance=4),
+    "colony_ship": ShipSpec("colony_ship", "Colony ship", 800, 420, hull=12, maintenance=2),
+    "frigate": ShipSpec("frigate", "Frigate", 60, 36, hull=20, damage=5, maintenance=2),
+    "troop_transport": ShipSpec("troop_transport", "Troop transport", 80, 42, hull=16, maintenance=1),
+    "scout": ShipSpec("scout", "Scout", 25, 12, hull=8, maintenance=1),
+    "outpost_ship": ShipSpec("outpost_ship", "Outpost ship", 80, 42, hull=12, maintenance=1),
+    "destroyer": ShipSpec("destroyer", "Destroyer", 90, 54, hull=30, damage=10, technology="destroyer_hulls", maintenance=3),
+    "cruiser": ShipSpec("cruiser", "Cruiser", 150, 90, hull=42, damage=12, technology="cruiser_hulls", maintenance=5),
+    "battleship": ShipSpec("battleship", "Battleship", 260, 156, hull=75, damage=18, technology="battleship_hulls", maintenance=8),
+    "carrier": ShipSpec("carrier", "Drone carrier", 210, 126, hull=55, damage=5, technology="drone_carriers", drone_bays=2, maintenance=6),
+    "titan": ShipSpec("titan", "Titan", 420, 252, hull=125, damage=26, technology="titan_hulls", maintenance=12),
 }
 
 

@@ -1,0 +1,18 @@
+Orion Reach v0.68.1 — extract over v0.68, then restart the game.
+
+- Ships now pay maintenance every turn, in orbit and in transit. Both players
+  and AI pay, and AI budgets include ships already queued for construction.
+- Per ship, per turn: scout/outpost/transport 1 CR; colony ship/frigate 2;
+  destroyer 3; mothership 4; cruiser 5; carrier 6; battleship 8; titan 12.
+- Custom designs use their hull class's upkeep. Mothership upkeep is additional
+  to module costs and still applies during emergency repairs.
+- Queued ships are free. Normal completions begin paying next turn; purchased
+  ships pay at the next End Turn. Loss, consumption or capture updates upkeep.
+- Net income and the Empire budget include fleet costs. Fleets, shipyards,
+  production choices, the designer and the encyclopedia show maintenance.
+- Buildings, mothership modules and the Ascension Gate can no longer be bought.
+  Complete them with Resources and local industry. Buy remains for ships only.
+
+Existing saves are supported. No retroactive upkeep is charged. Save format
+49 stays unchanged; balance profile 13 adds editable maintenance under Standard
+ships while retaining existing custom balance values.

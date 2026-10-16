@@ -84,12 +84,12 @@ class BuildingEconomyTests(unittest.TestCase):
         game.queue_building(0, 2, "research_lab")
         planet.construction_queue[0].progress = 18
         self.assertEqual(planet.maintenance_per_turn, 0)
-        self.assertEqual(game.advance_turn().income, 8)
+        self.assertEqual(game.advance_turn().income, 4)
         self.assertEqual(planet.maintenance_per_turn, 2)
-        self.assertEqual(game.advance_turn().income, 6)
+        self.assertEqual(game.advance_turn().income, 2)
         game.demolish_building(0, 2, 0)
         game.cancel_construction(0, 2, 0)
-        self.assertEqual(game.advance_turn().income, 8)
+        self.assertEqual(game.advance_turn().income, 4)
 
     def test_racial_modifiers_apply_to_output_before_fixed_maintenance(self):
         game = scenario(race_id="concord")
@@ -111,6 +111,7 @@ class BuildingEconomyTests(unittest.TestCase):
 
     def test_deficits_create_debt_and_surpluses_repay_it_without_stopping_paid_projects(self):
         game = scenario()
+        game.ships.clear()  # Isolate building debt, then commission one scout below.
         planet = game.planet_at(0, 2)
         planet.population, planet.farmers, planet.scientists = 1, 0, 1
         planet.buildings = ["research_lab"]*8
@@ -125,6 +126,7 @@ class BuildingEconomyTests(unittest.TestCase):
             game.buy_construction(0, 2)
         for _ in range(8):
             game.demolish_building(0, 2, 0)
+        planet.population = 2  # Two credits cover the scout and repay one credit.
         self.assertEqual(game.advance_turn().income, 1)
         self.assertEqual(game.credits, -14)
         self.assertEqual(game, GameState.from_dict(game.to_dict()))
@@ -135,7 +137,7 @@ class BuildingEconomyTests(unittest.TestCase):
         game.diplomacy.trade_active = True
         summary = summarize_empire(game)
         trade = game.diplomatic_yields()[0]
-        self.assertEqual((summary.gross_income, summary.maintenance, summary.income), (16+trade, 5, 11+trade))
+        self.assertEqual((summary.gross_income, summary.maintenance, summary.income), (16+trade, 9, 7+trade))
         self.assertEqual(game.empire_rates[0], summary.income)
         before = game.credits
         self.assertEqual(game.advance_turn().income, summary.income)
@@ -160,14 +162,14 @@ class BuildingEconomyTests(unittest.TestCase):
         game.diplomacy_action("trade")
         self.assertTrue(game.diplomacy.trade_active)
         self.assertEqual(game.credits, -15)
-        self.assertEqual(game.empire_rates[0], 8+game.diplomatic_yields()[0])
+        self.assertEqual(game.empire_rates[0], 4+game.diplomatic_yields()[0])
         self.assertIsNotNone(game.diplomacy_error("gift"))
 
     def test_ai_accounts_for_paid_queues_and_recovers_an_insolvent_colony(self):
         game = scenario(with_ai=True)
         system, planet = game.headquarters("rival")
         planet.construction_queue = [ConstructionProject("research_lab") for _ in range(3)]
-        self.assertEqual(ai.projected_income(game, "rival"), 2)
+        self.assertEqual(ai.projected_income(game, "rival"), -2)
         self.assertTrue(ai.queue_building(game, system, planet, "factory", "rival"))
         self.assertEqual(planet.construction_queue[-1].item_id, "solar_array")
         planet.construction_queue.clear()

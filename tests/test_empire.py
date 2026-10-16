@@ -44,11 +44,11 @@ class EmpireReportTests(unittest.TestCase):
     def test_totals_cover_all_colonies_and_reserved_slots(self):
         game = varied_empire()
         self.assertEqual(summarize_empire(game), EmpireSummary(
-            colonies=4, population=17, industry=30, income=0, gross_income=17, maintenance=17, research=11,
+            colonies=4, population=17, industry=30, income=-4, gross_income=17, maintenance=21, research=11,
             used_slots=11, capacity=28, projects=1, idle=3,
             food_produced=12, food_consumed=17, food_shortages=3,
             resources=8, energy_generated=48, energy_demand=30, energy_shortages=1))
-        self.assertEqual(game.empire_rates, (0, 11))
+        self.assertEqual(game.empire_rates, (-4, 11))
         colony_rows(game, "full", "population", True)
         self.assertEqual(summarize_empire(game).colonies, 4)
 
@@ -229,7 +229,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         earth.owner = None
         earth.population = 0
         self.click("open_empire")
-        self.assertEqual(summarize_empire(self.app.game), EmpireSummary())
+        self.assertEqual(summarize_empire(self.app.game), EmpireSummary(income=-4, maintenance=4))
         self.assertEqual(self.row_keys(), [])
         self.key(pg.K_PAGEDOWN)
         self.key(pg.K_LEFT)

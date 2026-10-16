@@ -10,6 +10,7 @@ os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
 os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 os.environ.setdefault('PYGAME_HIDE_SUPPORT_PROMPT', '1')
 
+from scenarios import finish_building_next_turn
 from orion import ai, balance
 from orion.balance_document import BalanceDocument
 from orion.buildings import ADVANCED_FACILITIES, BUILDINGS, FACILITY_FAMILIES
@@ -79,7 +80,7 @@ class ProgressionTests(unittest.TestCase):
                 with self.assertRaises(RuleError): game.queue_building(0, 2, identifier)
                 restored = GameState.from_dict(game.to_dict())
                 self.assertEqual(restored, game)
-                game.buy_construction(0, 2)
+                finish_building_next_turn(game)
                 self.assertIn(identifier, planet.buildings)
                 with self.assertRaises(RuleError): game.queue_building(0, 2, identifier)
                 self.assertEqual(GameState.from_dict(game.to_dict()), game)
@@ -172,6 +173,8 @@ class ProgressionTests(unittest.TestCase):
                           restored.technology.project_cost), (5, 1000, 1234))
         for section, table in original['data'].items():
             for identifier, entry in table.items():
+                if section == 'ships':
+                    entry = {**entry, 'maintenance': balance.default_profile()['data']['ships'][identifier]['maintenance']}
                 if section == 'ships' and identifier == 'colony_ship':
                     entry = {**entry, 'resource_cost': 800, 'work_cost': 420}
                 if section == 'races':
@@ -232,7 +235,7 @@ class ProgressionTests(unittest.TestCase):
         app.game.queue_building(0, 2, 'advanced_research_lab')
         app.render()
         self.assertNotIn('build_advanced_research_lab', {b.key for b in app.buttons})
-        app.game.buy_construction(0, 2)
+        finish_building_next_turn(app.game)
         app.go('planet')
         app.render()
         self.assertIn('surface_advanced_research_lab', {b.key for b in app.buttons})
