@@ -43,9 +43,9 @@ class ContactRulesTests(unittest.TestCase):
     def test_every_civilization_has_a_distinct_greeting_and_character(self):
         self.assertEqual(set(PERSONALITIES), set(RACES))
         greetings = [p.greeting for p in PERSONALITIES.values()]
-        self.assertEqual(len(set(greetings)), 11)
+        self.assertEqual(len(set(greetings)), len(RACES))
         self.assertTrue(all(0 < len(s) <= 180 and s.isprintable() for s in greetings))
-        self.assertEqual(RACES["concord"].default_empire, "Concord Collective")
+        self.assertEqual(RACES["concord"].default_empire, "Dominion of One")
         self.assertIn("Assimilat", PERSONALITIES["concord"].traits)
         self.assertNotEqual(PERSONALITIES["concord"], PERSONALITIES["nexus"])
 

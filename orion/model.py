@@ -32,6 +32,7 @@ from . import economy
 from . import administration
 from . import megastructures
 from . import coalitions, tribute
+from . import species, accession
 from . import motherships
 from . import hyperlanes
 from . import specialists as specialist_rules
@@ -199,7 +200,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=49):
+    def from_dict(cls, data, systems, *, version=50):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -390,6 +391,8 @@ class Planet:
     outpost_owner: str | None = None
     outpost_hull: int = 0
     habitat: bool = False
+    species: dict[str, int] = field(default_factory=dict)
+    loyalty_until: int = 0
 
     @property
     def production_idle(self):
@@ -445,9 +448,11 @@ class Planet:
         if self.trade_goods:
             return []
         work = colony_yields(self, bonuses or {})[0]
-        multiplier = max(1, economy.local_bonuses(self, bonuses).get("ship_work_multiplier", 1))
+        local = economy.local_bonuses(self, bonuses)
+        multiplier = max(1, local.get("ship_work_multiplier", 1))
+        colony_multiplier = max(1, local.get("colony_work_multiplier", 1))
         # Integer ticks preserve ship overflow without accelerating a later building.
-        work *= multiplier
+        work *= multiplier*colony_multiplier
         completed = []
         while work > 0 and self.construction_queue:
             project = self.construction_queue[0]
@@ -455,7 +460,7 @@ class Planet:
                 break
             if project.needs_resources and (fund is None or not fund(project)):
                 break
-            ticks = 1 if project.is_ship else multiplier
+            ticks = (1 if project.item_id == "colony_ship" else colony_multiplier) if project.is_ship else multiplier*colony_multiplier
             applied = min(work//ticks, project.remaining_work)
             if not applied:
                 break
@@ -496,7 +501,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=45):
+    def from_dict(cls, data, expected_id, *, version=50):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -513,6 +518,7 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        species.validate(record, version)
         record.setdefault("habitat", False)
         if type(record["habitat"]) is not bool or record["habitat"] != (expected_id < 0):
             raise ValueError("Invalid habitat location")
@@ -742,6 +748,7 @@ class GameState:
     hidden_hyperlanes: list[hyperlanes.HiddenHyperlane] = field(default_factory=list)
     hyperlane_surveys: dict[str, list[int]] = field(default_factory=dict)
     encounters: encounter_rules.EncounterState = field(default_factory=encounter_rules.EncounterState)
+    union_missions: list[accession.Mission] = field(default_factory=list)
 
     @property
     def is_observer(self):
@@ -835,6 +842,14 @@ class GameState:
 
     def system_explored(self, system_id, owner=PLAYER):
         return exploration_rules.is_explored(self, system_id, owner)
+
+    def system_name(self, system_id, owner=PLAYER):
+        """Display a neutral catalogue ID until this empire knows the system."""
+        system = self.systems[system_id]
+        if (self.system_explored(system_id, owner)
+                or system.kind == black_holes.KIND and black_holes.charted(self, system, owner)):
+            return system.name
+        return f"UNK-{system_id:03d}"
 
     def known_system(self, system_id, owner=PLAYER):
         return exploration_rules.known_system(self, system_id, owner)
@@ -978,7 +993,10 @@ class GameState:
             nonlocal context
             if context is None:
                 context = administration.Context(self, owner)
-            return {**specialist_rules.colony_effects(self, planet), **context.effects(planet)}
+            values = {**specialist_rules.colony_effects(self, planet), **context.effects(planet)}
+            for key, value in species.local_effects(self, planet).items():
+                values[key] = values.get(key, 0)+value
+            return values
         return economy.PowerBonuses(bonuses, lambda planet: self._power_report(planet, bonuses),
                                    local)
 
@@ -1162,6 +1180,8 @@ class GameState:
             return ASCENSION_GATE.resource_cost
         key = "building_discount" if item_id in BUILDINGS else "ship_discount"
         discount = self.bonuses_for(owner).get(key, 0)
+        if item_id == "colony_ship":
+            discount += self.bonuses_for(owner).get("colony_ship_discount", 0)
         return max(1, math.ceil(self.project_spec(item_id, owner).resource_cost*(100-discount)/100))
 
     def travel_turns(self, origin, destination, owner=PLAYER, *, ships=()):
@@ -1228,7 +1248,7 @@ class GameState:
     def fuel_range_error(self, destination, owner=PLAYER, *, ships=()):
         if not self.can_reach(destination, owner, ships=ships):
             advice = "Establish a closer outpost or research fuel tanks."
-            return (f"Out of fuel range: {self.systems[destination].name} is "
+            return (f"Out of fuel range: {self.system_name(destination, owner)} is "
                     f"{self.supply_distance(destination, owner):.1f} ly from your nearest supply point "
                     f"(range {self.fuel_range(owner, ships=ships)} ly). {advice}")
         return None
@@ -1324,7 +1344,10 @@ class GameState:
         name_home(self, system, planet, race_id)
         self._register_opponent(owner, race_id, system, planet, name)
         planet.colonized, planet.owner, planet.population = True, owner, economy.STARTING_POPULATION
+        planet.species = {race_id: planet.population}
         planet.farmers, planet.scientists, planet.miners = 2, 0, 2
+        if race_id == "skirr":
+            planet.farmers = population_rules.farmers_needed(planet, self.bonuses_for(owner), surplus=4)
         if not population_rules.food_required(planet.population, self.bonuses_for(owner)):
             planet.farmers = 0
         population_rules.clamp_workforce(planet)
@@ -1672,6 +1695,8 @@ class GameState:
         outpost_rules.clear(planet)
         planet.owner = owner
         planet.population = self.starting_colonists(owner)
+        planet.species = {self._empire(owner).race_id: planet.population}
+        planet.loyalty_until = 0
         planet.growth_progress = 0
         administration.ownership_changed(self, previous_systems)
         # New settlements first supply their inhabitants, then assign industry.
@@ -1709,6 +1734,7 @@ class GameState:
     def empire_rates_for(self, owner):
         income, research = self.diplomatic_yields(owner)
         income -= specialist_rules.salaries(self, owner)+self.fleet_maintenance(owner)
+        income -= accession.upkeep(self, owner)
         for _, planet in self.settlements(owner):
             _, credits, points = self.planet_yields(planet)
             income += credits
@@ -1747,6 +1773,7 @@ class GameState:
         if combat_rules.intercept(self):
             return TurnReport(0, 0, [])
         # Freeze the outgoing turn's live totals before AI orders and simulation.
+        species.normalize(self)
         specialist_rules.normalize(self)
         administration.normalize(self)
         megastructures.normalize(self)
@@ -1842,12 +1869,15 @@ class GameState:
         self.research += research
         population = []
         for planet, start in population_start:
+            previous_population = planet.population
             if population_rules.advance(planet, start):
                 message = f"{planet.name} grew to {planet.population} B"
                 if planet.owner == PLAYER:
                     population.append(message)
                 else:
                     self.rival_event(message+".", turn=self.turn, owner=planet.owner)
+            elif planet.population < previous_population and planet.owner == PLAYER:
+                alerts.append(f"Food shortage on {planet.name}: 1 B swarm inhabitants lost")
         population.extend(raid_rules.advance_mortality(self, slave_start))
         specialist_rules.advance_employed(self)
         exploration = exploration_rules.refresh(self, recover=True)
@@ -1872,6 +1902,9 @@ class GameState:
         self.__dict__.pop("_turn_hyperlanes", None)
         self.__dict__.pop("_array_chances", None)
         tomb_rules.advance(self, alerts, ground_battles)
+        species.advance_swarm(self, alerts)
+        accession.advance(self, alerts)
+        species.normalize(self)
         specialist_rules.advance_visitors(self)
         encounter_rules.finish_turn(self, searches_ready)
         exploration_rules.refresh(self)
@@ -1886,10 +1919,11 @@ class GameState:
                           [discovered.name] if discovered else [], alerts, exploration, population, ground_battles, resource_rates.get(PLAYER, 0))
 
     def to_dict(self):
+        species.normalize(self)
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=49):
+    def from_dict(cls, data, *, version=50):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2084,6 +2118,14 @@ class GameState:
             tribute.load(game, data, version)
             observer_rules.load(game, data, version)
             administration.load(game, data, version)
+            accession.load(game, data, version)
+            species.normalize(game)
+            if version < 50:
+                if game.race_id == "concord" and game.empire_name in ("The Concord", "Concord Collective"):
+                    game.empire_name = "Dominion of One"
+                for empire in game.opponents.values():
+                    if empire.race_id == "concord" and empire.name in ("The Concord", "Concord Collective"):
+                        empire.name = "Dominion of One"
             from . import statistics as statistics_rules
             statistics_rules.load(game, data, version)
             specialist_rules.load(game, data, version)
@@ -2170,7 +2212,10 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         game.credits = game.resources = 0
     else:
         name_home(game, systems[0], systems[0].worlds[2], race_id)
+        game.planet_at(0, 2).species = {race_id: game.planet_at(0, 2).population}
         game.research = RACES[race_id].starting_research
+        if race_id == "skirr":
+            game.planet_at(0, 2).farmers = population_rules.farmers_needed(game.planet_at(0, 2), game.bonuses_for(), surplus=4)
         if not population_rules.food_required(game.planet_at(0, 2).population, game.bonuses_for()):
             game.planet_at(0, 2).farmers = 0
         game.planet_at(0, 2).miners = 2
@@ -2208,6 +2253,7 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         tomb_rules.seed_worlds(game)
     hyperlanes.seed_network(game)
     encounter_rules.seed(game, with_encounters)
+    species.normalize(game)
     exploration_rules.refresh(game)
     from . import statistics as statistics_rules
     statistics_rules.record(game)

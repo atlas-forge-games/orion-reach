@@ -34,6 +34,9 @@ class TreatyTests(unittest.TestCase):
         for race in RACES:
             with self.subTest(race=race):
                 game = campaign(rival_race_id=race)
+                if race == 'skirr':
+                    self.assertIn('rejects treaties', game.diplomacy_error('trade'))
+                    continue
                 game.diplomacy.relations = 9
                 self.assertIn('declined', game.diplomacy_action('trade'))
                 game.turn += diplomacy.OFFER_COOLDOWN

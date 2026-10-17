@@ -1,0 +1,16 @@
+Orion Reach v0.69.1 — undiscovered system names
+
+Install over v0.69.0: close the game, extract into the folder containing main.py,
+and replace matching files.
+
+Unexplored stars use neutral catalogue IDs such as UNK-012. The real name
+appears after exploration and remains known after leaving the system.
+First contact and remote scans do not reveal undiscovered home system names.
+
+Covered surfaces: galaxy labels, system panels, destination previews, fleet
+lists, mothership courses, notifications, fuel errors, sensor reports, hyperlane
+endpoints and retreat destinations.
+
+Fog-off and Observer campaigns retain full names. Detected black holes keep
+their existing names. Actual system names and galaxy generation are unchanged.
+Works with existing saves; save format 50 and balance profile 14 are unchanged.

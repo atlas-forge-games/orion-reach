@@ -69,7 +69,7 @@ def diplomatic_orders(game, owner):
         if (not first_contact.known(game, owner, target) or state.trade_active or state.research_active
                 or state.non_aggression_active or state.coalition_target
                 or not game.within_fuel_range(system.id, owner)
-                or state.relations >= (25 if game._empire(owner).race_id == "concord" else 0)):
+                or state.relations >= (101 if game._empire(owner).race_id == "skirr" else 25 if game._empire(owner).race_id == "concord" else 0)):
             continue
         # An unobserved navy is uncertain; never query its hidden strength.
         observed = sum(s.hull for s in game.visible_ships(owner) if s.owner == target and game.military_strength(s) > 0)
@@ -216,6 +216,8 @@ def projected_colony(planet, extra=None):
 def projected_income(game, owner, extra=None):
     """Budget for queued buildings and ships, current fleets and salaries."""
     income = game.diplomatic_yields(owner)[0]-game.fleet_maintenance(owner)-specialists.salaries(game, owner)
+    from .accession import upkeep
+    income -= upkeep(game, owner)
     for system, planet in empire_colonies(game, owner):
         item = extra[2] if extra and extra[:2] == (system.id, planet.id) else None
         income += game.planet_yields(projected_colony(planet, item))[1]
@@ -448,6 +450,8 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
 def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
     nature = personality(game, owner)
+    from . import accession
+    accession.ai_orders(game, owner)
     from . import motherships, encounters
     encounters.ai_orders(game, owner)
     nomadic = motherships.is_wanderer(game, owner)
@@ -486,7 +490,7 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         integrating = any(until > game.turn for until in context.timers.values())
         # Consolidate while a new system integrates or the treasury is shrinking.
         # Existing-system planets remain useful and incur no extra shared strain.
-        if integrating or game.empire_rates_for(owner)[0] < 0:
+        if (integrating and game._empire(owner).race_id != "skirr") or game.empire_rates_for(owner)[0] < 0:
             targets = [s for s in targets if s.id in context.systems]
         frontier = [s for s in targets if not any(p.owner == owner for p in game.known_system(s.id, owner).worlds)]
         local = available_worlds(game, game.systems[ship.system_id], owner)
@@ -561,6 +565,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                        if p.owner in hostile and game.within_fuel_range(s.id, owner)), default=0)
     unknown = sum(not game.system_explored(s.id, owner) for s in game.systems if s.kind != black_holes.KIND)
     fleet_limit = min(unclaimed+bool(unknown), 3, 1+len(colonies)//2)
+    if game._empire(owner).race_id == "skirr":
+        fleet_limit = min(unclaimed+bool(unknown), 5, 2+len(colonies)//2)
     if raiding.is_varkesh(game, owner) or nomadic:
         fleet_limit = 0
     if nomadic:

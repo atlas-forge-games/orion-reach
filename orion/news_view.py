@@ -27,7 +27,7 @@ def draw_news(app):
         y = 294+index*163
         panel(surface, (64, y, 1312, 148))
         text(surface, f"TURN {tomb.turn:03}  /  {tomb.category}", (86, y+17), 11, GOLD, "mono", 1)
-        text(surface, shorten(planet.name if planet else system.name if system else tomb.headline, 1050, 27), (86, y+41), 27, CYAN)
+        text(surface, shorten(planet.name if planet else game.system_name(system.id) if system else tomb.headline, 1050, 27), (86, y+41), 27, CYAN)
         if system is None:
             paragraph(surface, tomb.detail, (87, y+87), 1240, 15, INK, 22)
             continue

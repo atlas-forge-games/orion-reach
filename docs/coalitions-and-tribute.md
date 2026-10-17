@@ -50,7 +50,7 @@ Threat assessment includes:
   5 × racial frontier weight per system, capped at 30.
 - Competing racial interests at nearby known worlds: 3 × goal weight per match,
   capped at 25. Examples include lush ecosystems, blue/white stars, industry,
-  research facilities and profitable worlds. Concord also considers attacks on
+  research facilities and profitable worlds. The Serevan Union also considers attacks on
   its known friends; Remnant considers reported awakenings and known archaeology sites.
 - Remembered tribute demands: 10 per demand, capped at 25.
 - Military fear divided by four, plus a known ascension project when that victory

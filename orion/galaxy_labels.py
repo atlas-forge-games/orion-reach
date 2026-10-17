@@ -11,10 +11,7 @@ LABEL_FAMILY = "mono_bold"
 
 
 def system_label(game, system):
-    name = system.name.upper()
-    if system.kind == black_holes.KIND:
-        return name
-    return name if game.known_system(system.id) is not None else f"({name})"
+    return game.system_name(system.id).upper()
 
 
 def known_owners(game, system):
@@ -37,7 +34,7 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE):
     if site := black_holes.at(game, system.id):
         return label, ((0, width, black_holes.SITES[site.kind][2]),)
     if not owners:
-        color = INK if selected else FAINT if label.startswith("(") else MUTED
+        color = INK if selected else FAINT if not game.system_explored(system.id) else MUTED
         return label, ((0, width, color),)
     count = len(owners)
     if count <= len(label):

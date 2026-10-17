@@ -18,6 +18,7 @@ from orion.model import GALAXY_SIZES, GameState, SaveError, Ship, new_game
 from orion.production import GATE_CHARGE_TURNS
 from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
 from orion.victory import gate_blocked
+from scenarios import legacy_race_roster
 
 
 def add_ships(game, system_id, owner, kinds):
@@ -155,8 +156,9 @@ class IndependentEmpireTests(unittest.TestCase):
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_capture_eliminates_one_rival_without_ending_or_revealing_to_third_party(self):
-        # This is a planetary-invasion fixture; seed 13 has three planet-based rivals.
-        game = new_game(seed=13, rival_count=3, with_guardians=False)
+        # Pin the planetary-invasion fixture to its original planet-based rivals.
+        with legacy_race_roster():
+            game = new_game(seed=13, rival_count=3, with_guardians=False)
         target = "rival_2"
         home = game._empire(target).home_system
         scout = next(s for s in game.ships_owned_by(target) if s.kind == "scout")
@@ -178,7 +180,8 @@ class IndependentEmpireTests(unittest.TestCase):
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_losing_player_home_ends_game_while_multiple_rivals_remain(self):
-        game = new_game(seed=2408, rival_count=3, with_guardians=False)
+        with legacy_race_roster():
+            game = new_game(seed=2408, rival_count=3, with_guardians=False)
         self.assertTrue(capture(game, "rival_3", PLAYER).captured)
         self.assertEqual(game.result.condition, "elimination")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)

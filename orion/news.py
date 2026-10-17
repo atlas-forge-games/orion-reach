@@ -23,7 +23,7 @@ def entries(game):
                        raiding.headline(game, r), raiding.outcome_text(game, r), r.id)
              for r in raiding.news(game)]
     rows += [NewsEntry(r.turn, r.system_id, None, "HOSTILE SENSOR CONTACT",
-                      f"Hostile fleet detected near {game.systems[r.system_id].name}.",
+                      f"Hostile fleet detected near {game.system_name(r.system_id)}.",
                       f"{game.empire_name_for(r.owner)} · "+(f"{r.count} ships" if r.count is not None else "Ship count unknown")+
                       ". Open the galaxy sensor overlay for the latest contact positions.", r.id)
              for r in game.sensor_reports if r.observer == "player"]
@@ -39,10 +39,10 @@ def entries(game):
     rows += [NewsEntry(e.turn, None, None, 'DIPLOMACY', 'Diplomatic dispatch', e.message, e.id)
              for e in game.diplomatic_news]
     rows += [NewsEntry(p.completed_turn, p.system_id, None, "FORGOTTEN HYPERLANE",
-                      f"{game.systems[p.system_id].name} ↔ {game.systems[p.destination].name}",
+                      f"{game.system_name(p.system_id)} ↔ {game.system_name(p.destination)}",
                       f"{game.empire_name_for(p.owner)} recovered a private, permanent passage. Travel takes one turn in either direction.")
              for p in hyperlanes.visible_routes(game)]
-    rows += [NewsEntry(e.turn, e.system_id, None, "NEUTRAL ENCOUNTER", game.systems[e.system_id].name,
+    rows += [NewsEntry(e.turn, e.system_id, None, "NEUTRAL ENCOUNTER", game.system_name(e.system_id),
                       e.message, e.id) for e in encounters.news(game)]
     return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id if n.system_id is not None else -1,
                                       n.planet_id if n.planet_id is not None else -1), reverse=True)

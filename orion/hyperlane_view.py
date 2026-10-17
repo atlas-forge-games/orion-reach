@@ -52,7 +52,7 @@ def draw_hyperlane(app):
     app.chrome("FORGOTTEN HYPERLANES")
     app.button("hyperlane_back", "← Solar system", (64, 126, 220, 46), lambda: app.go("system"))
     text(surface, "WANDERER NAVIGATION QUEST", (1376, 142), 11, GOLD, "mono", right=True)
-    text(surface, shorten(system.name+" · Forgotten hyperlanes", 1300, 37, "title"), (64, 193), 37, INK, "title")
+    text(surface, shorten(game.system_name(system.id)+" · Forgotten hyperlanes", 1300, 37, "title"), (64, 193), 37, INK, "title")
     text(surface, "Hidden network fixed at game start · Permanent two-way passages · Only your empire can use its discoveries", (67, 251), 14, MUTED)
     if not motherships.is_wanderer(game):
         paragraph(surface, "Only the Wanderers can decipher these ancient navigation paths.", (64, 319), 800, 24, MUTED, 34)
@@ -83,7 +83,7 @@ def draw_hyperlane(app):
             text(surface, shorten(reason, 518, 11), (832, 651), 11, MUTED)
     elif project.complete:
         text(surface, "HYPERLANE RECOVERED", (832, 316), 12, GOLD, "mono", 1)
-        text(surface, shorten(game.systems[project.destination].name, 514, 33, "title"), (832, 357), 33, INK, "title")
+        text(surface, shorten(game.system_name(project.destination), 514, 33, "title"), (832, 357), 33, INK, "title")
         text(surface, "1 TURN · BOTH DIRECTIONS", (832, 415), 17, LANE_COLOR, "mono")
         paragraph(surface, "Every ship in your empire can use this passage, including motherships and their escorts. Normal fuel range and travel speed do not limit the jump.", (832, 461), 518, 15, MUTED, 25)
         text(surface, signals, (832, 557), 12, GOLD)
@@ -129,7 +129,7 @@ def draw_hyperlane(app):
         x = 64+i*445
         panel(surface, (x, 737, 422, 103), border=LANE_COLOR)
         draw_portal(surface, (x+25, 763), 15)
-        text(surface, shorten(game.systems[sid].name, 335, 21), (x+53, 752), 21, INK)
+        text(surface, shorten(game.system_name(sid), 335, 21), (x+53, 752), 21, INK)
         app.button(f"hyperlane_view_{sid}", "View endpoint", (x+15, 798, 177, 34), lambda target=sid: app.open_system(target))
         app.button(f"hyperlane_plot_{sid}", "Plot course · 1 turn", (x+207, 798, 199, 34), lambda target=sid: plot(app, target),
                    enabled=editable and bool(game.fleet_at(system.id)))

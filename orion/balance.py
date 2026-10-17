@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 13
+VERSION = 14
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -459,6 +459,22 @@ def upgrade_profile(profile):
             for kind, spec in _defaults()['data']['ships'].items():
                 if isinstance(data['ships'].get(kind), dict):
                     data['ships'][kind].setdefault('maintenance', spec['maintenance'])
+        profile['version'] = 13
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 13:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            for section in ('races', 'personalities', 'alignment', 'diplomatic_preferences'):
+                if isinstance(data.get(section), dict):
+                    for rid in ('serevan', 'skirr'):
+                        data[section].setdefault(rid, deepcopy(_defaults()['data'][section][rid]))
+            if isinstance(data.get('races', {}).get('concord'), dict):
+                data['races']['concord']['name'] = 'Dominion of One'
+                data['races']['concord']['default_empire'] = 'Dominion of One'
+            if isinstance(data.get('personalities', {}).get('concord'), dict):
+                data['personalities']['concord']['greeting'] = _defaults()['data']['personalities']['concord']['greeting']
+            if isinstance(data.get('diplomatic_preferences', {}).get('concord'), dict):
+                data['diplomatic_preferences']['concord'] = deepcopy(_defaults()['data']['diplomatic_preferences']['concord'])
         profile['version'] = VERSION
     return profile
 

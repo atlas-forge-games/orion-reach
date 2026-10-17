@@ -33,7 +33,7 @@ def draw_overview(app, ship):
     for i in range(70):
         x, y = 40+(i*137+31)%680, 376+(i*97)%369
         pg.draw.circle(surface, (35+i%28, 49+i%30, 64+i%40), (x, y), 1)
-    location = (f"{system.name} → {game.systems[ship.destination].name}" if ship.has_course else f"Anchored at {system.name}")
+    location = (f"{game.system_name(system.id)} → {game.system_name(ship.destination)}" if ship.has_course else f"Anchored at {game.system_name(system.id)}")
     text(surface, shorten(location, 680, 22), (43, 333), 22, INK)
     status = (f"Departure queued · {ship.turns_remaining} turns" if ship.departure_pending else
               f"In transit · Arrival in {ship.turns_remaining} turns" if ship.in_transit else

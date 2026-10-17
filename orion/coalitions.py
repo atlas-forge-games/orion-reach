@@ -43,6 +43,8 @@ def proposal_error(game, proposer, partner, target):
         return game.strategy_error(proposer)
     if len({proposer, partner, target}) != 3 or any(o not in game.owners for o in (proposer, partner, target)):
         return 'Choose two different partners and a third empire as the target.'
+    if any(game._empire(o).race_id == "skirr" for o in (proposer, partner)):
+        return "The Skirr Swarm does not join coalitions."
     if partner == 'player':
         return 'The player must propose and confirm their own coalition commitments.'
     if not all(game.colony_systems(o) for o in (proposer, partner, target)):

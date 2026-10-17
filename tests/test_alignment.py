@@ -45,11 +45,14 @@ class AlignmentTests(unittest.TestCase):
             [-2,1,-2,-9,4,-6,-6,11,-2,25,-13],
             [-6,-2,-6,15,-6,-9,-2,-6,-6,-13,25],
         ]
-        races=list(alignment.PROFILES)
-        self.assertEqual(set(races),set(RACES))
+        self.assertEqual(set(alignment.PROFILES),set(RACES))
+        # The published eleven-race reference remains fixed as the roster expands.
+        races=[race for race in alignment.PROFILES if race not in ('serevan', 'skirr')]
         self.assertEqual([[alignment.score(a,b) for b in races] for a in races],expected)
         pairs=list(itertools.combinations(races,2))
         self.assertAlmostEqual(sum(alignment.raw_score(a,b) for a,b in pairs)/len(pairs),0)
+        self.assertEqual(alignment.score('serevan', 'skirr'), -25)
+        self.assertEqual(alignment.score('terran', 'serevan'), 15)
 
     def test_all_empire_pairs_start_at_their_alignment(self):
         for observer in (False,True):

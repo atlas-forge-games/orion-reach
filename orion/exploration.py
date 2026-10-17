@@ -94,6 +94,10 @@ class ExplorationState:
             normalized_worlds = []
             for index, world in enumerate(worlds):
                 parsed = Planet.from_dict(world, index, version=version)
+                if version < 50:
+                    from .species import composition
+                    fallback = game._empire(parsed.owner).race_id if parsed.owner in game.owners else "terran"
+                    parsed.species = composition(parsed, fallback)
                 if parsed.bombarded_turn > row["last_seen"]:
                     raise ValueError("Survey contains future bombardment")
                 actual = game.systems[sid].worlds[index]
@@ -194,7 +198,12 @@ def record_survey(game, system_id, owner):
     if not game.fog_of_war and game.systems[system_id].kind != black_holes.KIND:
         return False
     survey = game.exploration.survey(system_id, owner)
-    worlds = [asdict(p) for p in game.systems[system_id].worlds]
+    from .species import composition
+    worlds = []
+    for planet in game.systems[system_id].worlds:
+        fallback = game._empire(planet.owner).race_id if planet.owner in game.owners else "terran"
+        planet.species = composition(planet, fallback)
+        worlds.append(asdict(planet))
     m = game.systems[system_id].megastructure
     mega = asdict(m) if m else None
     if survey is None:

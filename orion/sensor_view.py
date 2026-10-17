@@ -67,7 +67,7 @@ def draw_contact_panel(app):
         paragraph(surface, game.empire_name_for(contact.owner), (x, 240), width, 23, color, 29)
         text(surface, "LIVE TRACK" if contact.active else f"LAST SEEN · TURN {contact.seen_turn}", (x, 320), 12, CYAN if contact.active else GOLD, "mono")
         nearby = game.systems[contact.near_system]
-        text(surface, shorten("Near "+nearby.name, width, 16), (x, 351), 16, INK)
+        text(surface, shorten("Near "+game.system_name(nearby.id), width, 16), (x, 351), 16, INK)
         pg.draw.line(surface, LINE, (x, 387), (rect.right-24, 387))
         text(surface, f"FLEET SIZE: {contact.count if contact.count is not None else 'UNKNOWN'}", (x, 410), 12, INK, "mono")
         if contact.classes:

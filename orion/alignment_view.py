@@ -48,13 +48,13 @@ def draw_matrix(app):
     text(surface,'Shared-values alignment',(75,123),30,INK,'title')
     text(surface,'Race profiles only · positive: affinity · negative: friction · no diplomatic history included',(76,169),15,MUTED)
     races=list(alignment.PROFILES)
-    abbreviations=dict(terran='Ter',kharuun='Kha',aelari='Ael',lithar='Lit',varkesh='Var',wanderers='Wan',xenonflora='Xen',nexus='Nex',aetheri='Aeth',concord='Con',remnant='Rem')
+    abbreviations=dict(terran='Ter',kharuun='Kha',aelari='Ael',lithar='Lit',varkesh='Var',wanderers='Wan',xenonflora='Xen',nexus='Nex',aetheri='Aeth',concord='Dom',serevan='Ser',skirr='Ski',remnant='Rem')
     labels=[abbreviations[race] for race in races]
-    start,step=324,94
+    start,step=324,1034/max(1,len(races)-1)
     for j,label in enumerate(labels):
         text(surface,label,(start+j*step,223),13,GOLD,'mono',right=True)
     for i,race in enumerate(races):
-        y=263+i*35
+        y=258+i*30
         pg.draw.line(surface,LINE,(76,y-10),(1363,y-10))
         text(surface,RACES[race].name,(76,y),15,RACES[race].color)
         for j,other in enumerate(races):

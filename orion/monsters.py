@@ -176,7 +176,7 @@ def parse_guardians(data, game, *, version=20):
         if not isinstance(row, dict) or set(row) != fields:
             raise ValueError("Invalid guardian record")
         sid, pid, kind = row["system_id"], row["planet_id"], row["kind"]
-        if (not _integer(sid, 1, len(game.systems)-1) or sid in occupied
+        if (not _integer(sid, 0 if game.is_observer else 1, len(game.systems)-1) or sid in occupied
                 or not isinstance(kind, str) or kind not in MONSTERS
                 or not _integer(pid, -1 if kind not in PRIZE_WORLDS else 0, len(game.systems[sid].worlds)-1)
                 or not _integer(row["hull"], 0, MONSTERS[kind].hull)):

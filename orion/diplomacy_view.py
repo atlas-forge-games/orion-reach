@@ -144,5 +144,6 @@ def draw_diplomacy(app):
     text(surface, caption, (65, 798), 13, GOLD if pending else MUTED)
     app.button("diplomacy_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("diplomacy_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "D: diplomacy · I: empire · E: advance one turn", (400, 848), 12, MUTED)
+    from .accession_view import open_panel
+    app.button("diplomacy_accession", "Populations & accession", (400, 834, 315, 45), lambda: open_panel(app))
     app.button("diplomacy_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary")

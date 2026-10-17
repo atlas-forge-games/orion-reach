@@ -24,7 +24,7 @@ def draw_system_intelligence(app, star):
     panel(surface, (1051, 180, 325, 573))
     heading = "SYSTEM INTELLIGENCE" if live else "LAST KNOWN SURVEY" if known else "UNCHARTED SYSTEM"
     text(surface, heading, (1075, 203), 10, GOLD, "mono", 1)
-    text(surface, star.name, (1075, 245), 31, INK, "title")
+    text(surface, game.system_name(star.id), (1075, 245), 31, INK, "title")
     text(surface, star.kind, (1075, 290), 14, MUTED)
     guardian_status = monsters.known_status(game, star.id)
     guardian = monsters.at(game, star.id) if guardian_status else None
@@ -63,7 +63,7 @@ def draw_unsurveyed_system(app, system):
     surface = app.canvas
     app.chrome("UNSURVEYED SYSTEM")
     app.button("system_back", "←  Galaxy map", (64, 124, 205, 48), lambda: app.go("galaxy"), "ghost")
-    text(surface, system.name, (64, 191), 52, INK, "title")
+    text(surface, app.game.system_name(system.id), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind} · Planetary data unknown", (67, 260), 16, MUTED)
     panel(surface, (64, 308, 1312, 439))
     draw_star(surface, (291, 483), 72, STAR_COLORS[system.kind])

@@ -1,0 +1,22 @@
+Validation for Orion Reach v0.69.0
+
+Base: confirmed v0.68.1 ship-maintenance update.
+
+Full regression: 1,201 tests passed.
+Command: python -m unittest discover -s tests -q
+
+Final focused faction checks: 14 tests passed, including an additional check
+that civic investment protects eight completed turns.
+Command: python -m unittest discover -s tests -p test_new_factions.py -q
+
+Rendered and inspected race profiles, accession controls and the 13-race
+alignment matrix using the real Pygame interface.
+Command: python tools/preview_factions.py
+
+Coverage includes accession, preserved Lithar physiology, mission upkeep,
+food and growth, colony construction, replacement and liberation, treaty
+rejection, save migration, custom balance preservation and invalid-save rejection.
+
+Existing seeded fixtures retain their historical race roster where the tested
+feature requires planetary rather than mobile settlements. New-game roster
+checks and the new faction checks exercise the expanded production roster.

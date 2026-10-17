@@ -101,6 +101,14 @@ def draw_race_emblem(surface, race_id, center, radius=50):
     elif race_id == "aetheri":
         for offset in (-.17, .17):
             pg.draw.ellipse(surface, color, (x+radius*(offset-.4), y-radius*.65, radius*.8, radius*1.3), width)
+    elif race_id == "serevan":
+        for a, b in ((0, -.25), (-.25, .20), (.25, .20)):
+            pg.draw.circle(surface, color, pt(a, b), round(radius*.35), width)
+    elif race_id == "skirr":
+        pg.draw.polygon(surface, color, [pt(0, -.7), pt(.3, -.2), pt(.2, .45), pt(0, .7), pt(-.2, .45), pt(-.3, -.2)], width)
+        for sign in (-1, 1):
+            for height in (-.3, .05, .4):
+                pg.draw.lines(surface, color, False, [pt(sign*.2, height), pt(sign*.65, height-.2), pt(sign*.8, height+.15)], width)
     elif race_id == "concord":
         # Distinct organisms subordinated to one central collective mind.
         for a in (-.5, 0, .5):

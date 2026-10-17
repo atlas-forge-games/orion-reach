@@ -56,7 +56,7 @@ def draw_system_panel(app, star):
     survey = game.exploration.survey(star.id)
     status = "LIVE" if live else f"SEEN T{survey.last_seen}" if known else "UNCHARTED"
     text(surface, status, (right, 202), 9, CYAN if live else MUTED, "mono", right=True)
-    text(surface, shorten(star.name, width-58, 29, "title"), (x, 227), 29, INK, "title")
+    text(surface, shorten(game.system_name(star.id), width-58, 29, "title"), (x, 227), 29, INK, "title")
     text(surface, star.kind, (x, 267), 12, MUTED)
     draw_star(surface, (right-21, 254), 13, STAR_COLORS[star.kind])
 

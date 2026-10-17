@@ -181,6 +181,11 @@ class ProgressionTests(unittest.TestCase):
                     entry = {k: v for k, v in entry.items() if k not in ('trade_threshold', 'envoy_bonus')}
                 if section == 'personalities':
                     entry = {k: v for k, v in entry.items() if k not in ('envoy', 'gift')}
+                if identifier == 'concord':
+                    if section == 'races':
+                        entry = {**entry, 'name': 'Dominion of One', 'default_empire': 'Dominion of One'}
+                    elif section == 'personalities':
+                        entry = {**entry, 'greeting': balance.default_profile()['data'][section][identifier]['greeting']}
                 if section == 'rules' and identifier == 'diplomacy':
                     retired = {'ENVOY_COST', 'ENVOY_RELATIONS', 'ENVOY_COOLDOWN', 'GIFT_COST',
                                'GIFT_RELATIONS', 'GIFT_COOLDOWN', 'TRADE_INCOME'}

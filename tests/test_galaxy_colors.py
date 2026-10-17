@@ -133,7 +133,7 @@ class ColorPreferenceUITests(unittest.TestCase):
         for palette in PLAYER_PALETTES:
             self.app.set_galaxy_palette(palette)
             label, bands = label_bands(game, unknown, palette=palette)
-            self.assertTrue(label.startswith("(") and label.endswith(")"))
+            self.assertEqual(label, f"UNK-{unknown.id:03d}")
             self.assertEqual(bands[0][2], FAINT)
             self.assertEqual(label_bands(game, neutral, palette=palette)[1][0][2], MUTED)
             label, bands = label_bands(game, shared, palette=palette)

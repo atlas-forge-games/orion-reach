@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.68.1
+# Orion Reach — Python prototype 0.69.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,47 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.69.1: undiscovered system names
+
+Unexplored solar systems now use neutral catalogue labels such as **UNK-012**.
+Their names are revealed when a ship arrives and remain known after departure.
+First contact and remote sensor detections do not reveal a system's real name.
+
+The same rule applies to galaxy labels, system panels, fleet destinations,
+course notifications, sensor reports and unvisited hyperlane endpoints.
+Fog-off campaigns and the Observer show real names as before. Known black-hole
+sites keep their detection-based names. Save format **50** and balance profile
+**14** are unchanged; existing saves work without migration.
+
+![Undiscovered systems use neutral labels](screenshots/v0691_hidden_names.png)
+
+## New in v0.69: the Union, the Swarm and the Dominion
+
+The roster now has **13 playable civilizations** plus the Observer.
+
+- **Serevan Union:** multicultural diplomacy and voluntary colony accession.
+  Open **Diplomacy → Populations & accession** to sponsor outreach to a
+  dissatisfied foreign colony. Member populations keep their species and local
+  traits. Civic investment, food security and low strain can protect a colony
+  from another Union's outreach.
+- **Skirr Swarm:** triple base population growth, faster and cheaper colony
+  ships, and 2 B starting settlers. The swarm consumes more food, researches
+  more slowly, rejects treaties and gradually replaces conquered populations.
+- **Dominion of One:** the new name of the former Concord collective. Its
+  existing conquest mechanics remain, with diplomatic priorities focused on
+  forced assimilation.
+
+Includes the Serevan portrait created for this update, the supplied Skirr
+portrait, and the supplied replacement Nexus portrait. Kharuun remains its own
+civilization.
+
+Install the update over **v0.68.1**, replacing matching files. Existing campaigns
+load into save format **50**; balance profiles upgrade to **14** while retaining
+custom economic settings. Choose either new race in a new campaign; existing
+campaigns retain their current roster. See [the faction rules](docs/union-and-skirr.md).
+
+![Serevan Union](screenshots/v069_serevan.png)
 
 ## New in v0.68.1: ship maintenance and construction rules
 
@@ -514,7 +555,7 @@ Build a **Space Hub** in a colony, then open **Empire → Specialists**, the
 planet's **Specialists** button, or click the completed Hub on the surface.
 The first operational Hub welcomes two visitors on the next turn, when
 available: a colony leader and an explorer. Later visitors arrive periodically;
-Terran and Concord receive them more often. Extra Hubs do not multiply the
+Terran and Dominion receive them more often. Extra Hubs do not multiply the
 empire's visitor rate.
 
 The galaxy shares **18 unique characters**, each with a name, biography and
@@ -1582,26 +1623,28 @@ personality-adjusted effects before you commit the action.
 | Xenonflora | Protective, communal, watchful | Fortify living communities and react strongly to broken agreements. |
 | Nexus | Calculating, unemotional, methodical | Value material exchange and assess favourable opportunities for conquest. |
 | Aetheri | Mysterious, contemplative, detached | Prefer patient diplomacy and favour defensive fields. |
-| The Concord | Assimilating, relentless, collective | One will seeks to absorb independent civilizations through conquest. |
+| Dominion of One | Assimilating, relentless, collective | One will seeks to absorb independent civilizations through conquest. |
+| Serevan Union | Welcoming, pluralistic, protective | Persuades dissatisfied colonies to join and retains their native species traits. |
+| Skirr Swarm | Invasive, voracious, uncompromising | Expands rapidly and replaces conquered populations. |
 | The Remnant | Proud, secretive, possessive | Guard ancient claims and remember slights. |
 
-**The Concord** is now the **Concord Collective**. Its greeting speaks with one
+The former **Concord collective** is now the **Dominion of One**. Its greeting speaks with one
 voice; its AI builds larger fleets earlier and can launch assimilation campaigns
 against reachable neutral neighbours. Successful invasions retain the conquered
 population and buildings under collective ownership, using the existing ground
 combat rules; they do not automatically copy technologies or convert ships.
-As of v0.62, Concord trade/research agreements require **+10/+55 relations**.
+As of v0.62, Dominion trade/research agreements require **+10/+55 relations**.
 Their networked treaty bonuses (+3 CR before distance/+1 RP) and the 10% local
 credit penalty remain. Existing custom empire names are retained.
 
 Ending a treaty costs 10 relations for Varkesh,
-20 for Concord, 25 for Lithar/Xenonflora/Remnant and 15 for the others.
+20 for Dominion, 25 for Lithar/Xenonflora/Remnant and 15 for the others.
 Wary relations (-30 through -1) recover one point at the slower civilization's
-forgiveness interval (3–20 turns). Concord relationships never recover passively;
+forgiveness interval (3–20 turns). Dominion relationships never recover passively;
 declared wars remain hostile. Active treaties continue to build trust.
 
 Terran, Nexus and Remnant AI can declare war on an unfriendly neighbour when their
-known military position is favourable. Concord can also target neutral neighbours.
+known military position is favourable. Dominion can also target neutral neighbours.
 Decisions require two armed ships, a reachable known colony, turn 12 or later,
 and a strength advantage; they are considered every six turns. Active treaties,
 friendly relations and an existing war prevent these opportunistic declarations.
@@ -1614,7 +1657,7 @@ introductions. Older confirmed contacts and active diplomatic channels are marke
 as already introduced. Undiscovered empires remain hidden. Loading never rewrites
 the source save, changes its empire names or grants extra starting assets.
 
-![First contact with the Concord Collective](screenshots/first_contact_concord.png)
+![First contact with the Dominion of One](screenshots/first_contact_concord.png)
 ![Personality-aware diplomatic channel](screenshots/civilization_personality.png)
 
 ## New in v0.33: defense, sensors, navigation and targeting
@@ -1815,7 +1858,9 @@ system and homeworld before you begin.
 | Xenonflora | Viridia | Sylvaris | Rootfall, Mycela, Florath |
 | Nexus | Axiom | Origin | Relay, Foundry, Matrix |
 | Aetheri | Luminara | Veylume | Ilyon, Seris, Orae |
-| The Concord | Seryn | Dyara | Enna, Belora, Thessa |
+| Dominion of One | Seryn | Dyara | Enna, Belora, Thessa |
+| Serevan Union | Sereva | Ilyra | Ovara, Tessan, Calith |
+| Skirr Swarm | Skrath | First Brood | Chitin, Molt, Hatch |
 | The Remnant | Avarion | Elyndra | Vesper, Orath, Nyth |
 
 Haven is the Wanderers' ancestral gathering place. Names are assigned to the
@@ -2045,7 +2090,9 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
 | Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
-| The Concord | Assimilating collective; networked trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
+| Dominion of One | Assimilating collective; networked trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
+| Serevan Union | Voluntary accession and retained local species traits; trade pacts +2 CR and research agreements +1 RP per turn. |
+| Skirr Swarm | Base growth ×3; colony ships −55% resources and twice as fast; 2 B settlers; food +50%, research −25%, no treaties. |
 | The Remnant | Start with 80 unspent research points; colony research +25%, industry −20%; awakened tomb worlds join the empire. |
 
 Nexus reserve **20% of gross industry**, rounded up, for assembly until the

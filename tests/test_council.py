@@ -15,12 +15,14 @@ from orion import council, first_contact, news
 from orion.model import GameState, RuleError, SaveError, Ship, new_game
 from orion.research import ASCENSION_COST, ResearchState, TECHNOLOGIES
 from orion.storage import Storage
+from scenarios import legacy_race_roster
 
 
 def scenario(counts=(4, 4, 4), *, observer=False, fog=False):
-    game = new_game(seed=13, galaxy_size="Compact", race_id="observer" if observer else "terran",
-                    rival_race_id="kharuun", rival_count=len(counts) if observer else len(counts)-1,
-                    fog_of_war=fog, with_guardians=False, with_tombs=False)
+    with legacy_race_roster():
+        game = new_game(seed=13, galaxy_size="Compact", race_id="observer" if observer else "terran",
+                        rival_race_id="kharuun", rival_count=len(counts) if observer else len(counts)-1,
+                        fog_of_war=fog, with_guardians=False, with_tombs=False)
     game.ships.clear()
     for owner, wanted in zip(game.owners, counts):
         while council.world_votes(game).get(owner, 0) < wanted:

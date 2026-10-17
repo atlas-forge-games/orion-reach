@@ -693,7 +693,7 @@ def resolve(game, status, destination=None):
                 if "missile_base" in planet.buildings:
                     remove_building(planet, planet.buildings.index("missile_base"))
     if retreating:
-        message = f"{game.empire_name_for(retreating)} retreated toward {game.systems[destination].name}."
+        message = f"{game.empire_name_for(retreating)} retreated toward {game.system_name(destination)}."
     else:
         message = f"{game.empire_name_for(status.rsplit('_', 1)[0])} won the battle."
     state.record(message)

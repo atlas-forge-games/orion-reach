@@ -67,8 +67,18 @@ PERSONALITIES = {
     "concord": Personality(
         "Assimilating · Relentless · Collective",
         "One will seeks to absorb every independent civilization. Build invasion fleets early; agreements postpone assimilation.",
-        "We are the Concord. Your separation is temporary. Your knowledge, your worlds, your voices will become ours.",
+        "We are the Dominion of One. Your separation is temporary. Your knowledge, your worlds, your voices will become ours.",
         envoy=-6, gift=-10, breach=20, forgiveness=0, fleet_bonus=3, military_turn=6, conquest_ratio=120),
+    "serevan": Personality(
+        "Welcoming · Pluralistic · Persuasive",
+        "Build lasting partnerships and sponsor voluntary accession on dissatisfied frontier worlds. Respect local cultures and defend members.",
+        "Many peoples, many voices, one shared future. There is a place for your civilization in our Union.",
+        envoy=4, gift=2, forgiveness=5, protective=True),
+    "skirr": Personality(
+        "Invasive · Voracious · Uncompromising",
+        "Multiply, settle new breeding grounds and replace rival populations. Reject treaties and prepare invasion fleets early.",
+        "Your worlds will hatch. Your cities will fall silent. Only the brood will remain.",
+        envoy=-10, gift=-10, forgiveness=0, fleet_bonus=4, military_turn=4, conquest_ratio=100),
     "remnant": Personality(
         "Proud · Secretive · Possessive",
         "Guard lost knowledge and ancient claims. Slow to forgive, and willing to confront a weaker, unfriendly neighbour.",

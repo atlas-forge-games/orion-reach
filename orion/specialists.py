@@ -60,7 +60,7 @@ SPECIALISTS = {s.id: s for s in (
     SpecialistSpec("veya_tal", "Veya Tal", "leader", "An ecologist who combines productive farms with patient field research.", 55, 2, food=4, research=1),
     SpecialistSpec("civic_seven", "Civic Unit Seven", "leader", "An independent synthetic planner specializing in laboratories and automated workshops.", 85, 4, industry=3, research=2),
     SpecialistSpec("orun_basalt", "Orun Basalt", "leader", "A Lithar prospector who knows both mineral deposits and their market value.", 70, 3, mining=3, income=2),
-    SpecialistSpec("nera_vale", "Nera Vale", "leader", "A Concord organizer whose trading cooperatives keep isolated colonies supplied.", 60, 2, income=3, food=2),
+    SpecialistSpec("nera_vale", "Nera Vale", "leader", "A Dominion logistics coordinator whose trading cooperatives keep isolated colonies supplied.", 60, 2, income=3, food=2),
     SpecialistSpec("silex_morrow", "Silex Morrow", "leader", "A frontier builder equally at home in a greenhouse or a machine shop.", 60, 2, industry=2, food=3),
     SpecialistSpec("ashen_archivist", "The Ashen Archivist", "leader", "A wandering Remnant custodian who reconstructs lost methods of analysis and extraction.", 90, 4, research=3, mining=2),
     SpecialistSpec("kaia_ren", "Kaia Ren", "explorer", "A fast-moving surveyor and station hacker, with some experience recovering machinery.", 65, 3, survey=3, hacking=3, extraction=1),
@@ -70,7 +70,7 @@ SPECIALISTS = {s.id: s for s in (
     SpecialistSpec("echo_nine", "Echo Nine", "explorer", "An independent codebreaker built to explore abandoned networks.", 85, 4, survey=1, hacking=5, archaeology=2),
     SpecialistSpec("brakka_vein", "Brakka Vein", "explorer", "A Lithar salvage expert who can extract valuable ore from almost any wreck.", 80, 3, survey=1, extraction=5, hacking=2),
     SpecialistSpec("lysander_quill", "Lysander Quill", "explorer", "A historian whose exhaustive surveys reveal the context behind ancient discoveries.", 70, 3, survey=3, archaeology=3, extraction=1),
-    SpecialistSpec("vesper_relay", "Vesper Relay", "explorer", "A Concord expedition mediator with an adaptable mix of technical skills.", 90, 4, survey=2, hacking=2, extraction=2, archaeology=2),
+    SpecialistSpec("vesper_relay", "Vesper Relay", "explorer", "A Dominion expedition coordinator with an adaptable mix of technical skills.", 90, 4, survey=2, hacking=2, extraction=2, archaeology=2),
 )}
 
 

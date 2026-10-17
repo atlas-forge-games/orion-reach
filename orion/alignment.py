@@ -41,6 +41,8 @@ PROFILES = {
     'nexus': Values(-2, 0, 0, 2, -1),
     'aetheri': Values(1, 1, 2, 2, 1),
     'concord': Values(-2, 1, -2, 2, 0),
+    'serevan': Values(2, 2, 2, 1, 1),
+    'skirr': Values(-2, -2, -2, 0, -2),
     'remnant': Values(0, -2, 0, -1, 1),
 }
 

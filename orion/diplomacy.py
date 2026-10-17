@@ -160,6 +160,8 @@ def ai_treaty_orders(game, owner):
     for other in game.opponents:
         if other == owner or not game.colony_systems(other) or not first_contact.known(game, owner, other):
             continue
+        if any(game._empire(o).race_id == "skirr" for o in (owner, other)):
+            continue
         state = game.diplomacy_between(owner, other)
         if state.at_war or game.turn < state.offer_ready_turn:
             continue
@@ -290,6 +292,8 @@ def action_error(game, action, target="rival"):
         return "This empire has been eliminated."
     if action == "declare_war":
         return "You are already at war with this empire." if state.at_war else None
+    if action in TREATIES and any(game._empire(o).race_id == "skirr" for o in ("player", target)):
+        return "The Skirr Swarm rejects treaties and coexistence."
     if action in TREATIES and getattr(state, f"{action}_active"):
         return "This agreement is already active."
     if action in ('friendship', 'non_aggression'):

@@ -1,0 +1,21 @@
+Orion Reach v0.69.0 — Union, Skirr and Dominion update
+
+Requires the complete v0.68.1 installation.
+
+1. Close the game.
+2. Extract this ZIP into the existing game folder (the folder containing main.py).
+3. Replace matching files, then start the game normally.
+
+Includes:
+- Serevan Union with voluntary colony accession and retained local species traits.
+- Skirr Swarm with rapid growth, colonization and population replacement.
+- Concord renamed to Dominion of One, retaining its save identifier.
+- Union and Skirr portraits, plus the replacement Nexus portrait.
+- AI behavior, 13-race selection and diplomacy matrix, save/balance migrations.
+
+Open Diplomacy > Populations & accession for the new colony controls.
+Start a new campaign to choose the Union or Swarm. Existing rosters are preserved.
+See docs/union-and-skirr.md for rules, costs and migration details.
+
+Save format: 50. Balance profile: 14.
+Older saves load. New saves require v0.69 or later.

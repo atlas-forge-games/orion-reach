@@ -199,7 +199,7 @@ class FearAndPriorityTests(unittest.TestCase):
         self.assertEqual(diplomacy.acceptance_threshold(restored, 'trade', 'rival'), 10)
 
     def test_priorities_choose_different_ai_treaties(self):
-        for race, pact in (('kharuun', 'trade'), ('aelari', 'research'), ('concord', 'friendship')):
+        for race, pact in (('kharuun', 'trade'), ('aelari', 'research'), ('serevan', 'friendship')):
             game = campaign(rival_count=2, rival_race_id=race)
             later(game, 5)
             state = game.diplomacy_between('rival', 'rival_2')

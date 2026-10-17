@@ -1,4 +1,4 @@
-# Diplomatic alignment — v0.61
+# Diplomatic alignment — v0.69
 
 Each civilization has five values, from −2 to +2. All axes have equal weight.
 
@@ -18,8 +18,8 @@ original 11-race roster. With modifier cap C = 25:
 
 `alignment = round(clamp(C × (M − D) / M, −C, +C))`
 
-Rounding uses nearest whole points, with half points away from zero. The standard
-uncapped, unrounded scores average exactly zero across distinct race pairs.
+Rounding uses nearest whole points, with half points away from zero. The original roster’s
+uncapped, unrounded scores average exactly zero across its distinct race pairs.
 Campaign roster changes and eliminated empires do not change M. Mirror empires
 have alignment +25, although the matrix diagonal is displayed as a dash.
 
@@ -36,12 +36,14 @@ have alignment +25, although the matrix diagonal is displayed as a dash.
 | Xenonflora | -1 | +0 | +2 | +1 | +2 |
 | Nexus | -2 | +0 | +0 | +2 | -1 |
 | Aetheri | +1 | +1 | +2 | +2 | +1 |
-| The Concord | -2 | +1 | -2 | +2 | +0 |
+| Dominion of One | -2 | +1 | -2 | +2 | +0 |
+| Serevan Union | +2 | +2 | +2 | +1 | +1 |
+| Skirr Swarm | -2 | -2 | -2 | +0 | -2 |
 | The Remnant | +0 | -2 | +0 | -1 | +1 |
 
-## Standard matrix
+## Original-race matrix
 
-| Race | Terrans | Kharuun | Aelari | Lithar | Varkesh | Wanderers | Xenonflora | Nexus | Aetheri | The Concord | The Remnant |
+| Race | Terrans | Kharuun | Aelari | Lithar | Varkesh | Wanderers | Xenonflora | Nexus | Aetheri | Dominion of One | The Remnant |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Terrans | — | +15 | +11 | +4 | -16 | +22 | +1 | -2 | +11 | -2 | -6 |
 | Kharuun | +15 | — | +8 | +8 | -6 | +11 | +4 | +8 | +8 | +1 | -2 |
@@ -52,8 +54,28 @@ have alignment +25, although the matrix diagonal is displayed as a dash.
 | Xenonflora | +1 | +4 | +8 | +1 | -13 | -2 | — | +1 | +8 | -6 | -2 |
 | Nexus | -2 | +8 | -2 | -2 | +4 | -6 | +1 | — | -2 | +11 | -6 |
 | Aetheri | +11 | +8 | +25 | -2 | -23 | +8 | +8 | -2 | — | -2 | -6 |
-| The Concord | -2 | +1 | -2 | -9 | +4 | -6 | -6 | +11 | -2 | — | -13 |
+| Dominion of One | -2 | +1 | -2 | -9 | +4 | -6 | -6 | +11 | -2 | — | -13 |
 | The Remnant | -6 | -2 | -6 | +15 | -6 | -9 | -2 | -6 | -6 | -13 | — |
+
+## New-race relationships
+
+The reference remains fixed; the table above keeps its original scores.
+
+| Civilization | Serevan Union | Skirr Swarm |
+| --- | ---: | ---: |
+| Terrans | +15 | -19 |
+| Kharuun | +4 | -9 |
+| Aelari | +15 | -25 |
+| Lithar | -6 | -6 |
+| Varkesh | -25 | +22 |
+| Wanderers | +18 | -23 |
+| Xenonflora | +4 | -16 |
+| Nexus | -13 | +1 |
+| Aetheri | +15 | -25 |
+| Dominion of One | -13 | +1 |
+| Serevan Union | +25 | -25 |
+| Skirr Swarm | -25 | +25 |
+| The Remnant | -9 | -2 |
 
 ## Relationship history and persistence
 
@@ -71,7 +93,7 @@ hostile interception and relationship labels already read the same overall score
 The default alignment alone never reaches the below−30 combat threshold.
 Passive forgiveness restores minor historical grievances toward the pair's
 alignment; it does not turn ideological friction into increasing friendship.
-Concord still has no passive forgiveness. Treaties continue to build trust.
+Dominion still has no passive forgiveness. Treaties continue to build trust.
 
 Balance profile version 8 adds Diplomatic values and the reference/cap controls.
 Older profiles upgrade with standard alignment data, preserving their other

@@ -62,6 +62,7 @@ def colony_rows(game, filter_by="all", sort_by="name", descending=False, *, owne
 
 def summarize_empire(game, *, owner=PLAYER):
     from .specialists import salaries
+    from .accession import upkeep
     colonies = [p for _, p in colony_rows(game, owner=owner)]
     outputs = [game.planet_yields(planet) for planet in colonies]
     trade, research = game.diplomatic_yields(owner)
@@ -73,7 +74,7 @@ def summarize_empire(game, *, owner=PLAYER):
         industry=sum(output[0] for output in outputs),
         income=game.empire_rates_for(owner)[0],
         gross_income=sum(output[1]+game.planet_maintenance(p) for output, p in zip(outputs, colonies))+trade,
-        maintenance=sum(game.planet_maintenance(p) for p in colonies)+salaries(game, owner)+game.fleet_maintenance(owner),
+        maintenance=sum(game.planet_maintenance(p) for p in colonies)+salaries(game, owner)+game.fleet_maintenance(owner)+upkeep(game, owner),
         research=game.empire_rates_for(owner)[1],
         used_slots=sum(p.used_slots for p in colonies),
         capacity=sum(p.building_capacity for p in colonies),

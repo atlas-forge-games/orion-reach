@@ -411,6 +411,10 @@ def draw_planet_overview(app):
     else:
         text(surface, f"{planet.building_capacity} building slots · {planet.habitability}% habitability · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
     text(surface, "Click buildings to inspect · E: End turn · R: Research · I: Empire · P: Menu · F5: Save", (24, 877), 11, MUTED)
+    if planet.colonized:
+        from .accession_view import open_panel
+        app.button("planet_populations", "Populations & accession", (875, 870, 315, 24),
+                   lambda: open_panel(app, system.id, planet.id), "ghost")
     app.button("planet_return", "Galaxy map" if app.planet_return=="galaxy" else "System view",
                (1210, 851, 206, 42), app.close_planet, "primary")
 

@@ -227,7 +227,13 @@ def make_plan(game, owner):
     colonies = [(s.id, p) for s, p in game.settlements(owner)]
     power = economy.dispatch_power([p for _, p in colonies], base, game.resources_for(owner))
     context = administration.Context(game, owner)
-    local = {id(p): {**specialists.colony_effects(game, p), **context.effects(p)} for _, p in colonies}
+    from . import species
+    def colony_effects(p):
+        effects = {**specialists.colony_effects(game, p), **context.effects(p)}
+        for key, value in species.local_effects(game, p).items():
+            effects[key] = effects.get(key, 0)+value
+        return effects
+    local = {id(p): colony_effects(p) for _, p in colonies}
     operating = list(active(game, owner))
     for system in operating:
         m = system.megastructure
@@ -238,7 +244,7 @@ def make_plan(game, owner):
     def local_effects(p):
         if id(p) in local:
             return local[id(p)]
-        return {**specialists.colony_effects(game, p), **context.effects(p)}
+        return colony_effects(p)
     bonuses = economy.PowerBonuses(base,
         lambda p: power[id(p)] if id(p) in power else economy.energy_report(p, base),
         local_effects)

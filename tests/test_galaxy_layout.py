@@ -66,7 +66,9 @@ class RectangularGalaxyTests(unittest.TestCase):
 
     def test_isolated_empires_can_research_tanks_without_moving_the_map(self):
         from orion.ai import research_choice, scouting_orders
-        game = new_game(seed=0, rival_count=5)
+        from scenarios import legacy_race_roster
+        with legacy_race_roster():
+            game = new_game(seed=0, rival_count=5)
         positions = [(s.x, s.y) for s in game.systems]
         for owner in game.opponents:
             scouting_orders(game, owner)

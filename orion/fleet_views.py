@@ -141,7 +141,7 @@ def draw_fleets(app):
         text(surface, shorten(f"{ship.hull}/{ship.max_hull} hull · {role}", 317, 11), (143, y+38), 11, MUTED)
         text(surface, f"Maintenance: {ship.maintenance} CR/turn", (143, y+56), 10, GOLD)
         origin = game.systems[ship.system_id]
-        location = f"{origin.name} → {game.systems[ship.destination].name}" if ship.has_course else f"{origin.name} orbit"
+        location = f"{game.system_name(origin.id)} → {game.system_name(ship.destination)}" if ship.has_course else f"{game.system_name(origin.id)} orbit"
         text(surface, shorten(location, 467, 18), (473, y+12), 18, CYAN)
         encounter = not ship.in_transit and bool(game.foreign_fleet(ship.system_id))
         caption = ("Departure queued · editable until End Turn" if ship.departure_pending else

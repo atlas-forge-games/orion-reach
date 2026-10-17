@@ -90,6 +90,7 @@ class PopulationReport:
     assembly: bool = False
     assembly_industry: int = 0
     passive_growth: int = 0
+    swarm: bool = False
 
     @property
     def consumed(self):
@@ -171,12 +172,20 @@ def report(planet, bonuses=None):
     return PopulationReport(planet.population, population_capacity(planet, bonuses), produced,
                             planet.growth_progress, planet.colonized, GAIA_GROWTH_LIMIT if planet.biome == "Gaia" else GROWTH_LIMIT,
                             food_required(planet.workforce, bonuses), growth,
-                            bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0))
+                            bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0),
+                            bool(bonuses.get("swarm_growth")))
 
 
 def advance(planet, start):
     """Use starting food; new farms and technologies take effect next turn."""
     if not planet.colonized:
+        return False
+    if start.swarm and start.balance < 0:
+        from .species import composition
+        planet.population = max(1, planet.population-1)
+        planet.growth_progress = 0
+        planet.species = composition(planet, "skirr")
+        clamp_workforce(planet)
         return False
     if planet.population >= start.capacity:
         planet.growth_progress = 0
@@ -185,7 +194,14 @@ def advance(planet, start):
     if planet.growth_progress < GROWTH_THRESHOLD:
         return False
     gained, planet.growth_progress = divmod(planet.growth_progress, GROWTH_THRESHOLD)
+    previous = planet.population
     planet.population = min(start.capacity, planet.population+gained)
+    from .species import composition
+    if start.swarm and planet.species:
+        planet.species = dict(planet.species)
+        planet.species["skirr"] = planet.species.get("skirr", 0)+planet.population-previous
+    else:
+        planet.species = composition(planet)
     if planet.population >= start.capacity:
         planet.growth_progress = 0
     return True

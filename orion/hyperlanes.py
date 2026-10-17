@@ -224,8 +224,9 @@ def freeze(game):
 
 def complete(game, project):
     project.completed_turn = game.turn
-    message = (f"Forgotten hyperlane discovered: {game.systems[project.system_id].name} ↔ "
-               f"{game.systems[project.destination].name} · 1 turn in either direction")
+    viewer = "player" if game.is_observer else project.owner
+    message = (f"Forgotten hyperlane discovered: {game.system_name(project.system_id, viewer)} ↔ "
+               f"{game.system_name(project.destination, viewer)} · 1 turn in either direction")
     if project.owner != "player":
         game.rival_event(message, owner=project.owner)
     return message

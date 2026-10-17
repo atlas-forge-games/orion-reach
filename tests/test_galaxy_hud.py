@@ -46,7 +46,7 @@ class GalaxyHudTests(unittest.TestCase):
         game = self.app.game = new_game(seed=2408, fog_of_war=True, with_guardians=False)
         target = game.systems[game.opponent.home_system]
         before = game.to_dict()
-        self.assertEqual(system_label(game, target), f"({target.name.upper()})")
+        self.assertEqual(system_label(game, target), f"UNK-{target.id:03d}")
         self.assertNotEqual(label_bands(game, target)[1][0][2], empire_color("rival"))
         self.assertEqual(game.to_dict(), before)
         scout = Ship(game.next_ship_id, "scout", target.id)
@@ -163,7 +163,7 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertIn("22 made / 13 used", values)
         self.assertIn("1 local shortage", values)
 
-    def test_unexplored_label_rectangles_include_parentheses_without_overlap(self):
+    def test_unexplored_catalogue_labels_fit_without_overlap(self):
         from orion.app import MAP
         from orion.galaxy_fleet_view import star_label_rects
         self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5)

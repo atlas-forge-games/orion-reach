@@ -269,7 +269,7 @@ def draw_combat(app):
             details_y += 27
         caption = "Surviving ships remain in orbit. Hull damage is retained; colonies keep their current owners."
         if battle.retreat_destination is not None:
-            caption = f"The withdrawing fleet is travelling to {game.systems[battle.retreat_destination].name}. Surviving ships retain their hull damage."
+            caption = f"The withdrawing fleet is travelling to {game.system_name(battle.retreat_destination)}. Surviving ships retain their hull damage."
         elif battle.encounter_id is not None:
             caption = ("Pirates defeated. Their bounty and recovered stores have been added to your reserves. Return to the system to review any remaining threats."
                        if battle.status == "player_victory" else "The pirate fleet remains. Surviving raiders retain their hull damage; bring a stronger escort.")

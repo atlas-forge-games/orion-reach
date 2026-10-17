@@ -301,15 +301,15 @@ def draw_fleet_popup(app):
     panel(surface, rect, (10, 24, 34), app.empire_color(first.owner))
     app.button("fleet_popup_panel", "", rect, lambda: None, "hotspot")
     origin = game.systems[first.system_id]
-    title = "Fleet in transit" if first.in_transit else f"Fleet at {origin.name}"
+    title = "Fleet in transit" if first.in_transit else f"Fleet at {game.system_name(origin.id)}"
     text(surface, shorten(title, 241, 22), (x+18, y+17), 22, INK)
     close = pg.Rect(x+278, y+13, 31, 31)
     app.button("fleet_popup_close", "", close, app.close_fleet_popup)
     cx, cy = close.center
     pg.draw.line(surface, INK, (cx-4, cy-4), (cx+4, cy+4), 1)
     pg.draw.line(surface, INK, (cx-4, cy+4), (cx+4, cy-4), 1)
-    status = (f"To {game.systems[first.destination].name} · {turn_label(first.turns_remaining)} remaining"
-              if first.in_transit else f"Departure queued · {turn_label(first.turns_remaining)} to {game.systems[first.destination].name}" if first.departure_pending else
+    status = (f"To {game.system_name(first.destination)} · {turn_label(first.turns_remaining)} remaining"
+              if first.in_transit else f"Departure queued · {turn_label(first.turns_remaining)} to {game.system_name(first.destination)}" if first.departure_pending else
               "Select ships, then click a destination" if own else "Computer fleet · inspection only" if game.is_observer else "Rival fleet · inspection only")
     text(surface, shorten(status, 289, 12), (x+18, y+51), 12, GOLD if first.departure_pending else MUTED)
     if editable:
@@ -350,8 +350,8 @@ def draw_fleet_popup(app):
         lane = first.hyperlane if keeping else hyperlanes.connects(game, origin.id, target.id)
         blocked = target.id != origin.id and not keeping and outside
         duration = first.turns_remaining if keeping else game.travel_turns(origin, target, ships=selected)
-        destination = (f"To {target.name} · {turn_label(duration)}"
-                       if target.id != origin.id else f"At {origin.name}")
+        destination = (f"To {game.system_name(target.id)} · {turn_label(duration)}"
+                       if target.id != origin.id else f"At {game.system_name(origin.id)}")
         text(surface, shorten(destination, 290, 13), (x+18, bottom+66), 13, RED if blocked else INK)
         distance = game.supply_distance(target.id)
         fuel = ("Saved course kept · outside current range" if keeping and outside else
@@ -364,7 +364,7 @@ def draw_fleet_popup(app):
             fuel = "Hyperlane · 1 turn · No fuel limit"
         text(surface, shorten(fuel, 290, 11), (x+18, bottom+90), 11, RED if blocked else CYAN)
         hint = ("Establish an outpost or research fuel tanks." if blocked else
-                f"Click {origin.name} to cancel before End Turn." if first.departure_pending
+                f"Click {game.system_name(origin.id)} to cancel before End Turn." if first.departure_pending
                 else "Select at least one ship to give orders." if not app.fleet_selected_ids
                 else "Planets unknown until arrival." if not game.system_explored(target.id)
                 else "Click a star to set the selected ships' course.")
@@ -400,10 +400,10 @@ def draw_fleet(app):
     own = first.owner == PLAYER
     commandable = own and not first.in_transit and game.strategy_error() is None
     origin = game.systems[first.system_id]
-    title = "Fleet in transit" if first.in_transit else f"Fleet at {origin.name}"
+    title = "Fleet in transit" if first.in_transit else f"Fleet at {game.system_name(origin.id)}"
     text(surface, shorten(title, 960, 40, "title"), (64, 190), 40, INK, "title")
-    location = (f"{origin.name} → {game.systems[first.destination].name} · Arrives in {turn_label(first.turns_remaining)}"
-                if first.in_transit else f"{origin.name} orbit · {'Select the ships you want to send' if own else 'Rival fleet · Inspection only'}")
+    location = (f"{game.system_name(origin.id)} → {game.system_name(first.destination)} · Arrives in {turn_label(first.turns_remaining)}"
+                if first.in_transit else f"{game.system_name(origin.id)} orbit · {'Select the ships you want to send' if own else 'Rival fleet · Inspection only'}")
     text(surface, location, (66, 246), 15, MUTED)
     text(surface, shorten(game.empire_name_for(first.owner), 415, 16), (1376, 250), 16,
          app.empire_color(first.owner), right=True)
@@ -478,13 +478,13 @@ def draw_order_panel(app, target):
     panel(surface, (1051, 180, 325, 573), border=GOLD)
     text(surface, "CHOOSE DESTINATION", (1075, 203), 10, GOLD, "mono", 1)
     text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (1075, 245), 25, INK, "title")
-    text(surface, f"Departing {origin.name}", (1075, 289), 14, CYAN)
+    text(surface, f"Departing {game.system_name(origin.id)}", (1075, 289), 14, CYAN)
     for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
         count = sum(s.kind == kind for s in ships)
         text(surface, shorten(f"{count} × {spec.name}", 133, 11), (1075+(index//6)*146, 325+(index%6)*17), 11, MUTED)
     pg.draw.line(surface, LINE, (1075, 431), (1352, 431))
     text(surface, "DESTINATION PREVIEW", (1075, 453), 10, GOLD, "mono")
-    text(surface, target.name if duration else "Choose a star", (1075, 486), 26, INK, "title")
+    text(surface, game.system_name(target.id) if duration else "Choose a star", (1075, 486), 26, INK, "title")
     if duration:
         text(surface, f"Arrival in {turn_label(duration)}", (1075, 530), 16, CYAN)
         blocked = not game.can_reach(target.id, ships=ships)

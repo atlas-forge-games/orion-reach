@@ -6,6 +6,23 @@ the output of a shipyard in isolation, so their setup deliberately clears units.
 """
 
 from orion.model import new_game as make_game
+from contextlib import contextmanager
+from unittest.mock import patch
+
+
+@contextmanager
+def legacy_race_roster(*explicit):
+    """Pin old feature fixtures to their original seeded civilizations.
+
+    Roster-generation and new-faction tests use model.new_game directly. These
+    older fixtures need stable opponents, especially planetary versus mobile
+    homes; explicitly requested new civilizations remain available.
+    """
+    from orion.races import RACES
+    roster = {key: value for key, value in RACES.items()
+              if key not in ("serevan", "skirr") or key in explicit}
+    with patch("orion.model.RACES", roster):
+        yield
 
 
 def fixed_start_game(*args, **kwargs):
@@ -14,7 +31,8 @@ def fixed_start_game(*args, **kwargs):
     # These fixtures isolate earlier features. Black-hole tests use new_game directly.
     kwargs.setdefault("with_black_holes", False)
     kwargs.setdefault("with_encounters", False)
-    game = make_game(*args, **kwargs)
+    with legacy_race_roster(kwargs.get("race_id"), kwargs.get("rival_race_id")):
+        game = make_game(*args, **kwargs)
     # These established-colony fixtures retain their historical job allocation.
     # Resource/power tests exercise the real new-game allocation directly.
     for _, planet in game.settlements():

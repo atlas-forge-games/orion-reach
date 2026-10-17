@@ -33,8 +33,12 @@ PROFILES = {
     'nexus': Priorities('Industrial security and practical research cooperation.', 'industry',
                         goal=4, pragmatism=10, loyalty=0, memory=1, research=4),
     'aetheri': Priorities('Protect access to energy-rich stars and energy sources.', 'energy', goal=5, research=3),
-    'concord': Priorities('Cooperation across species and protection of peaceful partners.', 'cooperation',
-                         pragmatism=8, loyalty=3, friendship=5),
+    'concord': Priorities('Assimilate independent civilizations into a single will.', 'power',
+                         pragmatism=8, loyalty=0, friendship=0, resolve=20),
+    'serevan': Priorities('Voluntary membership and protection of diverse communities.', 'cooperation',
+                         pragmatism=8, loyalty=4, friendship=5, trade=4),
+    'skirr': Priorities('Breeding grounds and the replacement of every rival species.', 'power',
+                       frontier=5, goal=5, pragmatism=0, loyalty=0, friendship=0, resolve=20, trade=0, research=0),
     'remnant': Priorities('Ancient sites and historical claims.', 'heritage', goal=5, memory=5, resolve=10),
 }
 INTERESTS = ('security', 'commerce', 'science', 'power', 'routes', 'ecology', 'industry', 'energy', 'cooperation', 'heritage')

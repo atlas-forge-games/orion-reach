@@ -599,20 +599,20 @@ class App:
                     self.toast("These ships are already here. Click another star to set a course.")
                     return
                 self.game.cancel_departures(identifiers)
-                message=f"Departure cancelled · {count} {'ship remains' if count==1 else 'ships remain'} at {self.game.systems[origin].name}."
+                message=f"Departure cancelled · {count} {'ship remains' if count==1 else 'ships remain'} at {self.game.system_name(origin)}."
             elif first.departure_pending and destination==first.destination:
                 # Re-clicking an existing route keeps its saved speed and fuel authorization.
                 self.game.selected_system=destination
-                self.toast(f"Departure already queued · {turn_label(first.turns_remaining)} to {self.game.systems[destination].name}.")
+                self.toast(f"Departure already queued · {turn_label(first.turns_remaining)} to {self.game.system_name(destination)}.")
                 return
             else:
                 warning=black_holes.risk(self.game,destination)
                 if warning and not accept_black_hole_risk and self.game.can_reach(destination, ships=ordered_ships(self)):
-                    self.confirm("Unsafe black-hole expedition",f"{count} ships → {self.game.systems[destination].name}. "+warning,
+                    self.confirm("Unsafe black-hole expedition",f"{count} ships → {self.game.system_name(destination)}. "+warning,
                                  "Send anyway",lambda:self.send_map_fleet(destination,True))
                     return
                 duration=self.game.send_ships(identifiers,destination,accept_black_hole_risk=accept_black_hole_risk)
-                message=f"Course set to {self.game.systems[destination].name} · {turn_label(duration)} · Click {self.game.systems[origin].name} to cancel before End Turn."
+                message=f"Course set to {self.game.system_name(destination)} · {turn_label(duration)} · Click {self.game.system_name(origin)} to cancel before End Turn."
             self.fleet_anchor_id=identifiers[0]
             self.fleet_selected_ids=set(identifiers)
             self.manifest_page=0
@@ -714,13 +714,13 @@ class App:
             destination=self.game.selected_system
             warning=black_holes.risk(self.game,destination)
             if warning and not accept_black_hole_risk and self.game.can_reach(destination, ships=[ship]):
-                self.confirm("Unsafe black-hole expedition",f"{ship.name} → {self.game.systems[destination].name}. "+warning,
+                self.confirm("Unsafe black-hole expedition",f"{ship.name} → {self.game.system_name(destination)}. "+warning,
                              "Send anyway",lambda:self.send_course(True))
                 return
             duration=self.game.send_ship(ship.id,destination,accept_black_hole_risk=accept_black_hole_risk)
             self.go("fleets")
             if self.save_game(autosave=True):
-                self.toast(f"{ship.name} en route to {self.game.systems[destination].name} · {turn_label(duration)}")
+                self.toast(f"{ship.name} en route to {self.game.system_name(destination)} · {turn_label(duration)}")
         except RuleError as exc:
             self.toast(exc,True)
 
@@ -1730,7 +1730,7 @@ class App:
                          "Face guardian",engage)
             return
         self.confirm("Engage the opposing fleet?",
-                     f"Commit your {own} ships and defense units against {rival} units of {self.game.empire_name_for(target)} at {self.game.systems[system_id].name}. "
+                     f"Commit your {own} ships and defense units against {rival} units of {self.game.empire_name_for(target)} at {self.game.system_name(system_id)}. "
                      "Combat ends trade and research agreements and sets relations to -100. Ship losses are permanent.",
                      "Engage fleet",engage)
 
@@ -1815,7 +1815,7 @@ class App:
             return
         duration=self.game.travel_turns(self.game.systems[self.game.combat.system_id],destination)
         self.confirm("Withdraw the whole fleet?",
-                     f"All surviving ships will retreat to {destination.name}, arriving in {turn_label(duration)}. "
+                     f"All surviving ships will retreat to {self.game.system_name(destination.id)}, arriving in {turn_label(duration)}. "
                      "Damage is retained and the opposing fleet holds this system's orbit.",
                      "Retreat fleet",lambda:self.combat_action("retreat"))
 
@@ -2920,6 +2920,10 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        if "accession" in self.dialog:
+            from .accession_view import draw
+            draw(self)
+            return
         if 'diplomatic_affairs' in self.dialog:
             from .diplomatic_affairs_view import draw
             draw(self)

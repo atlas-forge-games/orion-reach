@@ -162,6 +162,8 @@ def draw_empire(app):
     caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn"
     text(surface, shorten(caption, 650, 12), (400, 835), 12, MUTED)
     fleet, pay = game.fleet_maintenance(), salaries(game)
-    text(surface, f"Upkeep: {summary.maintenance-fleet-pay} buildings/modules · {fleet} ships · {pay} salaries (CR/turn)",
+    from .accession import upkeep
+    outreach = upkeep(game)
+    text(surface, f"Upkeep: {summary.maintenance-fleet-pay-outreach} facilities · {fleet} ships · {pay} salaries · {outreach} outreach (CR/turn)",
          (400, 857), 11, FAINT)
     app.button("empire_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)

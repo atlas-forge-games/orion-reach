@@ -15,27 +15,27 @@ def draw_race_select(app):
     surface = app.canvas
     app.chrome("NEW EXPEDITION · 1 / 2", lambda: app.go("menu"))
     text(surface, "Choose your civilization.", (64, 191), 42, INK, "title")
-    text(surface, "Eleven civilizations to lead. Or choose The Observer and watch them play.", (66, 254), 15, MUTED)
+    text(surface, f"{len(RACES)-1} civilizations to lead. Or choose The Observer and watch them play.", (66, 254), 15, MUTED)
     for i, race in enumerate(RACES.values()):
-        x, y = 64+(i % 3)*270, 290+(i // 3)*128
+        x, y = 64+(i % 3)*270, 290+(i // 3)*100
         selected = app.race_id == race.id
-        rect = pg.Rect(x, y, 254, 112)
+        rect = pg.Rect(x, y, 254, 92)
         button = app.button("race_"+race.id, "", rect, lambda rid=race.id: app.choose_race(rid), "hotspot")
         panel(surface, rect, (23, 37, 45) if selected or app.is_active(button) else (12, 23, 32),
               race.color if selected else (38, 57, 68))
-        draw_race_portrait(surface, race.id, (x+10, y+12, 88, 88))
-        text(surface, race.name, (x+110, y+22), 16, race.color if selected else INK)
-        paragraph(surface, race.focus, (x+110, y+51), 132, 12, MUTED, 18)
+        draw_race_portrait(surface, race.id, (x+10, y+10, 72, 72))
+        paragraph(surface, race.name, (x+94, y+10), 152, 14, race.color if selected else INK, 17)
+        paragraph(surface, race.focus, (x+94, y+46), 152, 10, MUTED, 14)
         if selected:
-            text(surface, "SELECTED", (x+110, y+88), 9, race.color, "mono", 1)
+            text(surface, "SELECTED", (x+94, y+78), 9, race.color, "mono", 1)
     race = RACES[app.race_id]
-    panel(surface, (890, 290, 486, 496), border=race.color)
-    draw_race_portrait(surface, race.id, (1013, 306, 240, 240))
-    text(surface, race.name, (912, 560), 32, race.color, "title")
-    text(surface, "Detached · Patient · Non-intervening" if race.id == "observer" else PERSONALITIES[race.id].traits, (914, 602), 12, INK)
-    y = paragraph(surface, race.description, (914, 631), 436, 13, MUTED, 19)+12
+    panel(surface, (890, 290, 486, 510), border=race.color)
+    draw_race_portrait(surface, race.id, (1033, 306, 200, 200))
+    text(surface, race.name, (912, 520), 32, race.color, "title")
+    text(surface, "Detached · Patient · Non-intervening" if race.id == "observer" else PERSONALITIES[race.id].traits, (914, 562), 12, INK)
+    y = paragraph(surface, race.description, (914, 590), 436, 13, MUTED, 19)+12
     for trait in race.traits:
-        y = paragraph(surface, "• "+trait, (914, y), 436, 12, race.color, 18)+5
+        y = paragraph(surface, "• "+trait, (914, y), 436, 11, race.color, 16)+4
     text(surface, "Next: galaxy options, rivals and victory conditions.", (66, 835), 14, MUTED)
     app.button("setup_next", "Continue → Galaxy options", (966, 815, 410, 57),
                lambda: app.go("setup"), "primary")

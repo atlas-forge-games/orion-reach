@@ -288,7 +288,7 @@ class CombatRulesTests(unittest.TestCase):
             self.assertEqual(moving.turn, index+2)
             if index < duration-1:
                 self.assertIsNone(moving.combat)
-        self.assertEqual(moving.credits, 120+8*duration)
+        self.assertEqual(moving.credits, 120+(8-moving.fleet_maintenance())*duration)
         self.assertEqual(moving.combat.system_id, home)
         self.assertEqual(moving.combat.active_owner, RIVAL)
 
