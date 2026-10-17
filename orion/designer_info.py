@@ -97,13 +97,20 @@ def module_sections(kind, identifier, state):
 def draw_designer_info(app):
     dialog, surface = app.dialog, app.canvas
     kind = dialog["kind"]
+    state = app.game.technology
+    if getattr(app, "combat_simulator", False):
+        from .research import ResearchState
+        state = ResearchState(completed=list(TECHNOLOGIES))
     if "module" in dialog:
         module = fitted_module(kind, dialog["module"])
         title, subtitle = module.name, f"{HULLS[kind].name} fitting · Per module · Current campaign balance"
-        sections = module_sections(kind, dialog["module"], app.game.technology)
+        sections = module_sections(kind, dialog["module"], state)
     else:
         title, subtitle = "Research requirements", "Blueprint planning · Required hull and equipment technologies"
-        sections = research_sections(kind, dialog["modules"], app.game.technology)
+        sections = research_sections(kind, dialog["modules"], state)
+    if getattr(app, "combat_simulator", False):
+        subtitle = "Combat simulator · Hull-scaled equipment · All modules available"
+        sections = [(heading, body) for heading, body in sections if heading not in ("RESEARCH", "EQUIPMENT RESEARCH")]
     rows = []
     for heading, body in sections:
         if heading:

@@ -139,6 +139,7 @@ def draw_battlefield(app):
 
 def draw_combat(app):
     surface, game, battle = app.canvas, app.game, app.game.combat
+    simulator = getattr(app, "combat_simulator", False)
     enemy = battle.enemy(PLAYER)
     busy = app.combat_animation is not None
     active = battle.status == "active" or busy
@@ -149,6 +150,8 @@ def draw_combat(app):
     turn = "YOUR TURN" if battle.active_owner == PLAYER else "ENEMY TURN" if battle.active_owner else "BATTLE ENDED"
     if automatic:
         turn = "AUTO: YOUR FLEET" if battle.active_owner == PLAYER else "AUTO: ENEMY TURN"
+    if simulator and app.sim_paused:
+        turn = "PAUSED"
     text(surface, f"ROUND {battle.round:02}  ·  "+turn, (1038, 128), 12, CYAN if automatic else GOLD, "mono", right=True)
     instructions = ("Computer controls your fleet: movement, weapons and drones. Choose Take control · A to resume manual orders."
                     if automatic else "Select your ship → click a highlighted cell to move → select a target → review hit chances → Fire.")
@@ -258,7 +261,7 @@ def draw_combat(app):
         details_y = 350
         disabled = sum(s.kind == "mothership" and s.hull == 0 for s in battle.ships)
         if disabled:
-            text(surface, f"{disabled} motherships disabled · 3-turn repair window", (x, details_y), 11, GOLD)
+            text(surface, f"{disabled} motherships disabled"+("" if simulator else " · 3-turn repair window"), (x, details_y), 11, GOLD)
             details_y += 27
         if any(s.kind == "missile_base" for s in battle.ships):
             bases_lost = {side: sum(s.hull == 0 and s.kind == "missile_base" for s in battle.fleet(side, alive=False)) for side in (PLAYER, enemy)}
@@ -285,15 +288,23 @@ def draw_combat(app):
                 caption = f"Ancient ruins recovered: +{spec.research_reward} RP added to your research. The rich world is now open for colonization."
         if disabled:
             caption = "Open a disabled mothership in the system view to board it with troop transports, raid its stores or destroy it for salvage."
+        if simulator:
+            from .combat_sandbox import battle_report
+            report = battle_report(game)
+            caption = (f"{battle.round} rounds · {battle.shots_fired} shots. "
+                       f"Ship hull remaining: {report['player']['hull_remaining']} yours / {report['rival']['hull_remaining']} enemy. "
+                       "Rematch restores the original fleets, equipment and seed. Edit fleets to change the matchup.")
         paragraph(surface, caption, (x, max(377, details_y)), 302, 15, MUTED, 26)
-        app.button("combat_continue", "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
+        app.button("combat_continue", "Edit fleets" if simulator else "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
 
     panel(surface, (32, 763, 1376, 77))
     text(surface, "COMBAT LOG", (48, 778), 10, GOLD, "mono", 1)
     for i, message in enumerate(battle.log[-3:]):
         text(surface, shorten(message, 1120, 12), (233, 773+i*21), 12, INK if i == len(battle.log[-3:])-1 else MUTED)
-    app.button("combat_pause", "Menu · Esc", (32, 851, 153, 38), app.pause)
-    app.button("combat_save", "Save · F5", (198, 851, 153, 38), app.save_game)
+    app.button("combat_pause", ("Resume · Esc" if app.sim_paused else "Pause · Esc") if simulator else "Menu · Esc",
+               (32, 851, 153, 38), app.pause, enabled=not simulator or battle.status == "active")
+    app.button("combat_save", "Rematch · R" if simulator else "Save · F5", (198, 851, 153, 38),
+               app.rematch if simulator else app.save_game)
     if active:
         app.button("combat_auto", "Take control · A" if automatic else "Auto combat · A", (364, 851, 218, 38),
                    app.toggle_combat_auto, "primary" if automatic else "normal", enabled=battle.status == "active")
@@ -302,6 +313,8 @@ def draw_combat(app):
               else "Enemy is giving orders…" if battle.status == "active" and battle.active_owner != PLAYER
               else "Battle ended · Review the result to continue" if not active
               else "One move + one shot per ship · Strategic time paused")
+    if simulator and app.sim_paused:
+        status = "Paused · P resumes · R starts a fresh battle"
     text(surface, shorten(status, 454, 12), (600 if active else 372, 863), 12, CYAN if automatic else MUTED)
     if battle.rows > VISIBLE_ROWS:
         text(surface, f"ROWS {app.combat_camera_row+1}–{app.combat_camera_row+VISIBLE_ROWS}/{battle.rows}", (1190, 864), 10, MUTED, "mono", right=True)

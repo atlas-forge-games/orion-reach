@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.69.1
+# Orion Reach — Python prototype 0.70.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,30 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.70: standalone combat simulator
+
+Run **`python combat_simulator.py`** from the game folder to build and play
+battles directly. Choose both fleets, set their quantities, create custom
+loadouts with all equipment available, and add planetary missile bases.
+The simulator uses the same combat engine, AI, weapons, shields, drones,
+animations and ship designer as the campaign.
+
+- Fight manually or watch **AI vs AI**; take control with **A**.
+- Pause with **P**, choose **1× / 4× / 12×** playback, or press **R** for a fresh rematch.
+- Select each side's race, combat upgrades and who moves first.
+- Six presets cover fleet skirmishes, carriers, capital ships, shields,
+  planetary defenses and convoy interception.
+- Save named scenarios with **F5**, including their custom designs, and load
+  them later. The same seed and orders reproduce the same shots under the same balance profile.
+
+Simulator scenarios are separate from campaign saves. Normal campaign saves
+remain compatible; save format **50** and balance profile **14** are unchanged.
+See [Combat simulator](docs/combat-simulator.md) for controls and command-line
+options. The discussed [race-victory proposals](docs/race-victory-proposals.md)
+are recorded for future development.
+
+![Standalone combat simulator](screenshots/v070_combat_setup.png)
 
 ## New in v0.69.1: undiscovered system names
 

@@ -1,0 +1,37 @@
+Orion Reach v0.70.0 — combat simulator validation
+
+131 focused tests passed.
+
+Command:
+PYTHONPATH=tests python3 -m unittest test_combat_simulator test_combat test_tactical_combat test_auto_combat test_combat_planets test_designer test_designer_planning test_starships test_mothership_boarding -q
+
+Result: Ran 131 tests in 17.895s — OK
+
+21 simulator integration tests cover:
+- All six presets finishing through the real combat AI.
+- Seed reproducibility and unchanged original fleet setups.
+- Custom weapons, shields, carrier bays and drone roles.
+- Per-side combat research and enemy-first initiative.
+- Normal accuracy and the local guaranteed-hit experiment mode.
+- Planetary bases with no defending fleet and full rematch restoration.
+- All 13 races, mothership habitats, shields and real retreat handling.
+- Maximum supported fleets deploying in unique, valid cells.
+- Scenario JSON round trips, validation, invalid loads and ship limits.
+- Active balance profile values reaching combat units.
+- Scaled mouse input and keyboard controls through the actual Pygame UI.
+- Creating a late-game carrier blueprint and adding it to both sides.
+- Isolation from campaign navigation, strategic turns and campaign saves.
+- Pause, playback speed, control handover and rematches.
+- Results, return to editing and saved-scenario loading.
+- Distinct scenario names preserving separate files.
+- Round-limit pausing without a fabricated combat result.
+
+110 existing combat, automatic-control, ship, planetary-defense, mothership
+and designer tests also passed in the same run.
+
+The setup, designer, battlefield and result screens were rendered through
+combat_simulator.py and visually inspected. Screenshots are included under
+screenshots/v070_combat_*.png. The launcher help command was checked.
+
+This was a focused regression run, not the entire campaign test suite.
+Save format 50 and balance profile 14 are unchanged.

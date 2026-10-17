@@ -1,0 +1,32 @@
+Orion Reach v0.70.0 — standalone combat simulator
+
+Install over v0.69.1: close the game, extract this ZIP into the folder
+containing main.py, and replace matching files.
+
+Start from the same Python/Conda environment used for the game:
+
+    python combat_simulator.py
+
+Configure your fleet and the enemy fleet, then fight manually or watch
+AI vs AI. The simulator shares the game's actual combat engine, animation,
+ship designer, weapons, shields and carrier/drone mechanics.
+
+Features:
+- Standard ships and custom loadouts; all hulls and equipment available.
+- Independent quantities, race and combat research for both sides.
+- Up to 60 ships and three planet-bound missile bases per side.
+- Six ready-to-play presets, plus a fleet-copy button.
+- First-move selection, deterministic seed and normal/guaranteed-hit modes.
+- A to take control, P/Esc to pause, and 1x/4x/12x playback speed.
+- R to replay the original matchup with fully restored fleets.
+- F5 saves named scenarios and custom designs; Load scenario restores them.
+- Optional --balance, --scenario, --preset, --seed and --data-dir arguments.
+
+Simulation never loads or writes campaign saves or advances strategic turns.
+Scenario files save the initial setup, not an in-progress battle. They use
+the currently loaded balance profile. Ordinary saves remain compatible:
+save format 50 and balance profile 14 are unchanged.
+
+See docs/combat-simulator.md for the full guide. The discussed race-specific
+victory ideas are preserved in docs/race-victory-proposals.md as future
+design notes; they are not implemented by this update.

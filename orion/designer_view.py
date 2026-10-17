@@ -42,13 +42,15 @@ def module_detail(identifier, module):
 
 def draw_designer(app):
     game, surface = app.game, app.canvas
+    simulator = getattr(app, "combat_simulator", False)
     app.chrome("SHIP DESIGNER")
     text(surface, "Ship designer", (64, 124), 36, INK, "title")
-    text(surface, "Fit one module per slot. Larger hulls carry larger weapons: more damage, slower tracking against small targets.", (66, 173), 15, MUTED)
+    text(surface, "All equipment unlocked. Save a loadout, then add it to either test fleet." if simulator else
+         "Fit one module per slot. Larger hulls carry larger weapons: more damage, slower tracking against small targets.", (66, 173), 15, MUTED)
     design = draft(app)
     hull = HULLS[design.kind]
     error = loadout_error(design.kind, design.modules)
-    missing = missing_research(design.kind, design.modules, game.technology.completed,
+    missing = () if simulator else missing_research(design.kind, design.modules, game.technology.completed,
                                legacy_hulls=game.technology.legacy_starships)
     saved = game.design_for(app.design_id)
     unchanged = saved == design
@@ -63,7 +65,7 @@ def draw_designer(app):
         b = app.button(f"design_load_{item.id}", "", (82, y, 232, 46), lambda d=item: app.load_design(d), "hotspot")
         panel(surface, b.rect, (16, 32, 43), GOLD if item.id == app.design_id else LINE)
         text(surface, shorten(item.name, 213, 16), (91, y+4), 16, INK)
-        planned = missing_research(item.kind, item.modules, game.technology.completed,
+        planned = () if simulator else missing_research(item.kind, item.modules, game.technology.completed,
                                    legacy_hulls=game.technology.legacy_starships)
         label = f"{HULLS[item.kind].name} · {game.project_price(item.id)} RES"+(" · Planned" if planned else "")
         text(surface, shorten(label, 213, 10), (92, y+27), 10, GOLD if planned else MUTED)
@@ -72,12 +74,19 @@ def draw_designer(app):
     app.button("design_prev", "←", (82, 677, 54, 30), lambda: app.design_page_change(-1), enabled=app.design_page > 0)
     text(surface, f"{app.design_page+1} / {last+1}", (180, 684), 11, MUTED)
     app.button("design_next", "→", (260, 677, 54, 30), lambda: app.design_page_change(1), enabled=app.design_page < last)
-    text(surface, "BUILD AT COLONY", (82, 727), 10, GOLD, "mono")
     colony = app.design_colony()
-    label = shorten(colony[1].name, 150, 14) if colony else "No owned colony"
-    app.button("design_colony_prev", "←", (82, 751, 38, 33), lambda: app.cycle_design_colony(-1), enabled=colony is not None)
-    text(surface, label, (128, 759), 14, INK)
-    app.button("design_colony_next", "→", (276, 751, 38, 33), lambda: app.cycle_design_colony(1), enabled=colony is not None)
+    if simulator:
+        text(surface, "ADD SAVED DESIGN TO", (82, 727), 10, GOLD, "mono")
+        app.button("design_add_player", "+ Yours", (82, 751, 111, 33), lambda: app.add_design_to("player"),
+                   enabled=unchanged and app.scenario.player.count < 60)
+        app.button("design_add_rival", "+ Enemy", (203, 751, 111, 33), lambda: app.add_design_to("rival"),
+                   enabled=unchanged and app.scenario.rival.count < 60)
+    else:
+        text(surface, "BUILD AT COLONY", (82, 727), 10, GOLD, "mono")
+        label = shorten(colony[1].name, 150, 14) if colony else "No owned colony"
+        app.button("design_colony_prev", "←", (82, 751, 38, 33), lambda: app.cycle_design_colony(-1), enabled=colony is not None)
+        text(surface, label, (128, 759), 14, INK)
+        app.button("design_colony_next", "→", (276, 751, 38, 33), lambda: app.cycle_design_colony(1), enabled=colony is not None)
 
     panel(surface, (352, 214, 610, 589))
     for index, (kind, spec) in enumerate(HULLS.items()):
@@ -103,7 +112,7 @@ def draw_designer(app):
     for index, (identifier, module) in enumerate(equipment[app.design_module_page*8:app.design_module_page*8+8]):
         module = fitted_module(design.kind, identifier)
         y = 400+index*44
-        locked = module.technology and module.technology not in game.technology.completed
+        locked = not simulator and module.technology and module.technology not in game.technology.completed
         text(surface, shorten(module.name, 290, 15), (369, y), 15, MUTED if locked else INK)
         text(surface, f"1 slot · {module.resource_cost} RES", (785, y+3), 10, GOLD, right=True)
         detail = module_detail(identifier, module)
@@ -148,14 +157,20 @@ def draw_designer(app):
         app.button("design_requirements", "View research requirements", (1003, 758, 350, 28),
                    app.show_design_requirements, "ghost")
     else:
-        reason = error or ("Name this design before saving." if not design.name else "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
+        reason = error or ("Name this design before saving." if not design.name else
+                           "Saved design ready for either test fleet." if simulator and unchanged else
+                           "Save changes, then add this design to a fleet." if simulator else
+                           "Saved blueprint ready to build." if unchanged else "Save changes to use this loadout in new orders.")
         paragraph(surface, reason, (1003, 718), 350, 12, GOLD if not error else RED, 20)
-    text(surface, "Legacy blueprint: saving refits it to slots. Existing ships and orders keep their equipment."
+    text(surface, "Updating a design changes both test fleets on their next launch. Save scenario to keep your blueprints." if simulator else
+         "Legacy blueprint: saving refits it to slots. Existing ships and orders keep their equipment."
          if saved and saved.fit_version == 1 else "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)
     app.button("designer_back", "← Return", (64, 847, 177, 36), lambda: app.go(app.designer_return), "ghost")
     app.button("design_copy", "Save as new", (746, 838, 216, 45), lambda: app.save_ship_design(copy=True), enabled=saved is not None and not error and bool(design.name))
     app.button("design_save", "Update" if saved else "Save design", (984, 838, 184, 45), app.save_ship_design, "primary", enabled=not error and bool(design.name) and not unchanged)
-    build_error = game.ship_build_error(colony[0].id, colony[1].id, saved.id) if colony and saved else "Save a blueprint first."
-    app.button("design_build", "Queue ship", (1180, 838, 196, 45), app.build_ship_design, enabled=unchanged and build_error is None)
-    if unchanged and build_error:
+    build_error = None if simulator else game.ship_build_error(colony[0].id, colony[1].id, saved.id) if colony and saved else "Save a blueprint first."
+    app.button("design_build", "Fleet setup" if simulator else "Queue ship", (1180, 838, 196, 45),
+               (lambda: app.go("sim_setup")) if simulator else app.build_ship_design,
+               enabled=simulator or unchanged and build_error is None)
+    if not simulator and unchanged and build_error:
         text(surface, shorten(build_error, 380, 11), (1376, 813), 11, GOLD, right=True)
