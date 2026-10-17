@@ -243,7 +243,8 @@ def battle_report(game):
     return result
 
 
-PRESETS = ("Fleet skirmish", "Carrier clash", "Capital duel", "Shield laboratory", "Planetary assault", "Convoy interception")
+PRESETS = ("Fleet skirmish", "Carrier clash", "Capital duel", "Shield laboratory", "Planetary assault", "Convoy interception",
+           "Combined arms")
 
 
 def preset(index=0):
@@ -269,5 +270,17 @@ def preset(index=0):
         result.player.ships = {"frigate": 3, "colony_ship": 2, "troop_transport": 1}
         result.rival.ships = {"destroyer": 2, "frigate": 2}
         result.first = "rival"
+    elif index == 6:
+        result.designs = [
+            ShipDesign("design_1", "Command titan", "titan", ("particle", "laser", "shield", "flag_bridge")),
+            ShipDesign("design_2", "Escort destroyer", "destroyer", ("pulse", "laser", "shield", "escort_array")),
+            ShipDesign("design_3", "ECM cruiser", "cruiser", ("ion", "laser", "shield", "ecm_projector")),
+            ShipDesign("design_4", "Line battleship", "battleship", ("heavy_beam", "laser", "shield")),
+            ShipDesign("design_5", "Strike carrier", "carrier", ("pulse", "shield", "interceptor_bay", "bomber_bay")),
+            ShipDesign("design_6", "Torpedo hunter", "destroyer", ("fusion_torpedo", "torpedo", "shield", "engine")),
+            ShipDesign("design_7", "Raider frigate", "frigate", ("pulse", "laser", "shield", "engine")),
+        ]
+        result.player.ships = {"design_1": 1, "design_2": 2, "design_3": 1, "design_4": 1, "design_5": 1, "design_7": 2}
+        result.rival.ships = {"design_5": 2, "design_6": 4, "design_7": 4}
     result.validate(battle=True)
     return result

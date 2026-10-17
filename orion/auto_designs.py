@@ -29,6 +29,12 @@ def auto_design(kind, completed, legacy_hulls=False, *, planning=False):
     if kind == "carrier":
         first(("bomber_bay", "interceptor_bay", "drone_bay"))
         first(("interceptor_bay", "bomber_bay", "drone_bay"))
+    elif kind == "destroyer":
+        add("escort_array")
+    elif kind == "titan":
+        first(("flag_bridge", "command_relay"))
+    elif kind == "cruiser":
+        first(("ecm_projector", "command_relay"))
     first(("hardened_shield", "regenerative_shield", "shield", "reinforced_armor", "armor"))
     first(("damage_control", "scanner", "engine"))
     if kind in ("frigate", "carrier"):

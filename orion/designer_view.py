@@ -15,6 +15,12 @@ def draft(app):
 
 
 def module_detail(identifier, module):
+    if module.escort_interception:
+        return f"Destroyer · allies within {module.support_range} cells: +{module.escort_interception}% interception"
+    if module.command_accuracy:
+        return f"Allies within {module.support_range} cells: +{module.command_accuracy} aim · strongest only"
+    if module.jamming:
+        return f"Allies within {module.support_range} cells: incoming aim −{module.jamming} · strongest only"
     if module.damage:
         beam = BEAMS[module.weapon]
         parts = [f"{module.damage} volley", f"range {module.range}"]
@@ -135,11 +141,15 @@ def draw_designer(app):
     text(surface, f"LIVE PREVIEW · UPKEEP {design.maintenance} CR/TURN", (1003, 444), 10, MUTED, "mono", 1)
     discount = game.bonuses_for().get("ship_discount", 0)
     cost = max(1, math.ceil(design.resource_cost*(100-discount)/100))
+    support_labels = [f"{label} {getattr(module, key)}%" for module in design.specs
+                      for key, label in (("escort_interception", "Escort"), ("command_accuracy", "Aim"), ("jamming", "ECM"))
+                      if getattr(module, key)]
     values = (("Hull / shields", f"{design.hull} / {design.shields}"),
               ("Volley / max range", f"{design.damage} / {design.weapon_range}"),
               ("Tactical movement", f"{design.movement} cells"),
-              ("Point defense", f"{design.interception}%"),
+              ("Own point defense", f"{design.interception}%"),
               ("Build cost / work", f"{cost} RES / {design.work_cost}"),
+              ("Support for allies", " / ".join(support_labels)) if support_labels else
               ("Drones active / launches", f"{design.drone_bays*2} / {design.drone_bays*4}"))
     for index, (label, value) in enumerate(values):
         y = 471+index*29

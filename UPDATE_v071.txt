@@ -1,0 +1,35 @@
+Orion Reach v0.71.0 — Fleet cooperation and combat ship sizes
+
+Requires the complete v0.70.0 installation. Extract this update into that
+folder, accepting replacement of matching files. Do not delete other files.
+Dependencies are unchanged. Launch the campaign with python main.py.
+
+Try the new scenario with:
+    python combat_simulator.py --preset 7
+
+Features
+- Passive destroyer escort arrays protect nearby allies from projectiles
+  and drones. Beams bypass interception; shared protection is capped.
+- Cruiser command relays and titan flag bridges improve nearby ships' aim.
+- Cruiser ECM projectors protect nearby allies by reducing incoming accuracy.
+- Support uses normal equipment slots and costs; no new support actions and
+  no selectable battle plans. Individual movement and targeting are retained.
+- Standard destroyers and titans get their respective stock support roles.
+  Custom ships require fitted support equipment. Existing custom ships keep
+  their loadouts; updating a blueprint changes only future campaign builds.
+- Coverage circles, support links, defense/aim readouts and defensive bursts.
+- Different combat sprite sizes and class-scaled explosions, while every
+  ship keeps one grid cell and the same clickable area.
+- Support-aware tactical AI and affordable mixed-fleet production.
+- Combined arms simulator preset, equipment help and documentation.
+
+Compatibility
+Campaign save format: 50 (unchanged).
+Balance profile: 15 (automatically upgrades older profiles, retaining edits).
+Combat scenario format: 1 (unchanged).
+Support is derived from current positions and survivors, including on load.
+Guaranteed-hit simulator mode disables command/ECM accuracy effects, while
+escort interception remains active. Old scenarios can have different outcomes
+under the new combat rules and AI.
+
+See docs/fleet-support.md and TEST_REPORT_v071.txt for details.

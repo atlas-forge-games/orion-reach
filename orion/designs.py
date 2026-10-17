@@ -7,6 +7,12 @@ from .production import HULL_TECHNOLOGIES
 
 MAX_DESIGNS = 24
 DRONE_BAYS = {"drone_bay": "assault", "interceptor_bay": "interceptor", "bomber_bay": "bomber"}
+SUPPORT_HULLS = {
+    "escort_array": ("destroyer",),
+    "command_relay": ("cruiser", "titan"),
+    "flag_bridge": ("titan",),
+    "ecm_projector": ("cruiser",),
+}
 
 
 @dataclass(frozen=True)
@@ -68,6 +74,10 @@ class Module:
     interception_cap: int = 0
     movement_bonus: int = 0
     range_bonus: int = 0
+    support_range: int = 0
+    escort_interception: int = 0
+    command_accuracy: int = 0
+    jamming: int = 0
 
 
 MODULES = {
@@ -99,6 +109,17 @@ MODULES = {
     "damage_control": Module("Damage control", "support", 1, 32, 20, "Repair 3 hull/turn · reserve 12/battle · battle damage only", "automated_damage_control"),
     "interceptor_bay": Module("Interceptor bay", "support", 3, 45, 28, "Carrier · 2 active / 4 launches · protect allies within 2 cells", "interceptor_drones"),
     "bomber_bay": Module("Bomber bay", "support", 3, 48, 30, "Carrier · 2 active / 4 launches · double damage to capitals", "bomber_drones"),
+    "escort_array": Module("Escort array", "support", 1, 24, 16,
+        "Destroyer · protects allies within 2 cells · +25% interception", support_range=2, escort_interception=25),
+    "command_relay": Module("Command relay", "support", 1, 24, 16,
+        "Cruiser / Titan · allies within 3 cells gain +8 aim · strongest only", "research_networks",
+        support_range=3, command_accuracy=8),
+    "flag_bridge": Module("Flag bridge", "support", 1, 36, 24,
+        "Titan · allies within 4 cells gain +12 aim · strongest only", "titan_hulls",
+        support_range=4, command_accuracy=12),
+    "ecm_projector": Module("ECM projector", "support", 1, 28, 18,
+        "Cruiser · attacks against allies within 3 cells lose 8 aim · strongest only", "electronic_countermeasures",
+        support_range=3, jamming=8),
 }
 
 for _identifier, _effects in {
@@ -163,6 +184,13 @@ def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_
             return f"This hull has insufficient {category} {'capacity' if fit_version == 1 else 'slots'}."
     if modules.count("scanner") > 1:
         return "Only one combat scanner can be fitted."
+    for identifier, hulls in SUPPORT_HULLS.items():
+        if identifier in modules and kind not in hulls:
+            return f"{MODULES[identifier].name} requires a {' or '.join(HULLS[k].name for k in hulls)} hull."
+        if modules.count(identifier) > 1:
+            return f"Only one {MODULES[identifier].name.lower()} can be fitted."
+    if sum(m in ("command_relay", "flag_bridge") for m in modules) > 1:
+        return "Fit one command module per ship."
     if any(m in DRONE_BAYS for m in modules) and kind != "carrier":
         return "Drone bays require a carrier hull."
     if fit_version == 2 and sum(m in DRONE_BAYS for m in modules) > 2:

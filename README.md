@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.70.0
+# Orion Reach — Python prototype 0.71.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,41 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.71: fleet cooperation and combat ship sizes
+
+Individual ship movement and targeting remain unchanged. **Escort arrays** on
+destroyers automatically protect nearby allies from projectiles and drones.
+**Command relays / flag bridges** improve nearby ships' aim, and cruiser
+**ECM projectors** reduce the accuracy of attacks against nearby allies.
+No support buttons, extra actions or selectable battle plans are needed.
+
+- Four new support modules use normal designer slots, costs and research.
+- Standard destroyers have escort arrays; standard titans have flag bridges.
+  Custom blueprints need their own fitted modules, including older blueprints.
+- Support follows current positions and disappears immediately when a
+  provider is destroyed. Command and ECM use the strongest source; shared
+  interception is capped at 50%, and total interception at 90%.
+- Select a provider to see its coverage. The sidebar shows received effects,
+  target defenses and hit chances; escorts fire defensive visual bursts.
+- Frigates, destroyers, cruisers, carriers, battleships and titans have distinct
+  combat sprite sizes. Every ship still occupies one cell with the same click
+  area. Existing size-based tracking rules remain in force.
+- Tactical AI keeps support ships near suitable allies. Campaign AI includes
+  escorts and support cruisers when affordable, counting queued ships.
+
+Try the new **Combined arms** simulator preset:
+
+```bash
+python combat_simulator.py --preset 7
+```
+
+See [Fleet cooperation](docs/fleet-support.md) for equipment, research,
+counterplay and limits. Campaign save format remains **50**. Balance profiles
+upgrade automatically to **15**, retaining existing edited values. Older
+scenario files remain usable; new effects can change their outcomes.
+
+![Command coverage and different ship sizes](screenshots/v071_fleet_support.png)
 
 ## New in v0.70: standalone combat simulator
 
@@ -1201,7 +1236,8 @@ shields. Strategic bombardment retains its once-per-ship, per-turn limit.
 - **Interceptor bays:** carriers launch fast, six-cell drones with 2 damage
   against ships and 8 against other drones. Each interceptor protects other
   friendly ships within two cells with +20% interception, capped at +40% from
-  escorts. Combined shipboard and escort interception is capped at 90%.
+  drones. With destroyer arrays, all shared protection is capped at +50%.
+  Combined shipboard and escort interception is capped at 90%.
 - **Bomber bays:** carriers launch slower, three-cell drones with 5 damage,
   doubled against cruisers, larger warships, bases and guardians. Flak and point
   defense counter them. Both new drone types have weapon range 3.

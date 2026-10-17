@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--data-dir", type=Path, help="simulator settings/scenarios directory")
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--scenario", type=Path, help="load a saved combat scenario JSON")
-    source.add_argument("--preset", type=int, choices=range(1, 7), default=1, help="built-in scenario 1–6")
+    source.add_argument("--preset", type=int, choices=range(1, 8), default=1, help="built-in scenario 1–7")
     parser.add_argument("--seed", type=int, help="override the scenario's deterministic shot seed")
     parser.add_argument("--auto", action="store_true", help="start immediately with AI controlling both fleets")
     parser.add_argument("--headless", action="store_true", help="use SDL dummy video/audio drivers")

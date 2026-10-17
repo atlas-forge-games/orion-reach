@@ -1,6 +1,7 @@
 """Read-only, hull-specific equipment help and blueprint research requirements."""
 
-from .designs import DRONE_BAYS, HULLS, MODULE_SIZES, fitted_module, missing_research
+from .designs import DRONE_BAYS, HULLS, MODULE_SIZES, SUPPORT_HULLS, fitted_module, missing_research
+from . import fleet_support
 from .research import TECHNOLOGIES
 from .weapons import BEAMS, DRONE_ROLES
 from .ui import CYAN, GOLD, INK, MUTED, PANEL, panel, shorten, text, wrapped_lines
@@ -29,6 +30,23 @@ def module_sections(kind, identifier, state):
     sections = [("FITTING", f"Uses 1 {slot} slot. Values shown for a {hull.name}. Adds {module.resource_cost} resources and "
                  f"{module.work_cost} production work before empire discounts. Each copy has the effects below.")]
     effects = []
+    if identifier in SUPPORT_HULLS:
+        effects.append("Fits "+" / ".join(HULLS[k].name for k in SUPPORT_HULLS[identifier])+" hulls only. One copy per ship. "
+                       "Works automatically while alive, even after moving or firing. It benefits other friendly units, never its own ship. "
+                       "Distance is measured between cell centres; moving out of range or destroying the provider immediately ends its support.")
+    if module.escort_interception:
+        effects.append(f"Adds {module.escort_interception}% interception to allies within {module.support_range} cells. "
+                       f"Destroyer arrays and interceptor drones together are capped at {fleet_support.ESCORT_CAP}% shared protection; "
+                       f"with the target's own point defense, total interception is capped at {fleet_support.TOTAL_INTERCEPTION_CAP}%. "
+                       "Reduces projectile and drone damage, including bombers. Beams ignore this screen. No firing or movement action is spent.")
+    if module.command_accuracy:
+        effects.append(f"Other friendly ships within {module.support_range} cells gain {module.command_accuracy} accuracy percentage points. "
+                       "Only the strongest command source applies. Does not coordinate drones or planetary bases. A ship may fit one command module. "
+                       "Range, evasion and large-mount tracking penalties still apply. Inactive when the simulator uses guaranteed hits.")
+    if module.jamming:
+        effects.append(f"Attacks against other friendly units within {module.support_range} cells lose {module.jamming} accuracy percentage points. "
+                       "Only the strongest ECM projector applies. Both beams and projectiles are affected, but the normal minimum hit chance remains. "
+                       "Inactive when the simulator uses guaranteed hits.")
     if module.damage:
         beam = BEAMS[module.weapon]
         effects.append(f"Fires {beam.shots} shot{'s' if beam.shots != 1 else ''} for {module.damage} total damage per volley "
@@ -69,7 +87,7 @@ def module_sections(kind, identifier, state):
                        "Repairs only damage taken in that battle. Multiple modules add repair speed and reserves.")
     if module.interception:
         effects.append(f"Reduces incoming torpedo and drone damage by {module.interception}%. Shipboard interception adds together up to the best fitted cap "
-                       f"({module.interception_cap}% for this module). Escort interceptors can raise total protection to 90%. Beam damage is unaffected.")
+                       f"({module.interception_cap}% for this module). Nearby escorts can raise total protection to {fleet_support.TOTAL_INTERCEPTION_CAP}%. Beam damage is unaffected.")
     if module.range_bonus:
         effects.append(f"Adds {module.range_bonus} cells to every fitted weapon's range. Only one combat scanner per ship. Does not change strategic fuel range.")
     if module.movement_bonus:
@@ -82,7 +100,8 @@ def module_sections(kind, identifier, state):
         effects.append(f"Launches {name.lower()}s: {beam.damage} damage, range {beam.range}, {movement} movement cells. "
                        "Drones are temporary and are lost when their carrier is destroyed. Larger bays do not increase drone counts or strength.")
         if role == "interceptor":
-            effects.append(f"Deals {beam.versus_drones} times damage to drones. Each interceptor gives other friendly ships within 2 cells +20% interception, capped at +40% from escorts.")
+            effects.append(f"Deals {beam.versus_drones} times damage to drones. Each interceptor gives other friendly ships within 2 cells +20% interception, "
+                           f"capped at +{fleet_support.DRONE_ESCORT_CAP}% from drones and +{fleet_support.ESCORT_CAP}% shared with destroyer arrays.")
         elif role == "bomber":
             effects.append(f"Deals {beam.versus_capitals} times damage to cruisers, carriers, battleships, Titans, planetary bases and guardians.")
     sections += [("EFFECTS" if index == 0 else "", effect) for index, effect in enumerate(effects or [module.description])]

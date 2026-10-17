@@ -479,7 +479,8 @@ class AccuracyTests(unittest.TestCase):
     def test_targeting_range_evasion_and_specialized_guidance(self):
         game, first, second = self.battle()
         base = combat.accuracy_breakdown(game, first, second, "laser")
-        self.assertEqual(base, {"base": 85, "targeting": 0, "range": 3, "evasion": 10, "tracking": 0, "chance": 72})
+        self.assertEqual(base, {"base": 85, "targeting": 0, "range": 3, "evasion": 10, "tracking": 0,
+                                "command": 0, "jamming": 0, "chance": 72})
         game.combat = None
         discover(game, "quantum_targeting")
         discover(game, "electronic_countermeasures", "rival")

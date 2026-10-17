@@ -24,12 +24,13 @@ play through, and no campaign save is loaded or written.
 3. Use **New custom design**, or select a catalogue ship and choose
    **Edit / customize selected**, to specify its weapons, defenses and support
    modules. All hulls and equipment are available immediately; normal slot,
-   scanner and carrier restrictions still apply. Save the blueprint, then
+   scanner, carrier and support-module hull restrictions still apply. Save the blueprint, then
    add it to either or both fleets using **+ Yours / + Enemy** in the designer.
    Right-click equipment for its actual hull-scaled properties.
 4. Choose the first side, seed and accuracy mode. **Every shot hits** bypasses
    accuracy rolls for damage experiments; shields, interception, cooldowns
-   and weapon effects still apply. Normal accuracy is the default.
+   and weapon effects still apply. Command and ECM accuracy effects are
+   inactive in this mode. Normal accuracy is the default.
 5. Select **Fight manually** or **Watch AI vs AI**. The side moving first
    must have an armed ship, carrier or missile base. An unarmed convoy can
    be tested by letting the attacker move first.
@@ -40,10 +41,17 @@ selected side. Custom designs are shared by the scenario: updating a saved
 design changes all references to that design on the next battle launch.
 Use **Save as new** to compare two variants side by side.
 
-The six quick scenarios are Fleet skirmish, Carrier clash, Capital duel,
-Shield laboratory, Planetary assault and Convoy interception. Cycle the
+The seven quick scenarios are Fleet skirmish, Carrier clash, Capital duel,
+Shield laboratory, Planetary assault, Convoy interception and Combined arms. Cycle the
 scenario button and select **Apply** to replace the current setup. Save a
 named setup first if you want to return to it.
+
+**Combined arms** includes custom escort destroyers, a command titan, an ECM
+cruiser, a battleship, a carrier and frigates facing a carrier/torpedo force.
+It is a demonstration matchup, not an equal-cost balance benchmark. Remove
+escorts or change their loadouts to explore the trade-offs. Standard destroyers
+and titans also supply their basic support roles; custom ships must fit the
+corresponding modules. See [Fleet cooperation](fleet-support.md).
 
 ## During combat
 
@@ -65,6 +73,10 @@ named setup first if you want to return to it.
 
 The normal combat engine handles movement, tracking, hit chances, shields,
 weapon cooldowns, damage control, drones, missile bases, retreat and losses.
+Escort protection, command links and ECM are automatic. Select a provider to
+see its radius, or another ship to see its supporting links. The right panel
+shows current shared protection, command accuracy and ECM. Different ship
+sizes are visual; movement and click targets still use one cell per unit.
 Motherships use their real mobile habitats and basic shields. Retreating
 fleets have nearby test anchorages available. Strategic turns never advance.
 

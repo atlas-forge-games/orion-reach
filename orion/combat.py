@@ -7,7 +7,7 @@ import math
 import hashlib
 
 from .production import SHIP_TYPES, ShipSpec
-from . import defenses
+from . import defenses, fleet_support
 from .designs import HULLS, MODULE_SIZES, ShipDesign
 from .weapons import Beam, BEAMS, DRONE_ROLES, CAPITAL_TARGETS
 from .empires import EMPIRE_IDS
@@ -812,7 +812,8 @@ def move(game, ship_id, x, y, owner="player"):
 
 def accuracy_breakdown(game, attacker, target, weapon):
     if game.combat is not None and not game.combat.accuracy:
-        return {"base": 100, "targeting": 0, "range": 0, "evasion": 0, "tracking": 0, "chance": 100}
+        return {"base": 100, "targeting": 0, "range": 0, "evasion": 0, "tracking": 0,
+                "command": 0, "jamming": 0, "chance": 100}
     bonuses = game.bonuses_for(attacker.owner) if attacker.owner in game.owners else {}
     defense = game.bonuses_for(target.owner) if target.owner in game.owners else {}
     spec = BEAMS[weapon]
@@ -829,6 +830,8 @@ def accuracy_breakdown(game, attacker, target, weapon):
     if spec.projectile and bonuses.get("torpedo_guidance"):
         evasion //= 2
     targeting = bonuses.get("accuracy", 0)
+    command = fleet_support.strongest(game.combat, attacker, "command_accuracy")
+    jamming = fleet_support.strongest(game.combat, target, "jamming")
     tracking = 0
     if attacker.kind in HULLS and (attacker.design is None or attacker.design.fit_version == 2):
         hull = HULLS[attacker.kind]
@@ -837,8 +840,8 @@ def accuracy_breakdown(game, attacker, target, weapon):
                        else 0 if target.kind in ("scout", "combat_drone") else 1)
         tracking = max(0, MODULE_SIZES[hull.module_size]-target_size)*hull.tracking_penalty
     return {"base": base, "targeting": targeting, "range": penalty, "evasion": evasion,
-            "tracking": tracking,
-            "chance": max(5 if tracking else 10, min(95, base+targeting-penalty-evasion-tracking))}
+            "tracking": tracking, "command": command, "jamming": jamming,
+            "chance": max(5 if tracking else 10, min(95, base+targeting+command-penalty-evasion-tracking-jamming))}
 
 
 def shot_strengths(weapon, strength):
@@ -848,11 +851,7 @@ def shot_strengths(weapon, strength):
 
 
 def interception(state, target):
-    local = target.design.interception if target.design else 0
-    escorts = (sum(s.drone_role == "interceptor" and s.id != target.id
-                   and math.dist(s.position, target.position) <= 2
-                   for s in state.fleet(target.owner)) if state else 0)
-    return min(90, local+min(40, 20*escorts))
+    return fleet_support.interception_breakdown(state, target)["total"]
 
 
 def hit_damage(state, target, weapon, strength, *, shields=None, hull=None):
@@ -896,7 +895,7 @@ def fire(game, ship_id, target_id, owner="player"):
     state = game.combat
     attacker, target = state.ship(ship_id), state.ship(target_id)
     require(attacker is not None and target is not None, "Choose an attacker and target.")
-    damage, absorbed, hits, shots = 0, 0, 0, 0
+    damage, absorbed, hits, shots, screened = 0, 0, 0, 0, 0
     volley = attacker.volley(target)
     slowed = False
     for weapon, total in volley:
@@ -913,6 +912,9 @@ def fire(game, ship_id, target_id, owner="player"):
                 continue
             hits += 1
             hit, blocked = hit_damage(state, target, weapon, strength)
+            if spec.projectile or spec.drone:
+                unscreened = hit_damage(None, target, weapon, strength)
+                screened += int(hit+blocked < sum(unscreened))
             target.shields -= blocked
             absorbed += blocked
             target.hull -= hit
@@ -926,7 +928,8 @@ def fire(game, ship_id, target_id, owner="player"):
     suffix = (" Disabled." if target.kind == "mothership" else " Destroyed.") if target.hull == 0 else f" {target.hull}/{target.max_hull} hull remains."
     protection = f" Shields absorbed {absorbed}." if absorbed else ""
     effect = " Target slowed." if slowed else ""
-    state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{effect}{suffix}")
+    support = f" Escort screen: {screened} hits softened." if screened else ""
+    state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{support}{effect}{suffix}")
     check_losses(game)
     return damage
 
@@ -992,19 +995,40 @@ def ai_action(game, owner="rival"):
         preference = ("interceptor", "bomber", "assault") if enemy_drones else ("bomber", "assault", "interceptor")
         role = next(r for r in preference if r in state.available_drone_roles(carrier))
         return {"kind": "launch", "ship_id": carrier.id, "drone_ids": launch_drones(game, carrier.id, owner, role)}
-    ship = min(ready, key=lambda s: (-s.damage, s.hull, s.id))
+    # Leaders move first so automatic escorts can follow their new positions.
+    ship = min(ready, key=lambda s: (fleet_support.anchor_for(state, s) is not None,
+                                     -s.damage, s.hull, s.id))
     enemies = state.fleet(state.enemy(owner))
     targets = [s for s in enemies if in_range(ship, s)] if state.can_fire(ship) else []
     if targets:
         target = min(targets, key=lambda s: (s.hull > expected_volley(game, ship, s),
                                             -expected_volley(game, ship, s), -s.damage, s.hull, s.id))
         shield_before = target.shields
+        support_ids = fleet_support.screen_sources(state, target)
         weapons = tuple(dict.fromkeys(w for w, _ in ship.volley(target)))
         damage = fire(game, ship.id, target.id, owner)
         return {"kind": "fire", "ship_id": ship.id, "target_id": target.id, "damage": damage,
                 "weapons": weapons,
+                "support_ids": support_ids,
                 "missed": damage == 0 and target.shields == shield_before}
     paths = reachable(state, ship)
+    anchor = fleet_support.anchor_for(state, ship)
+    if paths and anchor is not None:
+        radii = [radius for key, _, radius in fleet_support.auras(ship) if fleet_support.eligible(anchor, key)]
+        if radii:
+            radius = min(radii)
+            def support_score(cell):
+                # Stay in support range, keeping a firing lane if one is available.
+                gap = max(0, math.dist(cell, anchor.position)-radius)
+                firing_gap = min(max(0, math.dist(cell, enemy.position)-ship.ready_range) for enemy in enemies)
+                return (gap, firing_gap if state.can_fire(ship) else 0, len(paths.get(cell, (cell,))), cell)
+            destination = min(paths, key=support_score)
+            if support_score(destination)[:2] < support_score(ship.position)[:2]:
+                return {"kind": "move", "ship_id": ship.id,
+                        "path": move(game, ship.id, *destination, owner)}
+            # Do not pursue a target outside the formation. Other ships lead it.
+            hold(game, ship.id, owner)
+            return {"kind": "hold", "ship_id": ship.id}
     if paths and (not ship.damage or state.can_fire(ship)):
         if ship.damage:
             target = min(enemies, key=lambda s: (math.dist(ship.position, s.position), -s.damage, s.hull, s.id))

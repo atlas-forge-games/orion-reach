@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 14
+VERSION = 15
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -61,6 +61,7 @@ RULES = {
     'raiding': ('raiding', ('SLAVE_CAPACITY', 'MORTALITY_CHANCE', 'CREDITS_PER_POPULATION')),
     'council': ('council', ('ELECTION_INTERVAL',)),
     'combat': ('combat', ('DRONE_HULL', 'DRONES_PER_BAY', 'LAUNCHES_PER_BAY')),
+    'fleet_support': ('fleet_support', ('ESCORT_CAP', 'DRONE_ESCORT_CAP', 'TOTAL_INTERCEPTION_CAP')),
     'navigation': ('navigation', ('GATE_SPEED_BONUS', 'INTERDICTION_SLOW', 'INTERDICTION_RANGE')),
     'sensors': ('sensors', ('ARRAY_RANGE', 'CONTACT_LIFETIME')),
     'galaxy': ('model', ('MIN_STAR_DISTANCE',)),
@@ -174,7 +175,9 @@ def numeric_bounds(section, field):
     if field == 'module_scale': return 1, 1000
     if field == 'tracking_penalty': return 0, 100
     if field == 'tier': return 1, 8
-    if field in ('accuracy', 'shield_bypass', 'interception_piercing', 'shield_hardening', 'interception', 'interception_cap', 'TRADE_GOODS_PERCENT'): return 0, 100
+    if field in ('accuracy', 'shield_bypass', 'interception_piercing', 'shield_hardening', 'interception', 'interception_cap', 'TRADE_GOODS_PERCENT',
+                 'escort_interception', 'command_accuracy', 'jamming', 'ESCORT_CAP', 'DRONE_ESCORT_CAP'): return 0, 100
+    if field == 'TOTAL_INTERCEPTION_CAP': return 0, 95
     if field in ('work_cost', 'space', 'hull', 'DRONE_HULL', 'OUTPOST_HULL', 'cost', 'shots', 'shield_multiplier', 'versus_drones', 'versus_capitals'): return 1, 100000
     if field == 'resource_cost': return 1, 100000
     if field == 'building_slots': return 1, 12
@@ -191,7 +194,7 @@ def numeric_bounds(section, field):
     if field in ('STARTING_COLONISTS', 'AWAKENED_POPULATION', 'SLAVE_CAPACITY'): return 1, 100
     if field in ('capacity', 'weapon', 'defense', 'support') and section == 'hulls': return 1 if field in ('capacity','weapon') else 0, 24
     if field == 'movement': return 0, 20
-    if field == 'range': return 0, 50
+    if field in ('range', 'support_range'): return 0, 50
     if field in ('movement_bonus', 'envoy', 'gift', 'envoy_bonus', 'trade_bonus', 'research_bonus'): return -100, 100
     if field in ('trade_threshold','research_threshold'): return -100, 100
     if field in ('DRONES_PER_BAY', 'LAUNCHES_PER_BAY', 'drone_bays'): return 0, 8
@@ -304,6 +307,8 @@ def validate(profile):
     for identifier, entry in data['modules'].items():
         if entry['damage'] and (entry['weapon'] == 'none' or entry['range'] < 1):
             errors.append(f'modules.{identifier}: damaging modules need a weapon and positive range.')
+        if any(entry[k] for k in ('escort_interception', 'command_accuracy', 'jamming')) and not entry['support_range']:
+            errors.append(f'modules.{identifier}: fleet support needs a positive support range.')
     for identifier, entry in data['weapons'].items():
         if entry['damage'] and entry['range'] < 1:
             errors.append(f'weapons.{identifier}: damaging weapons need positive range.')
@@ -475,6 +480,21 @@ def upgrade_profile(profile):
                 data['personalities']['concord']['greeting'] = _defaults()['data']['personalities']['concord']['greeting']
             if isinstance(data.get('diplomatic_preferences', {}).get('concord'), dict):
                 data['diplomatic_preferences']['concord'] = deepcopy(_defaults()['data']['diplomatic_preferences']['concord'])
+        profile['version'] = 14
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 14:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            modules = data.get('modules')
+            if isinstance(modules, dict):
+                for identifier, defaults in _defaults()['data']['modules'].items():
+                    if identifier in module('designs').SUPPORT_HULLS:
+                        modules.setdefault(identifier, deepcopy(defaults))
+                    elif isinstance(modules.get(identifier), dict):
+                        for key in ('support_range', 'escort_interception', 'command_accuracy', 'jamming'):
+                            modules[identifier].setdefault(key, defaults[key])
+            if isinstance(data.get('rules'), dict):
+                data['rules'].setdefault('fleet_support', deepcopy(_defaults()['data']['rules']['fleet_support']))
         profile['version'] = VERSION
     return profile
 

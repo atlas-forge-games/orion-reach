@@ -176,16 +176,29 @@ def research_choice(game, owner=RIVAL):
 
 
 def warship_choice(game, owner):
-    """Build researched hulls when affordable, keeping carriers in a mixed fleet."""
+    """Keep escorts, strike craft and flagships in an affordable mixed fleet."""
     state = game.research_state(owner)
     budget = projected_income(game, owner)-1
     available = [kind for kind, spec in SHIP_TYPES.items() if kind != "mothership" and (spec.damage or spec.drone_bays)
                  and state.hull_unlocked(kind) and game.project_price(kind, owner) <= game.resources_for(owner)
                  and spec.maintenance <= budget]
+    fleet = [s for s in game.ships_owned_by(owner) if game.military_strength(s)]
+    kinds = [s.kind for s in fleet]
+    for _, planet in empire_colonies(game, owner):
+        for order in planet.construction_queue:
+            if order.is_ship and (order.spec.damage or order.spec.drone_bays):
+                kinds.append(order.spec.kind if order.design else order.item_id)
+    capitals = sum(kind in ("cruiser", "battleship", "carrier", "titan", "mothership") for kind in kinds)
+    if "destroyer" in available and capitals and kinds.count("destroyer") < (capitals+1)//2:
+        return "destroyer"
     if "carrier" in available:
-        fleet = [s for s in game.ships_owned_by(owner) if game.military_strength(s)]
-        if sum(s.drone_bays > 0 for s in fleet)*3 <= len(fleet):
+        if kinds.count("carrier")*3 <= len(kinds):
             return "carrier"
+    if "cruiser" in available and capitals >= 3 and kinds.count("cruiser")*4 < len(kinds):
+        return "cruiser"
+    # Further titans add hull and weapons, but command bonuses never stack.
+    if kinds.count("titan") >= max(1, len(kinds)//8) and len(available) > 1:
+        available = [kind for kind in available if kind != "titan"]
     return max(available, key=lambda kind: game.project_spec(kind, owner).hull+3*game.project_spec(kind, owner).damage,
                default="frigate")
 

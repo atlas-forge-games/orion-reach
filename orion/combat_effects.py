@@ -21,6 +21,7 @@ class CombatAnimation:
     elapsed: float = 0.0
     weapons: tuple[str, ...] = ()
     missed: bool = False
+    escorts: tuple = ()
 
     @classmethod
     def from_action(cls, battle, action):
@@ -28,9 +29,12 @@ class CombatAnimation:
             return cls("move", action["ship_id"], tuple(action["path"]))
         if action["kind"] == "fire":
             ship, target = battle.ship(action["ship_id"]), battle.ship(action["target_id"])
-            return cls("fire", ship.id, (ship.position, target.position), target.id,
+            result = cls("fire", ship.id, (ship.position, target.position), target.id,
                        ship.weapon, action["damage"], target.hull == 0,
                        weapons=tuple(action.get("weapons", dict.fromkeys(w for w, _ in ship.volley(target)))), missed=action.get("missed", False))
+            if any(BEAMS[w].projectile or BEAMS[w].drone for w in result.weapons or (result.weapon,)):
+                result.escorts = tuple(battle.ship(i).position for i in action.get("support_ids", ()) if battle.ship(i))
+            return result
         return None
 
     @property
@@ -62,6 +66,13 @@ class CombatAnimation:
             target = (target[0]+18, target[1]-25)
         color = BEAMS[(self.weapons or (self.weapon,))[0]].color
         age = self.elapsed
+        if self.escorts and .06 <= age < .3:
+            # Short defensive bursts converge on the approaching salvo. Visual only.
+            for index, escort in enumerate(self.escorts):
+                point = (round(origin[0]+(target[0]-origin[0])*.82),
+                         round(origin[1]+(target[1]-origin[1])*.82)+(index%3-1)*7)
+                pg.draw.line(surface, (95, 236, 205), project(escort), point, 1)
+                pg.draw.circle(surface, (206, 255, 235), point, 3, 1)
         for index, weapon in enumerate(self.weapons or (self.weapon,)):
             shade = BEAMS[weapon].color
             if age < .34:

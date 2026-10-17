@@ -121,7 +121,7 @@ class HullResearchTests(unittest.TestCase):
         # is needed before another capital hull is affordable.
         self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")
         game.headquarters(RIVAL)[1].buildings = ["trade_center"]
-        self.assertEqual(ai.warship_choice(game, RIVAL), "cruiser")
+        self.assertEqual(ai.warship_choice(game, RIVAL), "destroyer")  # Escort the existing carrier.
         game.opponent.resources = 0
         self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")
 

@@ -1,0 +1,55 @@
+Orion Reach v0.71.0 verification
+Python 3.12 / pygame-ce 2.5.8 / SDL dummy video and audio
+
+Final focused verification: 259 tests passed in 31.366 seconds.
+
+Command:
+PYTHONPATH=tests python3 -m unittest test_fleet_support test_combat test_tactical_combat test_auto_combat test_combat_planets test_designer test_designer_planning test_starships test_arsenal test_hull_modules test_balance_editor test_research_expansion test_research_progression test_combat_simulator test_mothership_boarding -q
+
+Full regression was also run:
+PYTHONPATH=tests python3 -m unittest discover -s tests -q
+1,250 tests ran in 282.933 seconds: 1,248 passed initially. Two assertions
+expected the old exact dictionary fields for accuracy and legacy module
+profiles. They were updated to include the new zero-valued support fields;
+both affected modules passed in the final 259-test run above. The full suite
+was not repeated after those expectation updates. No unresolved test failures.
+
+The 21 new fleet-support tests cover:
+- Real movement into/out of range, spent actions and destroyed providers.
+- Enemy separation, no self-support and stock versus custom equipment.
+- Combined array/drone/shipboard interception caps.
+- Beam bypass, bomber interception and MIRV penetration.
+- Actual firing, shared-screen logs and matching AI damage estimates.
+- Strongest-source command and ECM, range boundaries and recipient limits.
+- Preserved large-mount tracking penalties and guaranteed-hit mode.
+- Hull/research/slot restrictions and valid auto-fit support equipment.
+- Tactical escort positioning and avoidance of support follow loops.
+- Changed target vulnerability after destroying an escort.
+- Version-14 profile migration, retained edits and active balance controls.
+- Mid-battle campaign save/reload with support and spent actions preserved.
+- Campaign escort production including already queued ships.
+- Deterministic combined-arms results across several seeds.
+- Actual manual simulator firing, interception animation and unchanged actions.
+- Class sprite sizes, unchanged click targets and support equipment help.
+
+Additional checks:
+- All seven simulator presets finish through the ordinary combat engine.
+- Syntax compilation passed for launcher, game modules, new tests and preview.
+- A 90-ship fixture executed 40 AI actions in 0.197 seconds on this host.
+  This is a local smoke benchmark, not a guarantee for every fleet or machine.
+- tools/preview_fleet_support.py rendered five real UI screenshots, inspected
+  for readable support ranges, distinct ship sizes, interception, designer
+  values and equipment help. No graphical mockups were substituted.
+- ZIP contents are checked against the v0.70 baseline; compiled Python files,
+  personal settings, scenarios and campaign saves are excluded.
+
+Decoder messages in test logs come from existing malformed-image/audio
+fallback tests and did not cause failures.
+
+Limits:
+This introduces tactical cooperation, not a claim of final fleet balance.
+Combined arms is a demonstration scenario, not an equal-cost benchmark.
+Shared interception is passive and capped; it has no per-turn ammunition pool.
+No selectable battle plans, extra player support actions, multi-cell hulls
+or new facing rules were added. Scenario/campaign save schemas remain unchanged;
+balance profiles automatically upgrade to version 15.

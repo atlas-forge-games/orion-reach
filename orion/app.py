@@ -1788,9 +1788,11 @@ class App:
                 ship=self.game.combat.ship(self.combat_ship_id)
                 weapons=tuple(dict.fromkeys(w for w,_ in ship.volley(target))) if ship and target else ()
                 shields=target.shields if target else 0
+                from .fleet_support import screen_sources
+                support_ids=screen_sources(self.game.combat,target)
                 damage=self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
                 event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage,
-                             missed=damage==0 and target.shields==shields,weapons=weapons)
+                             missed=damage==0 and target.shields==shields,weapons=weapons,support_ids=support_ids)
             elif action=="launch":
                 drones=self.game.combat_launch_drones(self.combat_ship_id,role=getattr(self,"combat_drone_role",None))
                 event.update(ship_id=self.combat_ship_id,drone_ids=drones)
