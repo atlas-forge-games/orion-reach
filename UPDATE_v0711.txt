@@ -1,0 +1,59 @@
+Orion Reach v0.71.1 - Development license and asset notices
+18 October 2026
+
+INSTALL
+Extract this update into a complete v0.71.0 game folder, next to main.py.
+Allow the included files to replace their previous versions.
+
+LICENSE MODEL
+LICENSE is a proprietary development license for Alexander Kies, publishing
+as Atlas Forge Games. It allows personal, non-commercial playtesting, source
+inspection and private modifications. Free original add-ons and limited
+patches may be shared under the included modding policy. Complete-game
+redistribution, commercial distribution and paid mods require written
+permission, except where independent licenses, hosting-platform permissions
+or applicable law already provide rights.
+
+This license applies to copies distributed with it. It does not retroactively
+change earlier licenses or promise a free future Steam release. Existing
+permissions for this version remain available while its conditions are met.
+
+ASSETS
+All supplied visual artwork is recorded as generated with OpenAI tools, as
+confirmed by the project owner. No blanket claim of exclusive copyright in
+AI outputs is made. Fonts and dependencies retain their own terms.
+
+Distant Stars is separately credited to alexander_kies, created with Suno.
+The creation-time subscription, download and commercial permission evidence
+is not recorded in the project. assets/audio/README.md documents this open
+item. The MP3 is unchanged and is not included in this small update.
+
+CHANGED / ADDED FILES
+LICENSE
+README.md
+ASSET_LICENSE.md
+THIRD_PARTY_NOTICES.md
+docs/modding-policy.md
+assets/audio/README.md
+orion/__init__.py
+orion/app.py
+UPDATE_v0711.txt
+
+The About screen shows the development license and corrected art provenance.
+There is no new activation system or acceptance dialog. Campaign saves
+(format 50), balance profiles (15), simulator scenarios (1) and gameplay are
+unchanged. main.py, editor.py and combat_simulator.py start as before.
+
+VALIDATION
+The two edited Python files compile successfully. The actual About screen
+was rendered headlessly and visually checked for readable, unclipped notices.
+Local links in the new Markdown files were checked. The source diff is limited
+to the version string and About-screen credits/layout; no gameplay logic was
+changed. The gameplay regression suite was not rerun for this notice update.
+
+BEFORE A PAID RELEASE
+Have the commercial terms reviewed for the intended release, confirm the
+soundtrack's applicable permissions, and include the notices and obligations
+for the exact runtime/dependency binaries being packaged. Complete Steam's
+AI-content disclosure for generated player-facing content. This development
+license is not a final Steam EULA or a completed asset-rights audit.

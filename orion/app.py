@@ -2907,15 +2907,17 @@ class App:
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
-        panel(self.canvas,(256,335,928,387))
+        panel(self.canvas,(256,335,928,407))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
         paragraph(self.canvas,"Lead an empire, research technologies and negotiate with rival civilizations. Fight fleet battles and invade colonies. Win by conquest, build the Ascension Gate, or win a Galactic Council election.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
         paragraph(self.canvas,"Food shipments, more empires, shields and advanced weapons. Assign colony workers to farming, industry, research or mining, manage construction, and grow toward each world's population limit.",
                   (282,552),840,18,MUTED,32)
-        text(self.canvas,"Original procedural artwork · DejaVu fonts · pygame-ce",(282,673),13,MUTED)
-        text(self.canvas,"Music: Distant Stars · alexander_kies · Created with Suno",(282,699),12,MUTED)
+        text(self.canvas,"Artwork generated with OpenAI tools · Procedural effects · DejaVu fonts · pygame-ce",(282,645),13,MUTED)
+        text(self.canvas,"Music: Distant Stars · alexander_kies · Created with Suno",(282,667),12,MUTED)
+        text(self.canvas,"Proprietary development license · Free personal playtesting and private mods",(282,689),13,INK)
+        text(self.canvas,"Terms and notices: LICENSE · ASSET_LICENSE.md · THIRD_PARTY_NOTICES.md",(282,713),12,MUTED)
         text(self.canvas,"CONTROLS",(256,764),11,GOLD,"mono",1)
         text(self.canvas,"Mouse / Tab / ↑ ↓ + Enter    Esc: back or pause    F11: fullscreen",(256,795),15,INK)
 

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.71.0
+# Orion Reach — Python prototype 0.71.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,28 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## License and permitted use
+
+Copyright (c) 2026 Alexander Kies (Atlas Forge Games), to the extent rights
+subsist and are held or controlled by him. Orion Reach uses a **proprietary
+development license**; it is not an open-source release.
+
+The [LICENSE](LICENSE) permits free personal playtesting, source inspection
+and private modifications of lawfully obtained copies. Free mods may be
+shared as original add-ons or limited patches that require a lawful game
+copy; see the [modding policy](docs/modding-policy.md). Redistribution of the
+complete game, commercial distribution and paid mods require written
+permission, subject to third-party licenses, hosting-platform permissions and
+rights granted by law. A later paid release does not revoke permissions
+already granted for this development version.
+
+[ASSET_LICENSE.md](ASSET_LICENSE.md) records the OpenAI-generated artwork and
+the separately credited Suno soundtrack. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+preserves the boundaries for fonts and libraries. The **About** screen points
+to these files. This update changes notices and credits; combat behavior,
+campaign save format **50**, balance profile **15** and scenario format **1**
+are unchanged.
 
 ## New in v0.71: fleet cooperation and combat ship sizes
 
@@ -3769,7 +3791,7 @@ and `assets/` directly.
 
 1. On <https://github.com/new>, create an empty repository. Leave the options
    to add a README, `.gitignore`, and license unselected: this project already
-   includes the first two, and you can choose a license separately later.
+   includes all three. Keep the included proprietary development license.
 2. Open Anaconda Prompt in the extracted `orion_reach` folder and run:
 
    ```sh
@@ -3821,7 +3843,11 @@ Official import instructions:
 - **Linux venv error:** your Python distribution may package `venv` separately;
   install its venv support or use an existing environment.
 
-Font notices are included in `assets/fonts/LICENSE-DejaVu.txt`. pygame-ce is
-installed separately and retains its own license. The supplied soundtrack has
-separate provenance in `assets/audio/README.md`. No assets from other games
-are redistributed.
+Project permissions are in [LICENSE](LICENSE). Font notices remain in
+`assets/fonts/LICENSE-DejaVu.txt`; pygame-ce is installed separately and
+retains its own license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md),
+[ASSET_LICENSE.md](ASSET_LICENSE.md) and the soundtrack permission record in
+`assets/audio/README.md` before packaging a release. The development license
+is not a final Steam customer agreement or a certification of commercial
+rights for every bundled asset; obtain legal review of the commercial terms
+and confirm the soundtrack permission before a paid release.

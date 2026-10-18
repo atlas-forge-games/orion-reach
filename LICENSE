@@ -1,0 +1,108 @@
+ORION REACH DEVELOPMENT LICENSE
+Version 1.0 - 18 October 2026
+SPDX-License-Identifier: LicenseRef-Orion-Reach-Development
+
+Copyright (c) 2026 Alexander Kies (Atlas Forge Games), to the extent
+copyright subsists and the relevant rights are held or controlled by him.
+All such rights are reserved except as expressly granted below.
+
+1. Scope
+
+This license applies to versions of Orion Reach distributed with this file,
+including the game, editors, combat simulator, project documentation and
+game data, to the extent the Licensor controls the applicable rights.
+"Licensor" means Alexander Kies, publishing as Atlas Forge Games.
+
+Third-party software, fonts and separately licensed materials retain their
+own terms. See THIRD_PARTY_NOTICES.md and ASSET_LICENSE.md. This license does
+not restrict rights granted by those terms, rights you already hold, material
+not protected by intellectual property rights, or uses permitted by law.
+It does not claim that AI-generated material necessarily has copyright
+protection or is exclusive to this project.
+
+This is a proprietary development license, not an open-source license.
+
+2. Personal use and testing
+
+For a copy lawfully obtained from the Licensor or an authorized source, you
+may, without a license fee:
+
+* install and run this version for personal, non-commercial play and testing;
+* make the copies needed for that use and for personal backups;
+* inspect, study and privately modify the project materials for that use;
+* report bugs and propose changes to the project.
+
+The same permissions apply to the included map/balance editor and combat
+simulator. Private modifications do not have to be published.
+
+3. Sharing mods and patches
+
+You may distribute mods without charge as original add-on code, original
+data, original assets or patches that require a separately obtained lawful
+copy of Orion Reach. A patch may include the limited project source context
+needed to identify and apply its changes. This permission does not authorize
+redistributing the complete game, complete replacement copies of existing
+game source files, or extracted game artwork or music.
+
+Retain relevant notices, include this license when a patch contains project
+material, identify the supported game version, and clearly identify the mod
+as unofficial and its changes as yours. Only include material you may lawfully
+share. You retain any rights in your own contributions; this license does
+not assign those rights to the Licensor. Receiving a mod grants no additional
+rights to the underlying game. Paid mods require separate written permission.
+
+See docs/modding-policy.md for practical examples of these rules.
+
+4. Distribution and commercial use
+
+Except for section 3, applicable third-party licenses, section 5, or uses
+permitted by law, written permission from the Licensor is required to:
+
+* redistribute, mirror, sublicense or publish copies of the game or its
+  protected project materials, whether modified or unmodified;
+* sell, rent, commercially distribute, or offer paid access to the game;
+* incorporate protected project code or assets into another distributed
+  product or distribute a standalone derivative game.
+
+For these permissions, contact the maintainer through the official project:
+https://github.com/atlas-forge-games/orion-reach
+
+5. Public repository and independent rights
+
+If the Licensor makes the repository public on GitHub, nothing here limits
+the permissions granted to GitHub and its users by GitHub's applicable terms,
+including viewing and forking within that service. Public visibility alone
+does not grant additional rights to distribute or commercially exploit the
+game outside those permissions.
+
+Nothing here limits lawful criticism, review, quotation, interoperability,
+backup rights or other mandatory exceptions. No trademark rights or right
+to imply official endorsement are granted. You may identify the game when
+describing a compatible mod or making a factual reference to the project.
+
+6. Development versions and future releases
+
+This license covers only the versions distributed under it. It does not
+promise access to future versions, updates, support or a future Steam release.
+The Licensor may release later versions under different terms or for a fee.
+That does not retroactively cancel permissions for copies already lawfully
+obtained under this license while its conditions are observed. This file
+does not revoke any rights previously granted under another license.
+
+7. Development status and statutory rights
+
+The game is unfinished and may contain bugs or lose compatibility with saved
+games. It is provided without a contractual promise of fitness, uninterrupted
+operation or future support, to the extent permitted by law.
+
+Nothing in this license excludes or limits mandatory consumer rights or any
+liability that cannot lawfully be excluded or limited, including liability
+for intent, gross negligence or injury to life, body or health where
+applicable. Statutory rights prevail over any conflicting provision here.
+
+8. Other permissions
+
+Rights beyond this license may be granted separately in writing by the
+appropriate rights holder. The Licensor cannot grant rights belonging to
+someone else. ASSET_LICENSE.md and THIRD_PARTY_NOTICES.md describe the
+boundaries; they do not replace the applicable third-party terms.
