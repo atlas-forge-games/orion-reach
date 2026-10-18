@@ -5,6 +5,62 @@ action per turn. Support equipment works automatically, including during the
 opponent's turn and after the provider has moved, fired or held position.
 There are no selectable battle plans or activated support abilities.
 
+## Automatic flagships
+
+Every fleet of ships has one flagship. It is chosen automatically from surviving
+ships, with armed ships and carriers ahead of unarmed civilians. Within that
+group, full-strength hull + maximum shields + 4 × volley damage + 12 × drone
+bays determines command; the lower ship ID breaks ties. Hull damage, depleted
+shields, reloading, spent actions and expended drones do not change that rating.
+When the flagship is destroyed or disabled, the next strongest survivor takes
+over immediately in its current position. Ordinary orders remain available.
+
+At the start of a new battle, the flagship occupies the central cell of its
+fleet's formation, or the nearest available cell for even-sized formations.
+Large fleets use the middle deployment column and row. Planetary batteries
+have a separate forward line and do not take the flagship's central slot.
+Loaded battles keep their existing positions.
+
+The flagship's faint, empire-coloured aura marks its command radius. A small
+flag and a close halo distinguish the ship itself. The aura remains visible
+when another ship is selected, and follows movement, panning and zoom.
+
+| Flagship hull | Command radius in cells |
+| --- | ---: |
+| Scout or frigate | 2 |
+| Destroyer, colony ship, outpost ship or troop transport | 3 |
+| Cruiser | 4 |
+| Carrier | 5 |
+| Battleship | 6 |
+| Titan or mothership | 8 |
+
+Other crewed ships of that fleet within the radius gain **+8 accuracy** and
+**+5 evasion**, in percentage points. Measure straight-line distance between
+cell centres, including the boundary. Coverage changes immediately after
+movement or a loss. The flagship does not buff itself. Drones, planetary
+batteries and space monsters neither hold fleet command nor receive this aura.
+Pirate ships and civilian convoys can have a flagship.
+
+Innate flagship aim and command equipment use the **highest** bonus in range.
+For example, a stock titan flagship gives allies +12 aim within its flag
+bridge's 4-cell range and +8 aim farther out, up to its 8-cell command radius.
+The +5 evasion applies throughout that radius and combines with ordinary
+evasion and ECM, subject to the normal hit-chance caps. It represents coordinated
+maneuvers and is applied after torpedo guidance reduces the ship's own evasion.
+Torpedoes lock these accuracy modifiers at launch; moving into or out of command
+coverage changes future volleys, not warheads already in flight.
+
+The selected-ship header identifies a flagship and its radius. Allied support
+and target protection list the received bonuses; the simulator's right-click
+inspector explains the source. In **Every shot hits** mode, aim/evasion bonuses
+are inactive. Interception, shields and all ordinary ship orders still work.
+
+The AI lets the flagship lead rather than making it follow its own escorts.
+Flagships and bonuses are derived from current ships, so there is no new save
+field or stored buff to become stale. Save format remains 52. Existing games
+gain command coverage on loading without moving any ships or changing locked
+projectile rolls; rematches reproduce the same initial flagship and formation.
+
 ## Equipment
 
 Default values below are editable in `python editor.py`. Each module occupies
@@ -28,7 +84,8 @@ equipment when researched and when the active slot profile permits it.
 Stock destroyers carry an escort array and stock titans carry a flag bridge.
 These stock effects use the corresponding module's active balance values.
 Custom designs, including pre-v0.71 blueprints and existing ships built from
-them, receive only equipment actually fitted to that design. Updating a
+them, receive only equipment actually fitted to that design, in addition to
+automatic flagship coverage when applicable. Updating a
 campaign blueprint affects future production; it does not retrofit ships.
 
 ## What support does
@@ -59,8 +116,8 @@ attacker does not have to be inside that radius. The usual minimum/maximum
 hit chances remain. Several projectors extend coverage without multiplying the
 penalty on one target. Ships can receive both command and ECM support.
 
-When a simulator battle uses **Every shot hits**, command and ECM accuracy
-effects are inactive. Escort damage reduction still works.
+When a simulator battle uses **Every shot hits**, command, flagship evasion and
+ECM accuracy effects are inactive. Escort damage reduction still works.
 
 ## Tactics and readable feedback
 

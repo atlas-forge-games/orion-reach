@@ -29,7 +29,7 @@ play through, and no campaign save is loaded or written.
    Right-click equipment for its actual hull-scaled properties.
 4. Choose the first side, seed and accuracy mode. **Every shot hits** bypasses
    accuracy rolls for damage experiments; shields, interception, cooldowns
-   and weapon effects still apply. Command and ECM accuracy effects are
+   and weapon effects still apply. Command, flagship evasion and ECM effects are
    inactive in this mode. Normal accuracy is the default.
 5. Select **Fight manually** or **Watch AI vs AI**. The side moving first
    must have an armed ship, carrier or missile base. An unarmed convoy can
@@ -53,6 +53,13 @@ escorts or change their loadouts to explore the trade-offs. Standard destroyers
 and titans also supply their basic support roles; custom ships must fit the
 corresponding modules. See [Fleet cooperation](fleet-support.md).
 
+Every fleet automatically selects its strongest surviving ship as its flagship
+and deploys it centrally. A faint aura and a small flag identify it: other ships
+inside the radius gain +8 aim and +5 evasion. Destroyer flagships cover 3 cells;
+titan flagships cover 8. The radius follows hull size, and the strongest command
+accuracy source wins without stacking. Right-click a ship to see its flagship
+status or current coverage. Losing the flagship transfers command automatically.
+
 ## During combat
 
 | Control | Action |
@@ -66,7 +73,8 @@ corresponding modules. See [Fleet cooperation](fleet-support.md).
 | Speed button | Cycle 1×, 4× and 12× playback |
 | R or Rematch | Restore the original fleets and replay with the same seed and initial control mode |
 | Edit fleets | Return to the original setup to adjust the matchup |
-| Mouse wheel / Page Up / Page Down | Scroll a large battlefield |
+| Mouse wheel / + / − | Zoom the battlefield |
+| Shift + wheel / Page Up / Page Down | Scroll a large battlefield vertically |
 | F5 | Save the scenario's setup and saved blueprints |
 | F1 | Simulator help |
 | F11 | Toggle fullscreen |
@@ -86,18 +94,40 @@ drone launches and spent actions. The setup is never modified by the battle.
 After 300 rounds the simulator pauses to make stalled matchups manageable;
 you can edit, rematch or explicitly resume. It does not invent a winner.
 
+## Zoom and pan
+
+The campaign and simulator use the same battlefield camera:
+
+| Control | Action |
+| --- | --- |
+| Mouse wheel over the battlefield | Zoom around the cursor, from 50% to 300% |
+| + / − keys or buttons | Zoom around the view center |
+| Middle mouse drag | Pan in any direction |
+| Shift + arrow keys or onscreen arrows | Pan the view |
+| Shift + wheel, Page Up / Page Down | Scroll vertically |
+| Horizontal wheel | Scroll horizontally |
+| Percentage button, 0 or Home | Return to 100% and reveal the selected ship |
+| N | Select and reveal the next ready ship |
+
+The sidebar stays the same size. Movement highlights, targeting, missiles,
+explosions and ship inspection follow the camera. Changing the view does not
+spend orders or advance combat. Inspection pauses the camera controls along
+with the battle. A new battle or rematch starts at 100%.
+
 ## Approach, torpedoes and ship details
 
-Fleets begin 17 cells apart on a 24-column battlefield. The map shows 13 rows
-at once and scrolls vertically for large fleets. Ship sizes remain distinct;
+Fleets begin 17 cells apart on a 24-column battlefield. At 100% zoom, the map shows
+13 rows at once and scrolls vertically for large fleets. Ship sizes remain distinct;
 each ship still occupies one cell. Stationary planetary batteries form a
 forward defensive line and can engage opposing batteries.
 
-Torpedoes, MIRV warheads, bomber torpedoes and planetary missiles travel three
+Torpedoes, MIRV warheads, bomber torpedoes and planetary missiles travel five
 cells per round. A volley moves at the start of its firing side's next turn,
 so the enemy always has a turn to respond before the first impact. An
-8-cell shot takes three advances against a stationary target. Moving the
-target changes the path and estimated time. Beams hit immediately.
+8-cell shot takes two advances against a stationary target. Moving the
+target changes the path and estimated time. Beams hit immediately. Five cells
+is faster than most warships, but scouts and some thruster-equipped ships can
+keep up; it is not a universal speed advantage.
 
 **Right-click any ship on the battlefield**, including enemy ships, during
 manual play, automatic combat or a movement animation. A paused detail panel

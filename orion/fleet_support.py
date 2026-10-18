@@ -6,6 +6,7 @@ immediately, including when a battle is resumed from a save.
 
 import math
 from .designs import HULLS, MODULES
+from . import flagships
 
 ESCORT_CAP = 50
 DRONE_ESCORT_CAP = 40
@@ -52,6 +53,12 @@ def strongest(state, target, effect):
     return max((value for _, value in sources(state, target, effect)), default=0)
 
 
+def command_accuracy(state, target):
+    """Equipment and innate flagship command share the strongest-source rule."""
+    return max(strongest(state, target, "command_accuracy"),
+               flagships.ACCURACY if flagships.source(state, target) else 0)
+
+
 def screen_sources(state, target):
     if state is None or target is None or target.hull <= 0:
         return ()
@@ -84,13 +91,16 @@ def providing_text(ship):
 
 def receiving_text(state, ship, *, accuracy=True):
     screen = interception_breakdown(state, ship)["shared"]
-    command = strongest(state, ship, "command_accuracy") if accuracy else 0
+    command = command_accuracy(state, ship) if accuracy else 0
     jam = strongest(state, ship, "jamming") if accuracy else 0
-    return f"Allies: screen +{screen}% · aim +{command} · ECM {jam}"
+    evasion = flagships.evasion(state, ship) if accuracy else 0
+    return f"Allies: PD +{screen}% · aim +{command} · evade +{evasion} · ECM {jam}"
 
 
 def anchor_for(state, ship):
     """An AI support ship follows a combatant, never another pure escort loop."""
+    if flagships.is_flagship(state, ship):
+        return None
     effects = auras(ship)
     if not effects:
         return None

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.73.0
+# Orion Reach — Python prototype 0.74.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories give each
@@ -7,6 +7,49 @@ of the thirteen civilizations its own path to victory.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.74: automatic fleet flagships
+
+Each combat fleet automatically gives command to its strongest surviving ship.
+It starts at the centre of its formation and carries a small flag marker and
+a subtle aura in its empire's colour. Nearby fleetmates gain **+8 accuracy and
++5 evasion** percentage points, without extra orders or equipment.
+
+Command range grows with hull size: frigate/scout **2**, destroyer **3**,
+cruiser **4**, carrier **5**, battleship **6**, titan/mothership **8** cells.
+Civilian transports and colony/outpost ships have a **3-cell** radius. Only the
+strongest command accuracy bonus applies; an existing flag bridge can supply
++12 aim within its own shorter radius. Flagships do not boost themselves.
+
+Damage or reloading does not transfer command. When a flagship is destroyed,
+the next strongest survivor takes over in its current position. Planets,
+drones and space monsters cannot be flagships. The shared rules apply to the
+campaign, manual combat, automatic combat and the standalone simulator.
+The sidebar and right-click simulator inspector show flagship status and
+support. **Every shot hits** disables aim/evasion effects, as it does ECM.
+
+Save format stays **52**; existing battles keep their positions and projectile
+rolls. See [Fleet cooperation](docs/fleet-support.md) for selection and coverage.
+
+![Titan and destroyer flagship command radii](screenshots/v074_flagships.png)
+
+## New in v0.73.1: combat zoom and faster torpedoes
+
+Torpedoes and missiles now travel **five cells per round**. An eight-cell
+shot reaches a stationary target in two advances, while the opposing side
+still gets a turn to respond. This outpaces most warships; scouts, drones and
+some thruster-equipped designs can match or exceed that movement rate.
+
+Combat now supports **50–300% zoom** in both the campaign and standalone
+simulator. Use the mouse wheel over the battlefield or **+ / −**. Middle-drag,
+Shift + arrow keys, or the arrow buttons pan the view. Click the percentage
+button, press **0**, or press **Home** to return to 100%. Shift + wheel and
+Page Up / Page Down still scroll vertically. The sidebar remains fixed.
+
+Movement, targeting, animations and right-click ship inspection follow the
+same camera. Zoom changes only the view; combat ranges and orders are unchanged.
+Save format remains **52**. Existing in-flight missiles use the new speed on
+their next advance; positions, fuel age and hit rolls are preserved.
 
 ## New in v0.73: tactical approach, torpedo travel and ship inspection
 

@@ -1,0 +1,95 @@
+ORION REACH v0.74.0 — AUTOMATIC FLEET FLAGSHIPS
+
+INSTALL
+Close the game. Extract this ZIP into your existing v0.73.1 game folder (the
+folder containing main.py), merging folders and replacing the listed files.
+This is an incremental update; previous game files and assets are required.
+No files need deleting. Run python main.py or python combat_simulator.py.
+
+AUTOMATIC COMMAND
+Each fleet automatically chooses its strongest surviving crewed ship. Armed
+ships and carriers take priority over unarmed civilians. Within that group,
+the rating is maximum hull + maximum shields + 4 x volley damage + 12 x drone
+bays, with the lower ship ID breaking ties. Current damage, shield depletion,
+cooldowns and expended drone launches do not cause command to jump around.
+
+New battles put the flagship at the centre of its fleet's starting formation,
+including fleets spanning several deployment columns. Planets keep a separate
+defensive line. A small flag, close halo and faint empire-coloured coverage
+circle identify the flagship. The aura follows movement and combat zoom.
+
+The flagship gives OTHER crewed ships in its own fleet +8 accuracy and +5
+evasion percentage points within a hull-dependent command radius:
+    Scout / frigate:                  2 cells
+    Destroyer / civilian transports: 3 cells
+    Cruiser:                          4 cells
+    Carrier:                          5 cells
+    Battleship:                       6 cells
+    Titan / mothership:               8 cells
+Colony ships and outpost ships also use the 3-cell civilian radius.
+Distance is straight-line distance between cell centres, including the edge.
+Drones, planetary batteries and space monsters do not hold or receive fleet
+command. Pirate ships and civilian convoys can have flagships.
+
+Only the highest command accuracy bonus applies. A stock titan's flag bridge
+still gives +12 aim within 4 cells; its innate flagship aura gives +8 farther
+out, up to 8 cells. Fleet evasion combines with normal evasion and ECM, subject
+to normal accuracy caps. Every shot hits disables aim/evasion/ECM effects.
+No additional equipment, actions, battle plans or manual selection is needed.
+
+When a flagship is destroyed or disabled, the next strongest survivor takes
+command immediately, using its own hull radius and current position. Nearby
+bonuses change with movement and casualties. The AI lets its flagship lead;
+manual ship orders remain available as before. The sidebar identifies friendly
+and enemy flagships, and the simulator inspector explains status and coverage.
+
+SAVES AND EXISTING FEATURES
+Save format remains 52 and scenario format remains 1. Existing battles retain
+their positions; flagships and bonuses are derived from their surviving ships.
+Torpedo rolls remain locked at launch, including command modifiers. Loaded
+warheads are not rerolled. Five-cell projectile travel, delayed impacts, zoom,
+right-click inspection and existing fleet-support modules remain in place.
+
+VERIFICATION
+238 distinct targeted tests passed: 217 combat/arsenal/designer/guardian/
+simulator/support/camera tests, 16 tactical movement/save tests and 5 help tests.
+The 217 include 12 new flagship tests covering selection, promotion, central
+deployment, range boundaries, non-stacking bonuses, live movement, save/load,
+projectile roll continuity and zoomed aura/inspection rendering.
+Real game screenshots of command coverage and the inspector were checked.
+Full-project discovery did not complete in this run; the targeted checks above
+all finished successfully. No commit or push has been made.
+
+REFERENCE
+    docs/fleet-support.md
+    docs/combat-simulator.md
+    tools/preview_flagships.py
+
+FILES IN THIS UPDATE
+    README.md
+    UPDATE_v074.txt
+    docs/combat-simulator.md
+    docs/fleet-support.md
+    orion/__init__.py
+    orion/combat.py
+    orion/combat_inspector.py
+    orion/combat_view.py
+    orion/encyclopedia.py
+    orion/flagships.py
+    orion/fleet_support.py
+    screenshots/v074_flagship_inspector.png
+    screenshots/v074_flagships.png
+    tests/test_flagships.py
+    tests/test_fleet_support.py
+    tools/preview_flagships.py
+
+COMMIT COMMANDS
+Run these from your game repository after extracting the update:
+
+git add -- README.md UPDATE_v074.txt docs/combat-simulator.md docs/fleet-support.md
+git add -- orion/__init__.py orion/combat.py orion/combat_inspector.py orion/combat_view.py
+git add -- orion/encyclopedia.py orion/flagships.py orion/fleet_support.py screenshots/v074_flagship_inspector.png
+git add -- screenshots/v074_flagships.png tests/test_flagships.py tests/test_fleet_support.py tools/preview_flagships.py
+git diff --cached --stat
+git commit -m "Add automatic fleet flagships and command auras"
+git status

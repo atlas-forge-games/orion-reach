@@ -121,7 +121,10 @@ class FleetSupportTests(unittest.TestCase):
         titan.y = 9
         self.assertEqual(combat.accuracy_breakdown(game, attacker, enemy, "laser")["command"], 8)
         relay.hull = 0
+        self.assertEqual(combat.accuracy_breakdown(game, attacker, enemy, "laser")["command"], 8)
+        titan.x = 14  # Outside innate flagship coverage as well as fitted command.
         self.assertEqual(combat.accuracy_breakdown(game, attacker, enemy, "laser")["command"], 0)
+        titan.x = 5
         titan.y = 5
         self.assertEqual(support.strongest(game.combat, titan, "command_accuracy"), 0)
         for kind in ("combat_drone", "missile_base"):
@@ -143,7 +146,7 @@ class FleetSupportTests(unittest.TestCase):
                    unit(4, "cruiser", "rival", (9, 4), ("laser", "ecm_projector"))]
         game = arena(attacker, target, *jammers)
         values = combat.accuracy_breakdown(game, attacker, target, "laser")
-        self.assertEqual((values["jamming"], values["chance"]), (8, 64))
+        self.assertEqual((values["jamming"], values["formation"], values["chance"]), (8, 5, 59))
         jammers[1].hull = 0
         self.assertEqual(support.strongest(game.combat, jammers[0], "jamming"), 0)
         jammers[0].x = 12

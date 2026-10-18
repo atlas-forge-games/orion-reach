@@ -4,7 +4,7 @@ from collections import Counter
 import math
 import pygame as pg
 
-from . import combat_projectiles, fleet_support
+from . import combat_projectiles, fleet_support, flagships
 from .combat import BEAMS, COMBAT_TYPES
 from .fleet_art import ship_icon
 from .ui import CYAN, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
@@ -74,6 +74,10 @@ def draw(app):
     text(surface, shorten(ship.name, 966, 28), (208, 123), 28, INK, "title")
     side = "YOUR FLEET" if ship.owner == "player" else "ENEMY FLEET"
     text(surface, f"{side} · {COMBAT_TYPES[ship.kind].name} · Cell {ship.x+1}, {ship.y+1}", (208, 168), 13, color)
+    command = flagships.description(battle, ship)
+    if command and not battle.accuracy:
+        command += " · Aim/evasion inactive: every shot hits"
+    text(surface, shorten(command, 1108, 11), (208, 191), 11, CYAN)
     app.button("dialog_close", "Close ×", (1210, 122, 106, 36), app.cancel_dialog)
 
     panel(surface, (120, 212, 372, 474))

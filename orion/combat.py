@@ -7,7 +7,7 @@ import math
 import hashlib
 
 from .production import SHIP_TYPES, ShipSpec
-from . import defenses, fleet_support, combat_projectiles
+from . import defenses, fleet_support, combat_projectiles, flagships
 from .designs import HULLS, MODULE_SIZES, ShipDesign
 from .weapons import Beam, BEAMS, DRONE_ROLES, CAPITAL_TARGETS
 from .empires import EMPIRE_IDS
@@ -475,14 +475,28 @@ def deploy(state):
     rows = state.rows
     lanes = sorted(range(rows), key=lambda y: (abs(y-(rows-1)/2), y))
     for owner in state.sides:
-        for index, ship in enumerate(sorted(state.fleet(owner, alive=False), key=lambda s: s.id)):
-            depth, lane = divmod(index, rows)
-            ship.x = 3-depth if owner == state.sides[0] else BOARD_COLUMNS-4+depth
-            if ship.kind == "missile_base":
-                # Worlds form the defensive line ahead of the arriving fleets.
-                # Opposing immobile batteries must remain within missile range.
-                ship.x = BOARD_COLUMNS//2-4 if owner == state.sides[0] else BOARD_COLUMNS//2+3
-            ship.y = lanes[lane]
+        fleet = sorted(state.fleet(owner, alive=False), key=lambda s: s.id)
+        leader = flagships.select(state, owner)
+        ships = [ship for ship in fleet if ship.kind != "missile_base"]
+        bases = [ship for ship in fleet if ship.kind == "missile_base"]
+        for group in (ships, bases):
+            for index, ship in enumerate(group):
+                depth, lane = divmod(index, rows)
+                ship.x = 3-depth if owner == state.sides[0] else BOARD_COLUMNS-4+depth
+                if ship.kind == "missile_base":
+                    # Worlds form a separate defensive line, without consuming
+                    # central fleet slots. Opposing batteries stay in range.
+                    ship.x = BOARD_COLUMNS//2-4 if owner == state.sides[0] else BOARD_COLUMNS//2+3
+                ship.y = lanes[lane]
+        if leader:
+            # Use the middle occupied column and middle row, including fleets
+            # too large for a single column. Keep planets on their own line.
+            centre_x = (min(s.x for s in ships)+max(s.x for s in ships))/2
+            centre_y = (rows-1)/2
+            middle = min(ships, key=lambda s: (
+                math.dist(s.position, (centre_x, centre_y)), s.id))
+            leader.x, middle.x = middle.x, leader.x
+            leader.y, middle.y = middle.y, leader.y
 
 
 def in_range(ship, target):
@@ -826,7 +840,7 @@ def move(game, ship_id, x, y, owner="player"):
 def accuracy_breakdown(game, attacker, target, weapon):
     if game.combat is not None and not game.combat.accuracy:
         return {"base": 100, "targeting": 0, "range": 0, "evasion": 0, "tracking": 0,
-                "command": 0, "jamming": 0, "chance": 100}
+                "command": 0, "jamming": 0, "formation": 0, "chance": 100}
     bonuses = game.bonuses_for(attacker.owner) if attacker.owner in game.owners else {}
     defense = game.bonuses_for(target.owner) if target.owner in game.owners else {}
     spec = BEAMS[weapon]
@@ -843,8 +857,9 @@ def accuracy_breakdown(game, attacker, target, weapon):
     if spec.projectile and bonuses.get("torpedo_guidance"):
         evasion //= 2
     targeting = bonuses.get("accuracy", 0)
-    command = fleet_support.strongest(game.combat, attacker, "command_accuracy")
+    command = fleet_support.command_accuracy(game.combat, attacker)
     jamming = fleet_support.strongest(game.combat, target, "jamming")
+    formation = flagships.evasion(game.combat, target)
     tracking = 0
     if attacker.kind in HULLS and (attacker.design is None or attacker.design.fit_version == 2):
         hull = HULLS[attacker.kind]
@@ -853,8 +868,8 @@ def accuracy_breakdown(game, attacker, target, weapon):
                        else 0 if target.kind in ("scout", "combat_drone") else 1)
         tracking = max(0, MODULE_SIZES[hull.module_size]-target_size)*hull.tracking_penalty
     return {"base": base, "targeting": targeting, "range": penalty, "evasion": evasion,
-            "tracking": tracking, "command": command, "jamming": jamming,
-            "chance": max(5 if tracking else 10, min(95, base+targeting+command-penalty-evasion-tracking-jamming))}
+            "tracking": tracking, "command": command, "jamming": jamming, "formation": formation,
+            "chance": max(5 if tracking else 10, min(95, base+targeting+command-penalty-evasion-tracking-jamming-formation))}
 
 
 def shot_strengths(weapon, strength):
@@ -1019,7 +1034,8 @@ def ai_action(game, owner="rival"):
         role = next(r for r in preference if r in state.available_drone_roles(carrier))
         return {"kind": "launch", "ship_id": carrier.id, "drone_ids": launch_drones(game, carrier.id, owner, role)}
     # Leaders move first so automatic escorts can follow their new positions.
-    ship = min(ready, key=lambda s: (fleet_support.anchor_for(state, s) is not None,
+    ship = min(ready, key=lambda s: (not flagships.is_flagship(state, s),
+                                     fleet_support.anchor_for(state, s) is not None,
                                      -s.damage, s.hull, s.id))
     enemies = state.fleet(state.enemy(owner))
     targets = [s for s in enemies if in_range(ship, s)] if state.can_fire(ship) else []
