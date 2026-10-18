@@ -1,12 +1,28 @@
-# Orion Reach — Python prototype 0.72.0
+# Orion Reach — Python prototype 0.72.1
 
-A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
-MOO2-inspired space strategy game. Optional race-specific victories begin with
-the Wanderers' quest to recover every forgotten hyperlane.
+A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
+MOO2-inspired space strategy game. Optional race-specific victories give each
+of the thirteen civilizations its own path to victory.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.72.1: settings categories
+
+Settings now opens a category menu, available from the main menu and while paused:
+
+| Category | Options |
+| --- | --- |
+| Graphics | Fullscreen, animated background and galaxy background |
+| Sound | Background music, music volume and interface sounds |
+| Gameplay | Autosave, with guidance for manual saves and new-game options |
+| Interface | Galaxy colors and a navigation reference |
+
+Use the sidebar to switch categories. **Back / Esc** goes up one level;
+**Done** returns directly to the main menu or paused game. Mouse and keyboard
+navigation both work. Changes apply and save immediately, and existing
+preferences and campaign saves are compatible without migration.
 
 ## New in v0.72: civilization legacies
 

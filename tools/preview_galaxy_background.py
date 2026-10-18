@@ -31,6 +31,7 @@ def main():
                 pg.image.save(app.window, str(ROOT / "screenshots" / (name + ".png")))
             app.settings["galaxy_background"] = True
             app.show_settings("pause")
+            app.select_settings_section("graphics")
             app.render()
             app.present()
             pg.image.save(app.window, str(ROOT / "screenshots" / "galaxy_background_settings.png"))

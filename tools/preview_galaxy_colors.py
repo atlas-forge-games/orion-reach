@@ -56,6 +56,7 @@ def main():
                 pg.image.save(app.window, str(ROOT/"screenshots"/f"galaxy_saturated_{palette}.png"))
             app.set_galaxy_palette("blue")
             app.show_settings("pause")
+            app.select_settings_section("interface")
             app.render()
             app.present()
             pg.image.save(app.window, str(ROOT/"screenshots"/"galaxy_color_settings.png"))

@@ -69,6 +69,7 @@ class OptionalAutosaveInterfaceTests(unittest.TestCase):
         before = old.read_bytes()
         self.click('pause')
         self.click('settings')
+        self.click('settings_category_gameplay')
         self.click('autosave')
         self.assertIs(app.storage.load_settings()['autosave'], False)
         self.click('settings_done')
@@ -149,15 +150,25 @@ class OptionalAutosaveInterfaceTests(unittest.TestCase):
 
     def test_all_settings_controls_fit_and_do_not_overlap_at_supported_sizes(self):
         import pygame as pg
-        self.app.show_settings('galaxy')
+        before = self.app.game.to_dict()
         for size in ((980, 900), (1280, 800), (1920, 1080)):
             self.app.window = pg.display.set_mode(size, pg.RESIZABLE)
             self.app.present()
-            self.app.render()
-            for index, button in enumerate(self.app.buttons):
-                self.assertTrue(self.app.canvas.get_rect().contains(button.rect), button.key)
-                self.assertEqual(button.rect.collidelist([b.rect for b in self.app.buttons[index+1:]]), -1, button.key)
+            self.app.show_settings('galaxy')
+            for category in (None, 'graphics', 'sound', 'gameplay', 'interface'):
+                if category:
+                    self.click('settings_category_'+category)
+                self.app.render()
+                for index, button in enumerate(self.app.buttons):
+                    self.assertTrue(self.app.canvas.get_rect().contains(button.rect), button.key)
+                    self.assertEqual(button.rect.collidelist([b.rect for b in self.app.buttons[index+1:]]), -1, button.key)
+            self.click('settings_category_gameplay')
             self.click('autosave')
+            self.click('back')
+            self.assertIsNone(self.app.settings_section)
+            self.click('settings_done')
+            self.assertEqual(self.app.screen, 'galaxy')
+        self.assertEqual(self.app.game.to_dict(), before)
 
 
 if __name__ == '__main__':

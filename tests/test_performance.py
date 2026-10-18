@@ -181,11 +181,15 @@ class InputPerformanceTests(unittest.TestCase):
         settings = self.clicks('settings')
         app.show_settings('pause')
         app.render()
+        category = self.clicks('settings_category_gameplay')
+        app.select_settings_section('gameplay')
+        app.render()
         toggle = self.clicks('autosave')
         app.go('pause')
         app.render()
-        app.process_events(settings+toggle)
+        app.process_events(settings+category+toggle)
         self.assertEqual(app.screen, 'settings')
+        self.assertEqual(app.settings_section, 'gameplay')
         self.assertIs(app.settings['autosave'], True)
 
     def test_camera_drag_refreshes_targets_before_a_following_click(self):

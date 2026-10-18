@@ -84,6 +84,7 @@ class ColorPreferenceUITests(unittest.TestCase):
         self.assert_player_markers((44, 164, 255))
         self.click("pause")
         self.click("settings")
+        self.click("settings_category_interface")
         self.click("galaxy_palette_turquoise")
         self.assertEqual(self.app.storage.load_settings()["galaxy_palette"], "turquoise")
         selected = next(b for b in self.app.buttons if b.key == "galaxy_palette_turquoise")
@@ -109,6 +110,7 @@ class ColorPreferenceUITests(unittest.TestCase):
         selected = self.app.map_order_ids
         self.click("pause")
         self.click("settings")
+        self.click("settings_category_interface")
         self.click("galaxy_palette_turquoise")
         self.click("galaxy_palette_blue")
         self.click("settings_done")
@@ -146,6 +148,7 @@ class ColorPreferenceUITests(unittest.TestCase):
     def test_settings_buttons_fit_small_and_wide_windows(self):
         self.app.go("menu")
         self.click("settings")
+        self.click("settings_category_interface")
         for size in ((980, 900), (1280, 800), (1920, 1080)):
             self.app.window = pg.display.set_mode(size, pg.RESIZABLE)
             self.app.present()

@@ -177,6 +177,9 @@ class AutoCombatTests(unittest.TestCase):
         self.tick(5)
         app.show_settings()
         self.tick(5)
+        for section in ('graphics', 'sound', 'gameplay', 'interface'):
+            self.click('settings_category_'+section)
+            self.tick(5)
         app.go("combat")
         app.open_info()
         self.tick(5)

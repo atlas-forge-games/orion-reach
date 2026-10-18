@@ -52,6 +52,7 @@ from .designs import loadout_error
 from .designer_view import draft, draw_designer
 from .designer_info import draw_designer_info
 from .setup_view import draw_race_select, draw_setup
+from .settings_view import SECTIONS as SETTINGS_SECTIONS, draw_settings
 from .races import SETUP_RACES as RACES
 from .observer_view import draw_observer, draw_observer_header
 from .empires import PLAYER_PALETTES, empire_color
@@ -133,6 +134,7 @@ class App:
         self.field=None
         self.select_all=False
         self.settings_return="menu"
+        self.settings_section=None
         self.pause_return="galaxy"
         self.campaign_view="galaxy"
         self.info_return="galaxy"
@@ -1407,7 +1409,25 @@ class App:
 
     def show_settings(self,return_to="menu"):
         self.settings_return=return_to
+        self.settings_section=None
         self.go("settings")
+        self.focus="settings_category_graphics"
+
+    def select_settings_section(self,section):
+        if section not in SETTINGS_SECTIONS:
+            return
+        self.settings_section=section
+        self.go("settings")
+        self.focus=SETTINGS_SECTIONS[section][2]
+
+    def back_from_settings(self):
+        if self.settings_section is None:
+            self.go(self.settings_return)
+        else:
+            section=self.settings_section
+            self.settings_section=None
+            self.go("settings")
+            self.focus="settings_category_"+section
 
     def edit_field(self,name):
         self.field=name
@@ -2352,7 +2372,7 @@ class App:
             elif self.screen=="pause":
                 self.resume()
             elif self.screen=="settings":
-                self.go(self.settings_return)
+                self.back_from_settings()
             elif self.screen=="menu":
                 self.quit_request()
             else:
@@ -2619,43 +2639,7 @@ class App:
         self.button("next","Next →",(1009,776,175,48),lambda:self.change_load_page(1),enabled=self.load_page<pages-1)
 
     def draw_settings(self):
-        self.chrome("PREFERENCES",lambda:self.go(self.settings_return))
-        self.heading("03  /  MAKE IT YOURS","Set your course.","Preferences are remembered. Campaign autosaving is optional.")
-        options=[("autosave","Autosave","Automatically save campaign progress. When off, use F5 or Save game."),
-                 ("fullscreen","Fullscreen","Use the entire display. F11 also toggles this setting."),
-                 ("animated_background","Animated background","Moving ships and softly twinkling stars."),
-                 ("galaxy_background","Galaxy background","Nebula artwork behind the galaxy map."),
-                 ("sound","Interface sounds","A quiet tone when you activate a control."),
-                 ("music","Background music",self.audio.music_description)]
-        for i,(key,label,description) in enumerate(options):
-            y=302+i*53
-            panel(self.canvas,(256,y,928,50))
-            text(self.canvas,label,(280,y+4),19,INK)
-            text(self.canvas,description,(280,y+30),13,MUTED)
-            self.button(key,"ON" if self.settings[key] else "OFF",(1020,y+6,135,38),lambda k=key:self.toggle_setting(k))
-            if self.settings[key]:
-                pg.draw.circle(self.canvas,CYAN,(1132,y+25),4)
-        volume=self.settings["music_volume"]
-        muted=not self.settings["music"] or volume==0
-        panel(self.canvas,(256,625,928,66))
-        text(self.canvas,"Music volume"+(" · Muted" if muted else ""),(280,632),21,INK)
-        text(self.canvas,"Use − / + to adjust in 10% steps.",(280,666),14,MUTED)
-        self.button("music_quieter","−",(880,635,52,46),lambda:self.change_music_volume(-10),enabled=volume>0)
-        label=f"{volume}%"
-        text(self.canvas,label,(1018-font(23).size(label)[0]//2,643),23,CYAN)
-        self.button("music_louder","+",(1104,635,52,46),lambda:self.change_music_volume(10),enabled=volume<100)
-        panel(self.canvas,(256,697,928,98))
-        text(self.canvas,"Galaxy colors",(280,709),21,INK)
-        text(self.canvas,"Your empire's color. Neutral systems stay gray.",(280,746),14,MUTED)
-        text(self.canvas,"Blue is the default.",(280,769),12,MUTED)
-        for index,(palette,label) in enumerate((("blue","Saturated blue"),("turquoise","Saturated turquoise"))):
-            x=724+index*221
-            selected=self.settings["galaxy_palette"]==palette
-            self.button("galaxy_palette_"+palette,label,(x,727,209,44),
-                        lambda value=palette:self.set_galaxy_palette(value),"tab_active" if selected else "tab")
-            pg.draw.line(self.canvas,PLAYER_PALETTES[palette],(x+12,775),(x+197,775),3)
-        text(self.canvas,"F5 / Save game always creates a manual snapshot.",(256,834),14,MUTED)
-        self.button("settings_done","Done",(933,817,251,52),lambda:self.go(self.settings_return),"primary")
+        draw_settings(self)
 
     def map_pos(self,x,y):
         return self.map_camera.position(x,y,MAP)

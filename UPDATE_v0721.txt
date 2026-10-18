@@ -1,0 +1,59 @@
+Orion Reach v0.72.1 - Categorized settings
+18 October 2026
+
+INSTALL
+Extract this incremental update over your complete v0.72.0 game folder, next
+to main.py. Replace the included files. No files need deleting.
+Start with python main.py as before.
+
+WHAT CHANGED
+Settings now opens an overview with four categories:
+- Graphics: fullscreen, animated background and galaxy background.
+- Sound: background music, music volume and interface sounds.
+- Gameplay: autosave, plus manual-save and new-game guidance.
+- Interface: galaxy colors and a navigation reference.
+
+Use the sidebar to switch between categories. Back or Esc returns to the
+category overview, then to the screen you came from. Done returns directly
+to the main menu or paused game. Opening Settings starts at its overview.
+Mouse, Tab, Up/Down and Enter navigation are supported.
+
+All existing preferences apply and save immediately. Saved preferences and
+campaign saves remain compatible; no migration or reset is needed.
+Battles remain paused throughout Settings and its categories.
+
+VALIDATION
+Ran 68 tests in 11.812s
+Result: OK. These are the focused audio, palette, autosave, navigation,
+performance and auto-combat checks, not a new full gameplay regression run.
+All five screens were rendered and visually inspected. Layout and click
+targets were checked at 980x900, 1280x800 and 1920x1080.
+Python compilation passed.
+
+CHANGED / ADDED FILES
+README.md
+UPDATE_v0721.txt
+orion/__init__.py
+orion/app.py
+orion/settings_view.py
+screenshots/v0721_settings_gameplay.png
+screenshots/v0721_settings_graphics.png
+screenshots/v0721_settings_interface.png
+screenshots/v0721_settings_overview.png
+screenshots/v0721_settings_sound.png
+tests/test_audio.py
+tests/test_auto_combat.py
+tests/test_galaxy_colors.py
+tests/test_optional_autosave.py
+tests/test_performance.py
+tests/test_prototype.py
+tools/preview_galaxy_background.py
+tools/preview_galaxy_colors.py
+tools/preview_settings.py
+
+COMMIT COMMANDS
+Run from the game repository after extracting the update.
+The commands work in Command Prompt, PowerShell and Bash.
+
+git add -- README.md UPDATE_v0721.txt orion/__init__.py orion/app.py orion/settings_view.py screenshots/v0721_settings_gameplay.png screenshots/v0721_settings_graphics.png screenshots/v0721_settings_interface.png screenshots/v0721_settings_overview.png screenshots/v0721_settings_sound.png tests/test_audio.py tests/test_auto_combat.py tests/test_galaxy_colors.py tests/test_optional_autosave.py tests/test_performance.py tests/test_prototype.py tools/preview_galaxy_background.py tools/preview_galaxy_colors.py tools/preview_settings.py
+git commit -m "Split settings into graphics, sound, gameplay and interface menus"

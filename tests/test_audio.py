@@ -162,6 +162,7 @@ class MusicInterfaceTests(unittest.TestCase):
 
     def test_settings_controls_survive_restart_and_music_is_independent_of_clicks(self):
         self.click("settings")
+        self.click("settings_category_sound")
         self.click("music_louder")
         self.assertEqual(self.app.settings["music_volume"], 40)
         self.click("sound")
@@ -183,6 +184,7 @@ class MusicInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.settings["music_volume"], 30)
         self.app.present()
         self.click("settings")
+        self.click("settings_category_sound")
         self.click("music")
         self.assertTrue(pg.mixer.music.get_busy())
         for _ in range(3):
