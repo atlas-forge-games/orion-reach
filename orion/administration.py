@@ -56,6 +56,8 @@ def ownership_changed(game, before):
     """Acquiring a second planet cannot restart integration of its system."""
     from .megastructures import normalize as normalize_megastructures
     normalize_megastructures(game)
+    from .race_victory import normalize as normalize_legacies
+    normalize_legacies(game)
     normalize(game)
     if not INTEGRATION_TURNS:
         return

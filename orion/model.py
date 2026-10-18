@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from . import race_victory
 from dataclasses import asdict, dataclass, field, replace
 import math
 import random
@@ -200,7 +201,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=50):
+    def from_dict(cls, data, systems, *, version=51):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -501,7 +502,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=50):
+    def from_dict(cls, data, expected_id, *, version=51):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if not _name(data["name"], 40):
@@ -749,6 +750,7 @@ class GameState:
     hyperlane_surveys: dict[str, list[int]] = field(default_factory=dict)
     encounters: encounter_rules.EncounterState = field(default_factory=encounter_rules.EncounterState)
     union_missions: list[accession.Mission] = field(default_factory=list)
+    legacy: race_victory.LegacyState = field(default_factory=race_victory.LegacyState)
 
     @property
     def is_observer(self):
@@ -1003,8 +1005,8 @@ class GameState:
     def research_error(self, identifier, *, owner=PLAYER):
         if self.strategy_error(owner):
             return self.strategy_error(owner)
-        if identifier == "ascension_theory" and "science" not in self.victory_conditions:
-            return "Science victory is disabled for this campaign."
+        if identifier == "ascension_theory":
+            return "Ascension Theory is retired; pursue your civilization legacy in Objectives."
         return self.research_state(owner).choice_error(identifier)
 
     def choose_research(self, identifier, *, owner=PLAYER):
@@ -1404,6 +1406,8 @@ class GameState:
             return "This colony belongs to another empire."
         if planet.habitat and building_id in motherships.STATIONARY_BUILDINGS:
             return "This installation requires a planet; it cannot travel aboard a mothership."
+        if reason := race_victory.build_error(self, system_id, planet, building_id, owner):
+            return reason
         technology = BUILDINGS[building_id].technology
         if technology and not self.research_state(owner).has_unlock(technology):
             from .research import TECHNOLOGIES
@@ -1725,6 +1729,7 @@ class GameState:
             raise RuleError("That building is no longer on this planet.")
         identifier = economy.remove_building(planet, building_index)
         defense_rules.normalize(planet)
+        race_victory.normalize(self)
         return identifier
 
     @property
@@ -1836,6 +1841,7 @@ class GameState:
                     fund=lambda project: self.fund_project(project, planet.owner),
                     allow_ships=not planet.habitat or not motherships.shipyard_paused(self, planet)):
                 defense_rules.commissioned(self, planet, project.item_id)
+                race_victory.commission(self, system, planet, project.item_id)
                 item_id = project.item_id
                 self._complete_ship(project, system.id, planet.owner)
                 message = f"{display_name(project.spec, planet.habitat)} on {planet.name}"
@@ -1881,11 +1887,10 @@ class GameState:
         population.extend(raid_rules.advance_mortality(self, slave_start))
         specialist_rules.advance_employed(self)
         exploration = exploration_rules.refresh(self, recover=True)
-        discovered = None if self.is_observer else self.advance_research()
+        discovered = None
         for owner, empire in self.opponents.items():
             empire.credits += rival_rates[owner][0]
             empire.research += rival_rates[owner][1]
-            self.advance_research(owner)
         alerts.extend(megastructures.discover(self))
         for ship in self.ships:
             if ship.id in repairable and self.can_repair(ship):
@@ -1905,6 +1910,10 @@ class GameState:
         species.advance_swarm(self, alerts)
         accession.advance(self, alerts)
         species.normalize(self)
+        race_victory.advance(self, alerts)
+        discovered = None if self.is_observer else self.advance_research()
+        for owner in self.opponents:
+            self.advance_research(owner)
         specialist_rules.advance_visitors(self)
         encounter_rules.finish_turn(self, searches_ready)
         exploration_rules.refresh(self)
@@ -1920,10 +1929,11 @@ class GameState:
 
     def to_dict(self):
         species.normalize(self)
+        race_victory.normalize(self)
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=50):
+    def from_dict(cls, data, *, version=51):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2020,7 +2030,7 @@ class GameState:
                     (game.wanderer_migration_pending and data.get("combat") is None)):
                 raise ValueError("Invalid pending habitat migration")
             if version >= 33:
-                game.victory_conditions = victory_rules.parse_conditions(data["victory_conditions"])
+                game.victory_conditions = victory_rules.parse_conditions(data["victory_conditions"], legacy=version < 51 or (isinstance(data.get("result"), dict) and data["result"].get("condition") == "science"))
             else:
                 game.victory_conditions = victory_rules.LEGACY_CONDITIONS
             if version < 48:
@@ -2099,7 +2109,7 @@ class GameState:
                 game.combat = combat_rules.CombatState.from_dict(data["combat"], game, version=version)
             if version >= 9:
                 council_rules.load(game, data, version)
-                game.result = victory_rules.validate(game, data["result"])
+                # Validate the outcome after loading exploration and legacy history.
             if version >= 10:
                 if type(data["fog_of_war"]) is not bool:
                     raise ValueError("Invalid fog setting")
@@ -2139,6 +2149,11 @@ class GameState:
                 hyperlanes.survey_stationed(game)
             if not black_holes.charted(game, game.systems[game.selected_system]):
                 game.selected_system, game.selected_planet = 0, None
+            if 9 <= version < 51:
+                victory_rules.validate(game, data["result"])
+            race_victory.load(game, data, version)
+            if version >= 9:
+                game.result = victory_rules.validate(game, data["result"])
             from .balance import tag_game
             return tag_game(game)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:

@@ -290,19 +290,17 @@ class CouncilSaveTests(unittest.TestCase):
 
 
 class AscensionCostTests(unittest.TestCase):
-    def test_theory_cost_is_20000_and_preserves_unfinished_points(self):
+    def test_retired_theory_refunds_unfinished_points(self):
         self.assertEqual(TECHNOLOGIES['ascension_theory'].cost, 20000)
         from test_victory import discover_branches
         game = new_game(seed=2408, with_ai=False, with_tombs=False)
         discover_branches(game)
-        game.research = 499
-        game.choose_research('ascension_theory')
-        self.assertEqual((game.technology.active, game.technology.progress), ('ascension_theory', 499))
-        restored = GameState.from_dict(game.to_dict())
-        restored.research = ASCENSION_COST-499+17
-        restored.advance_research()
-        self.assertIn('ascension_theory', restored.technology.completed)
-        self.assertEqual(restored.research, 17)
+        game.victory_conditions = ('science',)
+        game.technology.active, game.technology.progress = 'ascension_theory', 499
+        restored = GameState.from_dict(game.to_dict(), version=50)
+        self.assertEqual((restored.technology.active, restored.technology.progress), (None, 0))
+        self.assertEqual(restored.research, game.research+499)
+        self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
     def test_previous_cost_bounds_are_validated_before_migration(self):
         from scenarios import use_research_layout
@@ -310,16 +308,16 @@ class AscensionCostTests(unittest.TestCase):
         from test_victory import discover_branches
         game = new_game(seed=2408, with_ai=False, with_tombs=False, with_black_holes=False)
         discover_branches(game)
-        game.research = 499
-        game.choose_research('ascension_theory')
+        game.technology.active, game.technology.progress = 'ascension_theory', 499
         data = game.to_dict()
         data.pop('council')
         data['technology'].pop('legacy_fuel')
         data['technology'].pop('legacy_black_holes')
         data['technology']['completed'] = [t for t in data['technology']['completed'] if (TECHNOLOGIES[t].branch != 'materials' or TECHNOLOGIES[t].tier <= 4) and (TECHNOLOGIES[t].branch != 'computers' or TECHNOLOGIES[t].tier <= 5)]
         restored = GameState.from_dict(data, version=31)
-        self.assertEqual(restored.technology.progress, 499)
-        self.assertEqual(restored.technology.project_cost, ASCENSION_COST)
+        self.assertEqual(restored.technology.progress, 0)
+        self.assertIsNone(restored.technology.active)
+        self.assertEqual(restored.research, game.research+499)
         data['technology']['progress'] = 500
         with self.assertRaises(SaveError):
             GameState.from_dict(data, version=31)
@@ -413,7 +411,7 @@ class CouncilScreenTests(unittest.TestCase):
         self.app.go('objectives')
         self.app.render()
         keys = {b.key for b in self.app.buttons}
-        self.assertTrue({'research_ascension','gate_build','objectives_council'} <= keys)
+        self.assertTrue({'objectives_details','objectives_race','objectives_council'} <= keys)
         self.click('objectives_council')
         self.assertEqual(self.app.screen, 'council')
         self.assertFalse(any(b.key.startswith('council_vote_') for b in self.app.buttons))

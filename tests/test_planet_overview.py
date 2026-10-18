@@ -136,27 +136,20 @@ class ProductionTests(unittest.TestCase):
             game.buy_construction(0, 2)
         self.assertEqual(game.to_dict(), before)
 
-    def test_gate_requires_industry_then_five_more_turns_of_charging(self):
-        from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
-        self.game.credits = self.game.resources = 2000
-        self.game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+TECHNOLOGIES["ascension_theory"].cost
-        for branch in BRANCHES:
-            for tier in branch_tiers(branch):
-                self.game.choose_research(choices(branch, tier)[0].id)
-        self.game.choose_research("ascension_theory")
-        self.game.change_production(0, 2, "ascension_gate")
+    def test_legacy_installation_requires_industry_and_commissions_after_production(self):
+        from test_civilization_legacies import discover
+        discover(self.game)
+        self.game.resources = 2000
+        self.game.change_production(0, 2, "charter_hall")
         before = self.game.to_dict()
         with self.assertRaisesRegex(RuleError, "industry"):
             self.game.buy_construction(0, 2)
         self.assertEqual(self.game.to_dict(), before)
         finish_building_next_turn(self.game)
-        self.assertEqual((self.game.turn, self.earth.ascension_gate, self.earth.gate_charge), (2, True, 0))
+        self.assertIn("charter_hall", self.earth.buildings)
+        self.assertEqual(self.game.legacy.sites[0].age, 0)
         self.assertEqual(GameState.from_dict(self.game.to_dict()), self.game)
-        for _ in range(4):
-            self.game.advance_turn()
-            self.assertIsNone(self.game.result)
-        self.game.advance_turn()
-        self.assertEqual((self.game.result.winner, self.game.result.condition), (PLAYER, "science"))
+        self.assertFalse(self.earth.ascension_gate)
 
     def test_change_and_prioritize_retain_paid_progress_across_save_load(self):
         self.game.queue_building(0, 2, "factory")
@@ -237,7 +230,11 @@ class WorkforceSaveTests(unittest.TestCase):
             restored, _ = store.load(path)
             self.assertEqual(path.read_bytes(), original)
             expected = payload["game"]
-            expected["victory_conditions"] = tuple(expected["victory_conditions"])
+            from orion.victory import CONDITIONS
+            from orion.race_victory import LegacyState
+            from dataclasses import asdict
+            expected["victory_conditions"] = CONDITIONS
+            expected["legacy"] = asdict(LegacyState(last_turn=game.turn))
             for row in expected["systems"]+expected["exploration"]["surveys"]:
                 for world in row["worlds"]:
                     world["farmers"], world["scientists"] = min(2, world["population"]), 0

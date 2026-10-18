@@ -185,24 +185,18 @@ class ObserverRulesTests(unittest.TestCase):
         news.mark_read(restored)
         self.assertEqual(news.unread_count(restored), 0)
 
-    def test_science_victory_and_simultaneous_ascension_belong_to_computers(self):
-        from orion.research import BRANCHES, branch_tiers, choices
-        game = observation(rival_count=2)
-        for owner in game.owners:
-            for branch in BRANCHES:
-                for tier in branch_tiers(branch):
-                    technology = choices(branch, tier)[0]
-                    game._empire(owner).research += technology.cost
-                    game.choose_research(technology.id, owner=owner)
-            game._empire(owner).research += TECHNOLOGIES["ascension_theory"].cost
-            game.choose_research("ascension_theory", owner=owner)
-            world = game.headquarters(owner)[1]
-            world.ascension_gate, world.gate_charge = True, 5
-            expected = current_result(game)
-            self.assertEqual(expected.condition, "science")
-            self.assertEqual(expected.winner, "rival" if owner == "rival" else None)
-        game.check_victory()
-        self.assertEqual(GameState.from_dict(game.to_dict()).result, game.result)
+    def test_observed_ai_legacy_victories_and_simultaneous_finishes(self):
+        from test_civilization_legacies import prepared
+        for shared in (False, True):
+            game = observation(seed=24, rival_count=2)
+            game.victory_conditions = ("race",)
+            for owner in game.owners:
+                game._empire(owner).race_id = "nexus"
+                prepared("nexus", game, owner)
+            game.legacy.final_turns = {"rival": 4, "rival_2": 4 if shared else 0}
+            game.advance_turn()
+            self.assertEqual((game.result.condition, game.result.winner), ("race", None if shared else "rival"))
+            self.assertEqual(GameState.from_dict(game.to_dict()).result, game.result)
 
     def test_invalid_observer_saves_are_rejected(self):
         game = observation()
@@ -222,7 +216,8 @@ class ObserverRulesTests(unittest.TestCase):
 
     def test_v039_saves_remain_normal_player_campaigns(self):
         game = new_game(seed=2408, rival_race_id="kharuun", with_tombs=False, with_black_holes=False,
-                        with_encounters=False, victory_conditions=LEGACY_CONDITIONS)
+                        with_encounters=False, victory_conditions=("conquest", "council", "race"))
+        game.legacy.last_turn = game.turn
         for owner in game.owners:
             game.research_state(owner).legacy_arsenal = True
             game.research_state(owner).legacy_fuel = True
@@ -233,6 +228,7 @@ class ObserverRulesTests(unittest.TestCase):
                 empire["technology"].pop("legacy_arsenal")
                 empire["technology"].pop("legacy_fuel")
                 empire["technology"].pop("legacy_black_holes")
+        data["victory_conditions"] = list(LEGACY_CONDITIONS)
         for key in ("observer_events", "next_observer_event_id", "observer_news_read"):
             del data[key]
         restored = GameState.from_dict(data, version=29)

@@ -186,7 +186,10 @@ def migrated_statistics(game):
     import copy
     from orion.statistics import sample
     expected = copy.deepcopy(game)
-    expected.victory_conditions = tuple(c for c in expected.victory_conditions if c != 'race')
+    from orion.victory import CONDITIONS
+    expected.victory_conditions = CONDITIONS
+    from orion.race_victory import LegacyState
+    expected.legacy = LegacyState(last_turn=expected.turn)
     expected.statistics = {owner: [sample(expected, owner)] for owner in expected.owners}
     return expected
 

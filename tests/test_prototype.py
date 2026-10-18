@@ -110,7 +110,12 @@ class PersistenceTests(unittest.TestCase):
         migrated,_=self.store.load(path)
         self.assertEqual(path.read_bytes(),before)
         from orion.statistics import sample
+        from orion.victory import CONDITIONS
+        from orion.race_victory import LegacyState
+        from dataclasses import asdict
         expected=old_game.to_dict()
+        expected["victory_conditions"]=CONDITIONS
+        expected["legacy"]=asdict(LegacyState(last_turn=old_game.turn))
         expected["statistics"]={owner:[sample(old_game,owner)] for owner in old_game.owners}
         self.assertEqual(migrated.to_dict(),expected)
         self.assertEqual(migrated.systems[0].worlds[2].name,"Earth")

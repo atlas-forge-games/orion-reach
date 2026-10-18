@@ -132,7 +132,7 @@ class RaceVictoryTests(unittest.TestCase):
         self.assertEqual(victory.known_race_goals(game), [])
         first_contact.establish(game, 'player', 'rival', notify=False)
         self.assertEqual([owner for owner, _ in victory.known_race_goals(game)], ['rival'])
-        self.assertIsNone(victory.race_goal(campaign(race_id='terran')))
+        self.assertEqual(victory.race_goal(campaign(race_id='terran')).title, 'The Galactic Charter')
 
     def test_ai_explores_without_looking_up_unvisited_routes_then_researches(self):
         game = campaign(with_ai=True, rival_race_id='wanderers', victory_conditions=('race',))
@@ -174,7 +174,7 @@ class RaceVictoryTests(unittest.TestCase):
 
 class RaceSaveTests(unittest.TestCase):
     def test_v47_preserves_existing_routes_voyages_and_progress_without_new_victory(self):
-        game = campaign(victory_conditions=victory.LEGACY_CONDITIONS)
+        game = campaign(victory_conditions=('conquest', 'council'))
         absent = next(s.id for s in game.systems if s.id != 0 and s.id not in lanes.candidates(game, 0, 'player'))
         network(game, (0, absent))
         recovered(game)

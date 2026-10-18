@@ -480,8 +480,6 @@ def draw_production(app):
     empire_stockpile(app, (676, 28, 724, 38))
     text(surface, "Available projects only · One of each module per mothership · Click a queued project to build it first." if planet.habitat else "Available projects only · One of each building per planet · Click a queued project to build it first.", (40, 83), 15, MUTED)
     buildings = list(BUILDINGS)
-    if "ascension_theory" in game.technology.completed:
-        buildings.append(ASCENSION_GATE.id)
     production_catalog(app, buildings, x=40, width=428, page_field="catalog_page", key="catalog", title="MODULES" if planet.habitat else "BUILDINGS")
     production_catalog(app, [*SHIP_TYPES, *(d.id for d in game.designs)], x=944, width=456,
                        page_field="ship_catalog_page", key="ship_catalog", title="SHIPS")

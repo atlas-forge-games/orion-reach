@@ -59,12 +59,11 @@ class ResearchOverviewTests(unittest.TestCase):
             self.app.go("galaxy")
             self.click("open_research")
             self.assertTrue(self.app.research_overview)
-            fields = [b for b in self.app.buttons if b.key.startswith("research_branch_")]
+            fields = [b for b in self.app.buttons if b.key.startswith("research_branch_") or b.key == "research_legacy_objectives"]
             self.assertEqual(len(fields), 10)
             self.assertEqual(len({b.rect.x for b in fields}), 2)
             self.assertEqual(len({b.rect.y for b in fields}), 5)
             expected = {"research_choose_"+t.id for b in BRANCHES for t in choices(b, 1)}
-            expected.add("research_choose_ascension_theory")
             self.assertEqual({b.key for b in self.app.buttons if b.key.startswith("research_choose_")}, expected)
             self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in self.app.buttons))
             for branch in BRANCHES:
@@ -82,7 +81,7 @@ class ResearchOverviewTests(unittest.TestCase):
         self.assertIn("research_choose_drone_carriers", [b.key for b in self.app.buttons])
         self.click("research_fields")
         self.assertTrue(self.app.research_overview)
-        self.assertEqual(len([b for b in self.app.buttons if b.key.startswith("research_branch_")]), 10)
+        self.assertEqual(len([b for b in self.app.buttons if b.key.startswith("research_branch_")]), 9)
 
     def test_idle_end_turn_banks_points_autosaves_and_opens_once(self):
         game = self.app.game
@@ -169,17 +168,17 @@ class ResearchOverviewTests(unittest.TestCase):
         self.click("research_back")
         self.assertEqual(self.app.screen, "system")
 
-    def test_ascension_is_selectable_from_tenth_field_and_exhausted_tree_does_not_prompt(self):
+    def test_legacy_replaces_tenth_field_and_exhausted_tree_does_not_prompt(self):
         game = self.app.game
-        game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))+TECHNOLOGIES["ascension_theory"].cost
+        game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))
         for branch in BRANCHES:
             for tier in branch_tiers(branch):
                 game.choose_research(choices(branch, tier)[0].id)
         self.click("open_research")
-        self.click("research_choose_ascension_theory")
-        self.assertIsNone(self.app.dialog)
-        self.assertIn("ascension_theory", game.technology.completed)
-        self.click("research_back")
+        self.assertNotIn("research_choose_ascension_theory", {b.key for b in self.app.buttons})
+        self.click("research_legacy_objectives")
+        self.assertEqual(self.app.screen, "objectives")
+        self.click("objectives_galaxy")
         self.click("end_turn")
         self.assertEqual(self.app.screen, "galaxy")
 

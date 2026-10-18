@@ -8,7 +8,7 @@ from .ground_combat import GroundRound, forces, resolve
 from .population import liberate
 
 LEGACY_CONDITIONS = ("conquest", "science", "council")
-CONDITIONS = (*LEGACY_CONDITIONS, "race")
+CONDITIONS = ("conquest", "council", "race")
 CONDITION_NAMES = {"conquest": "Conquest", "science": "Science", "council": "Galactic Council", "race": "Race-specific"}
 
 
@@ -18,6 +18,9 @@ class RaceGoal:
     description: str
     current: int
     total: int
+    requirements: tuple = ()
+    final_turns: int = 0
+    unit: str = "routes"
 
     @property
     def complete(self):
@@ -31,6 +34,11 @@ def race_goal(game, owner="player"):
         return RaceGoal("Recover every forgotten hyperlane",
                         "Discover every unique route in the galaxy with your own empire. Each two-way connection counts once.",
                         hyperlanes.discovery_count(game, owner), len(game.hidden_hyperlanes))
+    from . import race_victory as legacy
+    spec = legacy.spec_for(game, owner)
+    if spec:
+        return RaceGoal(spec.title, spec.description, legacy.fraction(game, owner), 100,
+                        legacy.requirements(game, owner), game.legacy.final_turns.get(owner, 0), "%")
     return None
 
 
@@ -40,13 +48,14 @@ def known_race_goals(game):
     return [(owner, race_goal(game, owner)) for owner in known_opponents(game)]
 
 
-def parse_conditions(values):
+def parse_conditions(values, *, legacy=False):
     """Keep setup and save options explicit, unique and in a stable order."""
+    allowed = (*LEGACY_CONDITIONS, "race") if legacy else CONDITIONS
     if (not isinstance(values, (list, tuple))
-            or any(not isinstance(value, str) or value not in CONDITIONS for value in values)
+            or any(not isinstance(value, str) or value not in allowed for value in values)
             or len(set(values)) != len(values)):
         raise ValueError("Choose valid victory conditions.")
-    return tuple(condition for condition in CONDITIONS if condition in values)
+    return tuple(condition for condition in allowed if condition in values)
 
 
 @dataclass(frozen=True)
@@ -191,6 +200,8 @@ def invade(game, system_id, planet_id, owner="player"):
 def apply_ground_outcome(planet, owner, defending, outcome):
     """Transport invasions and buried armies have identical occupation rules."""
     if outcome.captured:
+        from .race_victory import strip
+        strip(planet)
         liberate(planet)
         planet.owner = owner
         planet.shield_points = 0
@@ -234,20 +245,7 @@ def gate_blocked(game, system_id, owner):
 
 
 def gate_error(game, system_id, planet_id, owner="player"):
-    if game.strategy_error(owner):
-        return game.strategy_error(owner)
-    if "science" not in game.victory_conditions:
-        return "Science victory is disabled for this campaign."
-    planet = game.planet_at(system_id, planet_id)
-    if planet.owner != owner:
-        return "Choose one of your colonies."
-    if "ascension_theory" not in game.research_state(owner).completed:
-        return "Discover Ascension Theory first."
-    if gate_site(game, owner):
-        return "Your empire already has an Ascension Gate built or queued."
-    if len(planet.construction_queue) >= MAX_QUEUE:
-        return "The construction queue is full."
-    return None
+    return "Ascension Gate victory has been replaced by civilization legacies."
 
 
 def advance_gates(game, eligible):
@@ -316,7 +314,7 @@ def validate(game, data):
         return None
     if (not isinstance(data, dict) or set(data) != {"winner", "condition", "turn"}
             or data["winner"] not in (*game.owners, None)
-            or data["condition"] not in (*CONDITIONS, "elimination")
+            or data["condition"] not in (*CONDITIONS, "science", "elimination")
             or not _integer(data["turn"], game.turn, game.turn)):
         raise ValueError("Invalid campaign result")
     result = CampaignResult(**data)

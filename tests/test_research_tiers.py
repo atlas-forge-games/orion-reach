@@ -114,13 +114,13 @@ class TierRulesTests(unittest.TestCase):
         for race in ("terran", "kharuun", "aelari"):
             game = empty_fleet_game(seed=2408, rival_race_id=race, fog_of_war=False)
             game.opponent.research = 100000
-            for _ in range(sum(len(branch_tiers(b)) for b in BRANCHES)+1):
+            for _ in range(sum(len(branch_tiers(b)) for b in BRANCHES)):
                 count = len(game.opponent.technology.completed)
                 ai.research_choice(game)
                 self.assertEqual(len(game.opponent.technology.completed), count+1)
             state = game.opponent.technology
             self.assertEqual(state.finished_branches, 9)
-            self.assertEqual(state.completed[-1], "ascension_theory")
+            self.assertNotIn("ascension_theory", state.completed)
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
 
@@ -142,19 +142,22 @@ class LegacyResearchTests(unittest.TestCase):
             for owner, previous in (("player", old), ("rival", old["opponent"])):
                 state, before = game.research_state(owner), previous["technology"]
                 self.assertEqual((state.completed, state.active, state.progress),
-                                 (before["completed"], before["active"], before["progress"]))
+                                 ([t for t in before["completed"] if t != "ascension_theory"],
+                                  None if before["active"] == "ascension_theory" else before["active"],
+                                  0 if before["active"] == "ascension_theory" else before["progress"]))
             self.assertTrue({"planetary_shielding", "gravity_wells"} <= set(game.technology.completed))
             self.assertTrue({"barrier_fields", "subspace_interdiction"} <= set(game.technology.completed))
             self.assertEqual(game.bonuses_for()["shield_capacity"], 200)
             self.assertEqual(game.bonuses_for()["interdiction_slow"], 40)
             self.assertEqual(game.bonuses_for()["sensor_range"], 20)
             self.assertEqual(game.bonuses_for()["accuracy"], 30)
-            self.assertEqual(game.planet_at(0, 2).construction_queue[0].item_id, "ascension_gate")
+            self.assertFalse(any(q.item_id == "ascension_gate" for q in game.planet_at(0, 2).construction_queue))
             self.assertEqual(storage.load(storage.save(game))[0], game)
             game.research = 90
             self.assertEqual(game.advance_research().id, "electronic_countermeasures")
-            game.opponent.research = game.opponent.technology.project_cost-game.opponent.technology.progress
-            self.assertEqual(game.advance_research("rival").id, "ascension_theory")
+            self.assertIsNone(game.opponent.technology.active)
+            self.assertEqual(game.opponent.research, old["opponent"]["research"]+old["opponent"]["technology"]["progress"])
+            self.assertIn("retired", game.research_error("ascension_theory", owner="rival"))
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
             self.assertEqual(source.read_bytes(), original)
 

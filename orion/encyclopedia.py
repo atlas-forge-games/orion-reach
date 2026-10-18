@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from functools import lru_cache
 
+from .races import RACES
+from .race_victory import LEGACIES, PROJECT_RACES
 from .buildings import BUILDINGS
 from . import council as council_balance
 from . import specialists as specialist_rules
@@ -195,7 +197,7 @@ def guides():
             ("CAMPAIGN SETUP", "Choose enabled victories on the second new-game screen. Turn all off for open-ended play. A human empire is still defeated if it loses all colonies."),
             ("CONQUEST", "When conquest is enabled, the last empire with colonies wins. Objectives summarizes your progress."),
             ("RACE-SPECIFIC", "An independent setup toggle enables racial goals. Wanderers win by personally discovering every unique forgotten hyperlane in the fixed galaxy network. Other races have no special goal yet. Objectives → Race-specific goals displays your goal and progress, plus portraits, goals and progress for empires you have met. Hidden destinations remain private. Turning this victory off preserves research and travel. Simultaneous final discoveries share the win."),
-            ("SCIENCE", f"Complete the required research, discover Ascension Theory ({TECHNOLOGIES['ascension_theory'].cost:,} RP), then build and charge an Ascension Gate. Its base cost is {ASCENSION_GATE.resource_cost} Resources and {ASCENSION_GATE.work_cost} work. Charging requires {production_balance.GATE_CHARGE_TURNS} powered turns with a clear orbit. Older campaigns can retain earlier research requirements."),
+            ("CIVILIZATION LEGACIES", "Each race has its own goal in Objectives. Planetary civilizations unlock a legacy installation after eight technologies, then sustain all requirements for five consecutive turns. Wanderers win by recovering every forgotten hyperlane. Ascension Gate victory has been replaced."),
             ("GALACTIC COUNCIL", f"When at least half the systems are settled and two empires remain, the enabled council can form. Each colonized world gives one vote. At least half the eligible votes and a unique lead elect an emperor; a tie elects nobody. Unsuccessful votes repeat every {council_balance.ELECTION_INTERVAL} turns."),
             ("DEFIANCE", "If another empire wins the election, the human player can accept or defy the ruling. Defiance ends treaties and makes all surviving computer empires declare war."),
         )),
@@ -209,6 +211,11 @@ def guides():
 @lru_cache(maxsize=1)
 def articles():
     result = list(guides())
+    for rid, spec in LEGACIES.items():
+        result.append(Article("legacy_"+rid, "affairs", spec.title, RACES[rid].name,
+            (("GOAL", spec.description), ("METHOD", spec.method),
+             ("INSTALLATION", f"{spec.name}: unlocked after eight technologies. Construct through ordinary colony production. View exact targets and status in Objectives."),
+             ("FINALE", "Satisfy all requirements for five consecutive turns. Blockade, bombardment, starvation and power loss can interrupt operation. Capture destroys a legacy installation. Targets scale with galaxy size and available content."))))
     for spec in sorted(BUILDINGS.values(), key=lambda s: s.name):
         sections = [("PURPOSE", spec.description),
                     ("BASE COST", f"{spec.resource_cost} Resources · {spec.work_cost} construction work"),
@@ -216,11 +223,13 @@ def articles():
                     ("BASE EFFECT", spec.effect_text("Average"))]
         if spec.workforce_text("Average"):
             sections.append(("WORKFORCE BONUS", spec.workforce_text("Average")))
-        sections += [("RESEARCH REQUIRED", building_research(spec.technology)),
+        sections += [("RESEARCH REQUIRED", f"Eight technologies · {RACES[PROJECT_RACES[spec.id]].name} only" if spec.id in PROJECT_RACES else building_research(spec.technology)),
                      ("NOTES", "One per colony, including queued orders. Values use Average mineral richness, before empire bonuses. Benefits require the building to operate.")]
         result.append(Article("building_"+spec.id, "buildings", spec.name, "Building · base values", tuple(sections)))
     for spec in sorted(TECHNOLOGIES.values(), key=lambda s: (s.branch, s.tier, s.name)):
-        finale = spec.id == "ascension_theory"
+        if spec.id == "ascension_theory":
+            continue
+        finale = False
         branch = "Ascension" if finale else BRANCHES[spec.branch].name
         tier = "Finale" if finale else "Tier "+TIER_NAMES[spec.tier-1]
         alternative = next((t.name for t in TECHNOLOGIES.values() if t.branch == spec.branch and t.tier == spec.tier and t.id != spec.id), None)

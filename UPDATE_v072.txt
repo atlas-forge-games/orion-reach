@@ -1,0 +1,123 @@
+Orion Reach v0.72.0 - Civilization-specific victories
+18 October 2026
+
+INSTALL
+Extract this incremental update over your complete v0.71.1 game folder, next
+to main.py. Replace the included files. No files need deleting.
+Start with python main.py as before.
+
+WHAT CHANGED
+All thirteen civilizations have a race-specific victory goal. The twelve
+planetary civilizations unlock their own installation after eight technologies,
+build through ordinary colony production and sustain a five-turn finale.
+Wanderers retain their unique forgotten-hyperlane victory.
+
+Terran: The Galactic Charter - independent friendships and lasting peace.
+Kharuun: The Eternal Work - fund a monument through industrial foundries.
+Aelari: The Living Archive - personal exploration, diverse biomes and research.
+Lithar: Awaken the Mountains - mature minds on harsh worlds.
+Varkesh: The Throne of Fear - raid trophies, a strong fleet and the Great Moot.
+Xenonflora: The Second Spring - mature World Trees across different biomes.
+Nexus: The Final Computation - machine citizens, scientists and dedicated RP.
+Aetheri: The Star That Woke - stellar exploration and different resonances.
+Dominion of One: The Last Independent Thought - founding worlds and assimilation.
+Serevan Union: Many Peoples, One Future - willing cultures and peaceful membership.
+Skirr Swarm: The Great Hatching - spread and mature well-fed Queen Nests.
+Remnant: The Throne Beyond Memory - ancient sites and memory reconstruction.
+Wanderers: Recover every forgotten hyperlane - independently map the lost network.
+
+Open Objectives > Your race objectives for exact targets, live progress,
+installation status and known rivals. AI empires use the same costs and checks.
+Blockades, bombardment, starvation and power loss can interrupt operation.
+Captured installations are destroyed. Simultaneous race completions draw.
+Requirements adapt to galaxy size, available content and solo campaigns.
+See docs/civilization-legacies.md for the complete implemented rules.
+
+ASCENSION RETIREMENT AND SAVE MIGRATION
+Ascension Theory and gate construction are retired from active campaigns.
+Conquest and Galactic Council victory remain available.
+
+Save format is 51 and balance profile format is 16. Ongoing old Science games
+switch to Race-specific. Invested Ascension RP and paid gate materials are
+refunded under the campaign's loaded balance profile. Retired gates and orders
+are removed, including stale survey records. Completed science results remain
+historical snapshots that can be viewed and saved again.
+
+Other technology choices, fleets, colonies, combat and Wanderer discoveries
+retain their normal migrations. New legacy history starts at migration; old
+raids, membership consent and site maturity are not invented retrospectively.
+Existing custom balance values are preserved and new buildings gain defaults.
+
+VALIDATION
+Ran 1267 tests in 202.151s
+Result: OK. All regression tests passed.
+Python compilation and actual Pygame screen rendering also passed.
+
+CHANGED / ADDED FILES
+README.md
+UPDATE_v072.txt
+docs/balance-editor.md
+docs/civilization-legacies.md
+docs/race-victory-proposals.md
+orion/__init__.py
+orion/accession.py
+orion/administration.py
+orion/ai.py
+orion/app.py
+orion/balance.py
+orion/buildings.py
+orion/colony_scene.py
+orion/diplomacy_view.py
+orion/encyclopedia.py
+orion/model.py
+orion/observer_view.py
+orion/planet_view.py
+orion/race_victory.py
+orion/raiding.py
+orion/research_view.py
+orion/setup_view.py
+orion/storage.py
+orion/victory.py
+orion/victory_view.py
+screenshots/v072_kharuun_victory.png
+screenshots/v072_research.png
+screenshots/v072_setup.png
+screenshots/v072_skirr_objectives.png
+screenshots/v072_union_objectives.png
+tests/scenarios.py
+tests/test_administration.py
+tests/test_arsenal.py
+tests/test_balance_editor.py
+tests/test_building_economy.py
+tests/test_civilization_legacies.py
+tests/test_council.py
+tests/test_encounters.py
+tests/test_hyperlanes.py
+tests/test_megastructures.py
+tests/test_motherships.py
+tests/test_multiple_empires.py
+tests/test_new_factions.py
+tests/test_observer.py
+tests/test_planet_overview.py
+tests/test_population.py
+tests/test_production_queue.py
+tests/test_prototype.py
+tests/test_race_victory.py
+tests/test_research_overview.py
+tests/test_research_switching.py
+tests/test_research_tiers.py
+tests/test_starships.py
+tests/test_starting_fleets.py
+tests/test_statistics.py
+tests/test_tactical_combat.py
+tests/test_varkesh.py
+tests/test_victory.py
+tests/test_victory_options.py
+tools/preview_civilization_legacies.py
+
+COMMIT COMMANDS
+Run from your game repository after extracting the update. These commands work
+in Command Prompt, PowerShell and Bash. They stage only this update's files.
+
+git add -- README.md UPDATE_v072.txt docs/balance-editor.md docs/civilization-legacies.md docs/race-victory-proposals.md orion/__init__.py orion/accession.py orion/administration.py orion/ai.py orion/app.py orion/balance.py orion/buildings.py orion/colony_scene.py orion/diplomacy_view.py orion/encyclopedia.py orion/model.py orion/observer_view.py orion/planet_view.py orion/race_victory.py orion/raiding.py orion/research_view.py orion/setup_view.py orion/storage.py orion/victory.py orion/victory_view.py screenshots/v072_kharuun_victory.png screenshots/v072_research.png screenshots/v072_setup.png screenshots/v072_skirr_objectives.png screenshots/v072_union_objectives.png tests/scenarios.py tests/test_administration.py tests/test_arsenal.py tests/test_balance_editor.py tests/test_building_economy.py tests/test_civilization_legacies.py tests/test_council.py tests/test_encounters.py tests/test_hyperlanes.py tests/test_megastructures.py tests/test_motherships.py tests/test_multiple_empires.py tests/test_new_factions.py tests/test_observer.py tests/test_planet_overview.py tests/test_population.py tests/test_production_queue.py tests/test_prototype.py tests/test_race_victory.py tests/test_research_overview.py tests/test_research_switching.py tests/test_research_tiers.py tests/test_starships.py tests/test_starting_fleets.py tests/test_statistics.py tests/test_tactical_combat.py tests/test_varkesh.py tests/test_victory.py tests/test_victory_options.py tools/preview_civilization_legacies.py
+git commit -m "Add civilization-specific victories and retire Ascension Gate"

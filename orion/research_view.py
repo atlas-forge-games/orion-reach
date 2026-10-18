@@ -6,7 +6,7 @@ import pygame as pg
 from .fleet_art import ship_icon
 from .production import HULL_TECHNOLOGIES
 from .research import BRANCHES, TECHNOLOGIES, TIER_NAMES, branch_tiers, choices
-from . import hyperlanes
+from . import hyperlanes, race_victory
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, paragraph, shorten, text, wrapped_lines
 
 
@@ -29,7 +29,14 @@ def project_eta(game, technology, rate):
     return f"{turns} {'turn' if turns == 1 else 'turns'}"
 
 
+def research_rate(game):
+    return max(0, game.empire_rates[1]-race_victory.research_reservation(game))
+
+
 def output_caption(game):
+    reserved = race_victory.research_reservation(game)
+    if reserved:
+        return f"after up to {reserved} RP to legacy"
     diverted = sum(hyperlanes.allocations(game, "player").values())
     return f"after {diverted} RP to hyperlanes" if diverted else "per turn"
 
@@ -50,7 +57,7 @@ def draw_project_summary(app, rate):
         pg.draw.rect(surface, LINE, (84, 278, 610, 3))
         pg.draw.rect(surface, CYAN, (84, 278, round(610*state.progress/state.project_cost), 3))
     else:
-        available = any(state.status(t) == "available" and (t != "ascension_theory" or "science" in game.victory_conditions)
+        available = any(state.status(t) == "available" and t != "ascension_theory"
                         for t in TECHNOLOGIES)
         text(surface, "Choose your next discovery" if available else "Research complete", (83, 222), 23, GOLD)
         caption = (f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}" if state.completed else
@@ -97,15 +104,22 @@ def draw_field_overview(app):
     app.button("research_back", "← Back · R", (64, 124, 195, 46), app.close_research, "ghost")
     text(surface, "Research fields", (290, 128), 32, INK, "title")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
-    rate = game.empire_rates[1]
+    rate = research_rate(game)
     draw_project_summary(app, rate)
     for index, branch in enumerate((*BRANCHES.values(), None)):
         x, y, width, height = 64+(index % 2)*668, 302+(index // 2)*104, 644, 96
         if branch is None:
-            options = (TECHNOLOGIES["ascension_theory"],)
-            complete = options[0].id in state.completed
-            name, tier_label = "Ascension", "FINALE"
-            key, action = "research_branch_ascension", app.open_objectives
+            from .race_victory import spec_for, PROJECT_TECHS
+            from .victory import race_goal
+            goal, spec = race_goal(game), spec_for(game)
+            panel(surface, (x, y, width, height), (10, 24, 32), LINE)
+            text(surface, "Civilization legacy", (x+14, y+8), 18, GOLD)
+            text(surface, "ON" if "race" in game.victory_conditions else "OFF", (x+width-14, y+11), 11, CYAN, right=True)
+            text(surface, goal.title if goal else "Race-specific objectives", (x+17, y+40), 16, INK)
+            caption = f"Unlock installation after {PROJECT_TECHS} technologies · Objectives →" if spec else "Discover every forgotten hyperlane · Objectives →"
+            text(surface, caption, (x+17, y+71), 11, MUTED)
+            app.button("research_legacy_objectives", "", (x+1, y+1, width-2, height-2), app.open_objectives, "hotspot")
+            continue
         else:
             tier, tiers = state.next_tier(branch.id), branch_tiers(branch.id)
             options = choices(branch.id, tier)
@@ -125,11 +139,6 @@ def draw_field_overview(app):
         app.button(key, "", (x+1, y+1, width-2, 32), action, "hotspot")
         for row, technology in enumerate(options):
             draw_choice_row(app, technology, (x+7, y+38+row*27, width-14, 25))
-        if branch is None:
-            text(surface, "Science victory disabled for this campaign · View objectives →" if "science" not in game.victory_conditions else
-                 f"{state.finished_branches}/{len(state.required_branches)} required branches complete · View objectives →",
-                 (x+17, y+71), 11, MUTED)
-            app.button("research_ascension_objectives", "", (x+7, y+65, width-14, 25), app.open_objectives, "hotspot")
 
     app.button("research_save", "Save · F5", (64, 835, 172, 44), app.save_game)
     app.button("research_pause", "Menu", (250, 835, 132, 44), app.pause)
@@ -141,7 +150,7 @@ def draw_field_overview(app):
 def draw_branch_detail(app):
     surface, game = app.canvas, app.game
     state = game.technology
-    rate = game.empire_rates[1]
+    rate = research_rate(game)
     branch = BRANCHES[app.research_branch]
     tiers = branch_tiers(branch.id)
     app.research_tier = min(app.research_tier, tiers[-1])
@@ -169,14 +178,9 @@ def draw_branch_detail(app):
                    lambda identifier=active.id: app.show_research_technology(identifier))
         app.technology_info_region(active.id, (85, 317, 755, 64))
     else:
-        done = "ascension_theory" in state.completed
-        capstone = "science" in game.victory_conditions and state.finished_branches == len(state.required_branches) and not done
-        text(surface, "Ascension Theory discovered" if done else "Ascension Theory available" if capstone else "Choose a technology below", (85, 321), 23, INK)
-        caption = (f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}." if state.completed else
-                   "Build a research lab on a colony to generate research points.")
+        text(surface, "Choose a technology below", (85, 321), 23, INK)
+        caption = f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}." if state.completed else "Build a research lab to generate research points."
         text(surface, caption, (86, 361), 12, MUTED)
-        if capstone or done:
-            app.button("research_objectives", "View", (740, 326, 100, 40), app.open_objectives)
     for x, label, value, caption in (
         (885, "RESEARCH OUTPUT", f"+{rate} RP", output_caption(game)),
         (1082, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
@@ -248,8 +252,7 @@ def draw_branch_detail(app):
 
     app.button("research_save", "Save · F5", (64, 835, 172, 44), app.save_game)
     app.button("research_pause", "Menu", (250, 835, 132, 44), app.pause)
-    text(surface, "Finish all required branches to unlock Ascension Theory." if "science" in game.victory_conditions else
-         "Science victory disabled · All other technologies remain available.", (409, 828), 12, MUTED)
+    text(surface, "Your civilization legacy is tracked in Objectives.", (409, 828), 12, MUTED)
     text(surface, "PgUp / PgDn: browse tiers · Right-click a technology for information", (409, 851), 10, FAINT)
     app.button("research_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
@@ -267,7 +270,7 @@ def draw_technology_info(app, identifier):
         if technology.branch == spec.branch and technology.tier == spec.tier:
             notes.append(f"Either choice in this tier unlocks the {spec.name} system project.")
     if identifier == "ascension_theory" and "science" not in game.victory_conditions:
-        notes.append("Science victory was disabled in galaxy setup. Ascension Theory and the gate are unavailable in this campaign.")
+        notes.append("Ascension Theory is retired and replaced by civilization legacies.")
     elif status == "available":
         available = game.research+state.progress
         notes.append(f"Selecting this project applies {min(cost, available)} RP: "

@@ -132,9 +132,16 @@ BUILDINGS = {
                               energy_use=2, maintenance=2, unique=True, special_effect="Attracts specialist visitors · empire-wide visitor limit"),
 }
 
+# Legacy buildings share normal slots, funding, power and maintenance.
+from .race_victory import LEGACIES, PROJECT_RACES
+for _spec in LEGACIES.values():
+    BUILDINGS[_spec.building] = BuildingSpec(_spec.building, _spec.name,
+        _spec.description, 300, 180, unique=True, energy_use=6, maintenance=4,
+        special_effect="Civilization legacy · view Objectives for requirements")
+
 BUILDING_GROUPS = (
     ("factory", "mine", "trade_center", "research_lab", "hydroponic_farm", "barracks", "fortifications"),
-    ("space_hub", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor"),
+    ("space_hub", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", *PROJECT_RACES),
     ("solar_array", "geothermal_plant", "fusion_plant", "thermal_plant", "singularity_plant"),
     ("robotic_factory", "nanofactory", "deep_core_mine", "automated_refinery", "advanced_research_lab", "quantum_research_lab"),
 )

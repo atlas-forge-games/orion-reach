@@ -91,6 +91,7 @@ class FactionRulesTests(unittest.TestCase):
         self.assertEqual(g.credits, before+income)
         self.assertEqual(p.owner, "player")
         self.assertIn("lithar", p.species)
+        self.assertIn("lithar", g.legacy.willing["player"])
         self.assertEqual(GameState.from_dict(g.to_dict()), g)
 
     def test_active_mission_ends_when_target_is_conquered(self):

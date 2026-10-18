@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.71.1
+# Orion Reach — Python prototype 0.72.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories begin with
@@ -7,6 +7,20 @@ the Wanderers' quest to recover every forgotten hyperlane.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.72: civilization legacies
+
+All thirteen civilizations have a race-specific victory goal. Ascension Gate
+victory and Ascension Theory have been replaced. Conquest and Council victory
+remain available. Open **Objectives → Your race objectives** for requirements,
+live progress, installation status and known rivals. See the
+[complete rules](docs/civilization-legacies.md) for all thirteen paths.
+
+Ongoing old science campaigns migrate to race victory and refund retired
+Ascension research and gate materials. Completed science victories remain
+historical snapshots. Save format is **51** and balance format is **16**.
+Older release notes below describe their original behavior; this section
+supersedes their Ascension guidance.
 
 ## License and permitted use
 
@@ -26,9 +40,8 @@ already granted for this development version.
 [ASSET_LICENSE.md](ASSET_LICENSE.md) records the OpenAI-generated artwork and
 the separately credited Suno soundtrack. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 preserves the boundaries for fonts and libraries. The **About** screen points
-to these files. This update changes notices and credits; combat behavior,
-campaign save format **50**, balance profile **15** and scenario format **1**
-are unchanged.
+to these files. These terms and notices were introduced in v0.71.1 and remain
+in effect in v0.72.
 
 ## New in v0.71: fleet cooperation and combat ship sizes
 

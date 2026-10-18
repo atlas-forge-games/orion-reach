@@ -84,7 +84,7 @@ def draw_setup(app):
               (431, 682), 930, 13, MUTED, 18)
     text(surface, "VICTORY CONDITIONS", (430, 721), 11, GOLD, "mono", 1)
     text(surface, "All off = open-ended play", (1376, 721), 12, MUTED, right=True)
-    captions = ("Last surviving empire", "Activate an Ascension Gate", "Win the galactic election", "Wanderers: discover every hyperlane")
+    captions = ("Last surviving empire", "Win the galactic election", "Each civilization has a unique goal")
     for i, condition in enumerate(CONDITIONS):
         x = 430+i*240
         enabled = condition in app.victory_conditions

@@ -89,7 +89,7 @@ def report_rows(app):
             "research": (("CIVILIZATION", 86, 285), ("DISCOVERED", 390, 120), ("BANKED RP", 530, 130),
                          ("RP / TURN", 680, 130), ("ACTIVE PROJECT", 830, 300), ("PROGRESS", 1150, 200)),
             "objectives": (("CIVILIZATION", 86, 285), ("STATUS", 390, 140), ("COLONIES", 550, 120),
-                           ("BRANCHES", 690, 125), ("ASCENSION GATE", 835, 305), ("CHARGE", 1160, 190)),
+                           ("BRANCHES", 690, 125), ("CIVILIZATION LEGACY", 835, 305), ("PROGRESS", 1160, 190)),
         }[tab]
         for owner, empire in game.opponents.items():
             summary = summarize_empire(game, owner=owner)
@@ -106,17 +106,11 @@ def report_rows(app):
                 recent = ", ".join(TECHNOLOGIES[t].name for t in state.completed[-3:])
                 detail = f"{state.finished_branches}/{len(state.required_branches)} branches complete · Recent: {recent or 'No discoveries yet'}"
             else:
-                site = gate_site(game, owner)
-                values = (empire.name, "Active" if summary.colonies else "Eliminated", str(summary.colonies),
-                          f"{state.finished_branches}/{len(state.required_branches)}",
-                          site[1].name if site else "Not built", f"{site[1].gate_charge}/5" if site and site[1].ascension_gate else "Building" if site else "—")
-                detail = "Ascension Theory discovered" if "ascension_theory" in state.completed else "Complete every research branch, discover Ascension Theory, then build and charge a gate."
-                if "science" not in game.victory_conditions:
-                    values = (*values[:4], "Disabled", "—")
-                    detail = "Science victory is disabled for every empire in this campaign."
                 goal = race_goal(game, owner)
-                racial = f"Hyperlanes {goal.current}/{goal.total}" if goal else "No race-specific goal yet"
-                detail = f"Race victory {'ON' if 'race' in game.victory_conditions else 'OFF'} · {racial} · {detail}"
+                values = (empire.name, "Active" if summary.colonies else "Eliminated", str(summary.colonies),
+                          f"{state.finished_branches}/{len(state.required_branches)}", goal.title if goal else "—",
+                          f"{goal.current}/{goal.total} {goal.unit}" if goal else "—")
+                detail = ("Race victory ON" if "race" in game.victory_conditions else "Race victory OFF") + (" · "+goal.description if goal else "")
             rows.append((values, detail, color, lambda oid=owner: app.open_observed_empire(oid)))
     return columns, rows
 

@@ -1,8 +1,8 @@
 # Race-specific victory concepts
 
-Design notes agreed for later discussion, not new rules in v0.70. The
-implemented race-specific victory remains the Wanderers' discovery of every
-unique forgotten hyperlane. Other victory conditions remain unchanged.
+Design archive from v0.70. The playable v0.72 implementation is described in
+[civilization-legacies.md](civilization-legacies.md). Some larger quest and cargo
+mechanics below remain future ideas.
 
 | Civilization | Proposed goal | Core idea |
 | --- | --- | --- |

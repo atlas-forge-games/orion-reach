@@ -158,6 +158,10 @@ PLACEMENTS = {
     "thermal_plant": (600, 410, 110, 100),
     "singularity_plant": (805, 415, 112, 105),
 }
+from .race_victory import PROJECT_RACES
+for _identifier in PROJECT_RACES:
+    PLACEMENTS[_identifier] = (460, 380, 150, 120)
+
 PLACEMENTS.update({identifier: PLACEMENTS[facility_family(identifier)] for identifier in ADVANCED_FACILITIES})
 
 

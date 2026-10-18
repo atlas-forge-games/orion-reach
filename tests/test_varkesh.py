@@ -132,6 +132,7 @@ class VarkeshRaidTests(unittest.TestCase):
         before_total = game.credits+game.opponent.credits
         report = game.invade(sid, pid)
         self.assertEqual((report.cause, report.captured, report.slaves_taken, report.credits_stolen), ("raid", True, 8, 80))
+        self.assertTrue(game.legacy.trophies.get("player"))
         self.assertEqual(report.rounds, expected.rounds)
         self.assertEqual((home.slaves, home.garrison), (8, expected.attackers % 8))
         self.assertEqual(game.credits+game.opponent.credits, before_total)
@@ -528,7 +529,7 @@ class SlaveSaveTests(unittest.TestCase):
             original = path.read_bytes()
             self.assertEqual(store.load(path)[0], game)
             self.assertEqual(path.read_bytes(), original)
-            self.assertEqual(json.loads(original)["version"], 50)
+            self.assertEqual(json.loads(original)["version"], 51)
 
 
 class VarkeshInterfaceTests(unittest.TestCase):

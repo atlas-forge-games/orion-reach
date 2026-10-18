@@ -303,6 +303,9 @@ class MegastructureTests(unittest.TestCase):
         for s in data["systems"]:
             s.pop("megastructure")
         data["technology"].pop("recovered")
+        from orion.victory import CONDITIONS
+        self.g.victory_conditions = CONDITIONS
+        self.g.legacy.last_turn = self.g.turn
         self.assertEqual(GameState.from_dict(data, version=41), self.g)
         profile = balance.default_profile()
         profile["version"] = 6

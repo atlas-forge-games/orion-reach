@@ -186,22 +186,22 @@ class IndependentEmpireTests(unittest.TestCase):
         self.assertEqual(game.result.condition, "elimination")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
-    def test_any_rival_can_win_science_and_third_party_ships_block_gates(self):
-        game = new_game(seed=2408, rival_count=3, with_guardians=False)
+    def test_any_rival_can_complete_a_legacy_and_hostile_third_parties_block_it(self):
+        from test_civilization_legacies import prepared, tick
+        from orion import race_victory as legacy
+        game = new_game(seed=24, rival_count=3, with_guardians=False, victory_conditions=("race",))
         owner = "rival_3"
-        for branch in BRANCHES:
-            for tier in branch_tiers(branch):
-                tech = choices(branch, tier)[0]
-                game._empire(owner).research += tech.cost
-                game.choose_research(tech.id, owner=owner)
-        game._empire(owner).research += TECHNOLOGIES["ascension_theory"].cost
-        game.choose_research("ascension_theory", owner=owner)
-        system, planet = game.headquarters(owner)
-        add_ships(game, system.id, "rival_2", ["scout"])
-        self.assertTrue(gate_blocked(game, system.id, owner))
-        planet.ascension_gate, planet.gate_charge = True, GATE_CHARGE_TURNS
-        game.check_victory()
-        self.assertEqual((game.result.winner, game.result.condition), (owner, "science"))
+        game._empire(owner).race_id = "nexus"
+        prepared("nexus", game, owner)
+        site, planet = legacy.sites(game, owner)[0]
+        add_ships(game, site.system_id, "rival_2", ["frigate"])
+        state = game.diplomacy_between(owner, "rival_2")
+        state.end_agreements(); state.relations = -100
+        self.assertEqual(legacy.site_error(game, site, planet), "Hostile blockade")
+        game.ships[:] = [s for s in game.ships if s.owner != "rival_2"]
+        game.legacy.final_turns[owner] = 4
+        tick(game)
+        self.assertEqual((game.result.winner, game.result.condition), (owner, "race"))
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
 

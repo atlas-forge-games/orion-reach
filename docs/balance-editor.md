@@ -262,3 +262,11 @@ Older profiles gain the standard maintenance values while retaining their
 other edits. New saves keep the upgraded profile. Buildings, habitat modules
 and the Ascension Gate always require normal construction; credit purchases
 remain available only for ships.
+
+## Civilization legacies (v0.72)
+
+Profile format 16 adds twelve race-specific legacy installations. Their ordinary
+building costs, work, power and maintenance are editable. Older profiles retain
+custom values and gain the new defaults. Retired Ascension entries remain only
+for historical save compatibility; they cannot enable a new science victory.
+See [civilization legacies](civilization-legacies.md) for gameplay requirements.

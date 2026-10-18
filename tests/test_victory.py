@@ -37,8 +37,8 @@ def discover_branches(game, owner=PLAYER, option=0):
 
 def discover_theory(game, owner=PLAYER):
     discover_branches(game, owner)
-    game._empire(owner).research += TECHNOLOGIES["ascension_theory"].cost
-    game.choose_research("ascension_theory", owner=owner)
+    game._empire(owner).technology.completed.append("ascension_theory")
+    game.victory_conditions = ("conquest", "science", "council")
 
 
 def transports(game, system_id, count=2, owner=PLAYER):
@@ -193,114 +193,25 @@ class ConquestRulesTests(unittest.TestCase):
         self.assertEqual((game.result.winner, game.result.condition), (RIVAL, "conquest"))
 
 
-class ScienceRulesTests(unittest.TestCase):
-    def test_ultimate_research_accepts_either_branch_choice_and_uses_banked_points(self):
-        for option in (0, 1):
-            game = new_game(seed=2408, with_ai=False)
-            with self.assertRaisesRegex(RuleError, "9 required"):
-                game.choose_research("ascension_theory")
-            discover_branches(game, option=option)
-            self.assertEqual(game.technology.finished_branches, 9)
-            game.research = TECHNOLOGIES["ascension_theory"].cost+13
+class RetiredScienceRulesTests(unittest.TestCase):
+    def test_new_campaigns_cannot_research_or_queue_ascension(self):
+        game = new_game(seed=2408, with_ai=False)
+        discover_branches(game)
+        with self.assertRaises(RuleError):
             game.choose_research("ascension_theory")
-            self.assertEqual(game.research, 13)
-            self.assertEqual(len(game.technology.completed), sum(len(branch_tiers(b)) for b in BRANCHES)+1)
-            self.assertEqual(GameState.from_dict(game.to_dict()), game)
-
-    def test_gate_is_a_unique_shared_queue_project_with_fixed_cost_and_no_slot(self):
-        game = new_game(seed=2408, with_ai=False)
-        with self.assertRaisesRegex(RuleError, "Theory"):
+        with self.assertRaises(RuleError):
             game.queue_gate(0, 2)
-        discover_theory(game)
-        earth = game.planet_at(0, 2)
-        earth.buildings = ["factory"]*earth.building_capacity
-        game.credits, game.resources = 700, 499
-        game.queue_ship(0, 2, "frigate")
-        game.queue_gate(0, 2)  # Unfunded orders are allowed and wait for supply.
-        self.assertEqual(earth.free_slots, 0)
-        self.assertEqual(game.project_price("ascension_gate"), 500)
-        self.assertEqual([q.item_id for q in earth.construction_queue], ["frigate", "ascension_gate"])
-        self.assertEqual((game.credits, game.resources), (700, 499))
-        other_system, other = extra_colony(game, PLAYER)
-        with self.assertRaisesRegex(RuleError, "already"):
-            game.queue_gate(other_system.id, other.id)
-        self.assertEqual(game.cancel_construction(0, 2, 1), "0 RES")
-        game.queue_gate(other_system.id, other.id)
-        self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
-    def test_scientific_victory_requires_construction_then_five_separate_clear_turns(self):
-        game = new_game(seed=2408, with_ai=False)
-        discover_theory(game)
-        game.credits = game.resources = 500
-        game.queue_gate(0, 2)
-        earth = game.planet_at(0, 2)
-        eta = game.queue_estimates(earth)[0]
-        for _ in range(eta-1):
-            game.advance_turn()
-            self.assertFalse(earth.ascension_gate)
-        game.advance_turn()
-        self.assertTrue(earth.ascension_gate)
-        self.assertEqual(earth.gate_charge, 0)
-        for count in range(1, 5):
-            game.advance_turn()
-            self.assertEqual(earth.gate_charge, count)
-            self.assertIsNone(game.result)
-        game.advance_turn()
-        self.assertEqual((game.result.winner, game.result.condition), (PLAYER, "science"))
-        self.assertEqual(GameState.from_dict(game.to_dict()), game)
-
-    def test_arriving_enemy_ships_pause_gate_and_departure_resumes_preserved_charge(self):
+    def test_old_completed_science_draw_remains_readable(self):
         game = new_game(seed=2408)
-        discover_theory(game)
-        earth = game.planet_at(0, 2)
-        earth.ascension_gate, earth.gate_charge = True, 4
-        ship = Ship(1, "frigate", game.opponent.home_system, owner=RIVAL)
-        game.ships, game.next_ship_id = [ship], 2
-        place_near(game, game.opponent.home_system)
-        game.send_ship(1, 0, owner=RIVAL)
-        ship.turns_remaining = 1
-        game.advance_turn()
-        self.assertEqual((ship.system_id, earth.gate_charge, game.result), (0, 4, None))
-        self.assertEqual(GameState.from_dict(game.to_dict()), game)
-        game.send_ship(1, game.opponent.home_system, owner=RIVAL)
-        game.advance_turn()
-        self.assertEqual((earth.gate_charge, game.result.winner), (5, PLAYER))
-
-    def test_capture_destroys_built_or_queued_enemy_gate_but_preserves_your_gate(self):
-        for built in (False, True):
-            game = new_game(seed=2408)
-            discover_theory(game)
-            discover_theory(game, RIVAL)
-            extra_colony(game, RIVAL)
-            sid, pid = game.opponent.home_system, game.opponent.home_planet
-            enemy = game.planet_at(sid, pid)
-            game.credits = game.opponent.credits = 500
-            game.queue_gate(0, 2)
-            if built:
-                enemy.ascension_gate, enemy.gate_charge = True, 4
-            else:
-                game.queue_gate(sid, pid, owner=RIVAL)
-                enemy.construction_queue[0].progress = 120
-                enemy.construction_queue.append(ConstructionProject("factory"))
-            transports(game, sid)
-            game.invade(sid, pid)
-            self.assertFalse(enemy.ascension_gate)
-            self.assertEqual(enemy.gate_charge, 0)
-            self.assertTrue(all(q.item_id != "ascension_gate" for q in enemy.construction_queue))
-            self.assertIsNotNone(gate_site(game))
-            self.assertIsNone(gate_site(game, RIVAL))
-            self.assertEqual(game.opponent.credits, 500)
-            self.assertEqual(GameState.from_dict(game.to_dict()), game)
-
-    def test_simultaneous_gates_are_a_saved_draw_without_player_order_bias(self):
-        game = new_game(seed=2408)
-        for owner in (PLAYER, RIVAL):
+        for owner in game.owners:
             discover_theory(game, owner)
-            planet = colonies(game, owner)[0][1]
-            planet.ascension_gate, planet.gate_charge = True, 4
-        game.advance_turn()
-        self.assertEqual((game.result.winner, game.result.condition), (None, "science"))
-        self.assertEqual(GameState.from_dict(game.to_dict()), game)
+            planet = game.headquarters(owner)[1]
+            planet.ascension_gate, planet.gate_charge = True, GATE_CHARGE_TURNS
+        game.check_victory()
+        restored = GameState.from_dict(game.to_dict(), version=50)
+        self.assertEqual((restored.result.condition, restored.result.winner), ("science", None))
+        self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
 
 class VictorySaveTests(unittest.TestCase):
@@ -382,23 +293,16 @@ class VictorySaveTests(unittest.TestCase):
             self.assertEqual(json.loads(saved.read_text())["version"], SAVE_VERSION)
             self.assertEqual(storage.load(saved)[0], restored)
 
-    def test_gate_build_and_charge_continue_identically_after_saving(self):
-        game = new_game(seed=2408, with_ai=False)
-        discover_theory(game)
-        game.credits = game.resources = 500
-        game.queue_gate(0, 2)
-        game.advance_turn()
+    def test_legacy_finale_continues_identically_after_saving(self):
+        from test_civilization_legacies import prepared
+        game = prepared("nexus")
         with tempfile.TemporaryDirectory() as directory:
             storage = Storage(directory)
             restored, _ = storage.load(storage.save(game))
-            for _ in range(100):
-                if game.result:
-                    break
+            for _ in range(5):
                 self.assertEqual(game.advance_turn(), restored.advance_turn())
                 self.assertEqual(game, restored)
-                if game.planet_at(0, 2).ascension_gate:
-                    restored, _ = storage.load(storage.save(restored))
-            self.assertEqual(game.result.condition, "science")
+            self.assertEqual(game.result.condition, "race")
             self.assertEqual(storage.load(storage.save(game))[0], game)
 
 
@@ -432,39 +336,25 @@ class VictoryScreenTests(unittest.TestCase):
         self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=key, mod=0))
         self.app.render()
 
-    def test_objectives_research_gate_confirmations_navigation_and_save(self):
+    def test_race_objectives_colony_navigation_and_save(self):
         game = self.app.game
-        discover_branches(game)
-        game.research, game.credits = TECHNOLOGIES["ascension_theory"].cost, 500
         self.key(pg.K_v)
         self.assertEqual(self.app.screen, "objectives")
-        self.click("research_ascension")
-        self.assertIsNone(self.app.dialog)
-        self.assertIn("ascension_theory", game.technology.completed)
-        self.click("gate_build")
-        self.click("dialog_cancel")
-        self.assertIsNone(gate_site(game))
-        self.click("gate_build")
-        self.click("dialog_ok")
-        self.assertEqual(game.credits, 500)
-        self.click("gate_visit")
+        self.click("objectives_race")
+        self.assertEqual(self.app.objectives_tab, "race")
+        self.assertNotIn("gate_build", {b.key for b in self.app.buttons})
+        self.click("legacy_colony")
         self.assertEqual(self.app.screen, "planet")
         self.key(pg.K_v)
-        self.key(pg.K_i)
-        self.assertEqual(self.app.screen, "empire")
-        self.key(pg.K_ESCAPE)
-        self.assertEqual(self.app.screen, "objectives")
         self.key(pg.K_F5)
         path = self.app.storage.list_saves()[0]["path"]
         self.app.load_game(path)
         self.assertEqual(self.app.game, game)
 
-    def test_active_ultimate_research_view_uses_objectives_without_a_ninth_branch(self):
-        discover_branches(self.app.game)
-        self.app.game.choose_research("ascension_theory")
+    def test_research_legacy_card_opens_objectives(self):
         self.key(pg.K_r)
-        self.assertEqual(self.app.research_branch, "construction")
-        self.click("research_show_active")
+        self.app.show_research_overview()
+        self.click("research_legacy_objectives")
         self.assertEqual(self.app.screen, "objectives")
         self.click("objectives_galaxy")
         self.assertEqual(self.app.screen, "galaxy")
@@ -505,18 +395,19 @@ class VictoryScreenTests(unittest.TestCase):
         self.click("result_new")
         self.assertEqual(self.app.screen, "race_select")
 
-    def test_rival_science_victory_opens_defeat_screen_and_charge_survives_reload(self):
+    def test_historical_science_defeat_screen_and_snapshot_reload(self):
         game = self.app.game
-        from scenarios import set_idle_trade_goods
-        set_idle_trade_goods(game)
         discover_theory(game, RIVAL)
         planet = colonies(game, RIVAL)[0][1]
-        planet.ascension_gate, planet.gate_charge = True, 4
-        self.key(pg.K_e)
-        self.assertEqual(self.app.screen, "result")
-        self.assertEqual((game.result.winner, game.result.condition), (RIVAL, "science"))
-        restored, _ = self.app.storage.load(self.app.storage.saves_dir / "autosave.json")
-        self.assertEqual(restored, game)
+        planet.ascension_gate, planet.gate_charge = True, 5
+        game.check_victory()
+        restored = GameState.from_dict(game.to_dict(), version=50)
+        self.app.game = restored
+        self.app.go("result")
+        self.app.render()
+        self.assertEqual((restored.result.winner, restored.result.condition), (RIVAL, "science"))
+        path = self.app.storage.save(restored)
+        self.assertEqual(self.app.storage.load(path)[0], restored)
 
 
 if __name__ == "__main__":

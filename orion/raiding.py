@@ -83,6 +83,8 @@ def raid(game, system_id, planet_id, owner="player"):
     captives = credits = 0
     razed = False
     if outcome.captured:
+        from .race_victory import record_raid
+        record_raid(game, owner, system_id, planet_id)
         captives, maximum = expected_loot(game, planet, owner)
         credits = min(maximum, max(0, game.treasury_for(defender)), max(0, 1_000_000_000-game.treasury_for(owner)))
         game._empire(defender).credits -= credits

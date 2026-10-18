@@ -107,7 +107,7 @@ class HullResearchTests(unittest.TestCase):
         self.assertEqual(game.technology.finished_branches, 8)
         self.assertIsNotNone(game.research_error("ascension_theory"))
         research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", "battleship_hulls",
-                 "interceptor_drones", "bomber_drones", "ascension_theory")
+                 "interceptor_drones", "bomber_drones")
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_ai_researches_and_selects_buildable_advanced_ships(self):
@@ -329,10 +329,9 @@ class LegacyHullTests(unittest.TestCase):
             self.assertEqual([d.name for d in game.designs], ["Legacy Cruiser", "Legacy Battleship"])
             self.assertEqual(game.planet_at(0, 2).construction_queue[0].design.kind, "battleship")
             if game.combat is None:
-                self.assertEqual((game.technology.active, game.technology.progress), ("ascension_theory", 123))
-                game.research = TECHNOLOGIES["ascension_theory"].cost
-                game.advance_research()
-                self.assertIn("ascension_theory", game.technology.completed)
+                self.assertEqual((game.technology.active, game.technology.progress), (None, 0))
+                self.assertEqual(game.research, data["game"]["research"]+123)
+                self.assertNotIn("ascension_theory", game.technology.completed)
                 game.save_design("Still available", "cruiser", ["laser"])
             self.assertEqual(GameState.from_dict(game.to_dict()), game)
             self.assertEqual(path.read_bytes(), original)

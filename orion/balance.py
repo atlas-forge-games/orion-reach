@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 15
+VERSION = 16
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -495,6 +495,14 @@ def upgrade_profile(profile):
                             modules[identifier].setdefault(key, defaults[key])
             if isinstance(data.get('rules'), dict):
                 data['rules'].setdefault('fleet_support', deepcopy(_defaults()['data']['rules']['fleet_support']))
+        profile['version'] = 15
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 15:
+        profile = deepcopy(profile)
+        buildings = profile.get('data', {}).get('buildings')
+        if isinstance(buildings, dict):
+            from .race_victory import PROJECT_RACES
+            for identifier in PROJECT_RACES:
+                buildings.setdefault(identifier, deepcopy(_defaults()['data']['buildings'][identifier]))
         profile['version'] = VERSION
     return profile
 

@@ -118,7 +118,7 @@ class ArsenalResearchTests(unittest.TestCase):
         for branch in BRANCHES:
             discover(game, [choices(branch, branch_tiers(branch)[-1])[0].id])
         self.assertEqual(len(game.technology.completed), sum(len(branch_tiers(b)) for b in BRANCHES))
-        self.assertIsNone(game.research_error("ascension_theory"))
+        self.assertIn("retired", game.research_error("ascension_theory"))
         self.assertEqual(round_trip(game), game)
 
     def test_new_branch_switch_transfers_rp_and_preserves_exclusivity(self):
@@ -351,8 +351,10 @@ class ArsenalSaveAndAITests(unittest.TestCase):
             with self.subTest(case=name):
                 game = GameState.from_dict(data, version=fixtures["save_version"])
                 self.assertTrue(game.technology.legacy_arsenal)
-                self.assertEqual(game.technology.progress, data["technology"]["progress"])
-                self.assertEqual(game.technology.completed, data["technology"]["completed"])
+                historical = (data.get("result") or {}).get("condition") == "science"
+                retired = not historical and data["technology"]["active"] == "ascension_theory"
+                self.assertEqual(game.technology.progress, 0 if retired else data["technology"]["progress"])
+                self.assertEqual(game.technology.completed, [t for t in data["technology"]["completed"] if historical or t != "ascension_theory"])
                 self.assertEqual(round_trip(game), game)
                 if name.startswith("ascension"):
                     self.assertEqual(game.technology.finished_branches, 9)

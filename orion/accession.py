@@ -150,6 +150,9 @@ def advance(game, alerts):
             continue
         before = administration.snapshot(game)
         species.normalize(game)
+        from .race_victory import record_accession, strip
+        record_accession(game, mission.owner, planet)
+        strip(planet)
         planet.owner = mission.owner
         planet.garrison = planet.militia_losses = 0
         planet.ascension_gate, planet.gate_charge = False, 0

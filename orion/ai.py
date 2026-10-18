@@ -56,6 +56,8 @@ def enemies(game, owner):
 def diplomatic_orders(game, owner):
     """Consider one conquest using confirmed, observable intelligence only."""
     nature = personality(game, owner)
+    if "race" in game.victory_conditions and game._empire(owner).race_id in ("terran", "serevan"):
+        return []
     if not nature.conquest_ratio or game.turn < 12 or game.turn % 6 or enemies(game, owner):
         return []
     armed = [s for s in game.ships_owned_by(owner) if game.military_strength(s) > 0]
@@ -91,7 +93,7 @@ def diplomatic_orders(game, owner):
 
 def scouting_orders(game, owner=RIVAL):
     from . import encounters
-    if not game.fog_of_war:
+    if not game.fog_of_war and not ("race" in game.victory_conditions and game._empire(owner).race_id in ("aelari", "aetheri", "remnant")):
         return
     incoming = {s.destination for s in game.ships_owned_by(owner) if s.has_course and s.kind == "scout"}
     for ship in sorted(game.ships_owned_by(owner), key=lambda s: s.id):
@@ -534,28 +536,29 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     colonies = game.settlements(owner)
     for system, planet in colonies:
         farmers = farmers_needed(planet, game.bonuses_for(owner))
+        from .race_victory import spec_for
+        legacy = spec_for(game, owner)
+        has_legacy = bool(legacy and legacy.building in planet.buildings and "race" in game.victory_conditions)
+        if has_legacy and game._empire(owner).race_id in ("xenonflora", "skirr"):
+            from .population import report
+            desired = 3 if game._empire(owner).race_id == "xenonflora" else 2
+            while farmers < planet.workforce and report(replace(planet, farmers=farmers, scientists=0, miners=0), game.bonuses_for(owner)).balance < desired:
+                farmers += 1
         remaining = planet.workforce-farmers
-        scientists = min(2, remaining//4) if "research_lab" in planet.buildings else 0
+        scientists = min(3, remaining) if has_legacy and game._empire(owner).race_id == "nexus" else min(2, remaining//4) if "research_lab" in planet.buildings else 0
         available = remaining-scientists
         resource_target = max(250, game.project_price("colony_ship", owner)) if not raiding.is_varkesh(game, owner) else 250
         miners = min(max(0, available-1), max(1, available//3)) if game.resources_for(owner) < resource_target else 0
+        if has_legacy and game._empire(owner).race_id == "kharuun":
+            miners = min(miners, max(0, available-2))
         game.set_workforce(system.id, planet.id, farmers, scientists, miners, owner=owner)
     recover_power(game, owner)
     recover_budget(game, owner)
     from .specialists import ai_orders as specialist_orders
     specialist_orders(game, owner)
     colonies.sort(key=lambda row: (-game.planet_yields(row[1])[0], -row[1].population, row[0].id, row[1].id))
-    if ("science" in game.victory_conditions and "ascension_theory" in game._empire(owner).technology.completed
-            and not gate_site(game, owner)):
-        for system, planet in colonies:
-            if game.gate_error(system.id, planet.id, owner=owner) is None:
-                game.queue_gate(system.id, planet.id, owner=owner)
-                event(game, owner, f"Started the Ascension Gate on {planet.name}.")
-                invasions.append(f"Rival started an Ascension Gate at {gate_location(game, system.id, planet)}")
-                break
-        # Save credits for the gate before placing further construction orders.
-        if not gate_site(game, owner):
-            return invasions
+    from .race_victory import ai_orders as legacy_orders
+    legacy_orders(game, owner)
     unclaimed = sum(len(available_worlds(game, s, owner)) for s in game.systems)
     fleet_size = sum(s.kind == "colony_ship" for s in game.ships_owned_by(owner)) + sum(
         project.item_id == "colony_ship" for _, p in colonies for project in p.construction_queue)

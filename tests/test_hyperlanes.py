@@ -284,12 +284,14 @@ class HyperlaneMovementTests(unittest.TestCase):
 
 class HyperlaneSaveTests(unittest.TestCase):
     def test_version_45_migrates_without_rewriting_source_and_current_round_trips(self):
-        game = campaign(victory_conditions=('conquest', 'science', 'council'))
+        game = campaign()
+        game.legacy.last_turn = game.turn
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(Path(folder))
             path = storage.save(game)
             data = json.loads(path.read_text())
             data['version'] = 45
+            data['game']['victory_conditions'] = ['conquest', 'science', 'council']
             data['game'].pop('hyperlane_projects')
             for ship in data['game']['ships']:
                 ship.pop('hyperlane')
@@ -301,8 +303,8 @@ class HyperlaneSaveTests(unittest.TestCase):
             recovered(restored)
             restored.send_ships([s.id for s in restored.ships], restored.hyperlane_projects[0].destination)
             loaded, meta = storage.load(storage.save(restored))
-            self.assertEqual((loaded, meta['version']), (restored, 50))
-            self.assertEqual(SAVE_VERSION, 50)
+            self.assertEqual((loaded, meta['version']), (restored, 51))
+            self.assertEqual(SAVE_VERSION, 51)
 
     def test_invalid_projects_and_forged_voyages_are_rejected(self):
         game = campaign()

@@ -185,9 +185,9 @@ class TechnologyInformationTests(unittest.TestCase):
                 self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_ESCAPE, mod=0))
                 self.assertIsNone(self.app.dialog)
         self.app.show_research_overview()
-        self.click("research_choose_ascension_theory", button=3)
-        self.assertEqual(self.app.dialog["technology"], "ascension_theory")
-        self.click("dialog_close")
+        self.app.render()
+        self.assertNotIn("research_choose_ascension_theory", {b.key for b in self.app.buttons})
+        self.assertIn("research_legacy_objectives", {b.key for b in self.app.buttons})
         self.assertEqual(game.to_dict(), before)
 
     def test_right_click_on_active_title_is_read_only_and_no_stale_hotspots_after_navigation(self):

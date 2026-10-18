@@ -247,6 +247,7 @@ class HabitatRulesTests(unittest.TestCase):
     def test_ascension_gate_cannot_charge_while_home_is_in_transit(self):
         from orion.victory import advance_gates
         game=campaign();ship=motherships.homes(game)[0];home=ship.habitat
+        game.victory_conditions=("science",)  # Historical charging helper only.
         home.ascension_gate=True
         home.buildings=['fusion_plant']
         game.send_ship(ship.id,target(game).id)

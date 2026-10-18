@@ -952,7 +952,7 @@ class App:
         return (self.game is not None and not self.game.is_observer and self.game.result is None
                 and self.game.technology.active is None
                 and any(self.game.technology.status(t)=="available"
-                        and (t!="ascension_theory" or "science" in self.game.victory_conditions) for t in TECHNOLOGIES))
+                        and t!="ascension_theory" for t in TECHNOLOGIES))
 
     def prompt_idle_research(self, *, allow_news=False):
         """Show the turn's reminder once, after battles, greetings and news."""
@@ -2909,7 +2909,7 @@ class App:
         self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,407))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
-        paragraph(self.canvas,"Lead an empire, research technologies and negotiate with rival civilizations. Fight fleet battles and invade colonies. Win by conquest, build the Ascension Gate, or win a Galactic Council election.",
+        paragraph(self.canvas,"Lead an empire, research technologies and negotiate with rival civilizations. Fight fleet battles and invade colonies. Win by conquest, a Galactic Council election, or your civilization's unique legacy.",
                   (282,403),840,20,INK,34)
         text(self.canvas,"WHAT COMES NEXT",(282,513),11,GOLD,"mono",1)
         paragraph(self.canvas,"Food shipments, more empires, shields and advanced weapons. Assign colony workers to farming, industry, research or mining, manage construction, and grow toward each world's population limit.",

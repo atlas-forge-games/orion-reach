@@ -73,6 +73,8 @@ def draw_treaty(app, owner, state, action, x, y):
     else:
         effect = "Trade + non-aggression + shared scanners."
         detail = "Live fleet contacts; the included pacts give +2 relations/turn."
+        if "race" in game.victory_conditions and "serevan" in (game.race_id, game._empire(owner).race_id):
+            detail = "Union forums welcome willing settlers: 1 B / 3 turns, 25 CR."
     text(surface, effect, (x+18, y+41), 13, CYAN if active else GOLD)
     text(surface, detail, (x+18, y+65), 11, MUTED)
     command = f"end_{action}" if active else action

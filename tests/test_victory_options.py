@@ -82,7 +82,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
             GameState.from_dict(data)
 
     def test_conquest_can_be_disabled_without_disabling_elimination(self):
-        for enabled in ((), ("science",), ("council",), ("conquest",)):
+        for enabled in ((), ("race",), ("council",), ("conquest",)):
             game = campaign(victory_conditions=enabled)
             for system, planet in victory.colonies(game, "rival"):
                 planet.owner = "player"
@@ -103,7 +103,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
 
     def test_disabled_council_does_not_form_or_pause_a_settled_galaxy(self):
         game = scenario((6, 4, 2))
-        game.victory_conditions = ("conquest", "science")
+        game.victory_conditions = ("conquest", "race")
         for _ in range(51):
             advance(game)
         self.assertEqual(game.council, council.CouncilState())
@@ -124,7 +124,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
         game = campaign(victory_conditions=("conquest",))
         before = game.to_dict()
         for owner in game.owners:
-            self.assertIn("disabled", game.research_error("ascension_theory", owner=owner))
+            self.assertIn("retired", game.research_error("ascension_theory", owner=owner))
             with self.assertRaises(RuleError):
                 game.choose_research("ascension_theory", owner=owner)
             system, planet = game.headquarters(owner)
@@ -134,21 +134,13 @@ class VictoryOptionRulesTests(unittest.TestCase):
         discover(game, "cryogenic_fuel_tanks")
         self.assertIn("cryogenic_fuel_tanks", game.technology.completed)
 
-    def test_science_only_can_finish_a_gate_and_disabled_gates_cannot_win(self):
-        game = campaign(with_ai=False, victory_conditions=("science",))
-        finish_branches(game)
-        discover(game, "ascension_theory")
+    def test_retired_science_setup_and_injected_gates_are_rejected(self):
+        with self.assertRaises(SaveError):
+            campaign(with_ai=False, victory_conditions=("science",))
+        game = campaign(with_ai=False, victory_conditions=())
         home = game.headquarters()[1]
-        home.ascension_gate = True
-        home.gate_charge = 5
-        game.check_victory()
-        self.assertEqual(game.result.condition, "science")
-        self.assertEqual(GameState.from_dict(game.to_dict()), game)
-        game.victory_conditions, game.result = (), None
+        home.ascension_gate, home.gate_charge = True, 5
         self.assertIsNone(victory.current_result(game))
-        home.gate_charge = 4
-        victory.advance_gates(game, [(0, 2, "player")])
-        self.assertEqual(home.gate_charge, 4)
         with self.assertRaises(SaveError):
             GameState.from_dict(game.to_dict())
 
@@ -190,31 +182,24 @@ class VictoryOptionRulesTests(unittest.TestCase):
         game = scenario()
         convene(game)
         restored = GameState.from_dict(v32_data(game), version=32)
-        self.assertEqual(restored.victory_conditions, victory.LEGACY_CONDITIONS)
+        self.assertEqual(restored.victory_conditions, victory.CONDITIONS)
         self.assertEqual(restored.council, game.council)
         self.assertTrue(all(restored.research_state(o).legacy_fuel for o in game.owners))
         self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
-    def test_v32_ascension_goal_progress_and_finished_gate_survive(self):
+    def test_v32_ascension_investment_is_refunded_and_tank_choices_remain(self):
         from scenarios import use_research_layout
         use_research_layout(self, legacy=True)
         game = campaign(with_ai=False)
-        game.technology.legacy_fuel = True
-        game.technology.legacy_black_holes = True
+        game.technology.legacy_fuel = game.technology.legacy_black_holes = True
         finish_branches(game, old=True)
-        game.research = 1234
-        game.choose_research("ascension_theory")
+        game.technology.active, game.technology.progress = "ascension_theory", 1234
+        before = game.research
         restored = GameState.from_dict(v32_data(game), version=32)
-        self.assertEqual((restored.technology.active, restored.technology.progress), ("ascension_theory", 1234))
-        self.assertEqual(restored.technology.finished_branches, len(BRANCHES))
+        self.assertEqual((restored.technology.active, restored.technology.progress), (None, 0))
+        self.assertEqual(restored.research, before+1234)
         self.assertIsNone(restored.research_error("cryogenic_fuel_tanks"))
-        restored.research = TECHNOLOGIES["ascension_theory"].cost-1234
-        restored.advance_research()
-        restored.headquarters()[1].ascension_gate = True
-        restored.headquarters()[1].gate_charge = 3
-        old = GameState.from_dict(v32_data(restored), version=32)
-        self.assertEqual(old.headquarters()[1].gate_charge, 3)
-        self.assertEqual(GameState.from_dict(old.to_dict()), old)
+        self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
 
 class AdvancedFuelTests(unittest.TestCase):
@@ -285,7 +270,7 @@ class AdvancedFuelTests(unittest.TestCase):
         self.assertIsNotNone(game.research_error("ascension_theory"))
         for identifier in ("automated_refineries", "antimatter_fuel_tanks", "nanostructured_materials"):
             discover(game, identifier)
-        self.assertIsNone(game.research_error("ascension_theory"))
+        self.assertIn("retired", game.research_error("ascension_theory"))
 
 
 class VictorySetupScreenTests(unittest.TestCase):
@@ -318,14 +303,13 @@ class VictorySetupScreenTests(unittest.TestCase):
         self.app.go("race_select")
         self.click("setup_next")
         self.assertEqual(self.app.screen, "setup")
-        self.click("victory_science")
         self.click("victory_council")
         self.click("victory_race")
         self.click("setup_back")
         self.click("setup_next")
         self.assertEqual(self.app.victory_conditions, ("conquest",))
         buttons = [b for b in self.app.buttons if b.key.startswith("victory_")]
-        self.assertEqual(len(buttons), 4)
+        self.assertEqual(len(buttons), 3)
         self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in buttons))
         self.click("launch")
         self.assertEqual(self.app.game.victory_conditions, ("conquest",))
@@ -344,21 +328,21 @@ class VictorySetupScreenTests(unittest.TestCase):
         self.app.render()
         self.assertFalse(next(b for b in self.app.buttons if b.key == "observer_council").enabled)
 
-    def test_disabled_science_has_no_gate_or_idle_research_prompt_at_tree_end(self):
+    def test_retired_ascension_has_no_controls_or_idle_research_prompt(self):
         self.app.game = campaign(with_ai=False, victory_conditions=())
         finish_branches(self.app.game)
         self.app.go("objectives")
         self.app.render()
         buttons = {b.key: b for b in self.app.buttons}
-        self.assertFalse(buttons["research_ascension"].enabled)
+        self.assertNotIn("research_ascension", buttons)
         self.assertFalse(buttons["objectives_council"].enabled)
         self.assertNotIn("gate_build", buttons)
         self.assertFalse(self.app.needs_research_choice())
+        self.app.show_research_overview()
         self.app.go("research")
         self.app.render()
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "research_choose_ascension_theory").enabled)
-        self.click("research_choose_ascension_theory", mouse_button=3)
-        self.assertEqual(self.app.dialog["technology"], "ascension_theory")
+        self.assertNotIn("research_choose_ascension_theory", {b.key for b in self.app.buttons})
+        self.assertIn("research_legacy_objectives", {b.key for b in self.app.buttons})
 
     def test_new_tank_can_be_inspected_selected_and_switched_with_transferred_rp(self):
         self.app.game = campaign(with_ai=False)
