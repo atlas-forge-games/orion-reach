@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.72.1
+# Orion Reach — Python prototype 0.72.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories give each
@@ -7,6 +7,13 @@ of the thirteen civilizations its own path to victory.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.72.2: Xenonflora artwork
+
+Xenonflora now uses the supplied bioluminescent ecosystem illustration in race
+selection, diplomacy and other portrait views. The complete image is preserved;
+the renderer fits its landscape proportions without stretching or cropping.
+Restart the game after installing. Existing campaigns use the new artwork too.
 
 ## New in v0.72.1: settings categories
 

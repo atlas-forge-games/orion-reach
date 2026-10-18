@@ -1,0 +1,38 @@
+Orion Reach v0.72.2 - Xenonflora artwork
+18 October 2026
+
+INSTALL
+Extract over your complete v0.72.1 game folder, next to main.py.
+Replace the included files. No files need deleting. Restart the game.
+
+WHAT CHANGED
+Xenonflora now uses the supplied bioluminescent ecosystem illustration.
+The stable assets/portraits/xenonflora-v1.png path is retained, so all
+portrait views and both new and existing campaigns use the new artwork.
+The original 1536x1024 PNG is copied byte-for-byte. Its full composition
+is preserved. The renderer fits it without stretching or cropping;
+square portrait frames have space above and below the landscape image.
+
+Race traits, gameplay, settings and save formats are unchanged.
+
+VERIFICATION
+The installed PNG matches the supplied file byte-for-byte.
+It loads and renders at six existing portrait sizes (40, 54, 72, 176,
+200 and 236 pixels square). Actual race selection and diplomacy screens
+were rendered and visually inspected. Rendering leaves campaign state
+unchanged. No full gameplay regression was needed for this asset update.
+A race-selection preview is included in screenshots/v0722_xenonflora.png.
+
+CHANGED / ADDED FILES
+README.md
+UPDATE_v0722.txt
+assets/portraits/README.md
+assets/portraits/xenonflora-v1.png
+orion/__init__.py
+screenshots/v0722_xenonflora.png
+
+COMMIT COMMANDS
+Run from your game repository after extracting the update.
+
+git add -- README.md UPDATE_v0722.txt assets/portraits/README.md assets/portraits/xenonflora-v1.png orion/__init__.py screenshots/v0722_xenonflora.png
+git commit -m "Use supplied bioluminescent Xenonflora artwork"

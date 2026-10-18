@@ -1,8 +1,8 @@
 # Orion Reach — race portraits v1
 
-Eleven race portraits and one Observer portrait. Aelari, Lithar, Remnant and
-Varkesh use supplied illustrations; the remaining portraits were generated with
-the built-in image-generation tool.
+Thirteen race portraits and one Observer portrait. The collection includes
+supplied illustrations and artwork generated during development. See
+`ASSET_LICENSE.md` in the project root for the artwork provenance.
 The game uses these portraits on the New Game race cards and the Diplomacy
 and first-contact screens, including your own empire's profile. Extract updates into the repository
 root to place the files under assets/portraits/.
@@ -18,7 +18,9 @@ root to place the files under assets/portraits/.
 | Xenonflora | xenonflora-v1.png |
 | Nexus | nexus-v1.png |
 | Aetheri | aetheri-v1.png |
-| The Concord | concord-v1.png |
+| Dominion of One | concord-v1.png |
+| Serevan Union | serevan-v1.png |
+| Skirr Swarm | skirr-v1.png |
 | The Remnant | remnant-v1.png |
 | The Observer (spectator mode) | observer-v1.png |
 
@@ -29,11 +31,21 @@ To replace a portrait, keep its filename and restart the game. The filename stem
 before `-v1` is the stable race ID. The current portraits depict Aelari as a blue
 aquatic envoy, Lithar as jagged living stone with glowing amber seams, Varkesh as tusked warlords in
 battered armor beneath red clan banners,
-Wanderers are mothlike navigators, Xenonflora are branching plant organisms,
+Wanderers are mothlike navigators, Xenonflora are a bioluminescent ecosystem
+with luminous branching structures and flowering canopies above an alien world,
 Nexus are linked floating machines, Aetheri are loops of luminous energy,
 the Concord are symbiotic organisms, and the Remnant is a purple humanoid
 survivor with an ornate circular gold headpiece. Earlier portrait drafts
 are not included in the game.
+
+## Xenonflora portrait update — v0.72.2
+
+The supplied **Biolumineszente Xenoflora über fremder Welt.png** is copied
+byte-for-byte to `xenonflora-v1.png`. The complete 1536 × 1024 landscape image
+is retained. The existing renderer fits it inside each portrait frame while
+preserving its aspect ratio; square frames have space above and below it.
+New and existing campaigns use the replacement after restarting the game.
+No race statistics, save formats or gameplay rules change.
 
 ## Aelari, Lithar and Remnant portrait update — v0.53.1
 
