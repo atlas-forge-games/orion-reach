@@ -8,14 +8,14 @@ import random
 import pygame as pg
 
 from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination, interception
-from . import combat_planets, fleet_support
+from . import combat_planets, fleet_support, combat_projectiles
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .monsters import MONSTER, MONSTERS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
-CELL = 56
-VISIBLE_ROWS = 10
+CELL = 42
+VISIBLE_ROWS = 13
 BOARD = pg.Rect(32, 186, BOARD_COLUMNS*CELL, VISIBLE_ROWS*CELL)
 SHIP_LENGTHS = {"combat_drone": 13, "scout": 19, "frigate": 25, "destroyer": 32,
                 "cruiser": 39, "carrier": 44, "battleship": 47, "titan": 52,
@@ -32,7 +32,7 @@ def tactical_sprite(kind, color, facing):
     bounds = art.get_bounding_rect(min_alpha=16)
     if not bounds.w or not bounds.h:
         return art
-    length = SHIP_LENGTHS.get(kind, 50)
+    length = SHIP_LENGTHS.get(kind, 50)*CELL/56
     ratio = min(length/bounds.w, min(38, length)/bounds.h)
     return pg.transform.smoothscale(art.subsurface(bounds),
                                    (max(1, round(bounds.w*ratio)), max(1, round(bounds.h*ratio))))
@@ -121,18 +121,18 @@ def draw_battlefield(app):
         if not BOARD.colliderect(cell):
             continue
         surface.set_clip(BOARD.clip(cell))
-        before_impact = effect and effect.kind == "fire" and effect.target_id == unit.id and effect.elapsed < .18
+        before_impact = effect and effect.pre_impact_damage(unit.id) is not None
         combat_planets.draw_base(surface, app.game, unit, (cx, cy), app.empire_color(unit.owner),
                                  1 if unit.owner == PLAYER else -1, destroyed=unit.hull <= 0 and not before_impact)
         text(surface, shorten(planet.name, CELL-6, 8), (cx-CELL//2+3, cy-CELL//2), 8, app.empire_color(unit.owner))
         if unit.hull <= 0 and not before_impact:
-            text(surface, "BASE LOST", (cx-23, cy+20), 7, MUTED, "mono")
+            text(surface, "BASE LOST", (cx-19, cy+10), 6, MUTED, "mono")
         surface.set_clip(BOARD)
     if effect and effect.kind == "move":
         effect.draw(surface, project)
     for ship in battle.ships:
-        firing_target = effect and effect.kind == "fire" and effect.target_id == ship.id
-        before_impact = firing_target and effect.elapsed < .18
+        pending_damage = effect.pre_impact_damage(ship.id) if effect else None
+        before_impact = pending_damage is not None
         if ship.hull <= 0 and not before_impact:
             continue
         position = effect.moving_position() if effect and effect.kind == "move" and effect.ship_id == ship.id else ship.position
@@ -151,26 +151,43 @@ def draw_battlefield(app):
             icon_color = BEAMS[ship.weapon].color if ship.kind == "combat_drone" else color
             sprite = tactical_sprite(ship.kind, tuple(icon_color), 1 if ship.owner == PLAYER else -1)
             surface.blit(sprite, sprite.get_rect(center=(cx, cy-1)))
-        hull = min(ship.max_hull, ship.hull+(effect.damage if before_impact else 0))
-        hull_y = cy+23 if planetary else cy+19
+        hull = min(ship.max_hull, ship.hull+(pending_damage if before_impact else 0))
+        hull_y = cy+17 if planetary else cy+14
         pg.draw.rect(surface, LINE, (cx-18, hull_y, 36, 3))
         pg.draw.rect(surface, color, (cx-18, hull_y, round(36*hull/ship.max_hull), 3))
         if ship.max_shields:
-            pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+24, round(36*ship.shields/ship.max_shields), 2))
+            pg.draw.rect(surface, (79, 169, 255), (cx-18, cy+18, round(36*ship.shields/ship.max_shields), 2))
         if not planetary:
-            text(surface, "GUARD" if ship.owner == MONSTER else "RAIDER" if ship.owner == "pirates" else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-23), 8, color, "mono")
+            text(surface, "GUARD" if ship.owner == MONSTER else "RAIDER" if ship.owner == "pirates" else "BASE" if ship.kind == "missile_base" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}", (cx-19, cy-20), 7, color, "mono")
         if ship.graviton_slow:
-            text(surface, "SLOW", (cx-16, cy+28), 7, BEAMS["graviton"].color, "mono")
+            text(surface, "SLOW", (cx-17, cy+4), 7, BEAMS["graviton"].color, "mono")
         for index, (key, _, _) in enumerate(fleet_support.auras(ship)):
-            pg.draw.circle(surface, SUPPORT_COLORS[key], (cx-22+index*6, cy+24), 2)
+            pg.draw.circle(surface, SUPPORT_COLORS[key], (cx-16+index*6, cy+18), 2)
         if ship.owner == PLAYER and ship.hull > 0 and not planetary:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship) or battle.can_launch(ship))):
-                pg.draw.circle(surface, CYAN if available else LINE, (cx+dx, cy-19), 2)
+                pg.draw.circle(surface, CYAN if available else LINE, (cx+dx-3, cy-16), 2)
         if BOARD.contains(box):
             app.button(f"combat_ship_{ship.id}", "", box,
                        lambda side=ship.owner, sid=ship.id: app.select_combat_ship(side, sid), "hotspot",
                        enabled=player_turn and ship.hull > 0)
-    if effect and effect.kind == "fire":
+    moving = {f["id"] for f in effect.flights} if effect and effect.kind == "ordnance" else set()
+    for shot in battle.projectiles:
+        if shot.id in moving:
+            continue
+        target = battle.ship(shot.target_id)
+        position = project(shot.position)
+        shade = BEAMS[shot.weapon].color
+        angle = math.atan2(target.y-shot.y, target.x-shot.x)
+        tail = (round(position[0]-math.cos(angle)*10), round(position[1]-math.sin(angle)*10))
+        pg.draw.line(surface, shade, tail, position, 3)
+        pg.draw.circle(surface, INK, position, 3)
+        if {shot.source_id, shot.target_id} & {app.combat_ship_id, app.combat_target_id}:
+            text(surface, f"~{combat_projectiles.eta(shot, target)}r", (position[0]+5, position[1]-14), 9, shade, "mono")
+    if effect and effect.kind == "ordnance":
+        anchors = {unit.id: combat_planets.surface_anchor(project(unit.position), 1 if unit.owner == PLAYER else -1)
+                   for unit in battle.ships if combat_planets.planet_for(app.game, unit)}
+        effect.draw(surface, project, explosion_scale=CELL/56, anchors=anchors)
+    if effect and effect.kind in ("fire", "launch_projectile"):
         attacker, target = battle.ship(effect.ship_id), battle.ship(effect.target_id)
         def anchor(unit):
             center = project(unit.position)
@@ -200,6 +217,8 @@ def draw_combat(app):
     text(surface, f"ROUND {battle.round:02}  ·  "+turn, (1038, 128), 12, CYAN if automatic else GOLD, "mono", right=True)
     instructions = ("Computer controls your fleet: movement, weapons and drones. Choose Take control · A to resume manual orders."
                     if automatic else "Select your ship → click a highlighted cell to move → select a target → review hit chances → Fire.")
+    if simulator:
+        instructions = "Right-click any ship for details · "+("A: take control" if automatic else "Move → choose target → fire")
     text(surface, instructions, (34, 162), 13, CYAN if automatic else MUTED)
     draw_battlefield(app)
 
@@ -348,6 +367,7 @@ def draw_combat(app):
         paragraph(surface, caption, (x, max(377, details_y)), 302, 15, MUTED, 26)
         app.button("combat_continue", "Edit fleets" if simulator else "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
 
+    text(surface, f"ORDNANCE IN FLIGHT: {len(battle.projectiles)}  ·  3 cells / round  ·  ~N r = estimated arrival", (34, 741), 10, GOLD, "mono")
     panel(surface, (32, 763, 1376, 77))
     text(surface, "COMBAT LOG", (48, 778), 10, GOLD, "mono", 1)
     for i, message in enumerate(battle.log[-3:]):
@@ -359,7 +379,7 @@ def draw_combat(app):
     if active:
         app.button("combat_auto", "Take control · A" if automatic else "Auto combat · A", (364, 851, 218, 38),
                    app.toggle_combat_auto, "primary" if automatic else "normal", enabled=battle.status == "active")
-    status = ("Firing…" if busy and app.combat_animation.kind == "fire" else "Maneuvering…" if busy
+    status = ("Firing…" if busy and app.combat_animation.kind == "fire" else "Ordnance advancing…" if busy and app.combat_animation.kind == "ordnance" else "Launching…" if busy and app.combat_animation.kind == "launch_projectile" else "Maneuvering…" if busy
               else "Computer is giving your fleet orders…" if automatic and battle.active_owner == PLAYER
               else "Enemy is giving orders…" if battle.status == "active" and battle.active_owner != PLAYER
               else "Battle ended · Review the result to continue" if not active

@@ -318,13 +318,59 @@ class CombatSimulator(App):
         self.confirm("Combat simulator", "Add stock ships or save custom loadouts in the designer. Both fleets can use any hull and equipment. "
                      "Combat upgrades set each side's passive research bonuses. The same seed and orders reproduce the same shots. "
                      "A toggles automatic control, P pauses, R restarts, E ends your turn and N selects your next ship. "
+                     "Right-click either fleet's ships for weapons, hull, shields and incoming ordnance. "
+                     "Torpedoes travel three cells per round and apply damage on arrival. "
                      "F5 saves the fleet setup; Load scenario restores it. Battles use the loaded balance profile.",
                      "Back to simulator", lambda: None)
 
     def quit_request(self):
         self.quit_now()
 
+    def inspect_ship(self, ship_id):
+        if self.dialog or self.screen != "combat" or not self.game.combat.ship(ship_id):
+            return
+        self.dialog = {"combat_ship_info": ship_id, "inspection_tab": "weapons", "inspection_page": 0,
+                       "return_focus": self.focus}
+        self.focus, self.pressed = "dialog_close", None
+        self.buttons = []
+        self.combat_last_update = self.time
+
+    def inspect_tab(self, tab):
+        self.dialog.update(inspection_tab=tab, inspection_page=0)
+
+    def inspect_page(self, delta):
+        self.dialog["inspection_page"] = max(0, self.dialog["inspection_page"]+delta)
+
+    def draw_dialog(self):
+        if "combat_ship_info" in self.dialog:
+            from .combat_inspector import draw
+            self.backdrop.dim(self.canvas)
+            self.buttons = []
+            draw(self)
+        else:
+            super().draw_dialog()
+
+    def cancel_dialog(self):
+        super().cancel_dialog()
+        self.combat_last_update = self.time
+        self.combat_ai_due = self.time+.4/self.sim_speed
+
     def handle_event(self, event):
+        if event.type == pg.MOUSEBUTTONDOWN and event.button == 3 and self.screen == "combat" and not self.dialog:
+            from .combat_view import BOARD, CELL, cell_center
+            point = self.logical_pos(event.pos)
+            if BOARD.collidepoint(point):
+                for ship in reversed(self.game.combat.ships):
+                    if ship.hull <= 0:
+                        continue
+                    effect = self.combat_animation
+                    position = (effect.moving_position() if effect and effect.kind == "move" and effect.ship_id == ship.id
+                                else ship.position)
+                    center = cell_center(position, self.combat_camera_row)
+                    if pg.Rect(center[0]-CELL//2, center[1]-CELL//2, CELL, CELL).collidepoint(point):
+                        self.inspect_ship(ship.id)
+                        break
+            return
         if event.type == pg.KEYDOWN and not self.dialog and not self.field:
             if event.key == pg.K_F5:
                 self.save_game()

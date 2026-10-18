@@ -420,7 +420,7 @@ class EncounterSaveTests(unittest.TestCase):
         restored = GameState.from_dict(payload, version=48)
         self.assertEqual(payload, original)
         self.assertFalse(restored.encounters.enabled)
-        self.assertEqual(SAVE_VERSION, 51)
+        self.assertEqual(SAVE_VERSION, 52)
         self.assertEqual(GameState.from_dict(restored.to_dict()), restored)
 
     def test_real_save_file_roundtrip_keeps_search_and_private_warning(self):
@@ -431,7 +431,7 @@ class EncounterSaveTests(unittest.TestCase):
             storage = Storage(folder)
             path = storage.save(game)
             loaded, meta = storage.load(path)
-            self.assertEqual((loaded, meta['version']), (game, 51))
+            self.assertEqual((loaded, meta['version']), (game, 52))
 
     def test_corrupt_pirate_state_is_rejected_without_mutating_source(self):
         game = campaign()

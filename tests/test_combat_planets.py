@@ -90,7 +90,7 @@ class PlanetaryCombatTests(unittest.TestCase):
                     self.app.after_combat_action({"kind": "fire", "ship_id": attacker.id,
                                                   "target_id": target.id, "damage": damage})
                 effect = self.app.combat_animation
-                self.assertEqual(effect.kind, "fire")
+                self.assertEqual(effect.kind, "launch_projectile")
                 with patch.object(effect, "draw", wraps=effect.draw) as draw:
                     self.app.render()
                 arguments = draw.call_args.kwargs
@@ -101,19 +101,28 @@ class PlanetaryCombatTests(unittest.TestCase):
                     button = next(b for b in self.app.buttons if b.key == f"combat_ship_{unit.id}")
                     self.assertTrue(button.rect.collidepoint(arguments[key]))
                 self.assertEqual(arguments["explosion_scale"], .35)
-                self.assertEqual(target.hull, 30)
+                self.assertEqual(target.hull, 40)
+        for _ in range(6):
+            owner = self.game.combat.active_owner
+            flights = self.game.combat_end_turn(owner)
+            self.app.after_combat_action({"kind": "end_turn", "flights": flights})
+        self.assertEqual((self.own_base.hull, self.enemy_base.hull), (30, 30))
 
     @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_destroying_a_base_leaves_its_world_and_colony_intact(self):
         self.use_scenario(enemy_ships=False, damaged_base=True)
         population, owner = self.mars.population, self.mars.owner
         self.click("combat_fire")
+        self.assertEqual(self.game.combat.status, "active")
+        for _ in range(6):
+            flights = self.game.combat_end_turn(self.game.combat.active_owner)
+        self.app.after_combat_action({"kind": "end_turn", "flights": flights})
         self.assertEqual(self.game.combat.status, "player_victory")
         with patch("orion.combat_planets.draw_base", wraps=combat_planets.draw_base) as draw:
             self.app.render()
             target_call = next(call for call in draw.call_args_list if call.args[2].id == self.enemy_base.id)
             self.assertFalse(target_call.kwargs["destroyed"])
-        self.tick(.2)
+        self.tick(.45)
         with patch("orion.combat_planets.draw_base", wraps=combat_planets.draw_base) as draw:
             self.app.render()
             target_call = next(call for call in draw.call_args_list if call.args[2].id == self.enemy_base.id)
@@ -151,13 +160,13 @@ class PlanetaryCombatTests(unittest.TestCase):
         for _ in range(150):
             self.tick()
             effect = self.app.combat_animation
-            if effect and effect.kind == "fire" and effect.ship_id == self.own_base.id:
+            if effect and effect.kind == "launch_projectile" and effect.ship_id == self.own_base.id:
                 break
         else:
             self.fail("Automatic fleet control did not fire its planetary battery")
         self.app.render()
         self.assertEqual(self.app.combat_ship_id, self.own_base.id)
-        self.assertEqual(self.own_base.position, (5, 4))
+        self.assertEqual(self.own_base.position, (8, 6))
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], self.game)
 
 

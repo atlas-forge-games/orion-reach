@@ -100,10 +100,14 @@ class FleetSupportTests(unittest.TestCase):
         game = arena(attacker, target, escort)
         game.combat.accuracy = False
         forecast = combat.expected_volley(game, attacker, target)
-        self.assertEqual(combat.fire(game, 1, 2), forecast)
+        before = target.hull
+        self.assertEqual(combat.fire(game, 1, 2), 0)
         self.assertEqual(forecast, 8)
         self.assertEqual(game.combat.acted, [1])
         self.assertEqual(game.combat.moved, [])
+        combat.end_turn(game)
+        combat.end_turn(game, "rival")
+        self.assertEqual(before-target.hull, forecast)
         self.assertIn("Escort screen", game.combat.log[-1])
 
     def test_command_uses_only_strongest_source_and_excludes_self_drones_and_bases(self):
@@ -306,11 +310,17 @@ class SupportPresentationTests(unittest.TestCase):
         self.app.combat_ship_id, self.app.combat_target_id = shooter.id, target.id
         self.app.combat_action("fire")
         animation = self.app.combat_animation
-        self.assertEqual(target.hull, target.initial_hull-8)
+        self.assertEqual(target.hull, target.initial_hull)
+        self.assertEqual(animation.kind, "launch_projectile")
         self.assertEqual(battle.acted, [shooter.id])
         self.assertEqual(battle.moved, [])
-        self.assertTrue(animation.escorts)
-        animation.elapsed = .12
+        combat.end_turn(self.app.game)
+        flights = combat.end_turn(self.app.game, "rival")
+        self.app.after_combat_action({"kind": "end_turn", "flights": flights})
+        animation = self.app.combat_animation
+        self.assertEqual(target.hull, target.initial_hull-8)
+        self.assertTrue(animation.flights[0]["escorts"])
+        animation.elapsed = .45
         self.app.render()
         self.assertFalse(any("battle_plan" in b.key for b in self.app.buttons))
         beam = CombatAnimation.from_action(battle, {"kind": "fire", "ship_id": shooter.id,

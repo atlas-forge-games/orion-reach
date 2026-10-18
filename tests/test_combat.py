@@ -24,7 +24,19 @@ new_game = partial(new_game, fog_of_war=False)
 from orion.storage import Storage, SAVE_VERSION
 
 
-def encounter(own=("frigate",), enemy=("frigate",), start=True):
+def close_formation(game):
+    """Place legacy order/UI scenarios at close range; deployment has separate tests."""
+    import math
+    rows = max(10, math.ceil(max(len(game.combat.fleet(side)) for side in game.combat.sides)/4))
+    lanes = sorted(range(rows), key=lambda y: (abs(y-(rows-1)/2), y))
+    for side in game.combat.sides:
+        for index, ship in enumerate(game.combat.fleet(side)):
+            depth, lane = divmod(index, rows)
+            ship.x = 4-depth if side == game.combat.sides[0] else 13+depth
+            ship.y = lanes[lane]
+
+
+def encounter(own=("frigate",), enemy=("frigate",), start=True, close=True):
     game = new_game(seed=2408)
     place_near(game, 1)  # This battle fixture includes a safe retreat destination.
     rows = [(kind, PLAYER) for kind in own]+[(kind, RIVAL) for kind in enemy]
@@ -32,6 +44,8 @@ def encounter(own=("frigate",), enemy=("frigate",), start=True):
     game.next_ship_id = len(rows)+1
     if start:
         game.start_combat(0)
+        if close:
+            close_formation(game)
     return game
 
 
@@ -183,6 +197,7 @@ class CombatRulesTests(unittest.TestCase):
         world = friend.worlds[0]
         world.colonized, world.owner, world.population = True, PLAYER, 1
         game.start_combat(0)
+        close_formation(game)
         game.combat_move(1, 7, 4)
         game.combat_fire(1, 3)
         game.combat_end_turn()
@@ -208,6 +223,7 @@ class CombatRulesTests(unittest.TestCase):
         self.assertEqual(game.ship_at(2, owner=RIVAL).destination, game.opponent.home_system)
         own = encounter(own=("colony_ship",), start=False)
         own.start_combat(0, RIVAL)
+        close_formation(own)
         enemy_turn(own)
         self.assertEqual(own.combat.active_owner, PLAYER)
         destination = retreat_destination(own)
@@ -460,6 +476,7 @@ class CombatScreenTests(unittest.TestCase):
         self.click("dialog_ok")
         game = self.app.game
         initial_turn = game.turn
+        close_formation(game)
         self.click("combat_ship_1")
         self.click("combat_cell_7_4")
         self.finish_animation()

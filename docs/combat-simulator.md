@@ -86,6 +86,36 @@ drone launches and spent actions. The setup is never modified by the battle.
 After 300 rounds the simulator pauses to make stalled matchups manageable;
 you can edit, rematch or explicitly resume. It does not invent a winner.
 
+## Approach, torpedoes and ship details
+
+Fleets begin 17 cells apart on a 24-column battlefield. The map shows 13 rows
+at once and scrolls vertically for large fleets. Ship sizes remain distinct;
+each ship still occupies one cell. Stationary planetary batteries form a
+forward defensive line and can engage opposing batteries.
+
+Torpedoes, MIRV warheads, bomber torpedoes and planetary missiles travel three
+cells per round. A volley moves at the start of its firing side's next turn,
+so the enemy always has a turn to respond before the first impact. An
+8-cell shot takes three advances against a stationary target. Moving the
+target changes the path and estimated time. Beams hit immediately.
+
+**Right-click any ship on the battlefield**, including enemy ships, during
+manual play, automatic combat or a movement animation. A paused detail panel
+shows hull and shield condition, movement, regeneration, repair reserves,
+point defense, allied screens, drone capacity and status. Its tabs show:
+
+- **Weapons:** installed weapons, damage, shot counts, range, base aim,
+  recharge state and special effects.
+- **Equipment:** the fitted modules and their descriptions, with pages for
+  larger loadouts.
+- **Ordnance:** incoming and outgoing projectiles, targets, payload, locked
+  aim, remaining fuel and estimated arrival in rounds.
+
+Esc or Close returns to the battle with the same selection and pause/auto
+state. Weapon aim in the Weapons tab is the base value; the targeting sidebar
+shows target-specific modifiers. Travel estimates assume the target stays
+where it is. See [the detailed rules](combat-projectiles.md).
+
 ## Save and load
 
 Choose a scenario name and select **Save scenario** or press **F5**. The
@@ -125,7 +155,7 @@ python combat_simulator.py --scenario combat_lab/scenarios/example.json
 python combat_simulator.py --preset 2 --auto --seed 12345
 ```
 
-Presets are numbered 1–6 in the order listed above. All equipment is
+Presets are numbered 1–7 in the order listed above. All equipment is
 available independently of the selected passive combat research. This makes
 it possible to compare advanced weapons with basic or advanced targeting.
 The simulator does not implement new combat rules, campaign research

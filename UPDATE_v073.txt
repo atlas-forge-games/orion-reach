@@ -1,0 +1,109 @@
+ORION REACH v0.73.0 — TACTICAL APPROACH AND SHIP INSPECTION
+
+INSTALL
+Close the game. Extract this ZIP into your existing v0.72.2 game folder (the
+folder containing main.py), merging folders and replacing the listed files.
+This is an incremental update; the earlier game files and assets are required.
+It includes all changes since v0.72.2. No files need deleting.
+
+Start the simulator:
+    python combat_simulator.py
+
+WHAT CHANGED
+- Fleets begin 17 cells apart on a 24-column battlefield. Thirteen rows fit
+  onscreen; large fleets scroll. Relative ship sizes remain distinct.
+- Torpedoes and missiles are visible homing projectiles traveling three cells
+  per round. A stationary target eight cells away takes three advances to
+  reach. Each side gets a response turn before incoming shots can first hit.
+- Aim and rolls lock at launch. Current shields, point defense and escorts
+  apply on impact; moving changes the path and ETA. Six advances of fuel.
+- Missiles keep flying after their launcher dies while combat continues.
+  Dead targets, retreat and battle resolution clear the relevant flights.
+- Stationary planetary batteries deploy ahead of fleets and remain in range
+  of opposing batteries; their surface launch and impact effects remain.
+- Right-click either fleet's ship in the simulator for condition, shields,
+  defenses, weapons, equipment and incoming/outgoing ordnance with ETAs.
+  The panel pauses manual/automatic combat and animations. Esc/Close resumes
+  the same selection and control mode. Larger loadouts have pages.
+- The campaign and simulator share these combat rules. Individual ship
+  orders remain in use; there are no selectable battle plans.
+
+SAVES
+Campaign format is now 52. In-flight projectiles and deterministic hit rolls
+are saved. Older saves remain readable and keep their existing tactical
+positions; older versions already applied missile damage at launch, so their
+saves migrate with an empty flight list. New battles use wider deployment.
+Simulator scenario format remains unchanged (initial setups, not active saves).
+
+VERIFICATION
+The full 1,280-test regression run completed. Its twelve legacy expectations
+for close deployment or immediate missiles were corrected in test fixtures;
+all affected tests pass on rerun (42 designer/hull/victory tests and 34 guardian
+tests). The final simulator/projectile/support/planetary suite passed 60 tests.
+The earlier focused combat run also passed 140 tests. Rendered screenshots
+were visually checked, including enemy inspection and projectile travel.
+Expected malformed-image/audio fixture diagnostics can appear during tests.
+No commit or push has been made.
+
+REFERENCE
+    docs/combat-projectiles.md
+    docs/combat-simulator.md
+    tools/preview_combat_projectiles.py
+
+FILES IN THIS UPDATE
+    README.md
+    UPDATE_v073.txt
+    docs/combat-projectiles.md
+    docs/combat-simulator.md
+    orion/__init__.py
+    orion/app.py
+    orion/combat.py
+    orion/combat_effects.py
+    orion/combat_inspector.py
+    orion/combat_projectiles.py
+    orion/combat_simulator.py
+    orion/combat_view.py
+    orion/encyclopedia.py
+    orion/model.py
+    orion/storage.py
+    screenshots/combat_ordnance_inspector.png
+    screenshots/combat_ship_inspector.png
+    screenshots/combat_torpedoes.png
+    screenshots/combat_wide_deployment.png
+    tests/test_administration.py
+    tests/test_arsenal.py
+    tests/test_building_economy.py
+    tests/test_combat.py
+    tests/test_combat_planets.py
+    tests/test_combat_projectiles.py
+    tests/test_combat_simulator.py
+    tests/test_designer.py
+    tests/test_encounters.py
+    tests/test_fleet_support.py
+    tests/test_hull_modules.py
+    tests/test_hyperlanes.py
+    tests/test_monsters.py
+    tests/test_population.py
+    tests/test_production_queue.py
+    tests/test_starting_fleets.py
+    tests/test_statistics.py
+    tests/test_tactical_combat.py
+    tests/test_varkesh.py
+    tests/test_victory.py
+    tools/preview_combat_projectiles.py
+
+COMMIT COMMANDS
+Run these from your game repository after extracting the update:
+
+git add -- README.md UPDATE_v073.txt docs/combat-projectiles.md docs/combat-simulator.md
+git add -- orion/__init__.py orion/app.py orion/combat.py orion/combat_effects.py
+git add -- orion/combat_inspector.py orion/combat_projectiles.py orion/combat_simulator.py orion/combat_view.py
+git add -- orion/encyclopedia.py orion/model.py orion/storage.py screenshots/combat_ordnance_inspector.png
+git add -- screenshots/combat_ship_inspector.png screenshots/combat_torpedoes.png screenshots/combat_wide_deployment.png tests/test_administration.py
+git add -- tests/test_arsenal.py tests/test_building_economy.py tests/test_combat.py tests/test_combat_planets.py
+git add -- tests/test_combat_projectiles.py tests/test_combat_simulator.py tests/test_designer.py tests/test_encounters.py
+git add -- tests/test_fleet_support.py tests/test_hull_modules.py tests/test_hyperlanes.py tests/test_monsters.py
+git add -- tests/test_population.py tests/test_production_queue.py tests/test_starting_fleets.py tests/test_statistics.py
+git add -- tests/test_tactical_combat.py tests/test_varkesh.py tests/test_victory.py tools/preview_combat_projectiles.py
+git diff --cached --stat
+git commit -m "Add wider combat deployment, torpedo travel and ship inspection"

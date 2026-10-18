@@ -1781,7 +1781,7 @@ class App:
             rows=[point[1] for point in self.combat_animation.path]
             if min(rows)<self.combat_camera_row or max(rows)>=self.combat_camera_row+VISIBLE_ROWS:
                 last=max(0,self.game.combat.rows-VISIBLE_ROWS)
-                self.combat_camera_row=min(last,max(0,(min(rows)+max(rows))//2-VISIBLE_ROWS//2))
+                self.combat_camera_row=int(min(last,max(0,(min(rows)+max(rows))//2-VISIBLE_ROWS//2)))
         else:
             self.sync_combat_selection()
         self.combat_ai_due=self.time+.4
@@ -1821,7 +1821,7 @@ class App:
             elif action=="retreat":
                 self.game.combat_retreat()
             elif action=="end_turn":
-                self.game.combat_end_turn()
+                event["flights"]=self.game.combat_end_turn()
             else:
                 return
             self.after_combat_action(event)

@@ -7,7 +7,7 @@ import math
 import hashlib
 
 from .production import SHIP_TYPES, ShipSpec
-from . import defenses, fleet_support
+from . import defenses, fleet_support, combat_projectiles
 from .designs import HULLS, MODULE_SIZES, ShipDesign
 from .weapons import Beam, BEAMS, DRONE_ROLES, CAPITAL_TARGETS
 from .empires import EMPIRE_IDS
@@ -25,8 +25,8 @@ COMBAT_TYPES = {**SHIP_TYPES, **MONSTERS, "missile_base": BASE_SPEC, "combat_dro
 OWNERS = EMPIRE_IDS
 HOSTILE_BELOW = -30
 RESULTS = ("active", "monster_victory", "pirates_victory", *(owner+suffix for owner in OWNERS for suffix in ("_victory", "_retreat")))
-BOARD_COLUMNS = 18
-MIN_ROWS = 10
+BOARD_COLUMNS = 24
+MIN_ROWS = 13
 MOVEMENT = {"mothership": 1, "frigate": 3, "scout": 5, "colony_ship": 2, "outpost_ship": 2, "troop_transport": 2}
 MOVEMENT.update({kind: hull.movement for kind, hull in HULLS.items() if kind != "frigate"})
 MOVEMENT.update({kind: spec.movement for kind, spec in MONSTERS.items()})
@@ -131,12 +131,16 @@ class CombatShip:
         return max((distance for _, _, distance in self.ready_weapons), default=0)
 
     @property
-    def ready_weapons(self):
+    def weapons(self):
         if self.design:
             scanner = sum(m.range_bonus for m in self.design.specs)
             return tuple((m.weapon, m.damage, m.range+scanner) for m in self.design.specs
-                         if m.damage and m.weapon not in self.cooldowns)
-        return ((self.weapon, self.damage, self.weapon_range),) if self.damage and self.weapon not in self.cooldowns else ()
+                         if m.damage)
+        return ((self.weapon, self.damage, self.weapon_range),) if self.damage else ()
+
+    @property
+    def ready_weapons(self):
+        return tuple(row for row in self.weapons if row[0] not in self.cooldowns)
 
     def volley(self, target):
         distance = math.dist(self.position, target.position)
@@ -162,6 +166,7 @@ class CombatState:
     accuracy: bool = True
     shots_fired: int = 0
     encounter_id: int | None = None
+    projectiles: list[combat_projectiles.Projectile] = field(default_factory=list)
 
     @property
     def guardian(self):
@@ -223,8 +228,10 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=49):
+    def from_dict(cls, data, game, *, version=52):
         from .model import _integer, _name
+        if version < 52 and isinstance(data, dict):
+            data = {**data, "projectiles": []}
         if version < 49 and isinstance(data, dict):
             data = {**data, "encounter_id": None}
         if version < 25 and isinstance(data, dict):
@@ -237,7 +244,7 @@ class CombatState:
                                  if isinstance(row, dict) else row for row in data["ships"]]
         if not isinstance(data, dict) or set(data) != {
                 "system_id", "initiator", "ships", "round", "active_owner", "acted",
-                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired", "encounter_id"}:
+                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired", "encounter_id", "projectiles"}:
             raise ValueError("Invalid combat state")
         if type(data["accuracy"]) is not bool or not _integer(data["shots_fired"], 0, 100_000_000):
             raise ValueError("Invalid combat random sequence")
@@ -349,7 +356,7 @@ class CombatState:
         if (not isinstance(data["log"], list) or len(data["log"]) > 8
                 or any(not _name(message, 180) for message in data["log"])):
             raise ValueError("Invalid combat log")
-        state = cls(**{**data, "ships": ships})
+        state = cls(**{**data, "ships": ships, "projectiles": []})
         drone_ids = {s.id for s in ships if s.kind == "combat_drone"}
         if drone_ids != set(range(DRONE_ID_BASE, DRONE_ID_BASE-len(drone_ids), -1)):
             raise ValueError("Invalid drone identifiers")
@@ -376,6 +383,7 @@ class CombatState:
         living = [s.position for s in ships if s.hull > 0]
         if len(set(living)) != len(living):
             raise ValueError("Ships occupy the same position")
+        state.projectiles = combat_projectiles.load(data["projectiles"], state)
         retreating = state.status.rsplit("_", 1)[0] if state.status.endswith("_retreat") else None
         if retreating:
             if (not _integer(state.retreat_destination, 0, len(game.systems)-1)
@@ -469,9 +477,11 @@ def deploy(state):
     for owner in state.sides:
         for index, ship in enumerate(sorted(state.fleet(owner, alive=False), key=lambda s: s.id)):
             depth, lane = divmod(index, rows)
-            ship.x = 4-depth if owner == state.sides[0] else 13+depth
+            ship.x = 3-depth if owner == state.sides[0] else BOARD_COLUMNS-4+depth
             if ship.kind == "missile_base":
-                ship.x = 5 if owner == state.sides[0] else 12
+                # Worlds form the defensive line ahead of the arriving fleets.
+                # Opposing immobile batteries must remain within missile range.
+                ship.x = BOARD_COLUMNS//2-4 if owner == state.sides[0] else BOARD_COLUMNS//2+3
             ship.y = lanes[lane]
 
 
@@ -661,6 +671,7 @@ def resolve(game, status, destination=None):
     state = game.combat
     require(state is not None and state.status == "active", "This battle is already resolved.")
     state.status, state.active_owner, state.retreat_destination = status, None, destination
+    state.projectiles.clear()
     rows = {s.id: s for s in state.ships}
     retreating = status.rsplit("_", 1)[0] if status.endswith("_retreat") else None
     game.ships[:] = [s for s in game.ships if s.id not in rows or rows[s.id].hull > 0 or s.habitat]
@@ -733,6 +744,7 @@ def check_losses(game):
         if ship.hull == 0:
             ship.shields = 0
             ship.graviton_slow = False
+    state.projectiles[:] = [p for p in state.projectiles if state.ship(p.target_id).hull > 0]
     for side in state.sides:
         if not state.fleet(side):
             resolve(game, state.enemy(side)+"_victory")
@@ -791,6 +803,7 @@ def end_turn(game, owner="player"):
             ship.repair_remaining -= repair
             if regained or repair:
                 state.record(f"{ship.name} restored {regained} shields and repaired {repair} hull.")
+    return combat_projectiles.advance(game, state.active_owner)
 
 
 def move(game, ship_id, x, y, owner="player"):
@@ -895,7 +908,7 @@ def fire(game, ship_id, target_id, owner="player"):
     state = game.combat
     attacker, target = state.ship(ship_id), state.ship(target_id)
     require(attacker is not None and target is not None, "Choose an attacker and target.")
-    damage, absorbed, hits, shots, screened = 0, 0, 0, 0, 0
+    damage, absorbed, hits, shots, screened, launched = 0, 0, 0, 0, 0, 0
     volley = attacker.volley(target)
     slowed = False
     for weapon, total in volley:
@@ -907,6 +920,12 @@ def fire(game, ship_id, target_id, owner="player"):
             token = f"orion-shot-v1:{game.seed}:{game.turn}:{state.system_id}:{state.round}:{ship_id}:{target_id}:{state.shots_fired}"
             roll = int.from_bytes(hashlib.blake2b(token.encode(), digest_size=8).digest(), "big")%100
             state.shots_fired += 1
+            if spec.projectile:
+                state.projectiles.append(combat_projectiles.Projectile(
+                    state.shots_fired-1, attacker.id, target.id, owner, weapon, strength, chance, roll,
+                    float(attacker.x), float(attacker.y)))
+                launched += 1
+                continue
             shots += 1
             if roll >= chance:
                 continue
@@ -929,7 +948,12 @@ def fire(game, ship_id, target_id, owner="player"):
     protection = f" Shields absorbed {absorbed}." if absorbed else ""
     effect = " Target slowed." if slowed else ""
     support = f" Escort screen: {screened} hits softened." if screened else ""
-    state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{support}{effect}{suffix}")
+    if shots:
+        state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{support}{effect}{suffix}")
+    if launched:
+        delay = max(1, math.ceil(math.dist(attacker.position, target.position)/combat_projectiles.SPEED))
+        state.record(f"{attacker.name} launched {launched} warheads at {target.name}. "
+                     f"Estimated arrival: {delay} rounds; targets can maneuver.")
     check_losses(game)
     return damage
 
@@ -987,8 +1011,7 @@ def ai_action(game, owner="rival"):
         return {"kind": "retreat"}
     ready = state.ready(owner)
     if not ready:
-        end_turn(game, owner)
-        return {"kind": "end_turn"}
+        return {"kind": "end_turn", "flights": end_turn(game, owner)}
     carrier = next((s for s in ready if state.can_launch(s)), None)
     if carrier:
         enemy_drones = any(s.kind == "combat_drone" for s in state.fleet(state.enemy(owner)))

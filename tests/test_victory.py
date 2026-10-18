@@ -256,6 +256,8 @@ class VictorySaveTests(unittest.TestCase):
         game.send_ship(3, game.opponent.home_system)
         game.ship_at(3).departure_pending = False  # Reproduce an already committed v8 voyage.
         game.start_combat(0)
+        from test_combat import close_formation
+        close_formation(game)
         game.combat_move(1, 7, 4)
         game.combat_fire(1, 2)
         game.combat_end_turn()
@@ -286,8 +288,11 @@ class VictorySaveTests(unittest.TestCase):
             expected.combat.shots_fired = 0
             self.assertEqual(restored, migrated_statistics(expected))
             self.assertEqual(path.read_bytes(), original)
-            restored.combat_ai_action()
-            restored.combat_ai_action()
+            from orion.combat import ai_action
+            for _ in range(30):
+                if restored.combat.ship(1).hull < 20:
+                    break
+                ai_action(restored, restored.combat.active_owner)
             self.assertEqual(restored.combat.ship(1).hull, 15)
             saved = storage.save(restored)
             self.assertEqual(json.loads(saved.read_text())["version"], SAVE_VERSION)

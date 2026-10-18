@@ -206,6 +206,71 @@ class SimulatorUITests(unittest.TestCase):
         self.app.time += amount
         self.app.update_combat()
 
+    def right_click_ship(self, ship, position=None):
+        from orion.combat_view import cell_center
+        x, y = cell_center(position or ship.position, self.app.combat_camera_row)
+        v = self.app.viewport
+        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, pos=pos, button=3))
+        self.app.render()
+
+    def test_right_click_inspects_either_side_without_changing_orders_or_auto_state(self):
+        from test_arsenal import duel
+        self.app.game = duel(["laser", "torpedo", "shield", "armor", "scanner", "point_defense"])
+        self.app.go("combat")
+        self.app.combat_auto = True
+        self.app.combat_ship_id, self.app.combat_target_id = 1, 2
+        self.app.focus = "combat_auto"
+        before = self.app.game.to_dict()
+        for ship in self.app.game.combat.ships:
+            self.right_click_ship(ship)
+            self.assertEqual(self.app.dialog["combat_ship_info"], ship.id)
+            self.tick(30)
+            self.assertEqual(self.app.game.to_dict(), before)
+            self.click("dialog_inspect_equipment")
+            if ship.id == 1:
+                self.click("dialog_inspect_next")
+                self.assertEqual(self.app.dialog["inspection_page"], 1)
+                self.click("dialog_inspect_previous")
+            self.click("dialog_inspect_ordnance")
+            self.click("dialog_inspect_weapons")
+            self.key(pg.K_ESCAPE)
+            self.assertFalse(self.app.dialog)
+            self.assertEqual(self.app.focus, "combat_auto")
+            self.assertTrue(self.app.combat_auto)
+            self.assertFalse(self.app.sim_paused)
+            self.assertEqual((self.app.combat_ship_id, self.app.combat_target_id), (1, 2))
+            self.assertEqual(self.app.game.to_dict(), before)
+        self.tick(.1)  # Closing does not catch up the thirty seconds spent in the panel.
+        self.assertEqual(self.app.game.to_dict(), before)
+
+    def test_right_click_moving_ship_pauses_animation_and_shows_real_incoming_ordnance(self):
+        from test_arsenal import duel
+        self.app.launch(True)
+        self.tick()
+        effect = self.app.combat_animation
+        self.assertEqual(effect.kind, "move")
+        effect.elapsed = effect.duration/2
+        self.right_click_ship(self.app.game.combat.ship(effect.ship_id), effect.moving_position())
+        elapsed, before = effect.elapsed, self.app.game.to_dict()
+        self.tick(10)
+        self.assertEqual((effect.elapsed, self.app.game.to_dict()), (elapsed, before))
+        self.click("dialog_close")
+        self.assertIs(self.app.combat_animation, effect)
+        self.app.game = duel(["torpedo"])
+        self.app.game.combat_fire(1, 2)
+        self.app.reset_combat_view()
+        self.app.go("combat")
+        self.app.sim_paused = True
+        self.right_click_ship(self.app.game.combat.ship(2))
+        self.click("dialog_inspect_ordnance")
+        from orion.combat_inspector import ordnance_rows
+        rows = ordnance_rows(self.app.game.combat, self.app.game.combat.ship(2))
+        self.assertIn("Incoming from", rows[0][1])
+        self.assertEqual(rows[0][3], "~1 round")
+        self.click("dialog_close")
+        self.assertTrue(self.app.sim_paused)
+
     def test_scaled_clicks_configure_both_sides_and_launch_real_combat(self):
         self.click("sim_add_player_carrier")
         self.click("sim_add_rival_titan")

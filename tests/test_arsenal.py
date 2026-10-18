@@ -142,7 +142,11 @@ class ArsenalCombatTests(unittest.TestCase):
                                         ("mirv", 21, 3), ("disruptor", 40, 1), ("antimatter", 36, 1)):
             with self.subTest(weapon=weapon):
                 game = duel([weapon])
-                self.assertEqual(game.combat_fire(1, 2), expected)
+                before = game.combat.ship(2).hull
+                self.assertEqual(game.combat_fire(1, 2), 0 if BEAMS[weapon].projectile else expected)
+                if BEAMS[weapon].projectile:
+                    cycle(game)
+                self.assertEqual(before-game.combat.ship(2).hull, expected)
                 self.assertEqual(game.combat.shots_fired, shots)
                 self.assertEqual(round_trip(game), game)
         game = duel(["pulse"])
@@ -210,7 +214,7 @@ class ArsenalCombatTests(unittest.TestCase):
             self.assertEqual(round_trip(game), game)
             cycle(game)
             self.assertFalse(game.combat.ship(1).cooldowns)
-            self.assertEqual(game.combat_fire(1, 2), BEAMS[weapon].damage+5)
+            self.assertEqual(game.combat_fire(1, 2), 5 if BEAMS[weapon].projectile else BEAMS[weapon].damage+5)
 
     def test_missed_shots_also_recharge_and_out_of_range_ready_guns_cannot_fire(self):
         game = duel(["antimatter", "laser"])
@@ -230,7 +234,10 @@ class ArsenalCombatTests(unittest.TestCase):
     def test_torpedo_guidance_and_point_defense_apply_to_all_new_torpedoes(self):
         for weapon, expected in (("fusion_torpedo", 8), ("mirv", 15), ("antimatter", 15)):
             game = duel([weapon], ["laser", "point_defense", "point_defense"])
-            self.assertEqual(game.combat_fire(1, 2), expected)
+            before = game.combat.ship(2).hull
+            self.assertEqual(game.combat_fire(1, 2), 0)
+            cycle(game)
+            self.assertEqual(before-game.combat.ship(2).hull, expected)
             self.assertEqual(round_trip(game), game)
         game = duel(["mirv"], ["laser"], enemy_kind="frigate")
         game.combat.accuracy = True
@@ -270,7 +277,10 @@ class ArsenalCombatTests(unittest.TestCase):
         target = game.combat.ship(2)
         self.assertEqual(target.design.interception, 75)
         self.assertEqual(target.max_hull, 139)
-        self.assertEqual(game.combat_fire(1, 2), 5)
+        before = target.hull
+        self.assertEqual(game.combat_fire(1, 2), 0)
+        cycle(game)
+        self.assertEqual(before-target.hull, 5)
         self.assertEqual(round_trip(game), game)
 
     def test_ion_bombardment_bonus_stays_on_shields(self):

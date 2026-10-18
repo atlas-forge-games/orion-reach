@@ -185,7 +185,7 @@ class TradeGoodsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(self.game)
-            self.assertEqual(json.loads(path.read_text())["version"], 51)
+            self.assertEqual(json.loads(path.read_text())["version"], 52)
             self.assertEqual(storage.load(path)[0], self.game)
         legacy = self.game.to_dict()
         for row in legacy["systems"]+legacy["exploration"]["surveys"]:

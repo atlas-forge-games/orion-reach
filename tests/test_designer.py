@@ -19,6 +19,8 @@ from orion.exploration import known_system, record_survey
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
 from scenarios import fixed_start_game as new_game, place_near
 from orion.storage import Storage
+from test_combat import close_formation
+from test_arsenal import cycle
 
 
 def scenario(ai=False):
@@ -39,6 +41,7 @@ def duel(weapons=("laser", "torpedo"), defenses=("shield", "point_defense")):
     game.ships = [Ship(1, "cruiser", 0, design=attacker), Ship(2, "cruiser", 0, owner=RIVAL, design=defender)]
     game.next_ship_id = 3
     game.start_combat(0)
+    close_formation(game)
     game.combat_move(1, 7, 4)
     return game
 
@@ -162,25 +165,33 @@ class DesignerCombatTests(unittest.TestCase):
         game = duel(defenses=())
         attacker, target = game.combat.ships
         target.x = 14  # Seven cells: only the torpedo can reach.
-        self.assertEqual(game.combat_fire(1, 2), 20)
-        self.assertEqual(target.hull, 22)
+        self.assertEqual(game.combat_fire(1, 2), 0)
+        self.assertEqual(target.hull, 42)
         with self.assertRaises(RuleError):
             game.combat_fire(1, 2)
         effect = CombatAnimation.from_action(game.combat, {"kind": "fire", "ship_id": 1, "target_id": 2, "damage": 10})
         self.assertEqual(effect.weapons, ("torpedo",))
+        self.assertEqual(effect.kind, "launch_projectile")
+        for _ in range(3):
+            cycle(game)
+        self.assertEqual(target.hull, 22)
 
     @patch("orion.combat.accuracy_breakdown", new=lambda *_: {"chance": 100})
     def test_shields_absorb_then_hull_takes_damage_and_point_defense_is_a_soft_counter(self):
         game = duel(weapons=("laser", "laser", "torpedo"))
         target = game.combat.ship(2)
-        self.assertEqual(game.combat_fire(1, 2), 10)  # 20 lasers + 14 torpedo - 24 shields.
+        self.assertEqual(game.combat_fire(1, 2), 0)  # Beams strip 20 of the 24 shields.
+        self.assertEqual((target.hull, target.shields), (42, 4))
+        cycle(game); cycle(game)  # Six cells: torpedo arrives on the second advance.
         self.assertEqual((target.hull, target.shields), (32, 0))
-        game.combat_end_turn()
-        game.combat_end_turn(RIVAL)
-        self.assertEqual(target.shields, 0)  # No per-turn regeneration.
-        self.assertEqual(game.combat_fire(1, 2), 32)  # 34 damage, limited by remaining hull.
+        self.assertEqual(game.combat_fire(1, 2), 20)
+        cycle(game); cycle(game)
+        self.assertEqual(target.hull, 0)
         game2 = duel(weapons=("torpedo",), defenses=("point_defense",)*3)
-        self.assertEqual(game2.combat_fire(1, 2), 8)  # Interception is capped at 60%.
+        before = game2.combat.ship(2).hull
+        self.assertEqual(game2.combat_fire(1, 2), 0)
+        cycle(game2); cycle(game2)
+        self.assertEqual(before-game2.combat.ship(2).hull, 8)  # Local interception is capped at 60%.
 
     def test_active_combat_save_replays_with_the_same_loadout_and_shields(self):
         game = duel()
@@ -324,7 +335,9 @@ class DesignerUITests(unittest.TestCase):
         self.app.go("combat")
         self.app.after_combat_action({"kind": "fire", "ship_id": 1, "target_id": 2, "damage": damage})
         self.assertTrue(self.app.combat_animation.destroyed)
-        self.assertEqual(self.app.combat_animation.weapons, ("laser", "torpedo"))
+        self.assertEqual(self.app.combat_animation.weapons, ("laser",))
+        self.assertTrue(self.app.combat_animation.launched)
+        self.assertFalse(battle.projectiles)
         for age in (.05, .2, .45, 1.1):
             self.app.combat_animation.elapsed = age
             self.app.render()

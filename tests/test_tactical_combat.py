@@ -16,20 +16,20 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame as pg
 
-from orion.combat import BEAMS, ai_action, in_range, reachable
-from orion.combat_view import BOARD, cell_center
+from orion.combat import BOARD_COLUMNS, MIN_ROWS, BEAMS, ai_action, in_range, reachable
+from orion.combat_view import BOARD, VISIBLE_ROWS, cell_center
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError
 from orion.storage import SAVE_VERSION, Storage
-from test_combat import encounter
+from test_combat import encounter, close_formation
 
 
 class TacticalRulesTests(unittest.TestCase):
     def test_deployment_is_unique_and_large_fleets_extend_the_map(self):
-        game = encounter(own=("frigate",)*45, enemy=("scout",)*81)
+        game = encounter(own=("frigate",)*45, enemy=("scout",)*81, close=False)
         battle = game.combat
         self.assertEqual(battle.rows, 21)
         self.assertEqual(len({s.position for s in battle.ships}), 126)
-        self.assertTrue(all(0 <= s.x < 18 and 0 <= s.y < 21 for s in battle.ships))
+        self.assertTrue(all(0 <= s.x < BOARD_COLUMNS and 0 <= s.y < 21 for s in battle.ships))
         self.assertEqual((battle.ship(1).movement, battle.ship(46).movement), (3, 5))
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
@@ -87,6 +87,7 @@ class TacticalRulesTests(unittest.TestCase):
     def test_side_turns_reset_both_orders_and_work_when_rival_initiates(self):
         game = encounter(start=False)
         game.start_combat(0, RIVAL)
+        close_formation(game)
         game.combat_move(2, 10, 4, RIVAL)
         game.combat_fire(2, 1, RIVAL)
         game.combat_end_turn(RIVAL)
@@ -103,6 +104,7 @@ class TacticalRulesTests(unittest.TestCase):
         research_to(game, "research_instruments", "quantum_optics")
         research_to(game, "field_laboratories", "quantum_optics", owner=RIVAL)
         game.start_combat(0)
+        close_formation(game)
         for identifier in (1, 3):
             ship = game.combat.ship(identifier)
             self.assertEqual((ship.weapon, ship.damage, ship.weapon_range), ("quantum", 7, 7))
@@ -177,16 +179,16 @@ class TacticalRulesTests(unittest.TestCase):
             battle = restored.combat
             self.assertEqual((battle.ship(3).hull, battle.active_owner, battle.round), (15, RIVAL, 1))
             self.assertEqual((battle.acted, battle.moved), ([1], [1]))
-            self.assertEqual((battle.ship(1).position, battle.ship(3).position), ((4, 4), (13, 4)))
+            self.assertEqual((battle.ship(1).position, battle.ship(3).position), ((3, 6), (20, 6)))
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 51)
+        self.assertEqual(SAVE_VERSION, 52)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()
         mutations = [lambda b: b["ships"][0].update(x=True), lambda b: b["ships"][0].update(y=-1),
-                     lambda b: b["ships"][0].update(x=18), lambda b: b["ships"][0].update(y=10),
+                     lambda b: b["ships"][0].update(x=BOARD_COLUMNS), lambda b: b["ships"][0].update(y=MIN_ROWS),
                      lambda b: b["ships"][0].update(x=13, y=4),
                      lambda b: b["ships"][0].update(weapon="quantum"),
                      lambda b: b["ships"][0].update(weapon="missile"),
@@ -261,6 +263,7 @@ class TacticalAnimationTests(unittest.TestCase):
         game = encounter(start=False)
         game.ships[1].hull = 5
         game.start_combat(0)
+        close_formation(game)
         self.app.game = game
         self.app.reset_combat_view()
         self.app.go("combat")
@@ -314,6 +317,7 @@ class TacticalAnimationTests(unittest.TestCase):
         game = encounter(start=False)
         game.ships[0].hull = 5
         game.start_combat(0, RIVAL)
+        close_formation(game)
         self.app.game = game
         self.app.reset_combat_view()
         self.app.go("combat")
@@ -338,15 +342,15 @@ class TacticalAnimationTests(unittest.TestCase):
             found.add(self.app.combat_ship_id)
             self.app.next_combat_ship()
             selected = self.app.game.combat.ship(self.app.combat_ship_id)
-            self.assertTrue(self.app.combat_camera_row <= selected.y < self.app.combat_camera_row+10)
+            self.assertTrue(self.app.combat_camera_row <= selected.y < self.app.combat_camera_row+VISIBLE_ROWS)
         self.assertEqual(found, set(range(1, 101)))
         before = self.app.game.to_dict()
         self.app.pan_combat(100)
         self.app.render()
-        self.assertEqual(self.app.combat_camera_row, 15)
+        self.assertEqual(self.app.combat_camera_row, 25-VISIBLE_ROWS)
         self.assertTrue(all(BOARD.contains(b.rect) for b in self.app.buttons if b.key.startswith("combat_ship_")))
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=2, x=0))
-        self.assertEqual(self.app.combat_camera_row, 11)
+        self.assertEqual(self.app.combat_camera_row, 21-VISIBLE_ROWS)
         self.assertEqual(self.app.game.to_dict(), before)
 
     def test_attack_camera_keeps_shooter_and_offscreen_target_visible(self):
@@ -360,7 +364,7 @@ class TacticalAnimationTests(unittest.TestCase):
         self.app.combat_action("fire")
         self.assertEqual(game.combat.ship(2).hull, 15)
         self.assertLessEqual(self.app.combat_camera_row, 5)
-        self.assertLess(11, self.app.combat_camera_row+10)
+        self.assertLess(11, self.app.combat_camera_row+VISIBLE_ROWS)
 
 
 if __name__ == "__main__":

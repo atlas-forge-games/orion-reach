@@ -24,6 +24,7 @@ from scenarios import fixed_start_game as new_game
 from orion.production import distance_ly
 from orion.storage import Storage
 from scenarios import place_near
+from test_combat import close_formation
 
 
 def fleet(game, sid, kinds, owner=PLAYER):
@@ -171,6 +172,7 @@ class GuardianRulesTests(unittest.TestCase):
 
     def test_damage_survives_retreat_reload_and_next_encounter(self):
         game, guardian, ships = encounter(solo=True)
+        close_formation(game)
         game.combat_move(ships[0].id, 7, 4)
         game.combat_fire(ships[0].id, guardian.combat_id)
         self.assertEqual(guardian.hull, guardian.spec.hull)  # Campaign snapshot until resolution.
@@ -373,6 +375,7 @@ class GuardianSaveTests(unittest.TestCase):
     def test_new_guardian_battles_resume_after_mid_battle_save_without_extra_loot(self):
         for kind, count in (("ancient_sentinel", 6), ("void_leviathan", 9)):
             game, guardian, _ = encounter(kind, ("frigate",)*count)
+            close_formation(game)
             game.combat_move(game.combat.fleet(PLAYER)[0].id, 7, 4)
             game.combat_fire(game.combat.fleet(PLAYER)[0].id, guardian.combat_id)
             game.combat_end_turn()
@@ -566,6 +569,7 @@ class GuardianUITests(unittest.TestCase):
             app.game.start_combat(guardian.system_id)
             app.reset_combat_view()
             app.go("combat")
+            close_formation(app.game)
             app.game.combat_move(ships[0].id, 7, 4)
             app.game.combat_end_turn()
             for _ in range(12):
@@ -586,6 +590,7 @@ class GuardianUITests(unittest.TestCase):
         app.game, guardian, ships = encounter(kinds=("frigate",), solo=True)
         # A previously damaged guardian can be finished by one legal shot.
         guardian.hull = app.game.combat.guardian.initial_hull = app.game.combat.guardian.hull = 5
+        close_formation(app.game)
         app.game.combat_move(ships[0].id, 7, 4)
         app.go("combat")
         app.render()
@@ -609,6 +614,7 @@ class GuardianUITests(unittest.TestCase):
         app = self.app
         app.game, guardian, _ = encounter("crystal_guardian", ("frigate",)*3)
         app.go("combat")
+        close_formation(app.game)
         app.game.combat_move(app.game.combat.fleet(PLAYER)[0].id, 7, 4)
         app.game.combat_end_turn()
         app.time = 10

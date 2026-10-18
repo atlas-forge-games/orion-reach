@@ -22,9 +22,15 @@ class CombatAnimation:
     weapons: tuple[str, ...] = ()
     missed: bool = False
     escorts: tuple = ()
+    flights: tuple = ()
+    launched: bool = False
 
     @classmethod
     def from_action(cls, battle, action):
+        if action.get("flights"):
+            flights = tuple(action["flights"])
+            return cls("ordnance", 0, tuple(p for flight in flights for p in (flight["start"], flight["end"])),
+                       flights=flights)
         if action["kind"] == "move":
             return cls("move", action["ship_id"], tuple(action["path"]))
         if action["kind"] == "fire":
@@ -32,6 +38,12 @@ class CombatAnimation:
             result = cls("fire", ship.id, (ship.position, target.position), target.id,
                        ship.weapon, action["damage"], target.hull == 0,
                        weapons=tuple(action.get("weapons", dict.fromkeys(w for w, _ in ship.volley(target)))), missed=action.get("missed", False))
+            result.launched = any(BEAMS[w].projectile for w in result.weapons)
+            instant = tuple(w for w in result.weapons if not BEAMS[w].projectile)
+            if result.launched and not instant:
+                result.kind, result.missed, result.destroyed = "launch_projectile", False, False
+            else:
+                result.weapons = instant
             if any(BEAMS[w].projectile or BEAMS[w].drone for w in result.weapons or (result.weapon,)):
                 result.escorts = tuple(battle.ship(i).position for i in action.get("support_ids", ()) if battle.ship(i))
             return result
@@ -39,6 +51,10 @@ class CombatAnimation:
 
     @property
     def duration(self):
+        if self.kind == "ordnance":
+            return 1.35 if any(f["destroyed"] for f in self.flights) else .85
+        if self.kind == "launch_projectile":
+            return .4
         if self.kind == "move":
             return .12+.16*(len(self.path)-1)
         return 1.3 if self.destroyed else .75
@@ -54,7 +70,39 @@ class CombatAnimation:
         a, b = self.path[index:index+2]
         return a[0]+(b[0]-a[0])*(step-index), a[1]+(b[1]-a[1])*(step-index)
 
-    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0):
+    def pre_impact_damage(self, target_id):
+        if self.kind == "fire" and self.target_id == target_id and self.elapsed < .18:
+            return self.damage
+        if self.kind == "ordnance" and self.elapsed < .4:
+            impacts = [f for f in self.flights if f["impact"] and f["target_id"] == target_id]
+            if impacts:
+                return sum(f["damage"] for f in impacts)
+        return None
+
+    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0, anchors=None):
+        if self.kind == "ordnance":
+            for flight in self.flights:
+                start, end = project(flight["start"]), project(flight["end"])
+                anchors = anchors or {}
+                if flight.get("launch") and flight["source_id"] in anchors:
+                    start = anchors[flight["source_id"]]
+                if flight["impact"] and flight["target_id"] in anchors:
+                    end = anchors[flight["target_id"]]
+                ratio = min(1, self.elapsed/.4)
+                head = tuple(round(a+(b-a)*ratio) for a, b in zip(start, end))
+                shade = BEAMS[flight["weapon"]].color
+                if self.elapsed < .4:
+                    tail = tuple(round(a+(b-a)*max(0, ratio-.13)) for a, b in zip(start, end))
+                    pg.draw.line(surface, shade, tail, head, 3)
+                    pg.draw.circle(surface, INK, head, 3)
+                elif flight["impact"]:
+                    hit = CombatAnimation("fire", flight["source_id"], (flight["start"], flight["end"]),
+                                          flight["target_id"], flight["weapon"], flight["damage"],
+                                          flight["destroyed"], elapsed=self.elapsed-.4+.18,
+                                          missed=flight["missed"], escorts=flight["escorts"])
+                    hit.draw(surface, project, origin=end, target=end,
+                             explosion_scale=.35 if flight["target_id"] in anchors else explosion_scale)
+            return
         if self.kind == "move":
             points = [project(p) for p in self.path]
             if len(points) > 1:
@@ -62,6 +110,14 @@ class CombatAnimation:
             return
         origin = project(self.path[0]) if origin is None else origin
         target = project(self.path[1]) if target is None else target
+        if self.kind == "launch_projectile":
+            shade = BEAMS[(self.weapons or (self.weapon,))[0]].color
+            reach = min(.13, self.elapsed*.35)
+            head = tuple(round(a+(b-a)*reach) for a, b in zip(origin, target))
+            pg.draw.line(surface, shade, origin, head, 3)
+            pg.draw.circle(surface, INK, head, 3)
+            text(surface, "LAUNCHED", (origin[0]-20, origin[1]-34), 10, shade, "mono")
+            return
         if self.missed:
             target = (target[0]+18, target[1]-25)
         color = BEAMS[(self.weapons or (self.weapon,))[0]].color

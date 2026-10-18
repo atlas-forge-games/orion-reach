@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.72.2
+# Orion Reach — Python prototype 0.73.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game. Optional race-specific victories give each
@@ -7,6 +7,24 @@ of the thirteen civilizations its own path to victory.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.73: tactical approach, torpedo travel and ship inspection
+
+Fleets deploy 17 cells apart on a wider battlefield, giving ships time to
+approach and form their screens. Torpedoes and missiles are persistent homing
+projectiles: they move **three cells per round**, with damage applied only
+when they arrive. Beams still hit immediately. Escort positioning and shields
+are checked at impact, so movement during the flight matters.
+
+In `combat_simulator.py`, **right-click any friendly or enemy ship** to inspect
+its hull, shields, weapons, equipment and incoming/outgoing ordnance. The
+panel pauses combat and includes estimated arrival times. Close it or press
+Esc to resume. Individual ship orders and fleet support still work normally.
+
+Campaign saves now use format **52**, including projectiles in flight. Older
+saves remain readable; existing tactical positions are preserved. See the
+[combat travel rules](docs/combat-projectiles.md) and
+[simulator guide](docs/combat-simulator.md).
 
 ## New in v0.72.2: Xenonflora artwork
 

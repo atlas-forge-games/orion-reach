@@ -23,7 +23,7 @@ from orion.model import GameState, PLAYER, RIVAL, RuleError, Ship, SaveError
 from orion.research import TECHNOLOGIES
 from orion.storage import Storage
 from scenarios import empty_fleet_game
-from test_arsenal import campaign, discover, duel
+from test_arsenal import campaign, discover, duel, cycle
 
 
 class HullModuleTests(unittest.TestCase):
@@ -85,7 +85,11 @@ class HullModuleTests(unittest.TestCase):
                                      ('heavy_beam',90,1),('mirv',63,3),('disruptor',120,1)):
             with self.subTest(weapon=weapon):
                 game = duel([weapon], defense=('laser','reinforced_armor'), fit_version=2)
-                self.assertEqual(game.combat_fire(1,2),damage)
+                before = game.combat.ship(2).hull
+                self.assertEqual(game.combat_fire(1,2),0 if combat.BEAMS[weapon].projectile else damage)
+                if combat.BEAMS[weapon].projectile:
+                    cycle(game)
+                self.assertEqual(before-game.combat.ship(2).hull,damage)
                 self.assertEqual(game.combat.shots_fired,shots)
                 self.assertEqual(GameState.from_dict(game.to_dict()),game)
         game = duel(['ion'], defense=('laser','shield','shield'), fit_version=2)

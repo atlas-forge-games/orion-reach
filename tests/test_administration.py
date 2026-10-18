@@ -242,7 +242,7 @@ class AdministrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             restored, metadata = storage.load(storage.save(self.game))
-        self.assertEqual(metadata["version"], 51)
+        self.assertEqual(metadata["version"], 52)
         self.assertEqual(restored.system_integration, self.game.system_integration)
         self.assertEqual(restored.strain_report(restored.planet_at(self.ids[0], 0)), self.game.strain_report(colony))
 
