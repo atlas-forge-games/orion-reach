@@ -349,7 +349,8 @@ class TacticalAnimationTests(unittest.TestCase):
         self.app.render()
         self.assertEqual(self.app.combat_camera_row, 25-VISIBLE_ROWS)
         self.assertTrue(all(BOARD.contains(b.rect) for b in self.app.buttons if b.key.startswith("combat_ship_")))
-        self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=2, x=0))
+        self.app.mouse = BOARD.center
+        self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=2, x=0, mod=pg.KMOD_SHIFT))
         self.assertEqual(self.app.combat_camera_row, 21-VISIBLE_ROWS)
         self.assertEqual(self.app.game.to_dict(), before)
 

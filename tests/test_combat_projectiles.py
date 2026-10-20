@@ -27,17 +27,17 @@ class ProjectileTests(unittest.TestCase):
         self.assertFalse(combat.in_range(a, b))
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
-    def test_three_round_flight_and_reload_are_identical_to_uninterrupted_play(self):
+    def test_two_round_flight_and_reload_are_identical_to_uninterrupted_play(self):
         game = duel(['torpedo']); game.combat.ship(2).x = 13
         before = game.combat.ship(2).hull
         self.assertEqual(game.combat_fire(1, 2), 0)
         self.assertEqual(game.combat.shots_fired, 1)
         loaded = GameState.from_dict(game.to_dict())
-        for tick in range(1, 4):
+        for tick in range(1, 3):
             cycle(game); cycle(loaded)
             self.assertEqual(game, loaded)
-            self.assertEqual(game.combat.ship(2).hull, before if tick < 3 else before-10)
-            self.assertEqual(len(game.combat.projectiles), int(tick < 3))
+            self.assertEqual(game.combat.ship(2).hull, before if tick < 2 else before-10)
+            self.assertEqual(len(game.combat.projectiles), int(tick < 2))
             loaded = GameState.from_dict(loaded.to_dict())
         self.assertEqual(game.combat.shots_fired, 1)
 
@@ -114,15 +114,28 @@ class ProjectileTests(unittest.TestCase):
         self.assertFalse(game.combat.projectiles)
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
-    def test_fuel_expires_after_six_flight_steps(self):
-        attacker = unit(1, 'destroyer', pos=(5, 4), modules=('torpedo',))
-        target = unit(2, 'scout', 'rival', (13, 4))
-        game = arena(attacker, target); game.combat.accuracy = False
-        combat.fire(game, 1, 2)
-        for point in ((18, 4), (23, 7), (23, 12), (18, 12), (13, 12), (8, 12)):
-            combat.end_turn(game)
-            combat.move(game, 2, *point, "rival")
-            combat.end_turn(game, "rival")
+    def test_five_cell_torpedo_catches_a_retreating_warship(self):
+        game = duel(['torpedo'], enemy_kind='battleship')
+        target = game.combat.ship(2); target.x = 13
+        game.combat_fire(1, 2)
+        before = target.hull
+        for tick in range(3):
+            game.combat_end_turn()
+            game.combat_move(2, target.x+2, target.y, 'rival')
+            game.combat_end_turn('rival')
+            if tick < 2:
+                self.assertEqual(target.hull, before)
+                self.assertEqual(game.combat.projectiles[0].x, 10+5*tick)
+        self.assertEqual(target.hull, before-10)
+        self.assertFalse(game.combat.projectiles)
+
+    def test_remaining_fuel_is_preserved_on_reload_and_expires_on_sixth_advance(self):
+        game = duel(['torpedo']); game.combat.ship(2).x = 13
+        game.combat_fire(1, 2)
+        game.combat.projectiles[0].age = 5
+        game = GameState.from_dict(game.to_dict())
+        target = game.combat.ship(2)
+        cycle(game)
         self.assertEqual(target.hull, target.initial_hull)
         self.assertFalse(game.combat.projectiles)
         self.assertIn('ran out of fuel', game.combat.log[-1])

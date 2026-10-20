@@ -102,7 +102,7 @@ class PlanetaryCombatTests(unittest.TestCase):
                     self.assertTrue(button.rect.collidepoint(arguments[key]))
                 self.assertEqual(arguments["explosion_scale"], .35)
                 self.assertEqual(target.hull, 40)
-        for _ in range(6):
+        for _ in range(4):
             owner = self.game.combat.active_owner
             flights = self.game.combat_end_turn(owner)
             self.app.after_combat_action({"kind": "end_turn", "flights": flights})
@@ -114,7 +114,7 @@ class PlanetaryCombatTests(unittest.TestCase):
         population, owner = self.mars.population, self.mars.owner
         self.click("combat_fire")
         self.assertEqual(self.game.combat.status, "active")
-        for _ in range(6):
+        for _ in range(4):
             flights = self.game.combat_end_turn(self.game.combat.active_owner)
         self.app.after_combat_action({"kind": "end_turn", "flights": flights})
         self.assertEqual(self.game.combat.status, "player_victory")

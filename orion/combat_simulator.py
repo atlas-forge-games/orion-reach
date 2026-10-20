@@ -319,7 +319,8 @@ class CombatSimulator(App):
                      "Combat upgrades set each side's passive research bonuses. The same seed and orders reproduce the same shots. "
                      "A toggles automatic control, P pauses, R restarts, E ends your turn and N selects your next ship. "
                      "Right-click either fleet's ships for weapons, hull, shields and incoming ordnance. "
-                     "Torpedoes travel three cells per round and apply damage on arrival. "
+                     "Torpedoes travel five cells per round and apply damage on arrival. "
+                     "Mouse wheel or +/- zooms the battlefield; 0 resets. Middle-drag or Shift+arrows pans. "
                      "F5 saves the fleet setup; Load scenario restores it. Battles use the loaded balance profile.",
                      "Back to simulator", lambda: None)
 
@@ -357,7 +358,7 @@ class CombatSimulator(App):
 
     def handle_event(self, event):
         if event.type == pg.MOUSEBUTTONDOWN and event.button == 3 and self.screen == "combat" and not self.dialog:
-            from .combat_view import BOARD, CELL, cell_center
+            from .combat_camera import BOARD, view
             point = self.logical_pos(event.pos)
             if BOARD.collidepoint(point):
                 for ship in reversed(self.game.combat.ships):
@@ -366,8 +367,7 @@ class CombatSimulator(App):
                     effect = self.combat_animation
                     position = (effect.moving_position() if effect and effect.kind == "move" and effect.ship_id == ship.id
                                 else ship.position)
-                    center = cell_center(position, self.combat_camera_row)
-                    if pg.Rect(center[0]-CELL//2, center[1]-CELL//2, CELL, CELL).collidepoint(point):
+                    if view(self).cell_rect(position).clip(BOARD).collidepoint(point):
                         self.inspect_ship(ship.id)
                         break
             return

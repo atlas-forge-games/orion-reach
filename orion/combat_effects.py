@@ -79,7 +79,7 @@ class CombatAnimation:
                 return sum(f["damage"] for f in impacts)
         return None
 
-    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0, anchors=None):
+    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0, anchors=None, planet_explosion_scale=.35):
         if self.kind == "ordnance":
             for flight in self.flights:
                 start, end = project(flight["start"]), project(flight["end"])
@@ -101,7 +101,7 @@ class CombatAnimation:
                                           flight["destroyed"], elapsed=self.elapsed-.4+.18,
                                           missed=flight["missed"], escorts=flight["escorts"])
                     hit.draw(surface, project, origin=end, target=end,
-                             explosion_scale=.35 if flight["target_id"] in anchors else explosion_scale)
+                             explosion_scale=planet_explosion_scale if flight["target_id"] in anchors else explosion_scale)
             return
         if self.kind == "move":
             points = [project(p) for p in self.path]

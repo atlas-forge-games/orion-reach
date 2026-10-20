@@ -5,7 +5,7 @@ import math
 
 from .weapons import BEAMS
 
-SPEED = 3
+SPEED = 5
 MAX_FLIGHT_ROUNDS = 6
 
 

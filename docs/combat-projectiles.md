@@ -13,11 +13,11 @@ projectile weapons create independent homing warheads. This covers torpedoes,
 fusion torpedoes, MIRVs, antimatter torpedoes, bomber torpedoes and planetary
 missiles. MIRVs retain their separate hit rolls and payloads.
 
-Each projectile advances three cells toward its target's current position at
+Each projectile advances five cells toward its target's current position at
 the start of its launching side's next turn, once per tactical round. Both
 sides get a response turn before an opposing launch can hit. Estimated arrival
-is the remaining straight-line distance divided by three, rounded up. An
-8-cell shot takes three advances if its target stays put. Range still limits
+is the remaining straight-line distance divided by five, rounded up. An
+8-cell shot takes two advances if its target stays put. Range still limits
 launches; moving beyond the original firing range does not cancel a flight.
 
 The launch fixes the hit chance and deterministic roll, including range,
@@ -26,6 +26,8 @@ and travel time, rather than rerolling accuracy. Shields, point defense and
 nearby escort coverage are evaluated when the warhead arrives. Shield
 regeneration and repairs still occur on the owner's usual turn schedule.
 Cooldowns begin at launch and work as before. No extra player orders are needed.
+Five cells per round is faster than most warships; scouts, drones, diagonal
+maneuvers and some thruster-equipped designs can still match or exceed it.
 
 Warheads run out of fuel after six advances if they have not arrived. They
 continue after their launcher is destroyed while the battle remains active.
@@ -44,6 +46,14 @@ incoming/outgoing ordnance. Close or Esc restores the prior selection and
 control mode. Inspecting a moving ship pauses its animation at the current
 position. Campaign and simulator battles share the same combat rules.
 
+The campaign and simulator both support 50–300% battlefield zoom. Use the
+mouse wheel over the board or +/−, and middle-drag or Shift + arrows to pan.
+The percentage button, 0 and Home restore 100%; N brings the next ship into
+view. Shift + wheel and Page Up / Page Down scroll vertically. The fixed
+sidebar keeps orders and ship information readable. The camera changes no
+positions, ranges, actions or simulation time, and is not part of campaign
+saves. Starting/loading a battle or rematching resets the view.
+
 ## Save continuity
 
 Campaign save format 52 includes projectile positions, age, payload, source,
@@ -53,3 +63,6 @@ those versions already resolved their missile damage instantly. Their
 existing tactical positions are preserved; new battles use wider deployment.
 Simulator scenario files continue to describe initial setups, not active
 battles, and their format is unchanged.
+
+As of v0.73.1, loaded in-flight ordnance uses the five-cell speed on its next
+advance. Its existing position, remaining fuel and locked hit roll remain.

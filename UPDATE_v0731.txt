@@ -1,0 +1,89 @@
+ORION REACH v0.73.1 — COMBAT ZOOM AND FASTER TORPEDOES
+
+INSTALL
+Close the game. Extract this ZIP into the existing v0.73.0 game folder (the
+folder containing main.py), merging folders and replacing the listed files.
+This is an incremental update and requires the previous game files/assets.
+No files need deleting. Start with python main.py or python combat_simulator.py.
+
+TORPEDO SPEED
+Torpedoes and missiles now travel five cells per round. A stationary target
+eight cells away is reached after two advances. The enemy still gets a turn
+to respond; shields and escorts apply on arrival. Existing hit rolls, launch
+ranges, weapon cooldowns and six-advance fuel limits are unchanged.
+Five cells is faster than most warships, but scouts, drones, diagonal movement
+and some thruster-equipped designs can match or exceed it.
+
+COMBAT CAMERA — CAMPAIGN AND SIMULATOR
+- Mouse wheel over the battlefield: zoom around the cursor (50–300%).
+- + / minus keys or buttons: zoom around the view center.
+- Middle mouse drag: pan in any direction.
+- Shift + arrow keys or bottom arrow buttons: pan.
+- Shift + wheel or Page Up / Page Down: scroll vertically.
+- Horizontal wheel: scroll horizontally.
+- Percentage button, 0 or Home: return to 100% and reveal the selected ship.
+- N: select and reveal the next ready ship, horizontally and vertically.
+The sidebar stays fixed. Ships, movement cells, weapons, planets, projectiles,
+support ranges and simulator inspection share the same camera. Zoom/pan spend
+no combat actions and do not change ranges or time. Click targets are clipped
+to the battlefield, and stale targets are cleared when the camera changes.
+Right-click inspection pauses as before and works at every magnification.
+
+SAVES
+Save format remains 52. Loaded projectiles retain their positions, fuel age and
+locked rolls, and use the new five-cell speed on their next advance. The camera
+is presentation-only; new battles, loaded campaigns and rematches start at 100%.
+Scenario file format remains unchanged.
+
+VERIFICATION
+240 targeted tests passed: 121 core combat/simulator/UI tests, 7 new camera
+interaction tests, 93 weapon/hull/guardian tests, and 19 galaxy-camera/help tests.
+The tests cover scaled input, cursor anchoring, camera limits, panning, resets,
+partial-cell click targets, movement, targeting, paused inspection, animations,
+planetary anchors, in-flight saves and the faster projectile pursuit.
+Real game screenshots at 50%, 150% and 300% were visually checked.
+No commit or push has been made.
+
+REFERENCE
+    docs/combat-projectiles.md
+    docs/combat-simulator.md
+    tools/preview_combat_zoom.py
+
+FILES IN THIS UPDATE
+    README.md
+    UPDATE_v0731.txt
+    docs/combat-projectiles.md
+    docs/combat-simulator.md
+    orion/__init__.py
+    orion/app.py
+    orion/combat_camera.py
+    orion/combat_effects.py
+    orion/combat_projectiles.py
+    orion/combat_simulator.py
+    orion/combat_view.py
+    orion/encyclopedia.py
+    screenshots/combat_ordnance_inspector.png
+    screenshots/combat_ship_inspector.png
+    screenshots/combat_torpedoes.png
+    screenshots/combat_wide_deployment.png
+    screenshots/combat_zoom_closeup.png
+    screenshots/combat_zoom_detail.png
+    screenshots/combat_zoom_overview.png
+    tests/test_combat_planets.py
+    tests/test_combat_projectiles.py
+    tests/test_combat_zoom.py
+    tests/test_tactical_combat.py
+    tools/preview_combat_zoom.py
+
+COMMIT COMMANDS
+Run these from your game repository after extracting the update:
+
+git add -- README.md UPDATE_v0731.txt docs/combat-projectiles.md docs/combat-simulator.md
+git add -- orion/__init__.py orion/app.py orion/combat_camera.py orion/combat_effects.py
+git add -- orion/combat_projectiles.py orion/combat_simulator.py orion/combat_view.py orion/encyclopedia.py
+git add -- screenshots/combat_ordnance_inspector.png screenshots/combat_ship_inspector.png screenshots/combat_torpedoes.png screenshots/combat_wide_deployment.png
+git add -- screenshots/combat_zoom_closeup.png screenshots/combat_zoom_detail.png screenshots/combat_zoom_overview.png tests/test_combat_planets.py
+git add -- tests/test_combat_projectiles.py tests/test_combat_zoom.py tests/test_tactical_combat.py tools/preview_combat_zoom.py
+git diff --cached --stat
+git commit -m "Add combat zoom and increase torpedo travel speed"
+git status

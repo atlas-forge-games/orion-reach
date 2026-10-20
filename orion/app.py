@@ -38,7 +38,8 @@ from .personalities import personality
 from .research_view import draw_research, draw_technology_info
 from .research import BRANCHES, TECHNOLOGIES, branch_tiers
 from .combat import retreat_destination
-from .combat_view import VISIBLE_ROWS, draw_combat
+from .combat_view import draw_combat
+from . import combat_camera
 from .combat_effects import CombatAnimation
 from .victory import CONDITIONS, colonies
 from .victory_view import draw_objectives, draw_result
@@ -1670,6 +1671,9 @@ class App:
         self.combat_ship_id=None
         self.combat_target_id=None
         self.combat_camera_row=0
+        self.combat_camera_col=0
+        self.combat_zoom=1.0
+        self.combat_drag=None
         self.combat_animation=None
         self.combat_last_update=self.time
         self.combat_ai_due=self.time+.8
@@ -1685,7 +1689,7 @@ class App:
         if not any(s.id==self.combat_target_id for s in targets):
             self.combat_target_id=targets[0].id if targets else None
         if battle.active_owner==PLAYER and self.combat_ship_id is not None:
-            self.reveal_combat_row(battle.ship(self.combat_ship_id).y)
+            combat_camera.reveal(self, (battle.ship(self.combat_ship_id).position,))
 
     def combat_input_ready(self):
         return (self.screen=="combat" and not self.dialog and not self.combat_auto and self.game is not None
@@ -1704,14 +1708,14 @@ class App:
             self.sync_combat_selection()
         self.focus="combat_auto"
 
-    def pan_combat(self,delta):
-        last=max(0,self.game.combat.rows-VISIBLE_ROWS)
-        self.combat_camera_row=min(last,max(0,self.combat_camera_row+delta))
+    def pan_combat(self,delta,dx=0):
+        combat_camera.pan(self, dx=dx, dy=delta)
 
-    def reveal_combat_row(self,row):
-        if not self.combat_camera_row<=row<self.combat_camera_row+VISIBLE_ROWS:
-            last=max(0,self.game.combat.rows-VISIBLE_ROWS)
-            self.combat_camera_row=min(last,max(0,row-VISIBLE_ROWS//2))
+    def zoom_combat(self,delta,anchor=None):
+        combat_camera.zoom(self, delta, anchor)
+
+    def reset_combat_camera(self):
+        combat_camera.reset(self)
 
     def next_combat_ship(self):
         if not self.combat_input_ready():
@@ -1721,7 +1725,7 @@ class App:
             identifiers=[s.id for s in ready]
             index=identifiers.index(self.combat_ship_id) if self.combat_ship_id in identifiers else -1
             self.combat_ship_id=identifiers[(index+1)%len(identifiers)]
-            self.reveal_combat_row(self.game.combat.ship(self.combat_ship_id).y)
+            combat_camera.reveal(self, (self.game.combat.ship(self.combat_ship_id).position,))
 
     def engage_request(self,system_id,target=None):
         opponents=self.game.opponents_at(system_id)
@@ -1778,10 +1782,7 @@ class App:
         self.combat_animation=CombatAnimation.from_action(self.game.combat,event)
         self.combat_last_update=self.time
         if self.combat_animation:
-            rows=[point[1] for point in self.combat_animation.path]
-            if min(rows)<self.combat_camera_row or max(rows)>=self.combat_camera_row+VISIBLE_ROWS:
-                last=max(0,self.game.combat.rows-VISIBLE_ROWS)
-                self.combat_camera_row=int(min(last,max(0,(min(rows)+max(rows))//2-VISIBLE_ROWS//2)))
+            combat_camera.reveal(self, self.combat_animation.path)
         else:
             self.sync_combat_selection()
         self.combat_ai_due=self.time+.4
@@ -2224,6 +2225,8 @@ class App:
         if event.type==pg.MOUSEMOTION:
             self.mouse=self.logical_pos(event.pos)
             self.keyboard_mode=False
+        if combat_camera.handle_input(self,event):
+            return
         if handle_map_input(self,event,MAP):
             return
         if event.type==pg.MOUSEBUTTONUP and event.button==3:
@@ -2288,8 +2291,6 @@ class App:
                 self.change_info_page(-1 if event.y>0 else 1)
             else:
                 scroll_article(self,-event.y*72)
-        if event.type==pg.MOUSEWHEEL and self.screen=="combat" and not self.dialog and event.y:
-            self.pan_combat(-event.y*2)
         if event.type==pg.TEXTINPUT and self.field and not self.dialog:
             current=getattr(self,self.field)
             if self.select_all:
