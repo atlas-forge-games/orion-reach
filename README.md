@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.75.1
+# Orion Reach — Python prototype 0.75.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -9,6 +9,8 @@ in this project are original; no Master of Orion artwork or game data is include
 
 ## New in v0.75: physical hull footprints, firing lanes and combat sound
 
+- v0.75.2 renders ships directly from their original high-resolution artwork
+  and shows torpedo/missile bodies and exhaust at their current flight positions.
 - v0.75.1 fixes movement highlights: the reachable area covers full hulls,
   and hovering marks every square of the exact destination footprint.
 - Ship shields stop beams; torpedoes and missiles bypass them. Point defense

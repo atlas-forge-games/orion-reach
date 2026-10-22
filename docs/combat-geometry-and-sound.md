@@ -69,6 +69,17 @@ Guided ordnance is not subject to the direct-fire line rule. Its existing
 homing travel remains an abstraction rather than physical obstacle routing.
 Phased beams can penetrate shields, but cannot pass through ships.
 
+## Graphics at high zoom
+
+From v0.75.2, large ships use the original high-resolution artwork at their
+final screen size. The renderer avoids enlarging small intermediate icons,
+so hull panels and weapons remain detailed at 300% zoom. Procedural guardians
+and missing-art fallbacks are drawn at a suitably large resolution too.
+
+Torpedoes and missiles have distinct silhouettes and exhaust trails. Their
+graphics follow their actual position between turns and their interpolated
+position during a flight animation. See [ordnance](combat-projectiles.md).
+
 ## Sound
 
 Original synthesized cues distinguish ordinary beams, heavy beams, missile

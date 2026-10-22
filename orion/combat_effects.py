@@ -6,7 +6,7 @@ import math
 import pygame as pg
 
 from .combat import BEAMS
-from . import combat_geometry as geometry
+from . import combat_geometry as geometry, projectile_art
 from .ui import INK, text
 
 
@@ -117,7 +117,8 @@ class CombatAnimation:
                 return sum(f["damage"] for f in impacts)
         return None
 
-    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0, anchors=None, planet_explosion_scale=.35):
+    def draw(self, surface, project, *, origin=None, target=None, explosion_scale=1.0, anchors=None,
+             planet_explosion_scale=.35, projectile_zoom=1.0, live_projectile_ids=None):
         if self.kind == "ordnance":
             for flight in self.flights:
                 start, end = project(flight["start"]), project(flight["end"])
@@ -128,18 +129,24 @@ class CombatAnimation:
                     end = anchors[flight["target_id"]]
                 ratio = min(1, self.elapsed/.4)
                 head = tuple(round(a+(b-a)*ratio) for a, b in zip(start, end))
-                shade = BEAMS[flight["weapon"]].color
                 if self.elapsed < .4:
-                    tail = tuple(round(a+(b-a)*max(0, ratio-.13)) for a, b in zip(start, end))
-                    pg.draw.line(surface, shade, tail, head, 3)
-                    pg.draw.circle(surface, INK, head, 3)
+                    projectile_art.draw(surface, head, (end[0]-start[0], end[1]-start[1]),
+                                        flight["weapon"], zoom=projectile_zoom,
+                                        phase=self.elapsed*30+flight["id"])
                 elif flight["impact"]:
                     hit = CombatAnimation("fire", flight["source_id"], (flight["start"], flight["end"]),
                                           flight["target_id"], flight["weapon"], flight["damage"],
                                           flight["destroyed"], elapsed=self.elapsed-.4+.18,
                                           missed=flight["missed"], escorts=flight["escorts"])
                     hit.draw(surface, project, origin=end, target=end,
-                             explosion_scale=planet_explosion_scale if flight["target_id"] in anchors else explosion_scale)
+                             explosion_scale=planet_explosion_scale if flight["target_id"] in anchors else explosion_scale,
+                             projectile_zoom=projectile_zoom)
+                elif live_projectile_ids is None or flight["id"] in live_projectile_ids:
+                    # Non-impacting warheads stay visible at the end of the
+                    # movement segment while the rest of the salvo resolves.
+                    projectile_art.draw(surface, end, (end[0]-start[0], end[1]-start[1]),
+                                        flight["weapon"], zoom=projectile_zoom,
+                                        phase=self.elapsed*30+flight["id"])
             return
         if self.kind == "move":
             points = [project(p) for p in self.path]
@@ -150,10 +157,11 @@ class CombatAnimation:
         target = project(self.path[1]) if target is None else target
         if self.kind == "launch_projectile":
             shade = BEAMS[(self.weapons or (self.weapon,))[0]].color
-            reach = min(.13, self.elapsed*.35)
-            head = tuple(round(a+(b-a)*reach) for a, b in zip(origin, target))
-            pg.draw.line(surface, shade, origin, head, 3)
-            pg.draw.circle(surface, INK, head, 3)
+            # The live projectile is already drawn at its saved position.
+            # Only flash the launcher here; never show a second, false flight.
+            if self.elapsed < .18:
+                pg.draw.circle(surface, shade, origin, max(2, round((3+self.elapsed*28)*projectile_zoom)),
+                               max(1, round(projectile_zoom)))
             text(surface, "LAUNCHED", (origin[0]-20, origin[1]-34), 10, shade, "mono")
             return
         if self.missed:
@@ -176,12 +184,9 @@ class CombatAnimation:
                 tip = (round(start[0]+(target[0]-start[0])*reach),
                        round(start[1]+(target[1]-start[1])*reach))
                 if spec.projectile:
-                    for warhead in range(spec.shots):
-                        spread = (warhead-(spec.shots-1)/2)*14*math.sin(reach*math.pi)
-                        head = (tip[0], round(tip[1]+spread))
-                        tail = (round(head[0]+(start[0]-head[0])*.08), round(head[1]+(start[1]-head[1])*.08))
-                        pg.draw.line(surface, shade, tail, head, 4)
-                        pg.draw.circle(surface, INK, head, 4)
+                    if origin != target and age < .18:
+                        projectile_art.draw(surface, tip, (target[0]-start[0], target[1]-start[1]),
+                                            weapon, zoom=projectile_zoom, phase=age*30)
                 else:
                     self.draw_beam(surface, weapon, start, tip, shade, age)
         if age >= .18:

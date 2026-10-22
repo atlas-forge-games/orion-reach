@@ -1,0 +1,33 @@
+ORION REACH v0.75.2 — SHIP DETAIL AND VISIBLE ORDNANCE
+
+INSTALL
+Close the game. Extract this ZIP over your installed v0.75.1 game, into the
+folder containing main.py. Merge folders and replace the included files.
+Keep the new orion/projectile_art.py module with the updated combat files.
+This incremental update uses your existing full-resolution ship PNGs.
+No dependency or save-format change is required.
+
+CHANGES
+- Ships scale directly from the original high-resolution illustrations.
+  The old small-icon enlargement step caused the blur at high combat zoom.
+- Procedural guardians and missing-art fallbacks render at larger sizes too.
+- Torpedoes have armoured bodies and coloured warheads. Defense missiles
+  have pointed bodies and fins. Both have exhaust and face their flight path.
+- Warheads remain visible at their current positions between turns.
+  During movement they follow the interpolated flight path and remain at
+  the endpoint while the rest of the salvo animation finishes.
+- Impacted or fuel-expired projectiles disappear after their final segment.
+  Launch flashes no longer show a second projectile ahead of its real position.
+
+VALIDATION
+55 targeted tests passed in 5.700 seconds with Python 3.12.14 and
+pygame-ce 2.5.8 using dummy SDL display/audio drivers. The checks cover
+real launch/advance/impact rendering, projectile persistence, expiry,
+rendering without state changes, zoom, tactical orders, planetary batteries,
+sound cues and existing support presentation. Full-suite discovery was not run.
+
+Command:
+PYTHONPATH=tests SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1 python3 -m unittest test_projectile_art test_combat_zoom test_combat_projectiles test_tactical_combat test_combat_planets test_combat_sounds test_fleet_support.SupportPresentationTests -q
+
+Real simulator screenshots at 200% and 300% zoom were visually inspected.
+Reproduce them with: python3 tools/preview_combat_detail.py

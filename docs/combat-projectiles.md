@@ -40,6 +40,15 @@ Visible projectiles remain between turns. Selecting their launcher or target
 shows estimated arrival beside them. Travel and impact animations only
 present damage already resolved by the rules; they cannot apply it twice.
 
+From v0.75.2, missiles have pointed bodies and fins; torpedoes have broader
+armoured bodies with weapon-coloured warheads. Both have exhaust trails,
+scale with zoom, and face their flight direction. Their bodies are centred
+on the saved position between turns and the interpolated position while an
+advance is animated. Non-impacting warheads remain visible at the end of
+their movement segment while the salvo animation finishes. Impacted or
+expired warheads disappear when that segment completes. Launch flashes
+do not move a second visual projectile ahead of its actual position.
+
 In the standalone simulator, right-click either side's ship to open a paused
 inspector. It shows condition, defenses, weapon details, fitted equipment and
 incoming/outgoing ordnance. Close or Esc restores the prior selection and

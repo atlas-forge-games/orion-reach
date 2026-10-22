@@ -8,9 +8,9 @@ import random
 import pygame as pg
 
 from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination, interception
-from . import combat_planets, fleet_support, combat_projectiles, combat_camera, flagships, combat_geometry as geometry
+from . import combat_planets, fleet_support, combat_projectiles, combat_camera, flagships, projectile_art, combat_geometry as geometry
 from .combat_camera import CELL, VISIBLE_ROWS, BOARD
-from .fleet_art import ship_icon
+from .fleet_art import ship_icon, load_ship_art, ship_sprite
 from .model import PLAYER, RIVAL
 from .monsters import MONSTER, MONSTERS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
@@ -24,16 +24,31 @@ SUPPORT_COLORS = {"escort_interception": (95, 236, 205), "command_accuracy": (10
 
 @lru_cache(maxsize=256)
 def tactical_sprite(kind, color, facing, cell_size=CELL, footprint=(1, 1)):
-    """Fit actual art bounds to class size; preserve a full-cell click target."""
-    art = pg.Surface((192, 192), pg.SRCALPHA)
-    ship_icon(art, (96, 96), 1.0, color, kind=kind, facing=facing)
-    bounds = art.get_bounding_rect(min_alpha=16)
-    if not bounds.w or not bounds.h:
-        return art
+    """Scale original artwork directly to the zoomed hull, never enlarge an icon."""
     length = SHIP_LENGTHS.get(kind, 50)*cell_size/56
     width, height = footprint
     max_width = length if width == 1 else (width-.2)*cell_size
     max_height = min(38*cell_size/CELL, length) if height == 1 else (height-.5)*cell_size
+    source = load_ship_art(kind)
+    if source is not None:
+        sw, sh = source.get_size()
+        oriented_w, oriented_h = (sh, sw) if facing else (sw, sh)
+        ratio = min(max_width/oriented_w, max_height/oriented_h)
+        sprite = ship_sprite(kind, max(1, round(sh*ratio)), facing).copy()
+        # Paint ownership lights at screen resolution after the single rescale.
+        if kind != "mothership":
+            cx, cy = sprite.get_rect().center
+            marker = (round(cx-sprite.get_width()*.38*facing), cy) if facing else (cx, round(sprite.get_height()*.88))
+            pg.draw.circle(sprite, color, marker, max(1, round(1.5*cell_size/CELL)))
+        return sprite
+    # Procedural guardians and missing-asset fallbacks are drawn large first.
+    paint_scale = max(1.0, 2*max(max_width, max_height)/60)
+    edge = math.ceil(100*paint_scale)
+    art = pg.Surface((edge, edge), pg.SRCALPHA)
+    ship_icon(art, (edge//2, edge//2), paint_scale, color, kind=kind, facing=facing)
+    bounds = art.get_bounding_rect(min_alpha=16)
+    if not bounds.w or not bounds.h:
+        return pg.Surface((1, 1), pg.SRCALPHA)
     ratio = min(max_width/bounds.w, max_height/bounds.h)
     return pg.transform.smoothscale(art.subsurface(bounds),
                                    (max(1, round(bounds.w*ratio)), max(1, round(bounds.h*ratio))))
@@ -278,10 +293,8 @@ def draw_battlefield(app):
             continue
         shade = BEAMS[shot.weapon].color
         target_center = geometry.nearest(target, shot.position)
-        angle = math.atan2(target_center[1]-shot.y, target_center[0]-shot.x)
-        tail = (round(position[0]-math.cos(angle)*10*scale), round(position[1]-math.sin(angle)*10*scale))
-        pg.draw.line(surface, shade, tail, position, size(3))
-        pg.draw.circle(surface, INK, position, size(3))
+        projectile_art.draw(surface, position, (target_center[0]-shot.x, target_center[1]-shot.y),
+                            shot.weapon, zoom=scale, phase=app.time*12+shot.id)
         if {shot.source_id, shot.target_id} & {app.combat_ship_id, app.combat_target_id}:
             text(surface, f"~{combat_projectiles.eta(shot, target)}r",
                  (position[0]+size(5), position[1]-size(14)), max(7, size(9)), shade, "mono")
@@ -292,14 +305,15 @@ def draw_battlefield(app):
     if effect and effect.kind == "ordnance":
         anchors = {unit.id: anchor(unit) for unit in battle.ships if combat_planets.planet_for(app.game, unit)}
         effect.draw(surface, project, explosion_scale=scale*CELL/56, anchors=anchors,
-                    planet_explosion_scale=.35*scale)
+                    planet_explosion_scale=.35*scale, projectile_zoom=scale,
+                    live_projectile_ids={shot.id for shot in battle.projectiles})
     if effect and effect.kind in ("fire", "launch_projectile"):
         attacker, target = battle.ship(effect.ship_id), battle.ship(effect.target_id)
         effect.draw(surface, project,
                     origin=anchor(attacker) if combat_planets.planet_for(app.game, attacker) else project(effect.path[0]),
                     target=anchor(target) if combat_planets.planet_for(app.game, target) else project(effect.path[1]),
                     explosion_scale=scale*(.35 if combat_planets.planet_for(app.game, target) else
-                                           SHIP_LENGTHS.get(target.kind, 50)/47))
+                                           SHIP_LENGTHS.get(target.kind, 50)/47), projectile_zoom=scale)
     if move_preview is not None:
         draw_movement_preview(surface, selected, move_preview, paths[move_preview], camera)
     surface.set_clip(old_clip)

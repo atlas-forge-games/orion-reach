@@ -21,6 +21,12 @@ Owner-colored lights and the tactical hull bars distinguish empires.
 All standard ships, including civilian craft, use the same artwork loader.
 Missing-asset fallbacks retain procedural illustrations.
 
+From v0.75.2, the tactical renderer selects the final size from the current
+hull footprint and zoom, then scales directly from these original images.
+It no longer enlarges a previously downscaled map icon. Ownership lights are
+painted at the final display resolution. Procedural tactical fallbacks are
+also drawn large before being fitted to the hull.
+
 Run `python tools/preview_ship_art.py` to render the artwork catalogue and
 the real research, designer, shipyard and carrier combat screens.
 Run `python tools/preview_support_ship_art.py` for the three support ships,
