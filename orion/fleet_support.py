@@ -5,6 +5,7 @@ immediately, including when a battle is resumed from a save.
 """
 
 import math
+from . import combat_geometry as geometry
 from .designs import HULLS, MODULES
 from . import flagships
 
@@ -43,7 +44,7 @@ def sources(state, target, effect):
         if ship.id == target.id:
             continue
         strength = max((value for key, value, radius in auras(ship)
-                        if key == effect and math.dist(ship.position, target.position) <= radius), default=0)
+                        if key == effect and math.dist(geometry.center(ship), geometry.center(target)) <= radius), default=0)
         if strength:
             found.append((ship, strength))
     return tuple(found)
@@ -64,7 +65,7 @@ def screen_sources(state, target):
         return ()
     identifiers = [s.id for s, _ in sources(state, target, "escort_interception")]
     identifiers.extend(s.id for s in state.fleet(target.owner) if s.drone_role == "interceptor"
-                       and s.id != target.id and math.dist(s.position, target.position) <= 2)
+                       and s.id != target.id and math.dist(geometry.center(s), geometry.center(target)) <= 2)
     return tuple(dict.fromkeys(identifiers))
 
 
@@ -73,7 +74,7 @@ def interception_breakdown(state, target):
     escorts = sum(value for _, value in sources(state, target, "escort_interception"))
     drones = min(DRONE_ESCORT_CAP, 20*sum(
         s.drone_role == "interceptor" and s.id != target.id
-        and math.dist(s.position, target.position) <= 2
+        and math.dist(geometry.center(s), geometry.center(target)) <= 2
         for s in state.fleet(target.owner))) if state and target.hull > 0 else 0
     shared = min(ESCORT_CAP, escorts+drones)
     return {"local": local, "destroyers": escorts, "drones": drones,
@@ -121,4 +122,4 @@ def anchor_for(state, ship):
         return None
     return min(candidates, key=lambda ally: (
         -int(ally.kind in ("battleship", "carrier", "titan", "mothership")),
-        math.dist(ship.position, ally.position), -ally.max_hull, ally.id))
+        math.dist(geometry.center(ship), geometry.center(ally)), -ally.max_hull, ally.id))

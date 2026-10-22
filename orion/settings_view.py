@@ -8,7 +8,7 @@ from .ui import CYAN, GOLD, INK, LINE, MUTED, arrow, font, panel, paragraph, tex
 
 SECTIONS = {
     "graphics": ("Graphics", "Display mode and animated backgrounds.", "fullscreen"),
-    "sound": ("Sound", "Music, volume and interface sounds.", "music"),
+    "sound": ("Sound", "Music, volume and sound effects.", "music"),
     "gameplay": ("Gameplay", "Autosaving and campaign preferences.", "autosave"),
     "interface": ("Interface", "Galaxy colors and navigation.", "galaxy_palette_blue"),
 }
@@ -61,7 +61,7 @@ def draw_graphics(app):
 
 def draw_sound(app):
     toggle(app, "music", "Background music", app.audio.music_description, 320)
-    toggle(app, "sound", "Interface sounds", "A quiet tone when you activate a control.", 436)
+    toggle(app, "sound", "Sound effects", "Interface tones, weapons, shield hits and explosions.", 436)
     volume = app.settings["music_volume"]
     muted = not app.settings["music"] or volume == 0
     panel(app.canvas, (352, 552, 1024, 132))

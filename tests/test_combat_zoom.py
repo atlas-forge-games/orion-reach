@@ -13,6 +13,7 @@ import pygame as pg
 
 from orion.app import App
 from orion import combat_camera as camera
+from orion import combat_geometry as geometry
 from orion.combat_simulator import CombatSimulator
 from orion.model import GameState
 from test_combat import encounter
@@ -54,6 +55,22 @@ class CombatZoomTests(unittest.TestCase):
     def key(self, key, mod=0):
         self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=key, mod=mod))
         self.app.render()
+
+    def test_multicell_ship_selects_and_inspects_from_its_last_cell(self):
+        self.app.game = encounter(own=('battleship', 'frigate'), enemy=('titan',), close=False)
+        self.app.reset_combat_view()
+        ship = self.app.game.combat.ship(1)
+        width, height = geometry.size(ship)
+        for zoom in (.5, 1.0, 2.0):
+            self.app.combat_zoom = zoom
+            camera.reveal(self.app, geometry.cells(ship))
+            self.app.render()
+            point = camera.view(self.app).project((ship.x+width-1, ship.y+height-1))
+            self.click(point)
+            self.assertEqual(self.app.combat_ship_id, ship.id)
+            self.mouse(pg.MOUSEBUTTONDOWN, point, 3)
+            self.assertEqual(self.app.dialog['combat_ship_info'], ship.id)
+            self.app.cancel_dialog()
 
     def test_wheel_preserves_cursor_anchor_and_limits_zoom_without_changing_combat(self):
         before = self.app.game.to_dict()

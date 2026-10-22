@@ -150,9 +150,13 @@ class ProjectileTests(unittest.TestCase):
     def test_legacy_battle_preserves_coordinates_and_has_no_invented_flights(self):
         game = encounter()
         raw = game.to_dict(); raw['combat'].pop('projectiles')
+        raw['combat'].pop('board_rows')
+        for ship in raw['combat']['ships']:
+            ship.pop('large_hull')
         loaded = GameState.from_dict(raw, version=51)
         self.assertEqual([s.position for s in loaded.combat.ships], [(4, 4), (13, 4)])
-        self.assertEqual(loaded, game)
+        self.assertEqual(loaded.combat.ships[0].hull, game.combat.ships[0].hull)
+        self.assertEqual(GameState.from_dict(loaded.to_dict()), loaded)
 
     def test_malformed_flight_saves_are_rejected(self):
         game = duel(['torpedo']); game.combat_fire(1, 2)

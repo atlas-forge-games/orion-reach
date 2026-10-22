@@ -6,6 +6,7 @@ import math
 import pygame as pg
 
 from .combat import BEAMS
+from . import combat_geometry as geometry
 from .ui import INK, text
 
 
@@ -24,6 +25,8 @@ class CombatAnimation:
     escorts: tuple = ()
     flights: tuple = ()
     launched: bool = False
+    absorbed: int = 0
+    sound_cursor: int = 0
 
     @classmethod
     def from_action(cls, battle, action):
@@ -35,19 +38,54 @@ class CombatAnimation:
             return cls("move", action["ship_id"], tuple(action["path"]))
         if action["kind"] == "fire":
             ship, target = battle.ship(action["ship_id"]), battle.ship(action["target_id"])
-            result = cls("fire", ship.id, (ship.position, target.position), target.id,
+            result = cls("fire", ship.id, geometry.firing_points(ship, target), target.id,
                        ship.weapon, action["damage"], target.hull == 0,
-                       weapons=tuple(action.get("weapons", dict.fromkeys(w for w, _ in ship.volley(target)))), missed=action.get("missed", False))
+                       weapons=tuple(action.get("weapons", dict.fromkeys(w for w, _ in ship.volley(target, battle)))), missed=action.get("missed", False))
             result.launched = any(BEAMS[w].projectile for w in result.weapons)
+            result.absorbed = action.get("absorbed", 0)
             instant = tuple(w for w in result.weapons if not BEAMS[w].projectile)
             if result.launched and not instant:
                 result.kind, result.missed, result.destroyed = "launch_projectile", False, False
             else:
                 result.weapons = instant
             if any(BEAMS[w].projectile or BEAMS[w].drone for w in result.weapons or (result.weapon,)):
-                result.escorts = tuple(battle.ship(i).position for i in action.get("support_ids", ()) if battle.ship(i))
+                result.escorts = tuple(geometry.center(battle.ship(i)) for i in action.get("support_ids", ()) if battle.ship(i))
             return result
         return None
+
+    def sound_cues(self):
+        cues = []
+        if self.kind == "ordnance":
+            for flight in self.flights:
+                if flight["impact"] and not flight["missed"]:
+                    if flight["damage"]:
+                        cues.append((.4, "impact"))
+                    if flight["absorbed"]:
+                        cues.append((.4, "shield"))
+                    if flight["destroyed"]:
+                        cues.append((.4, "explosion"))
+        elif self.kind in ("fire", "launch_projectile"):
+            if self.launched or self.kind == "launch_projectile":
+                cues.append((0, "launch"))
+            if self.kind == "fire":
+                heavy = {"plasma", "heavy_beam", "disruptor", "titan_battery", "battleship_battery"}
+                cues.append((0, "heavy_beam" if heavy.intersection(self.weapons or (self.weapon,)) else "beam"))
+                if not self.missed:
+                    if self.absorbed:
+                        cues.append((.18, "shield"))
+                    if self.damage:
+                        cues.append((.18, "impact"))
+                    if self.destroyed:
+                        cues.append((.18, "explosion"))
+        # A salvo remains audible without stacking dozens of identical sounds.
+        return sorted(set(cues))
+
+    def play_audio(self, audio, enabled):
+        cues = self.sound_cues()
+        while self.sound_cursor < len(cues) and cues[self.sound_cursor][0] <= self.elapsed:
+            _, name = cues[self.sound_cursor]
+            audio.play_effect(name, enabled)
+            self.sound_cursor += 1
 
     @property
     def duration(self):
@@ -119,7 +157,7 @@ class CombatAnimation:
             text(surface, "LAUNCHED", (origin[0]-20, origin[1]-34), 10, shade, "mono")
             return
         if self.missed:
-            target = (target[0]+18, target[1]-25)
+            target = tuple(round(a+(b-a)*.9) for a, b in zip(origin, target))
         color = BEAMS[(self.weapons or (self.weapon,))[0]].color
         age = self.elapsed
         if self.escorts and .06 <= age < .3:

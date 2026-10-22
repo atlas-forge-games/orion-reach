@@ -95,7 +95,7 @@ between occupied cell centres, and the boundary is included. Movement changes
 coverage immediately. Destroyed ships stop providing support immediately.
 There are no charges or hidden support actions to manage.
 
-Escort arrays reduce projectile and drone damage against other allied units.
+Escort arrays reduce missile and torpedo damage against other allied units, including bomber torpedoes. Drone beams are not reduced.
 Interceptor drones retain their +20% protection within 2 cells, capped at 40%
 from drones. Destroyer arrays and drones together provide at most 50% shared
 interception. Add that to the protected ship's own point defense, then cap the
@@ -149,14 +149,13 @@ count toward those composition targets.
 
 ## Ship sizes
 
-Tactical art grows from tiny drones and scouts through frigates, destroyers,
-cruisers, carriers and battleships to titans. Artwork keeps its proportions
-and is fitted inside a single grid cell. Hull bars and the full cell-sized
-click area remain readable. Explosions scale with ship class.
-
-Sizes are visual: they do not change occupancy, movement paths or the existing
-accuracy model. Large-mount tracking penalties still depend on the existing
-hull/module size rules. There are no multi-cell ships or new facing controls.
+From v0.75, larger ships occupy multiple grid cells. All occupied cells block
+movement and direct-fire beams. Click and inspection areas cover the whole
+hull; artwork preserves its proportions within that footprint. Support radii
+are measured between hull centres. Orientation is fixed, and the existing
+large-mount tracking penalties remain. See
+[combat geometry and sound](combat-geometry-and-sound.md) for the footprint
+sizes, firing rules and older-save compatibility.
 
 ## Testing in the simulator
 

@@ -70,6 +70,9 @@ def duel(weapons, defense=("laser",), *, kind="battleship", enemy_kind="titan", 
     game.ships = [Ship(1, kind, 0, design=left), Ship(2, enemy_kind, 0, owner="rival", design=right)]
     game.next_ship_id = 3
     game.start_combat(0)
+    if fit_version == 1:
+        for ship in game.combat.ships:
+            ship.large_hull = False
     game.combat.ship(1).x, game.combat.ship(1).y = 5, 4
     game.combat.ship(2).x, game.combat.ship(2).y = 8, 4
     game.combat.accuracy = False

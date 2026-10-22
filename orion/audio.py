@@ -15,6 +15,7 @@ class Audio:
         self.music_path = Path(music_path) if music_path is not None else MUSIC_PATH
         self.ready = False
         self.click = None
+        self.effects = {}
         self.started = False
         self.paused = False
         self.music_error = False
@@ -75,6 +76,25 @@ class Audio:
             except pg.error:
                 pass
 
+    def play_effect(self, name, enabled=True):
+        """Play at most one cue per free channel, without interrupting music."""
+        if not enabled or not self.ready:
+            return
+        from .combat_sounds import DURATIONS, samples
+        if name not in DURATIONS:
+            return
+        try:
+            config = pg.mixer.get_init()
+            if config is None or config[1] != -16:
+                return
+            if name not in self.effects:
+                self.effects[name] = pg.mixer.Sound(buffer=samples(name, config[0], config[2]))
+            channel = pg.mixer.find_channel()
+            if channel is not None:
+                channel.play(self.effects[name])
+        except (pg.error, OSError):
+            pass
+
     def close(self):
         if not self.ready:
             return
@@ -83,6 +103,8 @@ class Audio:
             pg.mixer.music.unload()
             if self.click is not None:
                 self.click.stop()
+            for effect in self.effects.values():
+                effect.stop()
         except pg.error:
             pass
         self.ready = self.started = self.paused = False

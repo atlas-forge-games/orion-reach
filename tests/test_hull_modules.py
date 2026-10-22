@@ -69,7 +69,7 @@ class HullModuleTests(unittest.TestCase):
             design = ShipDesign('design_1','Aim',kind,('graviton',))
             attacker = combat.CombatShip(1,kind,PLAYER,design.hull,design.hull,x=5,y=4,design=design)
             chances[kind] = combat.accuracy_breakdown(game,attacker,target,'graviton')['chance']
-        self.assertEqual(chances, {'frigate':72,'cruiser':42,'battleship':12,'titan':5})
+        self.assertEqual(chances, {'frigate':72,'cruiser':45,'battleship':15,'titan':5})
         for kind in ('titan','missile_base','ancient_sentinel'):
             target.kind = kind
             values = combat.accuracy_breakdown(game,attacker,target,'graviton')
@@ -156,6 +156,8 @@ class HullModuleTests(unittest.TestCase):
             def old_designs(value):
                 if isinstance(value,dict):
                     value.pop('fit_version',None)
+                    value.pop('board_rows',None)
+                    value.pop('large_hull',None)
                     for item in value.values(): old_designs(item)
                 elif isinstance(value,list):
                     for item in value: old_designs(item)

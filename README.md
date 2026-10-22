@@ -1,315 +1,30 @@
-# Orion Reach — Python prototype 0.74.0
+# Orion Reach — Python prototype 0.75.0
 
-A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
-MOO2-inspired space strategy game. Optional race-specific victories give each
-of the thirteen civilizations its own path to victory.
+A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
+MOO2-inspired space strategy game.
 **Orion Reach is a temporary working title.** The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.74: automatic fleet flagships
-
-Each combat fleet automatically gives command to its strongest surviving ship.
-It starts at the centre of its formation and carries a small flag marker and
-a subtle aura in its empire's colour. Nearby fleetmates gain **+8 accuracy and
-+5 evasion** percentage points, without extra orders or equipment.
-
-Command range grows with hull size: frigate/scout **2**, destroyer **3**,
-cruiser **4**, carrier **5**, battleship **6**, titan/mothership **8** cells.
-Civilian transports and colony/outpost ships have a **3-cell** radius. Only the
-strongest command accuracy bonus applies; an existing flag bridge can supply
-+12 aim within its own shorter radius. Flagships do not boost themselves.
-
-Damage or reloading does not transfer command. When a flagship is destroyed,
-the next strongest survivor takes over in its current position. Planets,
-drones and space monsters cannot be flagships. The shared rules apply to the
-campaign, manual combat, automatic combat and the standalone simulator.
-The sidebar and right-click simulator inspector show flagship status and
-support. **Every shot hits** disables aim/evasion effects, as it does ECM.
-
-Save format stays **52**; existing battles keep their positions and projectile
-rolls. See [Fleet cooperation](docs/fleet-support.md) for selection and coverage.
-
-![Titan and destroyer flagship command radii](screenshots/v074_flagships.png)
-
-## New in v0.73.1: combat zoom and faster torpedoes
-
-Torpedoes and missiles now travel **five cells per round**. An eight-cell
-shot reaches a stationary target in two advances, while the opposing side
-still gets a turn to respond. This outpaces most warships; scouts, drones and
-some thruster-equipped designs can match or exceed that movement rate.
-
-Combat now supports **50–300% zoom** in both the campaign and standalone
-simulator. Use the mouse wheel over the battlefield or **+ / −**. Middle-drag,
-Shift + arrow keys, or the arrow buttons pan the view. Click the percentage
-button, press **0**, or press **Home** to return to 100%. Shift + wheel and
-Page Up / Page Down still scroll vertically. The sidebar remains fixed.
-
-Movement, targeting, animations and right-click ship inspection follow the
-same camera. Zoom changes only the view; combat ranges and orders are unchanged.
-Save format remains **52**. Existing in-flight missiles use the new speed on
-their next advance; positions, fuel age and hit rolls are preserved.
-
-## New in v0.73: tactical approach, torpedo travel and ship inspection
-
-Fleets deploy 17 cells apart on a wider battlefield, giving ships time to
-approach and form their screens. Torpedoes and missiles are persistent homing
-projectiles: they move **three cells per round**, with damage applied only
-when they arrive. Beams still hit immediately. Escort positioning and shields
-are checked at impact, so movement during the flight matters.
-
-In `combat_simulator.py`, **right-click any friendly or enemy ship** to inspect
-its hull, shields, weapons, equipment and incoming/outgoing ordnance. The
-panel pauses combat and includes estimated arrival times. Close it or press
-Esc to resume. Individual ship orders and fleet support still work normally.
-
-Campaign saves now use format **52**, including projectiles in flight. Older
-saves remain readable; existing tactical positions are preserved. See the
-[combat travel rules](docs/combat-projectiles.md) and
-[simulator guide](docs/combat-simulator.md).
-
-## New in v0.72.2: Xenonflora artwork
-
-Xenonflora now uses the supplied bioluminescent ecosystem illustration in race
-selection, diplomacy and other portrait views. The complete image is preserved;
-the renderer fits its landscape proportions without stretching or cropping.
-Restart the game after installing. Existing campaigns use the new artwork too.
-
-## New in v0.72.1: settings categories
-
-Settings now opens a category menu, available from the main menu and while paused:
-
-| Category | Options |
-| --- | --- |
-| Graphics | Fullscreen, animated background and galaxy background |
-| Sound | Background music, music volume and interface sounds |
-| Gameplay | Autosave, with guidance for manual saves and new-game options |
-| Interface | Galaxy colors and a navigation reference |
-
-Use the sidebar to switch categories. **Back / Esc** goes up one level;
-**Done** returns directly to the main menu or paused game. Mouse and keyboard
-navigation both work. Changes apply and save immediately, and existing
-preferences and campaign saves are compatible without migration.
-
-## New in v0.72: civilization legacies
-
-All thirteen civilizations have a race-specific victory goal. Ascension Gate
-victory and Ascension Theory have been replaced. Conquest and Council victory
-remain available. Open **Objectives → Your race objectives** for requirements,
-live progress, installation status and known rivals. See the
-[complete rules](docs/civilization-legacies.md) for all thirteen paths.
-
-Ongoing old science campaigns migrate to race victory and refund retired
-Ascension research and gate materials. Completed science victories remain
-historical snapshots. Save format is **51** and balance format is **16**.
-Older release notes below describe their original behavior; this section
-supersedes their Ascension guidance.
-
-## License and permitted use
-
-Copyright (c) 2026 Alexander Kies (Atlas Forge Games), to the extent rights
-subsist and are held or controlled by him. Orion Reach uses a **proprietary
-development license**; it is not an open-source release.
-
-The [LICENSE](LICENSE) permits free personal playtesting, source inspection
-and private modifications of lawfully obtained copies. Free mods may be
-shared as original add-ons or limited patches that require a lawful game
-copy; see the [modding policy](docs/modding-policy.md). Redistribution of the
-complete game, commercial distribution and paid mods require written
-permission, subject to third-party licenses, hosting-platform permissions and
-rights granted by law. A later paid release does not revoke permissions
-already granted for this development version.
-
-[ASSET_LICENSE.md](ASSET_LICENSE.md) records the OpenAI-generated artwork and
-the separately credited Suno soundtrack. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-preserves the boundaries for fonts and libraries. The **About** screen points
-to these files. These terms and notices were introduced in v0.71.1 and remain
-in effect in v0.72.
-
-## New in v0.71: fleet cooperation and combat ship sizes
-
-Individual ship movement and targeting remain unchanged. **Escort arrays** on
-destroyers automatically protect nearby allies from projectiles and drones.
-**Command relays / flag bridges** improve nearby ships' aim, and cruiser
-**ECM projectors** reduce the accuracy of attacks against nearby allies.
-No support buttons, extra actions or selectable battle plans are needed.
-
-- Four new support modules use normal designer slots, costs and research.
-- Standard destroyers have escort arrays; standard titans have flag bridges.
-  Custom blueprints need their own fitted modules, including older blueprints.
-- Support follows current positions and disappears immediately when a
-  provider is destroyed. Command and ECM use the strongest source; shared
-  interception is capped at 50%, and total interception at 90%.
-- Select a provider to see its coverage. The sidebar shows received effects,
-  target defenses and hit chances; escorts fire defensive visual bursts.
-- Frigates, destroyers, cruisers, carriers, battleships and titans have distinct
-  combat sprite sizes. Every ship still occupies one cell with the same click
-  area. Existing size-based tracking rules remain in force.
-- Tactical AI keeps support ships near suitable allies. Campaign AI includes
-  escorts and support cruisers when affordable, counting queued ships.
-
-Try the new **Combined arms** simulator preset:
-
-```bash
-python combat_simulator.py --preset 7
-```
-
-See [Fleet cooperation](docs/fleet-support.md) for equipment, research,
-counterplay and limits. Campaign save format remains **50**. Balance profiles
-upgrade automatically to **15**, retaining existing edited values. Older
-scenario files remain usable; new effects can change their outcomes.
-
-![Command coverage and different ship sizes](screenshots/v071_fleet_support.png)
-
-## New in v0.70: standalone combat simulator
-
-Run **`python combat_simulator.py`** from the game folder to build and play
-battles directly. Choose both fleets, set their quantities, create custom
-loadouts with all equipment available, and add planetary missile bases.
-The simulator uses the same combat engine, AI, weapons, shields, drones,
-animations and ship designer as the campaign.
-
-- Fight manually or watch **AI vs AI**; take control with **A**.
-- Pause with **P**, choose **1× / 4× / 12×** playback, or press **R** for a fresh rematch.
-- Select each side's race, combat upgrades and who moves first.
-- Six presets cover fleet skirmishes, carriers, capital ships, shields,
-  planetary defenses and convoy interception.
-- Save named scenarios with **F5**, including their custom designs, and load
-  them later. The same seed and orders reproduce the same shots under the same balance profile.
-
-Simulator scenarios are separate from campaign saves. Normal campaign saves
-remain compatible; save format **50** and balance profile **14** are unchanged.
-See [Combat simulator](docs/combat-simulator.md) for controls and command-line
-options. The discussed [race-victory proposals](docs/race-victory-proposals.md)
-are recorded for future development.
-
-![Standalone combat simulator](screenshots/v070_combat_setup.png)
-
-## New in v0.69.1: undiscovered system names
-
-Unexplored solar systems now use neutral catalogue labels such as **UNK-012**.
-Their names are revealed when a ship arrives and remain known after departure.
-First contact and remote sensor detections do not reveal a system's real name.
-
-The same rule applies to galaxy labels, system panels, fleet destinations,
-course notifications, sensor reports and unvisited hyperlane endpoints.
-Fog-off campaigns and the Observer show real names as before. Known black-hole
-sites keep their detection-based names. Save format **50** and balance profile
-**14** are unchanged; existing saves work without migration.
-
-![Undiscovered systems use neutral labels](screenshots/v0691_hidden_names.png)
-
-## New in v0.69: the Union, the Swarm and the Dominion
-
-The roster now has **13 playable civilizations** plus the Observer.
-
-- **Serevan Union:** multicultural diplomacy and voluntary colony accession.
-  Open **Diplomacy → Populations & accession** to sponsor outreach to a
-  dissatisfied foreign colony. Member populations keep their species and local
-  traits. Civic investment, food security and low strain can protect a colony
-  from another Union's outreach.
-- **Skirr Swarm:** triple base population growth, faster and cheaper colony
-  ships, and 2 B starting settlers. The swarm consumes more food, researches
-  more slowly, rejects treaties and gradually replaces conquered populations.
-- **Dominion of One:** the new name of the former Concord collective. Its
-  existing conquest mechanics remain, with diplomatic priorities focused on
-  forced assimilation.
-
-Includes the Serevan portrait created for this update, the supplied Skirr
-portrait, and the supplied replacement Nexus portrait. Kharuun remains its own
-civilization.
-
-Install the update over **v0.68.1**, replacing matching files. Existing campaigns
-load into save format **50**; balance profiles upgrade to **14** while retaining
-custom economic settings. Choose either new race in a new campaign; existing
-campaigns retain their current roster. See [the faction rules](docs/union-and-skirr.md).
-
-![Serevan Union](screenshots/v069_serevan.png)
-
-## New in v0.68.1: ship maintenance and construction rules
-
-Every owned ship now costs credits each turn, including ships in transit and
-disabled motherships. Custom designs use their hull class's maintenance. Fleet
-costs appear in net income, the Empire budget, Fleets, ship catalogues and the
-designer. Mothership hull upkeep is additional to its onboard modules.
-
-| Ship class | CR per turn |
-| --- | ---: |
-| Scout, outpost ship, troop transport | 1 |
-| Colony ship, frigate | 2 |
-| Destroyer | 3 |
-| Mothership | 4 |
-| Cruiser | 5 |
-| Drone carrier | 6 |
-| Battleship | 8 |
-| Titan | 12 |
-
-Queued ships pay nothing. Ships completed during a turn begin paying on the
-following turn; bought ships join the fleet immediately and pay at the next
-End Turn. Consumed or destroyed ships leave the budget, and captured ships
-become their new owner's expense. Deficits use the existing debt rules.
-AI budgets include active fleets and queued ships before ordering more.
-
-**Buildings, mothership modules and the Ascension Gate can no longer be bought.**
-They require normal Resource-funded construction using local industry. The
-**Buy** button appears only for ships; their existing rush price is unchanged.
-
-Existing campaigns load normally and begin paying upkeep on future turns;
-there is no retroactive charge. Save format **49** is unchanged. Balance
-profiles upgrade to **13**, adding ship maintenance while retaining saved
-custom costs, research and other settings. Maintenance is editable under
-**Standard ships**, and applies to custom designs of that hull too.
-
-## New in v0.68: pirates and scout searches
-
-Four ways to encounter neutral enemies now coexist: existing guardians attack
-on arrival, pirates guard individual planets, deliberate scout searches may
-uncover hidden flotillas, and rare events send raiders toward settled systems.
-
-Open **System overview → Encounters & search** to assign a scout for two turns
-or challenge a known pirate fleet. Peaceful discoveries yield salvage or research.
-Pirate raids give **three turns of warning**, steal credits at most once, and
-withdraw after five turns. Defeating pirates awards a one-time bounty. Pirate
-combat has no diplomatic penalty, and damage persists between battles.
-
-Known threats have orange map pennants and planet labels. **Turn News** records
-sightings, discoveries, warnings and rewards. AI empires use the same rules.
-New-game **Pirate encounters: ON/OFF** enables this expansion independently of
-victory choices. Existing guardians keep their earlier behavior.
-
-Save format **49** keeps all encounter state and tactical battles. Older campaigns
-retain their existing rules with the new encounters disabled; start a new game
-to use them. Balance profile **12** is unchanged. See the
-[full encounter rules and initial balance](docs/neutral-encounters.md).
-
-![Pirate guards and scout searches](screenshots/v068_planet_guards.png)
-
-## New in v0.67: race-specific victories and known-empire progress
-
-**Race-specific victory** is a fourth independent toggle in new-game setup.
-Wanderers win by discovering every unique forgotten route in the galaxy with
-their own empire. Other races have no special goal yet. Turning this victory
-off keeps hyperlane research and travel available.
-
-The hidden, two-way network is fixed when a galaxy is created. Roughly **50%**
-of ordinary systems have at least one route, **25%** at least two, **12.5%** at
-least three, and so on. Systems can have no routes or several. Research each
-route for 300 RP, one at a time per system; each connection counts once even
-though it can be discovered from either end. Only Wanderers can discover or
-use these private links.
-
-Open **Objectives → Race-specific goals** for your goal and discovery count.
-Portraits, goals, counts, percentages and progress bars show how close empires
-you have met are to winning. Unmet empires and hidden destinations stay private.
-Wanderer AI empires also explore and pursue the goal.
-
-Save format **48** retains existing discoveries, unfinished projects and voyages.
-Older campaigns keep their chosen victories; the new victory is enabled through
-new-game setup. Balance profile **12** is unchanged. See
-[the full hyperlane and victory rules](docs/forgotten-hyperlanes.md).
-
-![Race-specific objectives](screenshots/v067_race_objectives.png)
+## New in v0.75: physical hull footprints, firing lanes and combat sound
+
+- Ship shields stop beams; torpedoes and missiles bypass them. Point defense
+  and escorts reduce incoming projectile damage, while drone beams obey the
+  same shield and firing-line rules as other beams.
+- Destroyers occupy 2×1 cells, cruisers 2×2, battleships/carriers 3×2,
+  titans 3×3 and motherships 4×3. Collision, deployment, clicks, zoom and drone
+  launches use the whole hull.
+- Friendly and enemy ships block direct-fire beams. The UI explains blocked
+  shots, mixed volleys use only legal weapons, and the AI seeks firing lanes.
+- Separate sounds accompany beams, missile launches, shield hits, hull impacts
+  and destruction. Enable them under Settings → Sound → Sound effects.
+
+Save format 53 loads older campaigns. Battles already in progress retain
+one-cell layouts until the next engagement. See the
+[detailed rules and compatibility notes](docs/combat-geometry-and-sound.md).
+
+![Large ships and a blocked firing lane](screenshots/v075_combat_geometry.png)
 
 ## New in v0.66.1: mothership modules
 
@@ -733,7 +448,7 @@ Build a **Space Hub** in a colony, then open **Empire → Specialists**, the
 planet's **Specialists** button, or click the completed Hub on the surface.
 The first operational Hub welcomes two visitors on the next turn, when
 available: a colony leader and an explorer. Later visitors arrive periodically;
-Terran and Dominion receive them more often. Extra Hubs do not multiply the
+Terran and Concord receive them more often. Extra Hubs do not multiply the
 empire's visitor rate.
 
 The galaxy shares **18 unique characters**, each with a name, biography and
@@ -987,7 +702,7 @@ strip at the top: total Credits, Resources and stored Research, each with its
 empire-wide change per turn. Credit income includes maintenance and Trade Goods;
 Resources show net mining after power-plant fuel. Debt and negative rates are
 highlighted. The values update immediately as you change production or workers,
-buy ships or cancel construction.
+buy projects or cancel construction.
 
 The production cards below remain local to the selected colony, including food,
 industry and energy. The Observer keeps its read-only header. This is a display
@@ -1355,8 +1070,7 @@ shields. Strategic bombardment retains its once-per-ship, per-turn limit.
 - **Interceptor bays:** carriers launch fast, six-cell drones with 2 damage
   against ships and 8 against other drones. Each interceptor protects other
   friendly ships within two cells with +20% interception, capped at +40% from
-  drones. With destroyer arrays, all shared protection is capped at +50%.
-  Combined shipboard and escort interception is capped at 90%.
+  escorts. Combined shipboard and escort interception is capped at 90%.
 - **Bomber bays:** carriers launch slower, three-cell drones with 5 damage,
   doubled against cruisers, larger warships, bases and guardians. Flak and point
   defense counter them. Both new drone types have weapon range 3.
@@ -1672,7 +1386,7 @@ This update keeps save format 27 and works with existing v0.36 saves.
 **Resources** is one shared construction stockpile for each empire. Colonies
 now have four jobs: **farming, industry, research and mining**. Miners produce
 Resources; industrial workers turn them into buildings and ships. Credits still
-pay building and ship upkeep, diplomacy and rushed ship production. There are no separate ores,
+pay building upkeep, diplomacy and rush production. There are no separate ores,
 resource shipments or energy workers to manage.
 
 - Every empire starts with **120 Resources**. New homeworlds assign two miners;
@@ -1743,7 +1457,7 @@ removed from the galaxy screen. The exploration archive remains available with
 **X**. Fleet-selection close/cancel controls remain beside their course hint.
 
 Three original illustrated panels at the top show treasury and net credits per
-turn (including building and ship upkeep), banked research and RP per turn, and total
+turn (including building upkeep), banked research and RP per turn, and total
 food production minus consumption across your own colonies. **Food is still
 local**: the bar reports colonies with shortages even when the empire total is
 positive. The counters use the same reports as the Empire screen, including
@@ -1802,28 +1516,26 @@ personality-adjusted effects before you commit the action.
 | Xenonflora | Protective, communal, watchful | Fortify living communities and react strongly to broken agreements. |
 | Nexus | Calculating, unemotional, methodical | Value material exchange and assess favourable opportunities for conquest. |
 | Aetheri | Mysterious, contemplative, detached | Prefer patient diplomacy and favour defensive fields. |
-| Dominion of One | Assimilating, relentless, collective | One will seeks to absorb independent civilizations through conquest. |
-| Serevan Union | Welcoming, pluralistic, protective | Persuades dissatisfied colonies to join and retains their native species traits. |
-| Skirr Swarm | Invasive, voracious, uncompromising | Expands rapidly and replaces conquered populations. |
+| The Concord | Assimilating, relentless, collective | One will seeks to absorb independent civilizations through conquest. |
 | The Remnant | Proud, secretive, possessive | Guard ancient claims and remember slights. |
 
-The former **Concord collective** is now the **Dominion of One**. Its greeting speaks with one
+**The Concord** is now the **Concord Collective**. Its greeting speaks with one
 voice; its AI builds larger fleets earlier and can launch assimilation campaigns
 against reachable neutral neighbours. Successful invasions retain the conquered
 population and buildings under collective ownership, using the existing ground
 combat rules; they do not automatically copy technologies or convert ships.
-As of v0.62, Dominion trade/research agreements require **+10/+55 relations**.
+As of v0.62, Concord trade/research agreements require **+10/+55 relations**.
 Their networked treaty bonuses (+3 CR before distance/+1 RP) and the 10% local
 credit penalty remain. Existing custom empire names are retained.
 
 Ending a treaty costs 10 relations for Varkesh,
-20 for Dominion, 25 for Lithar/Xenonflora/Remnant and 15 for the others.
+20 for Concord, 25 for Lithar/Xenonflora/Remnant and 15 for the others.
 Wary relations (-30 through -1) recover one point at the slower civilization's
-forgiveness interval (3–20 turns). Dominion relationships never recover passively;
+forgiveness interval (3–20 turns). Concord relationships never recover passively;
 declared wars remain hostile. Active treaties continue to build trust.
 
 Terran, Nexus and Remnant AI can declare war on an unfriendly neighbour when their
-known military position is favourable. Dominion can also target neutral neighbours.
+known military position is favourable. Concord can also target neutral neighbours.
 Decisions require two armed ships, a reachable known colony, turn 12 or later,
 and a strength advantage; they are considered every six turns. Active treaties,
 friendly relations and an existing war prevent these opportunistic declarations.
@@ -1836,7 +1548,7 @@ introductions. Older confirmed contacts and active diplomatic channels are marke
 as already introduced. Undiscovered empires remain hidden. Loading never rewrites
 the source save, changes its empire names or grants extra starting assets.
 
-![First contact with the Dominion of One](screenshots/first_contact_concord.png)
+![First contact with the Concord Collective](screenshots/first_contact_concord.png)
 ![Personality-aware diplomatic channel](screenshots/civilization_personality.png)
 
 ## New in v0.33: defense, sensors, navigation and targeting
@@ -2037,9 +1749,7 @@ system and homeworld before you begin.
 | Xenonflora | Viridia | Sylvaris | Rootfall, Mycela, Florath |
 | Nexus | Axiom | Origin | Relay, Foundry, Matrix |
 | Aetheri | Luminara | Veylume | Ilyon, Seris, Orae |
-| Dominion of One | Seryn | Dyara | Enna, Belora, Thessa |
-| Serevan Union | Sereva | Ilyra | Ovara, Tessan, Calith |
-| Skirr Swarm | Skrath | First Brood | Chitin, Molt, Hatch |
+| The Concord | Seryn | Dyara | Enna, Belora, Thessa |
 | The Remnant | Avarion | Elyndra | Vesper, Orath, Nyth |
 
 Haven is the Wanderers' ancestral gathering place. Names are assigned to the
@@ -2269,9 +1979,7 @@ Eight new races join Terrans, Kharuun and Aelari. Player and AI use the same tra
 | Xenonflora | On Terran, Ocean and Gaia: +3 food and +50% growth; industry −25% on other biomes. |
 | Nexus | Settle every biome; no food; gross industry +25%; industry assembles new population. |
 | Aetheri | Settle every biome; no food; grow by 10 progress per turn; colony research +25%, industry −20%. |
-| Dominion of One | Assimilating collective; networked trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
-| Serevan Union | Voluntary accession and retained local species traits; trade pacts +2 CR and research agreements +1 RP per turn. |
-| Skirr Swarm | Base growth ×3; colony ships −55% resources and twice as fast; 2 B settlers; food +50%, research −25%, no treaties. |
+| The Concord | Assimilating collective; networked trade pacts +3 CR and research agreements +1 RP per turn; colony credit income −10%. |
 | The Remnant | Start with 80 unspent research points; colony research +25%, industry −20%; awakened tomb worlds join the empire. |
 
 Nexus reserve **20% of gross industry**, rounded up, for assembly until the
@@ -2466,8 +2174,7 @@ package installed. Official documentation: <https://pyga.me/docs/>.
   planet data and distinct illustrations for six environment types.
 - The planet screen centres on the colony landscape. A system directory sits at
   top left, visual output totals and worker assignments across the top, and
-  the current construction project with **Change** at top right. Ships also
-  have a **Buy** button.
+  the current construction project with **Change** and **Buy** at top right.
   **Return** at bottom right goes to the solar-system overview.
 - Each billion inhabitants is one worker, assigned to farming, industry,
   research or mining. Earth starts with two farmers, four industrial workers
@@ -2595,10 +2302,9 @@ status and completion estimate. **Change** opens the building/ship catalogue:
 - Click an existing project to make it current without paying again.
 - Use **×** to cancel and refund its unused reserved materials. An unpaid order
   returns nothing. Longer queues have pages.
-- **Buy** finishes the current ship immediately for **2 credits per remaining
+- **Buy** finishes the current project immediately for **2 credits per remaining
   work**, also reserving any unpaid Resource cost. The confirmation shows both
-  amounts. Other projects keep their progress. Buildings, habitat modules and
-  the Ascension Gate must complete normally through industry.
+  amounts. Other projects keep their progress; bought gates start uncharged.
 
 Completed buildings open their inspection screen with **Disable / Enable** and
 **Demolish** controls when clicked; the
@@ -3482,7 +3188,7 @@ sort order and page are kept during play and reset when starting/loading a game.
 | Return to the galaxy map or full system view | Galaxy map / System view button, or Escape after cancelling any worker selection |
 | Assign workers | Click a worker or gap to select everyone to its right, then a destination role; Left/Right adjusts quantity |
 | Choose / prioritize production | Change on the planet overview |
-| Buy the current ship | Buy on the planet or mothership overview, then confirm the price |
+| Buy the current project | Buy on the planet overview, then confirm the price |
 | Manage buildings | Change to build; click a surface building to inspect |
 | Inspect, cancel or demolish | Click a building slot in the Colony tab |
 | Open / close Empire Overview | I, or the Empire button while playing |
@@ -3888,7 +3594,7 @@ and `assets/` directly.
 
 1. On <https://github.com/new>, create an empty repository. Leave the options
    to add a README, `.gitignore`, and license unselected: this project already
-   includes all three. Keep the included proprietary development license.
+   includes the first two, and you can choose a license separately later.
 2. Open Anaconda Prompt in the extracted `orion_reach` folder and run:
 
    ```sh
@@ -3940,11 +3646,7 @@ Official import instructions:
 - **Linux venv error:** your Python distribution may package `venv` separately;
   install its venv support or use an existing environment.
 
-Project permissions are in [LICENSE](LICENSE). Font notices remain in
-`assets/fonts/LICENSE-DejaVu.txt`; pygame-ce is installed separately and
-retains its own license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md),
-[ASSET_LICENSE.md](ASSET_LICENSE.md) and the soundtrack permission record in
-`assets/audio/README.md` before packaging a release. The development license
-is not a final Steam customer agreement or a certification of commercial
-rights for every bundled asset; obtain legal review of the commercial terms
-and confirm the soundtrack permission before a paid release.
+Font notices are included in `assets/fonts/LICENSE-DejaVu.txt`. pygame-ce is
+installed separately and retains its own license. The supplied soundtrack has
+separate provenance in `assets/audio/README.md`. No assets from other games
+are redistributed.

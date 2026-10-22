@@ -5,6 +5,7 @@ import math
 import pygame as pg
 
 from .combat import BOARD_COLUMNS
+from . import combat_geometry as geometry
 
 CELL = 42
 VISIBLE_ROWS = 13
@@ -44,6 +45,13 @@ class Viewport:
         right = round(BOARD.x+(cell[0]-self.x+1)*self.cell_size)
         bottom = round(BOARD.y+(cell[1]-self.y+1)*self.cell_size)
         return pg.Rect(left+inset, top+inset, right-left-2*inset, bottom-top-2*inset)
+
+    def ship_rect(self, ship, position=None, inset=0):
+        x, y = ship.position if position is None else position
+        width, height = geometry.size(ship)
+        first = self.cell_rect((x, y))
+        last = self.cell_rect((x+width-1, y+height-1))
+        return first.union(last).inflate(-2*inset, -2*inset)
 
     def columns(self):
         return range(max(0, math.floor(self.x)), min(BOARD_COLUMNS, math.ceil(self.x+self.width)))
@@ -116,7 +124,7 @@ def reset(app):
     app.combat_camera_col = app.combat_camera_row = 0
     ship = app.game.combat.ship(app.combat_ship_id)
     if ship:
-        reveal(app, (ship.position,))
+        reveal(app, geometry.cells(ship))
     clamp(app)
     invalidate(app)
 

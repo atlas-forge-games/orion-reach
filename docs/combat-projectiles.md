@@ -22,8 +22,8 @@ launches; moving beyond the original firing range does not cancel a flight.
 
 The launch fixes the hit chance and deterministic roll, including range,
 evasion, command and ECM modifiers. Movement changes the interception point
-and travel time, rather than rerolling accuracy. Shields, point defense and
-nearby escort coverage are evaluated when the warhead arrives. Shield
+and travel time, rather than rerolling accuracy. Point defense and nearby escort coverage are evaluated when the warhead
+arrives. From v0.75, projectiles bypass tactical ship shields. Shield
 regeneration and repairs still occur on the owner's usual turn schedule.
 Cooldowns begin at launch and work as before. No extra player orders are needed.
 Five cells per round is faster than most warships; scouts, drones, diagonal
@@ -66,3 +66,6 @@ battles, and their format is unchanged.
 
 As of v0.73.1, loaded in-flight ordnance uses the five-cell speed on its next
 advance. Its existing position, remaining fuel and locked hit roll remain.
+
+From v0.75, launch and impact have separate sound cues, and hull edges are used
+for range and travel distances. See [combat geometry and sound](combat-geometry-and-sound.md).

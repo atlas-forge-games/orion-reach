@@ -38,7 +38,7 @@ def module_sections(kind, identifier, state):
         effects.append(f"Adds {module.escort_interception}% interception to allies within {module.support_range} cells. "
                        f"Destroyer arrays and interceptor drones together are capped at {fleet_support.ESCORT_CAP}% shared protection; "
                        f"with the target's own point defense, total interception is capped at {fleet_support.TOTAL_INTERCEPTION_CAP}%. "
-                       "Reduces projectile and drone damage, including bombers. Beams ignore this screen. No firing or movement action is spent.")
+                       "Reduces missile and torpedo damage, including bomber torpedoes. Beams ignore this screen. No firing or movement action is spent.")
     if module.command_accuracy:
         effects.append(f"Other friendly ships within {module.support_range} cells gain {module.command_accuracy} accuracy percentage points. "
                        "Only the strongest command source applies. Does not coordinate drones or planetary bases. A ship may fit one command module. "
@@ -60,8 +60,8 @@ def module_sections(kind, identifier, state):
                            f"({examples}). Scouts and drones are one size below small hulls.")
         else:
             effects.append("Fast tracking: no accuracy penalty for firing at smaller targets. Range and evasion still matter.")
-        if beam.projectile or beam.drone:
-            effects.append("Point defense reduces damage from this weapon."+(f" Ignores {beam.interception_piercing}% of the target's interception." if beam.interception_piercing else ""))
+        if beam.projectile:
+            effects.append("Bypasses ship shields; point defense reduces damage from this weapon."+(f" Ignores {beam.interception_piercing}% of the target's interception." if beam.interception_piercing else ""))
         else:
             effects.append("Point defense cannot intercept this weapon.")
         if beam.shield_multiplier != 1:
@@ -77,7 +77,7 @@ def module_sections(kind, identifier, state):
     if module.hull_bonus:
         effects.append(f"Adds {module.hull_bonus} maximum hull points. Multiple armor plates add together.")
     if module.shields:
-        effects.append(f"Adds {module.shields} shield points, restored at the start of each battle. Shields absorb ordinary damage before hull; multiple generators add together.")
+        effects.append(f"Adds {module.shields} shield points, restored at the start of each battle. Shields absorb beam damage before hull; missiles and torpedoes bypass them; multiple generators add together.")
     if module.shield_regeneration:
         effects.append(f"Restores up to {module.shield_regeneration} missing shield points at the start of each of your combat turns. Regeneration from multiple modules adds together.")
     if module.shield_hardening:
@@ -86,7 +86,7 @@ def module_sections(kind, identifier, state):
         effects.append(f"Repairs up to {module.repair_rate} hull at the start of each of your combat turns, with {module.repair_capacity} repair points available per battle. "
                        "Repairs only damage taken in that battle. Multiple modules add repair speed and reserves.")
     if module.interception:
-        effects.append(f"Reduces incoming torpedo and drone damage by {module.interception}%. Shipboard interception adds together up to the best fitted cap "
+        effects.append(f"Reduces incoming missile and torpedo damage by {module.interception}%. Shipboard interception adds together up to the best fitted cap "
                        f"({module.interception_cap}% for this module). Nearby escorts can raise total protection to {fleet_support.TOTAL_INTERCEPTION_CAP}%. Beam damage is unaffected.")
     if module.range_bonus:
         effects.append(f"Adds {module.range_bonus} cells to every fitted weapon's range. Only one combat scanner per ship. Does not change strategic fuel range.")

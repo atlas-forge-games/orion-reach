@@ -8,7 +8,7 @@ import random
 import pygame as pg
 
 from .combat import BEAMS, BOARD_COLUMNS, action_error, accuracy_breakdown, in_range, reachable, retreat_destination, interception
-from . import combat_planets, fleet_support, combat_projectiles, combat_camera, flagships
+from . import combat_planets, fleet_support, combat_projectiles, combat_camera, flagships, combat_geometry as geometry
 from .combat_camera import CELL, VISIBLE_ROWS, BOARD
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
@@ -23,7 +23,7 @@ SUPPORT_COLORS = {"escort_interception": (95, 236, 205), "command_accuracy": (10
 
 
 @lru_cache(maxsize=256)
-def tactical_sprite(kind, color, facing, cell_size=CELL):
+def tactical_sprite(kind, color, facing, cell_size=CELL, footprint=(1, 1)):
     """Fit actual art bounds to class size; preserve a full-cell click target."""
     art = pg.Surface((192, 192), pg.SRCALPHA)
     ship_icon(art, (96, 96), 1.0, color, kind=kind, facing=facing)
@@ -31,7 +31,10 @@ def tactical_sprite(kind, color, facing, cell_size=CELL):
     if not bounds.w or not bounds.h:
         return art
     length = SHIP_LENGTHS.get(kind, 50)*cell_size/56
-    ratio = min(length/bounds.w, min(38*cell_size/CELL, length)/bounds.h)
+    width, height = footprint
+    max_width = length if width == 1 else (width-.2)*cell_size
+    max_height = min(38*cell_size/CELL, length) if height == 1 else (height-.5)*cell_size
+    ratio = min(max_width/bounds.w, max_height/bounds.h)
     return pg.transform.smoothscale(art.subsurface(bounds),
                                    (max(1, round(bounds.w*ratio)), max(1, round(bounds.h*ratio))))
 
@@ -43,20 +46,20 @@ def draw_support_ranges(surface, battle, selected, project, scale=1):
         if not battle.accuracy and key != "escort_interception":
             continue
         color = SUPPORT_COLORS[key]
-        pg.draw.circle(surface, color, project(selected.position), round(radius*CELL*scale), 1)
+        pg.draw.circle(surface, color, project(geometry.center(selected)), round(radius*CELL*scale), 1)
         for ally in battle.fleet(selected.owner):
             if (ally.id != selected.id and fleet_support.eligible(ally, key)
-                    and math.dist(ally.position, selected.position) <= radius):
-                pg.draw.circle(surface, color, project(ally.position), round(23*scale), 1)
+                    and math.dist(geometry.center(ally), geometry.center(selected)) <= radius):
+                pg.draw.circle(surface, color, project(geometry.center(ally)), round(23*scale), 1)
     # Selecting a supported ship also shows the providers it depends on.
     for key in fleet_support.EFFECTS:
         if not battle.accuracy and key != "escort_interception":
             continue
         for source, _ in fleet_support.sources(battle, selected, key):
             pg.draw.line(surface, tuple(c//2 for c in SUPPORT_COLORS[key]),
-                         project(source.position), project(selected.position), 1)
+                         project(geometry.center(source)), project(geometry.center(selected)), 1)
     if battle.accuracy and (leader := flagships.source(battle, selected)):
-        pg.draw.line(surface, (55, 87, 108), project(leader.position), project(selected.position), 1)
+        pg.draw.line(surface, (55, 87, 108), project(geometry.center(leader)), project(geometry.center(selected)), 1)
 
 
 def draw_flagship_auras(app, battle, camera):
@@ -68,7 +71,7 @@ def draw_flagship_auras(app, battle, camera):
         effect = app.combat_animation
         position = (effect.moving_position() if effect and effect.kind == "move"
                     and effect.ship_id == ship.id else ship.position)
-        cx, cy = camera.project(position)
+        cx, cy = camera.project(geometry.center(ship, position))
         centre = cx-BOARD.x, cy-BOARD.y
         color = tuple(app.empire_color(ship.owner))
         selected = ship.id == app.combat_ship_id
@@ -118,10 +121,13 @@ def draw_battlefield(app):
     if selected and player_turn and battle.can_fire(selected):
         for x in camera.columns():
             for y in camera.rows(battle.rows):
-                if math.dist((x, y), selected.position) <= selected.ready_range:
+                if math.dist((x, y), geometry.nearest(selected, (x, y))) <= selected.ready_range:
                     pg.draw.rect(surface, (19, 20, 34), camera.cell_rect((x, y)))
-        pg.draw.circle(surface, (78, 48, 63), project(selected.position),
-                       round(selected.ready_range*camera.cell_size), 1)
+        reach = round(selected.ready_range*camera.cell_size)
+        footprint = camera.ship_rect(selected)
+        margin = round((selected.ready_range-.5)*camera.cell_size)
+        pg.draw.rect(surface, (78, 48, 63), footprint.inflate(2*margin, 2*margin),
+                     1, border_radius=reach)
     for cell, path in paths.items():
         rect = camera.cell_rect(cell, inset=size(1))
         if BOARD.colliderect(rect):
@@ -131,7 +137,8 @@ def draw_battlefield(app):
                        lambda a=cell[0], b=cell[1]: app.move_combat_ship(a, b), "hotspot")
             if rect.collidepoint(app.mouse):
                 pg.draw.rect(surface, CYAN, rect, 1)
-                pg.draw.lines(surface, CYAN, False, [project(p) for p in path], size(2))
+                pg.draw.lines(surface, CYAN, False, [project(geometry.center(selected, p)) for p in path], size(2))
+                pg.draw.rect(surface, CYAN, camera.ship_rect(selected, cell, inset=size(2)), size(1))
     start = camera.cell_rect((0, 0)).topleft
     end = camera.cell_rect((BOARD_COLUMNS-1, battle.rows-1)).bottomright
     for x in range(max(0, math.floor(camera.x)), min(BOARD_COLUMNS, math.ceil(camera.x+camera.width))+1):
@@ -142,6 +149,15 @@ def draw_battlefield(app):
         pg.draw.line(surface, (22, 34, 45), (start[0], line_y), (end[0], line_y))
     draw_support_ranges(surface, battle, selected, project, scale)
     flag_ids = draw_flagship_auras(app, battle, camera)
+    preview_target = battle.ship(app.combat_target_id)
+    if (selected and preview_target and player_turn and preview_target.hull > 0
+            and any(not BEAMS[w].projectile for w, _, _ in selected.ready_weapons)):
+        obstacle = geometry.blocker(battle, selected, preview_target)
+        if obstacle:
+            start, _ = geometry.firing_points(selected, preview_target)
+            stop = geometry.nearest(obstacle, start)
+            pg.draw.line(surface, (163, 71, 65), project(start), project(stop), size(1))
+            pg.draw.rect(surface, (163, 71, 65), camera.ship_rect(obstacle, inset=size(2)), size(1))
     # Planets remain on the battlefield after their batteries are destroyed.
     for unit in battle.ships:
         planet = combat_planets.planet_for(app.game, unit)
@@ -162,52 +178,53 @@ def draw_battlefield(app):
             text(surface, "BASE LOST", (cx-offset(19), cy+offset(10)), max(5, size(6)), MUTED, "mono")
         surface.set_clip(BOARD)
     if effect and effect.kind == "move":
-        effect.draw(surface, project)
+        moving_ship = battle.ship(effect.ship_id)
+        effect.draw(surface, lambda point: project(geometry.center(moving_ship, point)))
     for ship in battle.ships:
         pending_damage = effect.pre_impact_damage(ship.id) if effect else None
         before_impact = pending_damage is not None
         if ship.hull <= 0 and not before_impact:
             continue
         position = effect.moving_position() if effect and effect.kind == "move" and effect.ship_id == ship.id else ship.position
-        cell = camera.cell_rect(position)
+        cell = camera.ship_rect(ship, position)
         if not BOARD.colliderect(cell):
             continue
-        cx, cy = project(position)
+        cx, cy = project(geometry.center(ship, position))
         color = MONSTERS[ship.kind].color if ship.owner == MONSTER else app.empire_color(ship.owner)
         is_selected = ship.id == app.combat_ship_id
         targetable = bool(selected and player_turn and ship.owner != PLAYER
-                          and battle.can_fire(selected) and in_range(selected, ship))
-        box = camera.cell_rect(position, inset=size(3))
+                          and battle.can_fire(selected) and in_range(selected, ship, battle))
+        box = camera.ship_rect(ship, position, inset=size(3))
         if is_selected or targetable or ship.id == app.combat_target_id:
             pg.draw.rect(surface, GOLD if is_selected else RED if targetable else FAINT, box, 1, border_radius=size(6))
         planetary = combat_planets.planet_for(app.game, ship) is not None
         if not planetary:
             icon_color = BEAMS[ship.weapon].color if ship.kind == "combat_drone" else color
             sprite = tactical_sprite(ship.kind, tuple(icon_color), 1 if ship.owner == PLAYER else -1,
-                                     camera.cell_size)
+                                     camera.cell_size, geometry.size(ship))
             surface.blit(sprite, sprite.get_rect(center=(cx, cy-offset(1))))
         hull = min(ship.max_hull, ship.hull+(pending_damage if before_impact else 0))
-        hull_y = cy+offset(17 if planetary else 14)
+        hull_y = cy+offset(17) if planetary else cell.bottom-size(11)
         pg.draw.rect(surface, LINE, (cx-offset(18), hull_y, size(36), size(3)))
         pg.draw.rect(surface, color, (cx-offset(18), hull_y, round(size(36)*hull/ship.max_hull), size(3)))
         if ship.max_shields:
-            pg.draw.rect(surface, (79, 169, 255), (cx-offset(18), cy+offset(18),
+            pg.draw.rect(surface, (79, 169, 255), (cx-offset(18), hull_y+size(4),
                          round(size(36)*ship.shields/ship.max_shields), size(2)))
         if not planetary:
             label = "GUARD" if ship.owner == MONSTER else "RAIDER" if ship.owner == "pirates" else "DRONE" if ship.kind == "combat_drone" else f"{ship.id:03}"
-            text(surface, label, (cx-offset(19), cy-offset(20)), max(5, size(7)), color, "mono")
+            text(surface, label, (cell.x+size(4), cell.y+size(3)), max(5, size(7)), color, "mono")
         if ship.id in flag_ids:
-            pole = cx+offset(1), cy-offset(19)
+            pole = cell.right-size(23), cell.y+size(4)
             pg.draw.line(surface, color, pole, (pole[0], pole[1]+size(9)), size(1))
             pg.draw.polygon(surface, color, (pole, (pole[0]+size(6), pole[1]+size(2)),
                                             (pole[0], pole[1]+size(5))))
         if ship.graviton_slow:
             text(surface, "SLOW", (cx-offset(17), cy+offset(4)), max(5, size(7)), BEAMS["graviton"].color, "mono")
         for index, (key, _, _) in enumerate(fleet_support.auras(ship)):
-            pg.draw.circle(surface, SUPPORT_COLORS[key], (cx+offset(-16+index*6), cy+offset(18)), size(2))
+            pg.draw.circle(surface, SUPPORT_COLORS[key], (cell.x+size(8+index*6), cell.bottom-size(6)), size(2))
         if ship.owner == PLAYER and ship.hull > 0 and not planetary:
             for dx, available in ((12, battle.can_move(ship)), (19, battle.can_fire(ship) or battle.can_launch(ship))):
-                pg.draw.circle(surface, CYAN if available else LINE, (cx+offset(dx-3), cy-offset(16)), size(2))
+                pg.draw.circle(surface, CYAN if available else LINE, (cell.right-size(25-dx), cell.y+size(10)), size(2))
         if BOARD.colliderect(box):
             app.button(f"combat_ship_{ship.id}", "", BOARD.clip(box),
                        lambda side=ship.owner, sid=ship.id: app.select_combat_ship(side, sid), "hotspot",
@@ -221,7 +238,8 @@ def draw_battlefield(app):
         if not BOARD.inflate(size(30), size(30)).collidepoint(position):
             continue
         shade = BEAMS[shot.weapon].color
-        angle = math.atan2(target.y-shot.y, target.x-shot.x)
+        target_center = geometry.nearest(target, shot.position)
+        angle = math.atan2(target_center[1]-shot.y, target_center[0]-shot.x)
         tail = (round(position[0]-math.cos(angle)*10*scale), round(position[1]-math.sin(angle)*10*scale))
         pg.draw.line(surface, shade, tail, position, size(3))
         pg.draw.circle(surface, INK, position, size(3))
@@ -229,7 +247,7 @@ def draw_battlefield(app):
             text(surface, f"~{combat_projectiles.eta(shot, target)}r",
                  (position[0]+size(5), position[1]-size(14)), max(7, size(9)), shade, "mono")
     def anchor(unit):
-        center = project(unit.position)
+        center = project(geometry.center(unit))
         return (combat_planets.surface_anchor(center, 1 if unit.owner == PLAYER else -1, diameter=40*scale)
                 if combat_planets.planet_for(app.game, unit) else center)
     if effect and effect.kind == "ordnance":
@@ -238,7 +256,9 @@ def draw_battlefield(app):
                     planet_explosion_scale=.35*scale)
     if effect and effect.kind in ("fire", "launch_projectile"):
         attacker, target = battle.ship(effect.ship_id), battle.ship(effect.target_id)
-        effect.draw(surface, project, origin=anchor(attacker), target=anchor(target),
+        effect.draw(surface, project,
+                    origin=anchor(attacker) if combat_planets.planet_for(app.game, attacker) else project(effect.path[0]),
+                    target=anchor(target) if combat_planets.planet_for(app.game, target) else project(effect.path[1]),
                     explosion_scale=scale*(.35 if combat_planets.planet_for(app.game, target) else
                                            SHIP_LENGTHS.get(target.kind, 50)/47))
     surface.set_clip(old_clip)
@@ -332,17 +352,21 @@ def draw_combat(app):
             ship_icon(surface, (1356, 481), .45, kind=target.kind)
         caption = (f"{target.hull}/{target.max_hull} base hull" if target_planet else f"{target.hull}/{target.max_hull} hull · {target.shields} shields") if target else "Targets must be within weapon range."
         if target and ship:
-            caption += f"  ·  Distance {math.dist(ship.position, target.position):.1f}"
+            caption += f"  ·  Distance {geometry.distance(ship, target):.1f}"
         text(surface, caption, (x, 507), 10, MUTED)
         if target:
             jam = fleet_support.strongest(battle, target, "jamming") if battle.accuracy else 0
             evasion = flagships.evasion(battle, target) if battle.accuracy else 0
             text(surface, f"PD {interception(battle, target)}% · ECM −{jam} aim · Fleet evade +{evasion}", (x, 522), 9, MUTED)
         can_fire = bool(player_turn and ship and target and action_error(game, PLAYER, ship.id, target.id) is None)
-        label = "Fire at target" if can_fire else "Weapons recharging" if ship and ship.damage and not ship.ready_damage else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
-        text(surface, "HIT CHANCE · fleet support / ECM / tracking" if battle.accuracy else "GUARANTEED HITS · aim / evasion / ECM off", (x, 538), 9, GOLD)
-        if ship and target and in_range(ship, target):
-            groups = list(Counter(w for w, _ in ship.volley(target)).items())
+        label = "Fire at target" if can_fire else "Weapons recharging" if ship and ship.damage and not ship.ready_damage else "Line of fire blocked" if ship and target and in_range(ship, target) and not in_range(ship, target, battle) else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
+        blocked_beams = bool(ship and target and geometry.blocker(battle, ship, target)
+                             and any(not BEAMS[w].projectile for w, _, _ in ship.ready_weapons))
+        text(surface, "BEAMS BLOCKED · guided ordnance can launch" if blocked_beams and can_fire
+             else "HIT CHANCE · fleet support / ECM / tracking" if battle.accuracy
+             else "GUARANTEED HITS · aim / evasion / ECM off", (x, 538), 9, GOLD)
+        if ship and target and in_range(ship, target, battle):
+            groups = list(Counter(w for w, _ in ship.volley(target, battle)).items())
             limit = 2 if ship.drone_bays else 4
             for index, (weapon, count) in enumerate(groups[:limit]):
                 if index == limit-1 and len(groups) > limit:
@@ -353,7 +377,7 @@ def draw_combat(app):
                          f"(track −{chance['tracking']})")
                 text(surface, shot_label, (x, 553+index*11), 10, CYAN)
         else:
-            text(surface, "Choose an enemy within weapon range.", (x, 554), 10, MUTED)
+            text(surface, "Move to a clear firing lane." if label == "Line of fire blocked" else "Choose an enemy within weapon range.", (x, 554), 10, MUTED)
         if ship and ship.drone_bays:
             roles = battle.available_drone_roles(ship)
             if getattr(app, "combat_drone_role", None) not in roles:

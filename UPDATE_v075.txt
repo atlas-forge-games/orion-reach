@@ -1,0 +1,72 @@
+ORION REACH v0.75.0 — COMBAT GEOMETRY AND SOUND
+
+INSTALL
+Close the game. Extract this ZIP into your existing v0.74 game directory,
+the directory containing main.py. Merge folders and replace the included files.
+This is an incremental update: the existing game and artwork are required.
+No dependency changes are required. Run python main.py or python combat_simulator.py.
+
+FEATURES
+- Ship shields absorb beams. Torpedoes and missiles bypass them.
+- Point defense and escorts reduce projectile damage, including bomber torpedoes.
+- Full footprints: destroyer 2x1, cruiser 2x2, battleship/carrier 3x2,
+  titan 3x3, mothership 4x3. Movement and deployment check all occupied cells.
+- Friendly and enemy ships obstruct beams. Blocked shots are unavailable;
+  mixed volleys can still launch guided torpedoes. The AI seeks clear lanes.
+- Synthesized beam, missile launch, shield hit, hull impact and explosion sounds.
+  Projectile impacts sound on arrival, and missed shots have no impact cue.
+- Settings > Sound > Sound effects controls combat and interface sounds.
+
+SAVES
+Save format is now 53. Back up existing saves before updating; older game
+versions cannot open newly written format-53 saves. Existing unfinished
+battles keep one-cell layouts when loaded, preserving positions and in-flight
+warheads. New battles use multi-cell hulls. The new defense rules apply to
+subsequent damage calculations. Planetary strategic shields retain their
+separate bombardment/invasion rules.
+
+DETAILS
+See docs/combat-geometry-and-sound.md and TEST_REPORT_v075.txt.
+No commit or push has been made.
+
+FILES IN THIS UPDATE
+    README.md
+    TEST_REPORT_v075.txt
+    UPDATE_v075.txt
+    docs/combat-geometry-and-sound.md
+    docs/combat-projectiles.md
+    docs/combat-simulator.md
+    docs/fleet-support.md
+    orion/__init__.py
+    orion/app.py
+    orion/audio.py
+    orion/combat.py
+    orion/combat_camera.py
+    orion/combat_effects.py
+    orion/combat_geometry.py
+    orion/combat_inspector.py
+    orion/combat_projectiles.py
+    orion/combat_simulator.py
+    orion/combat_sounds.py
+    orion/combat_view.py
+    orion/designer_info.py
+    orion/designs.py
+    orion/encyclopedia.py
+    orion/flagships.py
+    orion/fleet_support.py
+    orion/model.py
+    orion/settings_view.py
+    orion/storage.py
+    screenshots/v075_combat_geometry.png
+    tests/scenarios.py
+    tests/test_arsenal.py
+    tests/test_combat_geometry.py
+    tests/test_combat_projectiles.py
+    tests/test_combat_sounds.py
+    tests/test_combat_zoom.py
+    tests/test_designer.py
+    tests/test_flagships.py
+    tests/test_fleet_support.py
+    tests/test_hull_modules.py
+    tests/test_tactical_combat.py
+    tools/preview_combat_geometry.py

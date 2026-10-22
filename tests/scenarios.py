@@ -197,6 +197,8 @@ def migrated_statistics(game):
 def legacy_research_payload(data):
     """Represent research in pre-v28 fixtures using their real three-field schema."""
     if isinstance(data, dict):
+        data.pop("board_rows", None)
+        data.pop("large_hull", None)
         if {"completed", "active", "progress", "legacy_count", "legacy_active"} <= set(data):
             data.pop("legacy_black_holes", None)
             data.pop("legacy_fuel", None)

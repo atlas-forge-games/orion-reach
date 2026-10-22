@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import math
 
 from .weapons import BEAMS
+from . import combat_geometry as geometry
 
 SPEED = 5
 MAX_FLIGHT_ROUNDS = 6
@@ -29,7 +30,7 @@ class Projectile:
 
 
 def eta(projectile, target):
-    return max(1, math.ceil(math.dist(projectile.position, target.position)/SPEED))
+    return max(1, math.ceil(math.dist(projectile.position, geometry.nearest(target, projectile.position))/SPEED))
 
 
 def load(rows, state):
@@ -68,7 +69,7 @@ def advance(game, owner):
     """Move this side's volleys at the start of its next turn, once per round.
 
     Every launch gives the opposing side a turn to respond. Aim is fixed at
-    launch; current shields and nearby interceptors resolve damage on arrival.
+    launch; current interceptors resolve damage on arrival. Beam shields are bypassed.
     Returned snapshots drive presentation only and never reapply damage.
     """
     from .combat import hit_damage, check_losses
@@ -83,10 +84,11 @@ def advance(game, owner):
             remaining.append(shot)
             continue
         start = shot.position
-        distance = math.dist(start, target.position)
+        end = geometry.nearest(target, start)
+        distance = math.dist(start, end)
         fraction = min(1.0, SPEED/distance) if distance else 1.0
-        shot.x += (target.x-shot.x)*fraction
-        shot.y += (target.y-shot.y)*fraction
+        shot.x += (end[0]-shot.x)*fraction
+        shot.y += (end[1]-shot.y)*fraction
         shot.age += 1
         event = {"id": shot.id, "source_id": shot.source_id, "target_id": target.id,
                  "weapon": shot.weapon, "start": start, "end": shot.position,
@@ -95,7 +97,7 @@ def advance(game, owner):
         if event["impact"]:
             event["missed"] = shot.roll >= shot.chance
             if not event["missed"]:
-                event["escorts"] = tuple(state.ship(i).position for i in screen_sources(state, target))
+                event["escorts"] = tuple(geometry.center(state.ship(i)) for i in screen_sources(state, target))
                 hit, blocked = hit_damage(state, target, shot.weapon, shot.strength)
                 target.hull -= hit
                 target.shields = target.shields-blocked if target.hull else 0

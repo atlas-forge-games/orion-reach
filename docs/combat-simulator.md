@@ -204,3 +204,11 @@ python -m unittest discover -s tests -p test_combat_simulator.py -q
 The result preview runs both sides through the ordinary combat AI. A preview
 that cannot finish within the round/action limit reports an error instead of
 running indefinitely.
+
+## Multi-cell hulls and sound (v0.75)
+
+The simulator shares the campaign's new footprint, beam obstruction and defense
+rules. Ship shields absorb beams; torpedoes bypass them. The settings Sound
+effects toggle controls firing and impact cues. See
+[the detailed rules](combat-geometry-and-sound.md). Existing scenario files need
+no migration: newly launched matches use the new layout.

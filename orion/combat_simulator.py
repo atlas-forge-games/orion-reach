@@ -367,7 +367,7 @@ class CombatSimulator(App):
                     effect = self.combat_animation
                     position = (effect.moving_position() if effect and effect.kind == "move" and effect.ship_id == ship.id
                                 else ship.position)
-                    if view(self).cell_rect(position).clip(BOARD).collidepoint(point):
+                    if view(self).ship_rect(ship, position).clip(BOARD).collidepoint(point):
                         self.inspect_ship(ship.id)
                         break
             return

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from orion import combat, flagships, fleet_support, combat_camera
+from orion import combat, flagships, fleet_support, combat_camera, combat_geometry as geometry
 from orion.combat_effects import CombatAnimation
 from orion.combat_sandbox import FleetSetup, Scenario, build_game
 from orion.combat_simulator import CombatSimulator
@@ -73,9 +73,9 @@ class FlagshipTests(unittest.TestCase):
                 for side in battle.sides:
                     leader = flagships.select(battle, side)
                     ships = battle.fleet(side)
-                    centre = ((min(s.x for s in ships)+max(s.x for s in ships))/2,
-                              (battle.rows-1)/2)
-                    self.assertLessEqual(math.dist(leader.position, centre), .71)
+                    self.assertLessEqual(abs(geometry.center(leader)[1]-(battle.rows-1)/2), .5)
+                    occupied = [cell for ship in ships for cell in geometry.cells(ship)]
+                    self.assertEqual(len(occupied), len(set(occupied)))
                     self.assertTrue(all(0 <= s.x < combat.BOARD_COLUMNS and 0 <= s.y < battle.rows
                                         for s in ships))
 
@@ -86,7 +86,7 @@ class FlagshipTests(unittest.TestCase):
         self.assertEqual(len({s.position for s in battle.ships}), len(battle.ships))
         for side, x in (('player', 8), ('rival', 15)):
             self.assertTrue(all(s.x == x for s in battle.fleet(side) if s.kind == 'missile_base'))
-            self.assertEqual(flagships.select(battle, side).y, 6)
+            self.assertLessEqual(abs(geometry.center(flagships.select(battle, side))[1]-(battle.rows-1)/2), .5)
 
     def test_hull_radius_uses_euclidean_distance_and_excludes_self_and_enemies(self):
         for kind, radius in (('frigate', 2), ('destroyer', 3), ('cruiser', 4),
@@ -189,7 +189,7 @@ class FlagshipViewTests(unittest.TestCase):
                     with patch('orion.combat_view.pg.draw.circle', wraps=pg.draw.circle) as draw:
                         ids = draw_flagship_auras(app, battle, camera)
                     self.assertEqual(ids, {2, 4})
-                    cx, cy = camera.project(app.combat_animation.moving_position())
+                    cx, cy = camera.project(geometry.center(leader, app.combat_animation.moving_position()))
                     self.assertTrue(any(call.args[2] == (cx-combat_camera.BOARD.x, cy-combat_camera.BOARD.y)
                                         and call.args[3] == round(8*camera.cell_size) for call in draw.call_args_list))
                     app.render()

@@ -15,7 +15,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame as pg
-from orion import ai, balance, combat, fleet_support as support
+from orion import ai, balance, combat, combat_geometry as geometry, fleet_support as support
 from orion.auto_designs import auto_design
 from orion.combat_effects import CombatAnimation
 from orion.combat_sandbox import FleetSetup, Scenario, build_game, preset
@@ -33,7 +33,7 @@ def unit(identifier, kind="frigate", owner="player", pos=(5, 4), modules=None):
     design = ShipDesign("design_1", "Test "+kind, kind, tuple(modules)) if modules else None
     hull = design.hull if design else combat.COMBAT_TYPES[kind].hull
     return combat.CombatShip(identifier, kind, owner, hull, hull, *pos,
-                            weapon=design.weapon if design else "laser", design=design)
+                            weapon=design.weapon if design else "laser", design=design, large_hull=False)
 
 
 def arena(*ships):
@@ -298,8 +298,15 @@ class SupportPresentationTests(unittest.TestCase):
             self.assertLessEqual(sprite.get_width(), CELL)
             self.assertLessEqual(sprite.get_height(), 38)
         self.app.launch(False); self.app.render()
-        clicks = [b.rect.size for b in self.app.buttons if b.key.startswith("combat_ship_")]
-        self.assertEqual(set(clicks), {(CELL-6, CELL-6)})
+        clicks = [b for b in self.app.buttons if b.key.startswith("combat_ship_")]
+        self.assertTrue(any(b.rect.width > CELL*2 for b in clicks))
+        for button in clicks:
+            ship = self.app.game.combat.ship(int(button.key.removeprefix("combat_ship_")))
+            from orion.combat_camera import view, BOARD
+            for cell in geometry.cells(ship):
+                point = view(self.app).project(cell)
+                if BOARD.collidepoint(point):
+                    self.assertTrue(button.rect.collidepoint(point))
 
     def test_manual_shot_has_escort_animation_and_no_new_support_buttons(self):
         self.app.scenario = Scenario(player=FleetSetup(ships={"destroyer": 1, "frigate": 1}),

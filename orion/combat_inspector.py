@@ -4,7 +4,7 @@ from collections import Counter
 import math
 import pygame as pg
 
-from . import combat_projectiles, fleet_support, flagships
+from . import combat_projectiles, fleet_support, flagships, combat_geometry as geometry
 from .combat import BEAMS, COMBAT_TYPES
 from .fleet_art import ship_icon
 from .ui import CYAN, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
@@ -22,7 +22,7 @@ def weapon_rows(battle, ship):
         detail = f"{strength*count} damage · {shots} {'shot' if shots == 1 else 'shots'} · Range {reach} cells · Base aim {spec.accuracy}%"
         traits = []
         if spec.projectile:
-            traits.append(f"Homing · {combat_projectiles.SPEED} cells/round · up to {math.ceil(reach/combat_projectiles.SPEED)} rounds at launch range")
+            traits.append(f"Bypasses shields · Homing · {combat_projectiles.SPEED} cells/round · up to {math.ceil(reach/combat_projectiles.SPEED)} rounds at launch range")
         if spec.shield_multiplier > 1:
             traits.append(f"{spec.shield_multiplier}× damage against shields")
         if spec.shield_bypass:
@@ -37,7 +37,7 @@ def weapon_rows(battle, ship):
             traits.append(f"{spec.versus_drones}× against drones")
         if spec.versus_capitals > 1:
             traits.append(f"{spec.versus_capitals}× against capital ships")
-        rows.append((f"{count}× {spec.name}", detail, " · ".join(traits) or "Immediate impact", status))
+        rows.append((f"{count}× {spec.name}", detail, " · ".join(traits) or "Beam · Shields absorb damage · Clear firing lane required", status))
     return rows
 
 
@@ -73,7 +73,7 @@ def draw(app):
     ship_icon(surface, (154, 158), .8, color, kind=ship.kind, facing=1)
     text(surface, shorten(ship.name, 966, 28), (208, 123), 28, INK, "title")
     side = "YOUR FLEET" if ship.owner == "player" else "ENEMY FLEET"
-    text(surface, f"{side} · {COMBAT_TYPES[ship.kind].name} · Cell {ship.x+1}, {ship.y+1}", (208, 168), 13, color)
+    text(surface, f"{side} · {COMBAT_TYPES[ship.kind].name} · {geometry.size(ship)[0]}×{geometry.size(ship)[1]} cells · Cell {ship.x+1}, {ship.y+1}", (208, 168), 13, color)
     command = flagships.description(battle, ship)
     if command and not battle.accuracy:
         command += " · Aim/evasion inactive: every shot hits"
@@ -83,7 +83,7 @@ def draw(app):
     panel(surface, (120, 212, 372, 474))
     text(surface, "CONDITION & DEFENSES", (140, 234), 11, GOLD, "mono", 1)
     for y, label, value, maximum, shade in ((270, "Hull", ship.hull, ship.max_hull, color),
-                                          (348, "Shields", ship.shields, ship.max_shields, CYAN)):
+                                          (348, "Beam shields", ship.shields, ship.max_shields, CYAN)):
         text(surface, label, (140, y), 18, INK)
         text(surface, f"{value} / {maximum}", (472, y), 17, shade, right=True)
         pg.draw.rect(surface, LINE, (140, y+33, 332, 7))

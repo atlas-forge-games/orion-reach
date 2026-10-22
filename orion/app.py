@@ -41,6 +41,7 @@ from .combat import retreat_destination
 from .combat_view import draw_combat
 from . import combat_camera
 from .combat_effects import CombatAnimation
+from . import combat_geometry as geometry
 from .victory import CONDITIONS, colonies
 from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
@@ -1689,7 +1690,7 @@ class App:
         if not any(s.id==self.combat_target_id for s in targets):
             self.combat_target_id=targets[0].id if targets else None
         if battle.active_owner==PLAYER and self.combat_ship_id is not None:
-            combat_camera.reveal(self, (battle.ship(self.combat_ship_id).position,))
+            combat_camera.reveal(self, geometry.cells(battle.ship(self.combat_ship_id)))
 
     def combat_input_ready(self):
         return (self.screen=="combat" and not self.dialog and not self.combat_auto and self.game is not None
@@ -1725,7 +1726,7 @@ class App:
             identifiers=[s.id for s in ready]
             index=identifiers.index(self.combat_ship_id) if self.combat_ship_id in identifiers else -1
             self.combat_ship_id=identifiers[(index+1)%len(identifiers)]
-            combat_camera.reveal(self, (self.game.combat.ship(self.combat_ship_id).position,))
+            combat_camera.reveal(self, geometry.cells(self.game.combat.ship(self.combat_ship_id)))
 
     def engage_request(self,system_id,target=None):
         opponents=self.game.opponents_at(system_id)
@@ -1780,9 +1781,14 @@ class App:
         if battle.status!="active":
             self.combat_auto=False
         self.combat_animation=CombatAnimation.from_action(self.game.combat,event)
+        if self.combat_animation:
+            self.combat_animation.play_audio(self.audio,self.settings["sound"])
         self.combat_last_update=self.time
         if self.combat_animation:
-            combat_camera.reveal(self, self.combat_animation.path)
+            points=self.combat_animation.path
+            if self.combat_animation.kind=="move" and ship is not None:
+                points=geometry.cells(ship,points[0])+geometry.cells(ship,points[-1])
+            combat_camera.reveal(self,points)
         else:
             self.sync_combat_selection()
         self.combat_ai_due=self.time+.4
@@ -1807,13 +1813,14 @@ class App:
             if action=="fire":
                 target=self.game.combat.ship(self.combat_target_id)
                 ship=self.game.combat.ship(self.combat_ship_id)
-                weapons=tuple(dict.fromkeys(w for w,_ in ship.volley(target))) if ship and target else ()
+                weapons=tuple(dict.fromkeys(w for w,_ in ship.volley(target, self.game.combat))) if ship and target else ()
                 shields=target.shields if target else 0
                 from .fleet_support import screen_sources
                 support_ids=screen_sources(self.game.combat,target)
                 damage=self.game.combat_fire(self.combat_ship_id,self.combat_target_id)
                 event.update(ship_id=self.combat_ship_id,target_id=self.combat_target_id,damage=damage,
-                             missed=damage==0 and target.shields==shields,weapons=weapons,support_ids=support_ids)
+                             missed=damage==0 and target.shields==shields,weapons=weapons,support_ids=support_ids,
+                             absorbed=max(0,shields-target.shields))
             elif action=="launch":
                 drones=self.game.combat_launch_drones(self.combat_ship_id,role=getattr(self,"combat_drone_role",None))
                 event.update(ship_id=self.combat_ship_id,drone_ids=drones)
@@ -1851,6 +1858,7 @@ class App:
             self.combat_auto=False
         if self.combat_animation:
             self.combat_animation.elapsed+=delta
+            self.combat_animation.play_audio(self.audio,self.settings["sound"])
             if self.combat_animation.finished:
                 self.combat_animation=None
                 self.sync_combat_selection()

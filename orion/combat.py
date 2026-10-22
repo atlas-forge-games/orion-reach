@@ -7,7 +7,7 @@ import math
 import hashlib
 
 from .production import SHIP_TYPES, ShipSpec
-from . import defenses, fleet_support, combat_projectiles, flagships
+from . import defenses, fleet_support, combat_projectiles, flagships, combat_geometry as geometry
 from .designs import HULLS, MODULE_SIZES, ShipDesign
 from .weapons import Beam, BEAMS, DRONE_ROLES, CAPITAL_TARGETS
 from .empires import EMPIRE_IDS
@@ -77,6 +77,7 @@ class CombatShip:
     graviton_slow: bool = False
     repair_remaining: int = 0
     drone_role: str | None = None
+    large_hull: bool = True
 
     @property
     def name(self):
@@ -142,9 +143,11 @@ class CombatShip:
     def ready_weapons(self):
         return tuple(row for row in self.weapons if row[0] not in self.cooldowns)
 
-    def volley(self, target):
-        distance = math.dist(self.position, target.position)
-        return tuple((weapon, strength) for weapon, strength, reach in self.ready_weapons if distance <= reach)
+    def volley(self, target, state=None):
+        distance = geometry.distance(self, target)
+        clear = geometry.clear_line(state, self, target)
+        return tuple((weapon, strength) for weapon, strength, reach in self.ready_weapons
+                     if distance <= reach and (BEAMS[weapon].projectile or clear))
 
     @property
     def position(self):
@@ -167,6 +170,7 @@ class CombatState:
     shots_fired: int = 0
     encounter_id: int | None = None
     projectiles: list[combat_projectiles.Projectile] = field(default_factory=list)
+    board_rows: int = 0
 
     @property
     def guardian(self):
@@ -181,8 +185,9 @@ class CombatState:
 
     @property
     def rows(self):
-        # Four deployment columns per side; large fleets extend the map vertically.
-        return max(MIN_ROWS, (max(sum(s.owner == o for s in self.ships) for o in self.sides)+3)//4)
+        # Persist the board height so casualties and drone launches cannot resize it.
+        return self.board_rows or max(MIN_ROWS, (max(sum(s.owner == o for s in self.ships)
+                                                    for o in self.sides)+3)//4)
 
     def can_move(self, ship):
         return ship.hull > 0 and ship.movement > 0 and ship.id not in self.moved
@@ -194,13 +199,14 @@ class CombatState:
         return [s for s in self.ships if s.carrier_id == carrier.id and (s.hull > 0 or not alive)]
 
     def launch_cells(self, carrier):
-        occupied = {s.position for s in self.ships if s.hull > 0}
+        blocked = geometry.occupied(self)
+        width, height = geometry.size(carrier)
         forward = 1 if carrier.owner == self.sides[0] else -1
-        offsets = ((forward, 0), (forward, -1), (forward, 1), (0, -1), (0, 1),
-                   (-forward, 0), (-forward, -1), (-forward, 1))
-        return [(carrier.x+dx, carrier.y+dy) for dx, dy in offsets
-                if 0 <= carrier.x+dx < BOARD_COLUMNS and 0 <= carrier.y+dy < self.rows
-                and (carrier.x+dx, carrier.y+dy) not in occupied]
+        candidates = [(x, y) for x in range(carrier.x-1, carrier.x+width+1)
+                      for y in range(carrier.y-1, carrier.y+height+1)
+                      if 0 <= x < BOARD_COLUMNS and 0 <= y < self.rows and (x, y) not in blocked]
+        cx, cy = geometry.center(carrier)
+        return sorted(candidates, key=lambda p: (math.dist(p, (cx, cy)), -forward*(p[0]-cx), abs(p[1]-cy), p))
 
     def available_drone_roles(self, ship):
         return tuple(role for role, bays in ship.drone_bay_counts.items()
@@ -228,8 +234,10 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=52):
+    def from_dict(cls, data, game, *, version=53):
         from .model import _integer, _name
+        if version < 53 and isinstance(data, dict):
+            data = {**data, "board_rows": 0}
         if version < 52 and isinstance(data, dict):
             data = {**data, "projectiles": []}
         if version < 49 and isinstance(data, dict):
@@ -244,7 +252,7 @@ class CombatState:
                                  if isinstance(row, dict) else row for row in data["ships"]]
         if not isinstance(data, dict) or set(data) != {
                 "system_id", "initiator", "ships", "round", "active_owner", "acted",
-                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired", "encounter_id", "projectiles"}:
+                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired", "encounter_id", "projectiles", "board_rows"}:
             raise ValueError("Invalid combat state")
         if type(data["accuracy"]) is not bool or not _integer(data["shots_fired"], 0, 100_000_000):
             raise ValueError("Invalid combat random sequence")
@@ -252,6 +260,8 @@ class CombatState:
                 data["initiator"] not in game.owners or
                 not _integer(data["round"], 1, 1_000_000) or data["status"] not in RESULTS):
             raise ValueError("Invalid combat location or status")
+        if not _integer(data["board_rows"], 0, 40000):
+            raise ValueError("Invalid battlefield height")
         rows = data["ships"]
         if not isinstance(rows, list) or not 2 <= len(rows) <= 10000:
             raise ValueError("Invalid battle fleet")
@@ -287,6 +297,8 @@ class CombatState:
                 fields |= {"carrier_id", "launched_drones"}
             if version >= 31:
                 fields |= {"cooldowns", "graviton_slow", "repair_remaining", "drone_role"}
+            if version >= 53:
+                fields.add("large_hull")
             if not isinstance(row, dict) or set(row) != fields:
                 raise ValueError("Invalid combat ship")
             monster = row["owner"] == MONSTER
@@ -342,6 +354,10 @@ class CombatState:
                     or (drone and (not _integer(row["carrier_id"], 1, game.next_ship_id-1)
                                    or row["initial_hull"] != DRONE_SPEC.hull or row["launched_drones"]))):
                 raise ValueError("Invalid drone deployment")
+            if version < 53:
+                row = {**row, "large_hull": False}
+            if type(row["large_hull"]) is not bool:
+                raise ValueError("Invalid hull footprint")
             ships.append(CombatShip(**row))
         identifiers = {s.id for s in ships}
         if len(identifiers) != len(ships) or {s.owner for s in ships} != set(sides):
@@ -380,7 +396,9 @@ class CombatState:
         battle_rows = state.rows
         if any(not _integer(s.x, 0, BOARD_COLUMNS-1) or not _integer(s.y, 0, battle_rows-1) for s in ships):
             raise ValueError("Ship outside the battlefield")
-        living = [s.position for s in ships if s.hull > 0]
+        if any(not geometry.fits(s, s.position, set(), BOARD_COLUMNS, battle_rows) for s in ships):
+            raise ValueError("Hull extends outside the battlefield")
+        living = [cell for s in ships if s.hull > 0 for cell in geometry.cells(s)]
         if len(set(living)) != len(living):
             raise ValueError("Ships occupy the same position")
         state.projectiles = combat_projectiles.load(data["projectiles"], state)
@@ -472,42 +490,51 @@ class CombatState:
 
 
 def deploy(state):
-    rows = state.rows
-    lanes = sorted(range(rows), key=lambda y: (abs(y-(rows-1)/2), y))
-    for owner in state.sides:
-        fleet = sorted(state.fleet(owner, alive=False), key=lambda s: s.id)
-        leader = flagships.select(state, owner)
-        ships = [ship for ship in fleet if ship.kind != "missile_base"]
-        bases = [ship for ship in fleet if ship.kind == "missile_base"]
-        for group in (ships, bases):
-            for index, ship in enumerate(group):
-                depth, lane = divmod(index, rows)
-                ship.x = 3-depth if owner == state.sides[0] else BOARD_COLUMNS-4+depth
+    """Pack complete hulls behind a separate line of planetary batteries."""
+    area = max(sum(math.prod(geometry.size(s)) for s in state.fleet(owner, alive=False))
+               for owner in state.sides)
+    tallest = max(geometry.size(s)[1] for s in state.ships)
+    state.board_rows = max(MIN_ROWS, math.ceil(area/4)+tallest+1)
+    while True:
+        placed = set()
+        success = True
+        for owner in state.sides:
+            fleet = state.fleet(owner, alive=False)
+            leader = flagships.select(state, owner)
+            order = sorted(fleet, key=lambda s: (s.kind == "missile_base", s is not leader,
+                                                  -math.prod(geometry.size(s)), s.id))
+            for ship in order:
+                width, height = geometry.size(ship)
                 if ship.kind == "missile_base":
-                    # Worlds form a separate defensive line, without consuming
-                    # central fleet slots. Opposing batteries stay in range.
-                    ship.x = BOARD_COLUMNS//2-4 if owner == state.sides[0] else BOARD_COLUMNS//2+3
-                ship.y = lanes[lane]
-        if leader:
-            # Use the middle occupied column and middle row, including fleets
-            # too large for a single column. Keep planets on their own line.
-            centre_x = (min(s.x for s in ships)+max(s.x for s in ships))/2
-            centre_y = (rows-1)/2
-            middle = min(ships, key=lambda s: (
-                math.dist(s.position, (centre_x, centre_y)), s.id))
-            leader.x, middle.x = middle.x, leader.x
-            leader.y, middle.y = middle.y, leader.y
+                    columns = [BOARD_COLUMNS//2-4 if owner == state.sides[0] else BOARD_COLUMNS//2+3]
+                elif owner == state.sides[0]:
+                    columns = range(4-width, -1, -1)
+                else:
+                    columns = range(BOARD_COLUMNS-4, BOARD_COLUMNS-width+1)
+                lanes = sorted(range(state.rows-height+1), key=lambda y: (abs(y+(height-1)/2-(state.rows-1)/2), y))
+                position = next(((x, y) for x in columns for y in lanes
+                                 if geometry.fits(ship, (x, y), placed, BOARD_COLUMNS, state.rows)), None)
+                if position is None:
+                    success = False
+                    break
+                ship.x, ship.y = position
+                placed.update(geometry.cells(ship))
+            if not success:
+                break
+        if success:
+            return
+        state.board_rows += tallest
 
 
-def in_range(ship, target):
-    return bool(ship.volley(target))
+def in_range(ship, target, state=None):
+    return bool(ship.volley(target, state))
 
 
 def reachable(state, ship):
     """Shortest eight-direction paths; ships block cells and diagonal corners."""
     if not state.can_move(ship):
         return {}
-    occupied = {s.position for s in state.ships if s.hull > 0 and s.id != ship.id}
+    occupied = geometry.occupied(state, exclude=ship.id)
     rows = state.rows
     paths = {ship.position: (ship.position,)}
     queue = deque([ship.position])
@@ -518,10 +545,10 @@ def reachable(state, ship):
             continue
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
             cell = x+dx, y+dy
-            if (not 0 <= cell[0] < BOARD_COLUMNS or not 0 <= cell[1] < rows
-                    or cell in occupied or cell in paths):
+            if (cell in paths or not geometry.fits(ship, cell, occupied, BOARD_COLUMNS, rows)):
                 continue
-            if dx and dy and ((x+dx, y) in occupied or (x, y+dy) in occupied):
+            if dx and dy and (not geometry.fits(ship, (x+dx, y), occupied, BOARD_COLUMNS, rows)
+                              or not geometry.fits(ship, (x, y+dy), occupied, BOARD_COLUMNS, rows)):
                 continue
             paths[cell] = path+(cell,)
             queue.append(cell)
@@ -678,6 +705,9 @@ def action_error(game, owner, ship_id=None, target_id=None):
                 return "Choose a surviving enemy ship."
             if not in_range(ship, target):
                 return f"Target out of range. Ready weapon range: {ship.ready_range} cells."
+            if not in_range(ship, target, state):
+                obstacle = geometry.blocker(state, ship, target)
+                return f"Line of fire blocked by {obstacle.name}. Move to a clear firing lane."
     return None
 
 
@@ -845,7 +875,7 @@ def accuracy_breakdown(game, attacker, target, weapon):
     defense = game.bonuses_for(target.owner) if target.owner in game.owners else {}
     spec = BEAMS[weapon]
     base = spec.accuracy
-    distance = math.dist(attacker.position, target.position)
+    distance = geometry.distance(attacker, target)
     penalty = max(0, math.ceil(distance-2))*3
     if bonuses.get("beam_precision") and not spec.projectile and weapon != "siege":
         penalty //= 2
@@ -893,9 +923,11 @@ def hit_damage(state, target, weapon, strength, *, shields=None, hull=None):
         strength *= spec.versus_drones
     if target.kind in CAPITAL_TARGETS or target.kind in MONSTERS:
         strength *= spec.versus_capitals
-    if spec.projectile or spec.drone:
+    if spec.projectile:
         reduction = interception(state, target)*(100-spec.interception_piercing)/100
         strength = max(1, (round if spec.drone else math.ceil)(strength*(100-reduction)/100))
+    if spec.projectile:
+        return min(hull, strength), 0  # Torpedoes bypass beam shields entirely.
     hardening = target.design.shield_hardening if shields and target.design else 0
     bypass = strength*spec.shield_bypass*(100-hardening)//10_000
     blocked = min((strength-bypass)*spec.shield_multiplier, shields)
@@ -907,7 +939,7 @@ def hit_damage(state, target, weapon, strength, *, shields=None, hull=None):
 
 def expected_volley(game, attacker, target):
     shields, hull, score = target.shields, target.hull, 0.0
-    for weapon, strength in attacker.volley(target):
+    for weapon, strength in attacker.volley(target, game.combat):
         chance = accuracy_breakdown(game, attacker, target, weapon)["chance"]/100
         for shot in shot_strengths(weapon, strength):
             hit, blocked = hit_damage(game.combat, target, weapon, shot, shields=shields, hull=hull)
@@ -924,7 +956,8 @@ def fire(game, ship_id, target_id, owner="player"):
     attacker, target = state.ship(ship_id), state.ship(target_id)
     require(attacker is not None and target is not None, "Choose an attacker and target.")
     damage, absorbed, hits, shots, screened, launched = 0, 0, 0, 0, 0, 0
-    volley = attacker.volley(target)
+    volley = attacker.volley(target, state)
+    origin, impact = geometry.firing_points(attacker, target)
     slowed = False
     for weapon, total in volley:
         spec = BEAMS[weapon]
@@ -938,7 +971,7 @@ def fire(game, ship_id, target_id, owner="player"):
             if spec.projectile:
                 state.projectiles.append(combat_projectiles.Projectile(
                     state.shots_fired-1, attacker.id, target.id, owner, weapon, strength, chance, roll,
-                    float(attacker.x), float(attacker.y)))
+                    float(origin[0]), float(origin[1])))
                 launched += 1
                 continue
             shots += 1
@@ -946,7 +979,7 @@ def fire(game, ship_id, target_id, owner="player"):
                 continue
             hits += 1
             hit, blocked = hit_damage(state, target, weapon, strength)
-            if spec.projectile or spec.drone:
+            if spec.projectile:
                 unscreened = hit_damage(None, target, weapon, strength)
                 screened += int(hit+blocked < sum(unscreened))
             target.shields -= blocked
@@ -966,7 +999,7 @@ def fire(game, ship_id, target_id, owner="player"):
     if shots:
         state.record(f"{attacker.name} → {target.name}: {hits}/{shots} hits, {damage} hull damage.{protection}{support}{effect}{suffix}")
     if launched:
-        delay = max(1, math.ceil(math.dist(attacker.position, target.position)/combat_projectiles.SPEED))
+        delay = max(1, math.ceil(geometry.distance(attacker, target)/combat_projectiles.SPEED))
         state.record(f"{attacker.name} launched {launched} warheads at {target.name}. "
                      f"Estimated arrival: {delay} rounds; targets can maneuver.")
     check_losses(game)
@@ -1038,18 +1071,19 @@ def ai_action(game, owner="rival"):
                                      fleet_support.anchor_for(state, s) is not None,
                                      -s.damage, s.hull, s.id))
     enemies = state.fleet(state.enemy(owner))
-    targets = [s for s in enemies if in_range(ship, s)] if state.can_fire(ship) else []
+    targets = [s for s in enemies if in_range(ship, s, state)] if state.can_fire(ship) else []
     if targets:
         target = min(targets, key=lambda s: (s.hull > expected_volley(game, ship, s),
                                             -expected_volley(game, ship, s), -s.damage, s.hull, s.id))
         shield_before = target.shields
         support_ids = fleet_support.screen_sources(state, target)
-        weapons = tuple(dict.fromkeys(w for w, _ in ship.volley(target)))
+        weapons = tuple(dict.fromkeys(w for w, _ in ship.volley(target, state)))
         damage = fire(game, ship.id, target.id, owner)
         return {"kind": "fire", "ship_id": ship.id, "target_id": target.id, "damage": damage,
                 "weapons": weapons,
                 "support_ids": support_ids,
-                "missed": damage == 0 and target.shields == shield_before}
+                "missed": damage == 0 and target.shields == shield_before,
+                "absorbed": max(0, shield_before-target.shields)}
     paths = reachable(state, ship)
     anchor = fleet_support.anchor_for(state, ship)
     if paths and anchor is not None:
@@ -1058,8 +1092,11 @@ def ai_action(game, owner="rival"):
             radius = min(radii)
             def support_score(cell):
                 # Stay in support range, keeping a firing lane if one is available.
-                gap = max(0, math.dist(cell, anchor.position)-radius)
-                firing_gap = min(max(0, math.dist(cell, enemy.position)-ship.ready_range) for enemy in enemies)
+                gap = max(0, math.dist(geometry.center(ship, cell), geometry.center(anchor))-radius)
+                firing_gap = min(max(0, geometry.distance(ship, enemy, cell)-ship.ready_range)
+                                 + (0 if any(BEAMS[w].projectile for w, _, _ in ship.ready_weapons)
+                                    or geometry.clear_line(state, ship, enemy, cell) else 1)
+                                 for enemy in enemies)
                 return (gap, firing_gap if state.can_fire(ship) else 0, len(paths.get(cell, (cell,))), cell)
             destination = min(paths, key=support_score)
             if support_score(destination)[:2] < support_score(ship.position)[:2]:
@@ -1070,13 +1107,18 @@ def ai_action(game, owner="rival"):
             return {"kind": "hold", "ship_id": ship.id}
     if paths and (not ship.damage or state.can_fire(ship)):
         if ship.damage:
-            target = min(enemies, key=lambda s: (math.dist(ship.position, s.position), -s.damage, s.hull, s.id))
+            target = min(enemies, key=lambda s: (geometry.distance(ship, s), -s.damage, s.hull, s.id))
             # Close only as far as necessary; prefer a firing lane over a short blocked route.
             def score(cell):
-                distance = math.dist(cell, target.position)
-                return (max(0, distance-ship.ready_range), len(paths[cell]), distance, cell)
+                distance = geometry.distance(ship, target, cell)
+                clear = (any(BEAMS[w].projectile for w, _, _ in ship.ready_weapons)
+                         or geometry.clear_line(state, ship, target, cell))
+                return (max(0, distance-ship.ready_range), not clear,
+                        len(paths.get(cell, (cell,))), distance, cell)
             destination = min(paths, key=score)
-            improve = math.dist(destination, target.position) < math.dist(ship.position, target.position)
+            improve = score(destination)[:2] < score(ship.position)[:2] or (
+                score(destination)[:2] == score(ship.position)[:2] and
+                geometry.distance(ship, target, destination) < geometry.distance(ship, target))
         else:
             distance = lambda cell: min(math.dist(cell, s.position) for s in enemies)
             destination = min(paths, key=lambda cell: (-distance(cell), len(paths[cell]), cell))

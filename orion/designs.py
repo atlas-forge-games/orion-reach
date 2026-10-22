@@ -87,7 +87,7 @@ MODULES = {
     "siege": Module("Siege cannon", "weapon", 2, 30, 20, "8 damage · range 6 · triple damage to bases and planetary shields", "siege_weapons", "siege", 8, 6),
     "armor": Module("Armor plate", "defense", 1, 10, 6, "+8 hull · -1 tactical movement (minimum 1)"),
     "shield": Module("Shield generator", "defense", 1, 18, 12, "+12 shields · restored at the start of each battle", "radiation_shields"),
-    "point_defense": Module("Point defense", "defense", 1, 12, 8, "-30% torpedo and drone damage (maximum -60%)"),
+    "point_defense": Module("Point defense", "defense", 1, 12, 8, "-30% missile and torpedo damage (maximum -60%)"),
     "engine": Module("Maneuvering thruster", "support", 1, 14, 10, "+1 tactical movement · does not change travel speed", "ion_drives"),
     "scanner": Module("Combat scanner", "support", 1, 16, 10, "+1 weapon range · one scanner per ship", "research_networks"),
     "drone_bay": Module("Drone bay", "support", 3, 30, 18, "Carrier only · 2 active drones · 4 launches/battle", "drone_carriers"),

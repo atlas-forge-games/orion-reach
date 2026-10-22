@@ -1,6 +1,7 @@
 """Automatic fleet command, derived from surviving ships rather than saved buffs."""
 
 import math
+from . import combat_geometry as geometry
 
 ACCURACY = 8
 EVASION = 5
@@ -41,7 +42,7 @@ def source(state, target):
     leader = select(state, target.owner)
     if leader is None or leader.id == target.id:
         return None
-    return leader if math.dist(leader.position, target.position) <= radius(leader) else None
+    return leader if math.dist(geometry.center(leader), geometry.center(target)) <= radius(leader) else None
 
 
 def evasion(state, target):

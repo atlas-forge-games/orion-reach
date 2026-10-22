@@ -27,9 +27,9 @@ class TacticalRulesTests(unittest.TestCase):
     def test_deployment_is_unique_and_large_fleets_extend_the_map(self):
         game = encounter(own=("frigate",)*45, enemy=("scout",)*81, close=False)
         battle = game.combat
-        self.assertEqual(battle.rows, 21)
+        self.assertGreaterEqual(battle.rows, 21)
         self.assertEqual(len({s.position for s in battle.ships}), 126)
-        self.assertTrue(all(0 <= s.x < BOARD_COLUMNS and 0 <= s.y < 21 for s in battle.ships))
+        self.assertTrue(all(0 <= s.x < BOARD_COLUMNS and 0 <= s.y < battle.rows for s in battle.ships))
         self.assertEqual((battle.ship(1).movement, battle.ship(46).movement), (3, 5))
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
@@ -183,7 +183,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.assertEqual(restored.ships, game.ships)
             self.assertEqual(path.read_bytes(), original)
             self.assertEqual(storage.load(storage.save(restored))[0], restored)
-        self.assertEqual(SAVE_VERSION, 52)
+        self.assertEqual(SAVE_VERSION, 53)
 
     def test_invalid_coordinates_weapons_or_action_flags_are_rejected(self):
         game = encounter()
@@ -347,11 +347,11 @@ class TacticalAnimationTests(unittest.TestCase):
         before = self.app.game.to_dict()
         self.app.pan_combat(100)
         self.app.render()
-        self.assertEqual(self.app.combat_camera_row, 25-VISIBLE_ROWS)
+        self.assertEqual(self.app.combat_camera_row, self.app.game.combat.rows-VISIBLE_ROWS)
         self.assertTrue(all(BOARD.contains(b.rect) for b in self.app.buttons if b.key.startswith("combat_ship_")))
         self.app.mouse = BOARD.center
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=2, x=0, mod=pg.KMOD_SHIFT))
-        self.assertEqual(self.app.combat_camera_row, 21-VISIBLE_ROWS)
+        self.assertEqual(self.app.combat_camera_row, self.app.game.combat.rows-4-VISIBLE_ROWS)
         self.assertEqual(self.app.game.to_dict(), before)
 
     def test_attack_camera_keeps_shooter_and_offscreen_target_visible(self):

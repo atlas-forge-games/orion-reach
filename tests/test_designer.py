@@ -164,7 +164,7 @@ class DesignerCombatTests(unittest.TestCase):
     def test_mixed_volley_uses_each_weapon_range_and_one_action(self):
         game = duel(defenses=())
         attacker, target = game.combat.ships
-        target.x = 14  # Seven cells: only the torpedo can reach.
+        target.x = 15  # Seven cells from the hull edge: only the torpedo can reach.
         self.assertEqual(game.combat_fire(1, 2), 0)
         self.assertEqual(target.hull, 42)
         with self.assertRaises(RuleError):
@@ -182,10 +182,10 @@ class DesignerCombatTests(unittest.TestCase):
         target = game.combat.ship(2)
         self.assertEqual(game.combat_fire(1, 2), 0)  # Beams strip 20 of the 24 shields.
         self.assertEqual((target.hull, target.shields), (42, 4))
-        cycle(game); cycle(game)  # Six cells: torpedo arrives on the second advance.
-        self.assertEqual((target.hull, target.shields), (32, 0))
-        self.assertEqual(game.combat_fire(1, 2), 20)
-        cycle(game); cycle(game)
+        cycle(game)  # Five cells from the hull edge: torpedo arrives on this advance.
+        self.assertEqual((target.hull, target.shields), (28, 4))  # Torpedo bypasses the remaining shields.
+        self.assertEqual(game.combat_fire(1, 2), 16)  # The next beams first remove four shields.
+        cycle(game)
         self.assertEqual(target.hull, 0)
         game2 = duel(weapons=("torpedo",), defenses=("point_defense",)*3)
         before = game2.combat.ship(2).hull

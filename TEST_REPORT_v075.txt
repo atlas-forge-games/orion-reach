@@ -1,0 +1,38 @@
+ORION REACH v0.75.0 — VALIDATION REPORT
+
+Environment: Python 3.12, pygame-ce 2.5.8, Linux.
+Headless checks used SDL_VIDEODRIVER=dummy and SDL_AUDIODRIVER=dummy.
+
+RESULTS
+PASS: 202 targeted tests, 83.672 seconds.
+PASS: 24 additional interface/audio regression rechecks, 8.243 seconds.
+The rechecks overlap the main suite; they are not 24 additional unique tests.
+PASS: Combat preview rendered and visually inspected at 1440 x 900.
+
+MAIN TEST COMMAND
+PYTHONPATH=tests SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1 python3 -m unittest test_combat_geometry test_combat_sounds test_combat_projectiles test_tactical_combat test_fleet_support test_flagships test_combat_zoom test_auto_combat test_arsenal test_combat test_combat_planets test_hull_modules test_designer test_combat_simulator -q
+
+INTERFACE RECHECK COMMAND
+PYTHONPATH=tests SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1 python3 -m unittest test_combat_zoom test_combat_sounds test_tactical_combat.TacticalAnimationTests test_flagships.FlagshipViewTests test_fleet_support.SupportPresentationTests -q
+
+COVERAGE
+- Full-hull deployment, movement, bounds, diagonal collision and carrier launches.
+- Nearest-hull range, friendly/enemy beam obstruction, mixed weapon volleys,
+  rejected-shot state integrity and AI movement toward clear firing lanes.
+- Beam-only shield absorption, projectile-only point defense, real missile
+  impacts and combined-arms AI battles without overlapping hulls.
+- Format-53 campaign save round trips, invalid overlap rejection and migration
+  of format-52 battles with their existing one-cell layout.
+- Selection and inspection over the entire footprint at multiple zoom levels.
+- PCM generation, mixer playback, mute/capture behavior, launch/impact timing,
+  salvo cue coalescing, misses and prevention of sound replay during redraws.
+
+PREVIEW
+screenshots/v075_combat_geometry.png shows a selected 3x3 titan, an intervening
+friendly 2x2 cruiser, the stopped firing line and the disabled fire action.
+Reproduce with: python3 tools/preview_combat_geometry.py
+
+SCOPE
+This was targeted regression testing, not full-repository test discovery.
+Audio synthesis and playback were checked with a dummy SDL audio device;
+subjective sound quality and physical speakers were not assessed.
