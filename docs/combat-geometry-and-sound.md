@@ -43,6 +43,13 @@ visible occupied cell selects the ship; simulator right-click inspection uses
 the same full footprint. Artwork, selection boxes and movement previews grow
 with the hull and follow the zoomed camera.
 
+Movement highlighting covers all cells the ship can occupy at a legal
+destination. Hovering an exposed highlighted cell previews the exact landing
+footprint with every occupied square marked: six for a battleship, nine for a
+titan, and twelve for a mothership. Clicking uses that same previewed placement.
+The newly occupied edge cells allow short moves even for faster, larger ships.
+The current hull remains selectable, including where a destination overlaps it.
+
 Weapon range and projectile travel use nearest hull-cell coordinates. Support
 and flagship radii use hull centres, matching their displayed circles.
 

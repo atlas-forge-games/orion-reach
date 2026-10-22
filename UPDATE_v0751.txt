@@ -1,0 +1,32 @@
+ORION REACH v0.75.1 — FULL MOVEMENT FOOTPRINTS
+
+INSTALL
+Close the game. Extract this ZIP over your installed v0.75 game, into the
+folder containing main.py. Merge folders and replace the included files.
+This is an incremental fix and requires the v0.75 update.
+
+FIX
+The movement display previously marked only destination anchor cells.
+It now highlights every cell covered by a legal destination footprint.
+Hovering highlights the exact full landing area, with each square outlined:
+2 for destroyers, 4 for cruisers, 6 for battleships/carriers, 9 for titans,
+and 12 for motherships.
+
+The highlighted outer cells are clickable. Clicking places the ship exactly
+where the hover preview shows. Short moves remain selectable for fast ships
+even when their current and destination footprints overlap. Clicking the
+current hull still selects it. Movement costs, collision rules and saves use
+the existing v0.75 behavior.
+
+VALIDATION
+41 targeted tests passed in Python 3.12 with pygame-ce 2.5.8 and dummy SDL
+display/audio devices. Checks include real pointer events for five large
+ship sizes at 50%, 100%, 200% and 300% zoom, plus existing movement, collision,
+selection and tactical action regressions. The rendered 150% titan preview
+was visually inspected and is included in screenshots/.
+
+Test command:
+PYTHONPATH=tests SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1 python3 -m unittest test_combat_zoom test_combat_geometry test_tactical_combat -q
+
+Preview command:
+python3 tools/preview_combat_movement.py

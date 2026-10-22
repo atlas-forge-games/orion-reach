@@ -104,6 +104,41 @@ def background(system_id):
     return surface
 
 
+def movement_targets(ship, paths):
+    """Map reachable hull cells to placements by their exposed leading edge."""
+    targets, scores = {}, {}
+    width, height = geometry.size(ship)
+    for destination, path in paths.items():
+        cx, cy = geometry.center(ship, destination)
+        # Use the edge entering new cells, so a one-cell move stays clickable
+        # even when a faster ship could place its centre under the same pointer.
+        if destination[0] != ship.x:
+            cx = destination[0]+(width-1 if destination[0] > ship.x else 0)
+        if destination[1] != ship.y:
+            cy = destination[1]+(height-1 if destination[1] > ship.y else 0)
+        for cell in geometry.cells(ship, destination):
+            score = ((cell[0]-cx)**2+(cell[1]-cy)**2, len(path), destination)
+            if cell not in scores or score < scores[cell]:
+                targets[cell], scores[cell] = destination, score
+    return targets
+
+
+def draw_movement_preview(surface, ship, destination, path, camera):
+    """Show the exact landing footprint, including cells over the current hull."""
+    scale = camera.zoom
+    pg.draw.lines(surface, CYAN, False,
+                  [camera.project(geometry.center(ship, point)) for point in path],
+                  max(1, round(2*scale)))
+    overlay = pg.Surface(BOARD.size, pg.SRCALPHA)
+    for cell in geometry.cells(ship, destination):
+        rect = camera.cell_rect(cell, inset=max(1, round(scale))).move(-BOARD.x, -BOARD.y)
+        pg.draw.rect(overlay, (*CYAN, 38), rect)
+        pg.draw.rect(overlay, (*CYAN, 145), rect, max(1, round(scale)))
+    surface.blit(overlay, BOARD)
+    pg.draw.rect(surface, CYAN, camera.ship_rect(ship, destination, inset=max(1, round(scale))),
+                 max(1, round(2*scale)))
+
+
 def draw_battlefield(app):
     surface, battle = app.canvas, app.game.combat
     combat_camera.clamp(app)
@@ -128,17 +163,21 @@ def draw_battlefield(app):
         margin = round((selected.ready_range-.5)*camera.cell_size)
         pg.draw.rect(surface, (78, 48, 63), footprint.inflate(2*margin, 2*margin),
                      1, border_radius=reach)
-    for cell, path in paths.items():
+    targets = movement_targets(selected, paths) if paths else {}
+    current_cells = set(geometry.cells(selected)) if selected else set()
+    move_preview = None
+    for cell, destination in targets.items():
         rect = camera.cell_rect(cell, inset=size(1))
         if BOARD.colliderect(rect):
             pg.draw.rect(surface, (15, 38, 48), rect)
-            pg.draw.circle(surface, (58, 100, 110), rect.center, size(2))
+            # The current hull remains selectable. Its exposed destination
+            # edges provide movement targets even when the hulls overlap.
+            if cell in current_cells:
+                continue
             app.button(f"combat_cell_{cell[0]}_{cell[1]}", "", BOARD.clip(rect),
-                       lambda a=cell[0], b=cell[1]: app.move_combat_ship(a, b), "hotspot")
+                       lambda point=destination: app.move_combat_ship(*point), "hotspot")
             if rect.collidepoint(app.mouse):
-                pg.draw.rect(surface, CYAN, rect, 1)
-                pg.draw.lines(surface, CYAN, False, [project(geometry.center(selected, p)) for p in path], size(2))
-                pg.draw.rect(surface, CYAN, camera.ship_rect(selected, cell, inset=size(2)), size(1))
+                move_preview = destination
     start = camera.cell_rect((0, 0)).topleft
     end = camera.cell_rect((BOARD_COLUMNS-1, battle.rows-1)).bottomright
     for x in range(max(0, math.floor(camera.x)), min(BOARD_COLUMNS, math.ceil(camera.x+camera.width))+1):
@@ -261,6 +300,8 @@ def draw_battlefield(app):
                     target=anchor(target) if combat_planets.planet_for(app.game, target) else project(effect.path[1]),
                     explosion_scale=scale*(.35 if combat_planets.planet_for(app.game, target) else
                                            SHIP_LENGTHS.get(target.kind, 50)/47))
+    if move_preview is not None:
+        draw_movement_preview(surface, selected, move_preview, paths[move_preview], camera)
     surface.set_clip(old_clip)
     pg.draw.rect(surface, LINE, BOARD, 1)
 

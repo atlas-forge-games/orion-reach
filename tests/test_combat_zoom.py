@@ -72,6 +72,34 @@ class CombatZoomTests(unittest.TestCase):
             self.assertEqual(self.app.dialog['combat_ship_info'], ship.id)
             self.app.cancel_dialog()
 
+    def test_large_ship_moves_from_highlighted_edge_and_matches_hover_at_each_zoom(self):
+        from orion import combat_view
+        for kind, zoom in [(kind, zoom) for kind in ('titan', 'battleship', 'cruiser', 'mothership', 'destroyer')
+                           for zoom in (.5, 1.0, 2.0, 3.0)]:
+            with self.subTest(kind=kind, zoom=zoom):
+                self.app.game = encounter(own=(kind,), enemy=('frigate',), close=False)
+                ship = self.app.game.combat.ship(1)
+                ship.x, ship.y = 5, 5
+                width, height = geometry.size(ship)
+                self.app.reset_combat_view()
+                self.app.combat_ship_id = ship.id
+                self.app.combat_zoom = zoom
+                camera.reveal(self.app, ((4, 4), (5+width, 5+height)))
+                # The exposed edge allows a one-cell move even for fast ships.
+                edge = 5+width, round(5+(height-1)/2)
+                point = camera.view(self.app).project(edge)
+                self.app.mouse = point
+                before = self.app.game.to_dict()
+                with patch.object(combat_view, 'draw_movement_preview',
+                                  wraps=combat_view.draw_movement_preview) as preview:
+                    self.app.render()
+                self.assertEqual(preview.call_args.args[2], (6, 5))
+                self.assertEqual(self.app.game.to_dict(), before)
+                self.assertTrue(any(b.key == f'combat_cell_{edge[0]}_{edge[1]}' for b in self.app.buttons))
+                self.click(point)
+                self.assertEqual(ship.position, (6, 5))
+                self.assertEqual(self.app.combat_animation.path[-1], (6, 5))
+
     def test_wheel_preserves_cursor_anchor_and_limits_zoom_without_changing_combat(self):
         before = self.app.game.to_dict()
         point = (470, 440)
