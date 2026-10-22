@@ -49,6 +49,16 @@ their movement segment while the salvo animation finishes. Impacted or
 expired warheads disappear when that segment completes. Launch flashes
 do not move a second visual projectile ahead of its actual position.
 
+From v0.75.3, all six projectile types use the supplied detailed PNG artwork
+in `assets/projectiles/`. Campaign combat and the standalone simulator share
+the same renderer. The original files remain intact: a cached loader removes
+their navy backdrop, preserves the soft blue exhaust and centres rotation on
+the physical body instead of the image rectangle. Artwork rotates at native
+resolution and is filtered to the current zoom size. The images already
+contain exhaust, so no second procedural trail is drawn. Missing or unreadable
+images fall back to the previous drawn silhouettes. No new runtime dependency
+or save conversion is required; weapon statistics and flight timing are unchanged.
+
 In the standalone simulator, right-click either side's ship to open a paused
 inspector. It shows condition, defenses, weapon details, fitted equipment and
 incoming/outgoing ordnance. Close or Esc restores the prior selection and

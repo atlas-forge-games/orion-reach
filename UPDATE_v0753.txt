@@ -1,0 +1,18 @@
+Orion Reach v0.75.3 — imported torpedo and missile artwork
+
+Install on top of v0.75.2:
+1. Close the game and combat simulator.
+2. Extract this ZIP into the game folder containing main.py, orion/ and assets/.
+3. Allow the included files to replace their existing versions.
+4. Run the game or combat simulator normally.
+
+The six supplied projectile PNGs now appear in campaign and simulator combat:
+standard, fusion, MIRV, antimatter, bomber-drone torpedoes and defense missiles.
+The renderer handles their navy backgrounds, blue exhaust, direction, zoom
+and body-centred positions. Missing or unreadable assets use the earlier
+procedural graphics. No additional dependency is needed.
+
+Weapon damage, travel speed, firing rules and save format are unchanged.
+
+The ZIP contains changed/new files only, including the six original images,
+renderer, tests, documentation, preview script and two screenshots.
