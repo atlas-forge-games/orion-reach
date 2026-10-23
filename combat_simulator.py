@@ -6,7 +6,8 @@ from pathlib import Path
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Orion Reach standalone combat simulator")
+    from orion import GAME_TITLE
+    parser = argparse.ArgumentParser(description=f"{GAME_TITLE} standalone combat simulator")
     parser.add_argument("--balance", type=Path, default=Path(__file__).resolve().parent/"balance.json",
                         help="balance profile shared with the game and editor")
     parser.add_argument("--data-dir", type=Path, help="simulator settings/scenarios directory")

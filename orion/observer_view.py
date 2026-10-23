@@ -1,6 +1,7 @@
 """Read-only galaxy totals and computer empire reports for spectator campaigns."""
 
 import pygame as pg
+from . import GAME_TITLE
 
 from .empire import summarize_empire
 from .first_contact import known
@@ -118,7 +119,7 @@ def report_rows(app):
 def draw_observer(app):
     game, surface = app.game, app.canvas
     draw_race_portrait(surface, "observer", (64, 28, 58, 58))
-    text(surface, "ORION REACH", (140, 35), 20, INK, spacing=2)
+    text(surface, GAME_TITLE.upper(), (140, 35), 20, INK, spacing=1)
     text(surface, "OBSERVER · READ-ONLY REPORTS", (142, 69), 11, MUTED, "mono", 1)
     text(surface, "EVERY EMPIRE. EVERY DECISION.", (1376, 56), 11, OBSERVER.color, "mono", right=True)
     pg.draw.line(surface, LINE, (64, 107), (1376, 107))

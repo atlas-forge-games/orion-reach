@@ -118,6 +118,10 @@ class Button:
     badge: str = ""
 
     def draw(self,surface,active=False,pressed=False):
+        if self.style in ("title_primary", "title_menu"):
+            from .title_screen import draw_title_button
+            draw_title_button(self,surface,active,pressed)
+            return
         if self.style in ("command", "command_primary", "command_dock"):
             from .command_buttons import draw_command_button
             draw_command_button(self,surface,active,pressed)

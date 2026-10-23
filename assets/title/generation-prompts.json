@@ -1,0 +1,21 @@
+{
+  "generation_mode": "Built-in image_gen tool",
+  "created": "2026-10-23",
+  "assets": [
+    {
+      "asset": "logo-v1.png",
+      "reference": "Approved Age of the Stars logo concept from this conversation",
+      "prompt": "Use case: background-extraction. Extract this exact AGE OF THE STARS logo as a production PNG with genuine alpha transparency. Preserve the existing golden astronomical ring, its central star, all fine orbit details and gold metallic finish, and the EXACT typography and arrangement of AGE OF THE above STARS. Keep the complete logo and all letter strokes; do not redesign or rewrite it. Remove the entire dark blue background, nebula, scattered background stars and haze. Everything outside the emblem and lettering, including holes inside letters and between the orbital ring details, must be genuinely transparent. Preserve only restrained local light around the emblem's central star. Keep a modest transparent margin on all sides. High-resolution crisp edges, no drop-shadow rectangle, no checkerboard painted into the image. Exact text: AGE OF THE STARS. Only the isolated logo, nothing else."
+    },
+    {
+      "asset": "background-v1.png",
+      "reference": "Approved Age of the Stars start-screen mockup from this conversation",
+      "prompt": "Use case: precise-object-edit. This is the approved AGE OF THE STARS game title-screen concept. Produce ONLY its clean background plate for implementation, high resolution, widescreen 16:9. Remove ALL text, ALL logo artwork including the entire gold celestial ring, ALL menu buttons, arrows, lines, footer and prototype label, and ALL three foreground spacecraft and their engine trails. Replace these removed regions naturally with matching dark space, nebula, or planetary detail. Preserve faithfully the enormous detailed Earthlike planet on the right, its position, scale, continents, clouds, blue atmospheric rim and city lights, the sunrise near the upper middle, two little moons, and the surrounding deep blue nebula. Keep the left 42% quiet dark space to support a separately composited logo and menu. No new objects. No visible lettering, symbols, borders or UI at all. The planet and sky should retain the original image's cinematic quality and composition. The result is a clean background asset, not a mockup."
+    },
+    {
+      "asset": "fleet-v1.png",
+      "reference": "Approved Age of the Stars start-screen mockup from this conversation",
+      "prompt": "Use case: background-extraction. Extract ONLY the formation of three futuristic silver spacecraft from the lower-right of this approved game menu concept as ONE isolated fleet sprite on a genuinely transparent background. Reproduce their elegant angular metal hulls, surface details, blue thrusters and short translucent blue engine trails, orientation pointing upper-left, and formation: one larger lead ship toward the top, a smaller escort down-left, and another smaller escort down-right. Preserve their relative sizes and original oblique top-side viewing angle. Remove EVERYTHING else: no planet, clouds, stars, sky, nebula, logo, text, buttons, separators or UI. Frame the three-ship formation comfortably in a compact landscape canvas so its complete silhouette and engine trails fit, with a modest transparent margin. The surrounding area and gaps between ships must be actual alpha transparency, not painted checkerboard or black. Premium detailed original spacecraft sprite ready to composite onto the separate planet background."
+    }
+  ]
+}

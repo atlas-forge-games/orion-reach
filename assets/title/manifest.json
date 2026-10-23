@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "purpose": "Age of the Stars v0.80 title screen",
+  "generation_mode": "Built-in image_gen tool",
+  "assets": [
+    {
+      "file": "background-v1.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGB",
+      "sha256": "45fe25dd090e9ef7c3a53737189c2a21050b3ea50de6e3e945d0ce681d085fda"
+    },
+    {
+      "file": "fleet-v1.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGBA",
+      "sha256": "a7f8ccab47cfc344183f39d3eade3c82638c7a160b9951889edf6f48e690c7d4"
+    },
+    {
+      "file": "logo-v1.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA",
+      "sha256": "62286948812edc5630b77ee4e9a4be7118dd9d135aee7d9e92ab4f396c0ce4df"
+    }
+  ]
+}

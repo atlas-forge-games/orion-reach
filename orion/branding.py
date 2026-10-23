@@ -52,8 +52,7 @@ class StudioBrand:
         surface.blit(self.splash, (0, 0))
 
     def draw_menu_credit(self, surface):
-        logo = self.fitted_logo((48, 48))
+        logo = self.fitted_logo((32, 32))
         if logo is not None:
-            surface.blit(logo, (527, 842))
-        text(surface, "A GAME BY", (589, 846), 8, MUTED, "mono", 2)
-        text(surface, STUDIO_NAME, (588, 861), 13, INK)
+            surface.blit(logo, (32, 849))
+        text(surface, STUDIO_NAME, (77 if logo is not None else 32, 860), 12, INK, "title", 1)

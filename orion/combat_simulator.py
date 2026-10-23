@@ -8,6 +8,7 @@ import re
 import pygame as pg
 
 from .app import App
+from . import GAME_TITLE
 from .auto_designs import auto_design
 from .combat_sandbox import (MAX_BASES, PRESETS, ROUND_LIMIT, SIDES, UPGRADES,
                              UPGRADE_DETAILS, ScenarioError, build_game,
@@ -44,7 +45,7 @@ class CombatSimulator(App):
         super().__init__(root, capture=capture, skip_intro=True)
         self.seed = str(self.scenario.seed)
         self.settings["autosave"] = False
-        pg.display.set_caption("Orion Reach | Combat Simulator")
+        pg.display.set_caption(f"{GAME_TITLE} | Combat Simulator")
         self.edit_setup()
         self.render()
 
@@ -64,7 +65,7 @@ class CombatSimulator(App):
 
     def chrome(self, section="COMBAT SIMULATOR", back=None):
         emblem(self.canvas, 55, 57, .65)
-        text(self.canvas, "ORION REACH", (88, 39), 18, INK, spacing=2)
+        text(self.canvas, GAME_TITLE.upper(), (88, 39), 18, INK, spacing=1)
         text(self.canvas, "COMBAT SIMULATOR", (89, 68), 10, CYAN, "mono", 2)
         if self.screen == "combat":
             self.button("sim_setup_back", "Edit fleets", (738, 36, 147, 43), self.edit_setup)

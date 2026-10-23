@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+from orion import GAME_TITLE
 
 GUARDIAN_PREVIEWS = {
     "guarded": ("space_serpent", "system"),
@@ -23,7 +24,7 @@ VARKESH_PREVIEWS = ("varkesh_raid", "varkesh_result", "varkesh_home", "varkesh_n
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Orion Reach — Python space strategy prototype")
+    parser = argparse.ArgumentParser(description=f"{GAME_TITLE} — Python space strategy prototype")
     parser.add_argument("--data-dir", type=Path, help="override the user save/settings directory")
     parser.add_argument("--balance", type=Path, default=Path(__file__).resolve().parent / "balance.json",
                         help="balance profile for new campaigns; defaults to balance.json next to main.py")

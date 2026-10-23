@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from functools import lru_cache
+from . import GAME_TITLE
 
 from .races import RACES
 from .race_victory import LEGACIES, PROJECT_RACES
@@ -83,7 +84,7 @@ def guides():
             ("EXPLORERS", "Assign an explorer to a system with your colony and no foreign colonies. First they survey, then the discovered site's required skill determines recovery speed. Hacking opens sealed stations, Salvaging recovers rare minerals, and Archaeology reconstructs ancient research. Foreign fleets pause expeditions. Each system has one finite site and pays its reward once; progress survives reassignment and conquest."),
             ("EXPERIENCE", f"Hired specialists gain {specialist_rules.XP_PER_TURN} XP per turn, including time in reserve. Each new level adds one to every starting skill; missing skills remain zero. Maximum level is {specialist_rules.MAX_LEVEL}. New levels apply after that turn's work. Hiring fees and salaries do not rise with level. Assignments take effect immediately; this first version has no specialist travel time."),
         )),
-        Article("welcome", "basics", "Welcome to Orion Reach", "Your first turns", (
+        Article("welcome", "basics", f"Welcome to {GAME_TITLE}", "Your first turns", (
             ("EXPLORE", "Select a star on the galaxy map. Its planets appear on the right. Send scouts to reveal unknown systems and search for discoveries."),
             ("BUILD A COLONY", "Open a planet to assign farmers, industrial workers, researchers and miners. Balance food and power before adding more buildings or ships."),
             ("CHOOSE A DISCOVERY", "Click the Research card at the top of the galaxy map, or press R. Research unlocks new economic options, defenses, hulls and equipment."),

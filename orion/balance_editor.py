@@ -4,6 +4,7 @@ from pathlib import Path
 import math
 import pygame as pg
 from . import balance
+from . import GAME_TITLE
 from .balance_document import BalanceDocument
 from .ui import text, shorten, font, panel, INK, MUTED, GOLD, CYAN, LINE, RED
 
@@ -45,7 +46,7 @@ class BalanceEditor:
 
     def refresh(self):
         self.errors = balance.validate(self.document.profile)
-        pg.display.set_caption('Orion Reach — Balance editor'+(' *' if self.document.dirty else ''))
+        pg.display.set_caption(GAME_TITLE+' — Balance editor'+(' *' if self.document.dirty else ''))
 
     def inform(self, message, error=False):
         self.message, self.error = str(message), error
@@ -237,7 +238,7 @@ class BalanceEditor:
         self.canvas.fill(BG)
         self.buttons=[]
         self.drop_slots=[]
-        text(self.canvas,'ORION REACH', (24,16),11,CYAN,'mono',2)
+        text(self.canvas,GAME_TITLE.upper(), (24,16),11,CYAN,'mono',1)
         text(self.canvas,'Balance editor',(24,32),25,INK,'title')
         self.input_box((570,22,560,32),('name',),self.document.profile['name'])
         text(self.canvas,'UNSAVED CHANGES' if self.document.dirty else 'PROFILE SAVED' if self.document.path.exists() else 'BUILT-IN DEFAULTS', (1416,32),11,GOLD if self.document.dirty else GREEN,'mono',right=True)

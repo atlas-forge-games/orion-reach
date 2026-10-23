@@ -9,7 +9,8 @@ import pygame as pg
 from .art import Backdrop, SIZE
 from .audio import Audio
 from .branding import SPLASH_SECONDS, StudioBrand
-from . import __version__
+from . import GAME_TITLE, __version__
+from .title_screen import draw_menu
 from .model import GALAXY_SIZES, PLAYER, RIVAL, RuleError, SaveError, new_game
 from .buildings import BUILDINGS
 from .habitat_modules import display_name
@@ -95,11 +96,12 @@ class App:
         self.capture=capture
         self.windowed_size=(1280,800)
         self.window=pg.display.set_mode(self.windowed_size,pg.RESIZABLE)
-        pg.display.set_caption("Orion Reach | Space Strategy Prototype")
+        pg.display.set_caption(f"{GAME_TITLE} | Space Strategy Prototype")
         self.canvas=pg.Surface(SIZE).convert()
         self.viewport=pg.Rect(0,0,*self.windowed_size)
         self.backdrop=Backdrop()
         self.brand=StudioBrand()
+        self.title_art=None
         self.clock=pg.time.Clock()
         self.running=True
         self.screen="menu" if capture or skip_intro else "splash"
@@ -2520,7 +2522,7 @@ class App:
 
     def chrome(self,section="COMMAND",back=None):
         emblem(self.canvas,77,64,.62)
-        text(self.canvas,"ORION REACH",(110,46),18,INK,spacing=2)
+        text(self.canvas,GAME_TITLE.upper(),(110,46),18,INK,spacing=1)
         text(self.canvas,section,(111,73),10,MUTED,"mono",2)
         if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","ground","result","council"):
             self.button("open_empire","Empire",(998,31,179,64),self.open_empire,"command",icon="empire",shortcut="I")
@@ -2542,29 +2544,7 @@ class App:
         self.brand.draw_splash(self.canvas,self.time-self.splash_started,self.settings["animated_background"])
 
     def draw_menu(self):
-        self.chrome("A TURN-BASED SPACE STRATEGY")
-        text(self.canvas,"THE GALAXY IS WAITING",(88,166),11,GOLD,"mono",3)
-        text(self.canvas,"ORION",(80,201),92,INK,"title",6)
-        text(self.canvas,"R E A C H",(88,311),39,INK,"sans",5)
-        pg.draw.line(self.canvas,GOLD,(88,389),(131,389),2)
-        text(self.canvas,"One world. A thousand possibilities.",(149,377),16,MUTED)
-        if self.game:
-            self.button("resume","Continue",(88,444,417,66),lambda:self.go(self.campaign_view),"primary")
-            self.button("new","New Game",(88,523,417,64),lambda:self.go("race_select"),"menu")
-            self.button("load","Load Game",(88,592,417,64),lambda:self.go("load"),"menu")
-            self.button("settings","Settings",(88,661,417,60),lambda:self.show_settings(),"menu")
-            self.button("quit","Quit",(88,726,417,60),self.quit_request,"menu")
-        else:
-            self.button("new","New Game",(88,454,417,66),lambda:self.go("race_select"),"primary")
-            self.button("load","Load Game",(88,535,417,70),lambda:self.go("load"),"menu","Return to your empire")
-            self.button("settings","Settings",(88,618,417,66),lambda:self.show_settings(),"menu")
-            self.button("quit","Quit",(88,697,417,66),self.quit_request,"menu")
-        pg.draw.line(self.canvas,LINE,(64,835),(1376,835))
-        text(self.canvas,"01  /  A NEW HORIZON",(742,799),10,GOLD,"mono",2)
-        text(self.canvas,"SOL SYSTEM   ·   TERRAN HOMEWORLD",(1110,801),9,MUTED,"mono",right=True)
-        text(self.canvas,"MOUSE OR ↑ ↓ + ENTER",(88,857),10,FAINT,"mono",1)
-        self.brand.draw_menu_credit(self.canvas)
-        self.button("about","About the prototype",(1143,845,235,40),lambda:self.go("about"),"ghost")
+        draw_menu(self)
 
     def heading(self,kicker,title,description):
         text(self.canvas,kicker,(256,174),11,GOLD,"mono",2)
@@ -2899,7 +2879,7 @@ class App:
 
     def draw_about(self):
         self.chrome("ABOUT",lambda:self.go("menu"))
-        self.heading("A FIRST STEP INTO A LARGER GALAXY","Orion Reach", "An original Python prototype inspired by classic space strategy games.")
+        self.heading("A FIRST STEP INTO A LARGER GALAXY",GAME_TITLE, "An original Python prototype inspired by classic space strategy games.")
         panel(self.canvas,(256,335,928,407))
         text(self.canvas,"WHAT YOU CAN DO",(282,364),11,GOLD,"mono",1)
         paragraph(self.canvas,"Lead an empire, research technologies and negotiate with rival civilizations. Fight fleet battles and invade colonies. Win by conquest, a Galactic Council election, or your civilization's unique legacy.",
@@ -2971,7 +2951,7 @@ class App:
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
-        if self.screen!="splash":
+        if self.screen not in ("splash", "menu"):
             full=self.screen not in (*GAME_SCREENS,"pause")
             self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)
             if self.screen not in ("menu",*GAME_SCREENS,"pause"):

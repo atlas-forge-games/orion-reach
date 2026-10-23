@@ -1,3 +1,4 @@
-"""Orion Reach: a small, extensible space strategy prototype."""
+"""Age of the Stars, built in the existing orion package."""
 
-__version__ = "0.79.1"
+GAME_TITLE = "Age of the Stars"
+__version__ = "0.80"

@@ -1,0 +1,26 @@
+AGE OF THE STARS v0.80 — NEW TITLE SCREEN
+
+Install over your existing v0.79.1 game folder:
+1. Close the game.
+2. Extract this ZIP into the project root, where main.py, orion/ and assets/ are.
+3. Allow the included files to replace their previous versions.
+4. Start normally with python main.py. Existing campaigns continue to work.
+
+Changes
+- Approved celestial logo and detailed planetary background.
+- Separate transparent exploration-fleet artwork with gentle movement.
+- Native menu controls with gold highlights and mouse/keyboard focus.
+- Continue appears when a campaign is loaded; New Game, Load Game, Settings,
+  Quit and About retain their existing behavior.
+- The existing Animated background setting freezes title-screen movement.
+- Visible title updated to Age of the Stars in the game and companion tools.
+- Existing repository, Python package, filenames and launch commands retained.
+- Save locations, internal file identifiers, balance profiles and settings retained.
+- Artwork caching, correct aspect ratios and fallbacks for missing image layers.
+
+49 existing interface tests passed. Animation, fallbacks and scaled layouts were
+also checked. See docs/title-screen.md for details and assets/title/ for original
+PNG layers, prompts and checksums. screenshots/menu.png shows the actual game.
+
+This is an incremental update, not a complete game distribution.
+No custom balance.json, saves, settings, commits or pushes are included.

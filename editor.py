@@ -1,11 +1,12 @@
-"""Run `python editor.py` to tune Orion Reach without editing Python source."""
+"""Run `python editor.py` to tune Age of the Stars without editing Python source."""
 from pathlib import Path
 import argparse
 import os
 
 
 def main():
-    parser=argparse.ArgumentParser(description='Orion Reach balance and research-tree editor')
+    from orion import GAME_TITLE
+    parser=argparse.ArgumentParser(description=GAME_TITLE+' balance and research-tree editor')
     parser.add_argument('--profile',type=Path,help='JSON profile to edit; defaults to balance.json beside main.py')
     parser.add_argument('--validate',type=Path,metavar='PROFILE',help='validate a profile and exit without opening a window')
     parser.add_argument('--export-defaults',type=Path,metavar='PROFILE',help='write the built-in balance to JSON and exit')

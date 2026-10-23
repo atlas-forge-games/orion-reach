@@ -60,8 +60,8 @@ def draw_galaxy_header(app):
     game, surface = app.game, app.canvas
     report = summarize_empire(game)
     emblem(surface, 225, 61, .46)
-    text(surface, "ORION", (65, 36), 24, INK, spacing=3)
-    text(surface, "REACH", (65, 66), 24, INK, spacing=3)
+    text(surface, "AGE OF THE", (65, 39), 12, INK, spacing=2)
+    text(surface, "STARS", (65, 62), 26, INK, spacing=4)
     text(surface, "GALAXY COMMAND", (66, 106), 9, MUTED, "mono", 1)
     resource_card(surface, RESOURCE_RECTS[0], "credits", "CREDITS", f"{game.credits:,} CR",
                   f"{report.income:+,} CR net / turn", f"Upkeep {report.maintenance:,} · Ships {game.fleet_maintenance():,} CR/turn",

@@ -1,11 +1,26 @@
-# Orion Reach — Python prototype 0.79.1
+# Age of the Stars — Python prototype 0.80
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
-**Orion Reach is a temporary working title.** The artwork, interface and code
+**Age of the Stars is the current working title.** The repository remains
+`orion-reach`; the `orion` package, launch commands and save locations keep their
+existing names. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.80: Age of the Stars title screen
+
+The start screen now uses the approved celestial logo, a detailed planetary
+backdrop and a separate drifting exploration fleet. Its gold-accented menu has
+real mouse and keyboard controls, including Continue when a campaign is loaded.
+The existing animation setting freezes the artwork when switched off. Artwork
+is cached, keeps its aspect ratio and falls back gracefully if a layer is absent.
+
+The visible title is updated in the game, encyclopedia, combat simulator and
+balance editor. Existing filenames, repository/package names, save identifiers,
+save locations and balance formats are unchanged. Install over v0.79.1 and
+continue your existing campaign. See [title-screen integration](docs/title-screen.md).
 
 ## New in v0.79.1: scout range
 
