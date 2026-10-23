@@ -26,13 +26,15 @@ from orion.storage import Storage
 
 
 class DiplomacyRulesTests(unittest.TestCase):
-    def test_races_are_selectable_and_original_races_preserve_starting_production(self):
+    def test_races_are_selectable_with_native_home_starting_production(self):
         for race_id in RACES:
             game = new_game(seed=2408, race_id=race_id)
             self.assertEqual(game.race_id, race_id)
             self.assertNotEqual(game.opponent.race_id, race_id)
             if race_id in ("terran", "kharuun", "aelari"):
-                self.assertEqual(game.planet_yields(game.planet_at(0, 2)), (6, 8, 0))
+                # Ocean-born Aelari need one more farmer than the Terran starts.
+                self.assertEqual(game.planet_yields(game.planet_at(0, 2)),
+                                 (5 if race_id == "aelari" else 6, 8, 0))
             self.assertEqual(game.credits, 120)
             self.assertEqual(game.diplomacy.relations, score(race_id, game.opponent.race_id))
             for rival_race in RACES:
@@ -100,7 +102,7 @@ class DiplomacyRulesTests(unittest.TestCase):
         own_trade, rival_trade = (trade_income(game, owner, other) for owner, other in ((PLAYER, RIVAL), (RIVAL, PLAYER)))
         self.assertEqual(game.diplomatic_yields(PLAYER), (own_trade, 4))
         self.assertEqual(game.diplomatic_yields(RIVAL), (rival_trade, 3))
-        self.assertEqual(game.planet_at(0, 2).yields_per_turn, (6, 8, 0))
+        self.assertEqual(game.planet_at(0, 2).yields_per_turn, (5, 8, 0))
         report = game.advance_turn()
         self.assertEqual((report.income, report.research), (8+own_trade, 4))
         self.assertEqual((game.credits, game.research), (128+own_trade, 4))

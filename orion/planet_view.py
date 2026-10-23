@@ -380,6 +380,9 @@ def draw_planet_overview(app):
         app.button("planet_specialists", f"Specialists · {count} visitors", (1104, 788, 294, 39), app.open_specialists)
     # Planet facts sit over the landscape, leaving the city as the principal view.
     facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {planet.richness} minerals"
+    from .environments import growth_factor
+    factor = growth_factor(planet, game.race_id if not planet.colonized else None)
+    facts += " · Growth varies by species" if game.is_observer and not planet.colonized else f" · Growth environment {factor}%"
     panel(surface, (40, 330, 700, 34), (10, 23, 30))
     text(surface, facts, (52, 339), 13, INK)
     if planet.slaves or (raiding.is_varkesh(game, planet.owner) and (system.id, planet.id) == raiding.home_location(game, planet.owner)):
@@ -409,7 +412,8 @@ def draw_planet_overview(app):
             caption += f" · Barracks +1/turn, limit {training_limit(planet, game.bonuses_for(planet.owner) if live else {})}"
         text(surface, shorten(caption, 1162, 12), (24, 854), 12, CYAN)
     else:
-        text(surface, f"{planet.building_capacity} building slots · {planet.habitability}% habitability · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
+        suitability = 'Growth varies by species' if game.is_observer else f'Your species: {factor}% growth efficiency'
+        text(surface, f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
     text(surface, "Click buildings to inspect · E: End turn · R: Research · I: Empire · P: Menu · F5: Save", (24, 877), 11, MUTED)
     if planet.colonized:
         from .accession_view import open_panel

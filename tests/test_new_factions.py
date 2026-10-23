@@ -166,6 +166,8 @@ class FactionRulesTests(unittest.TestCase):
     def test_swarm_starvation_replacement_and_liberation(self):
         g = campaign("skirr", rival="serevan")
         p = g.headquarters()[1]
+        # A fed captured Terran colony; Terrans cannot eat a Toxic home's biota.
+        p.biome = "Terran"
         p.species = {"terran": 8}
         g.turn, g.year = 2, 2301
         species.advance_swarm(g, [])

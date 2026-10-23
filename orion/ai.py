@@ -205,8 +205,11 @@ def warship_choice(game, owner):
                default="frigate")
 
 
-def world_quality(planet):
-    return planet.habitability, planet.building_capacity, RICHNESSES.index(planet.richness), -planet.id
+def world_quality(planet, race_id="kharuun"):
+    from .environments import growth_factor
+    richness = RICHNESSES.index(planet.richness)
+    score = growth_factor(planet, race_id)+18*richness+3*planet.building_capacity
+    return score, planet.building_capacity, richness, -planet.id
 
 
 def development_choice(planet, race_id="kharuun", available=None):
@@ -513,11 +516,12 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         if len(context.systems) == 1 and frontier:
             targets = frontier
         origin = game.systems[ship.system_id]
+        quality = lambda planet: world_quality(planet, game._empire(owner).race_id)
         target = min(targets, key=lambda s: (
             context.report(s.id, acquiring=True).total, game.travel_turns(origin, s, owner),
-            tuple(-value for value in world_quality(max(available_worlds(game, s, owner), key=world_quality))), s.id), default=None)
+            tuple(-value for value in quality(max(available_worlds(game, s, owner), key=quality))), s.id), default=None)
         if local and target is not None and target.id == ship.system_id:
-            planet = max(local, key=world_quality)
+            planet = max(local, key=quality)
             if game.colonize_error(ship.system_id, planet.id, owner=owner) is None:
                 game.colonize(ship.id, ship.system_id, planet.id, owner=owner)
                 event(game, owner, f"Settled {planet.name} with {planet.population} B colonists.")

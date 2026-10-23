@@ -216,7 +216,8 @@ class ExplorationRulesTests(unittest.TestCase):
         game = new_game(seed=172)  # Naturally has two stars within the rival's initial range.
         hidden = next(s for s in game.systems if s.id != game.opponent.home_system)
         self.assertEqual(available_worlds(game, hidden), [])
-        for _ in range(180):  # Mining, power and the more expensive colony ship precede expansion.
+        # This Kharuun Ocean home has 60% growth; mining and a colony ship take longer.
+        for _ in range(250):
             game.advance_turn()
         self.assertTrue(any(s.kind == "scout" for s in game.ships_owned_by(RIVAL)))
         self.assertGreater(len(game.exploration.scanned_rival), 2)

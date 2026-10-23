@@ -131,7 +131,9 @@ class AIRulesTests(unittest.TestCase):
                 self.assertEqual(game.credits, expected_credits)
                 # Higher research prices need not reach victory at the old turn limit.
                 if game.result is not None:
-                    self.assertEqual((game.result.winner, game.result.condition), (RIVAL, "science"))
+                    self.assertEqual(game.result.winner, RIVAL)
+                    # Environmental growth can complete the civilization goal first.
+                    self.assertIn(game.result.condition, ("science", "race"))
                 self.assertEqual(summarize_empire(game).colonies, 1)
                 self.assertTrue(all(p.used_slots <= p.building_capacity for s in game.systems for p in s.worlds))
                 for _, planet in rows:

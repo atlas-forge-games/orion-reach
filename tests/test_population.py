@@ -152,16 +152,19 @@ class PopulationRulesTests(unittest.TestCase):
     def test_ai_pays_for_farms_then_grows_under_the_same_rules(self):
         game = new_game(seed=2408, fog_of_war=False)
         home = game.planet_at(game.opponent.home_system, game.opponent.home_planet)
-        home.size, home.biome = "Medium", "Tundra"
+        home.size, home.biome = "Medium", "Ice"
         for _ in range(10):
             game.advance_turn()
         self.assertEqual(home.buildings, ["hydroponic_farm"])
         self.assertEqual(home.construction_queue[0].item_id, "factory")
-        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (199, 9, 0))
+        # Kharuun Ice efficiency is 90%; the same farm surplus grows more slowly.
+        self.assertEqual((game.opponent.credits, home.population, home.growth_progress), (199, 8, 90))
         game.advance_turn()
-        self.assertEqual(home.growth_progress, 20)
+        self.assertEqual(home.growth_progress, 99)
         self.assertEqual(game.planet_at(0, 2).growth_progress, 5)
         self.assertEqual(game.credits, 209)  # Rival farms do not spend player credits.
+        game.advance_turn()
+        self.assertEqual((home.population, home.growth_progress), (9, 8))
 
     def test_ai_reserves_remaining_slots_to_support_future_population(self):
         game = new_game(seed=2408, fog_of_war=False)

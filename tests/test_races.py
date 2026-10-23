@@ -39,9 +39,10 @@ class RaceRulesTests(unittest.TestCase):
         for race in ("terran", "kharuun", "aelari"):
             game = solo(race)
             world = game.planet_at(0, 2)
-            self.assertEqual(game.planet_yields(world), (6, 8, 0))
-            self.assertEqual((game.population_report(world).consumed, game.population_report(world).growth_rate), (8, 10))
-            self.assertEqual(game.project_price("frigate"), 60)
+            # Aelari now allocate a third farmer on their native Ocean home.
+            self.assertEqual(game.planet_yields(world), (5 if race == 'aelari' else 6, 8, 0))
+            self.assertEqual((game.population_report(world).consumed, game.population_report(world).growth_rate), (8, 15 if race == 'aelari' else 10))
+            self.assertEqual(game.project_price("frigate"), human.project_price("frigate"))
 
     def test_lithar_settle_every_biome_and_keep_growing_beyond_the_old_limit(self):
         game = solo("lithar")
@@ -109,7 +110,7 @@ class RaceRulesTests(unittest.TestCase):
             self.assertEqual(info.produced, baseline.produced+3)
             self.assertGreater(info.growth_rate, baseline.growth_rate)
             self.assertEqual(game.planet_yields(world)[0], 6)
-        for biome in ("Desert", "Tundra", "Barren", "Volcanic"):
+        for biome in ("Desert", "Ice", "Barren", "Volcanic"):
             world.biome = biome
             self.assertEqual(game.planet_yields(world)[0], 4)
             self.assertEqual(game.population_report(world).produced, report(world).produced)

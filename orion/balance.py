@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 17
+VERSION = 19
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -79,7 +79,7 @@ LABELS = {
     'guardians': 'Guardians', 'personalities': 'AI personalities',
     'specialists': 'Specialists', 'expedition_sites': 'Expedition sites',
     'projects': 'Special projects', 'world_sizes': 'Planet sizes',
-    'biomes': 'Planet biomes', 'minerals': 'Mineral richness',
+    'biomes': 'Planet biomes', 'environments': 'Species / planet growth (%)', 'minerals': 'Mineral richness',
     'rules': 'Global rules', 'research_costs': 'Research costs', 'drones': 'Drone roles', 'galaxy_sizes': 'Galaxy sizes',
 }
 _configured_path = None
@@ -116,6 +116,7 @@ def _defaults():
     data['world_sizes'] = {size: {'building_slots': b.BUILDING_SLOTS[size], 'population_limit': pop.POPULATION_LIMITS[size]} for size in b.BUILDING_SLOTS}
     model = module('model')
     data['biomes'] = {biome: {'base_food': pop.BASE_FOOD[biome], 'farmer_output': pop.FARMER_OUTPUT[biome], 'habitability': model.HABITABILITY[biome]} for biome in pop.BASE_FOOD}
+    data['environments'] = deepcopy(module('environments').PREFERENCES)
     data['galaxy_sizes'] = {key: {'star_count': value} for key,value in model.GALAXY_SIZES.items()}
     for key,entry in data['ships'].items():
         entry['movement'] = module('combat').MOVEMENT[key]
@@ -163,6 +164,7 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if section == 'environments': return (0, 30) if field == 'toxic_food' else (10, 200)
     if section == 'ship_sizes' and field == 'size': return 1, 100
     if field in ('HULL_PER_SIZE', 'FRAME_RES_PER_SIZE'): return 1, 100
     if field == 'FRAME_COST_EXPONENT': return 1.0, 1.3
@@ -535,6 +537,27 @@ def upgrade_profile(profile):
                 rules['ENABLED'] = False
                 data['rules']['ship_scaling'] = rules
         profile['version'] = 17
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 17:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            biomes = data.get('biomes')
+            if isinstance(biomes, dict) and 'Tundra' in biomes and 'Ice' not in biomes:
+                # Preserve every custom terrain value under the new name.
+                biomes['Ice'] = biomes.pop('Tundra')
+            technologies = data.get('technologies')
+            shields = technologies.get('habitat_shields') if isinstance(technologies, dict) else None
+            if isinstance(shields, dict) and shields.get('description') == '+2 credits per desert or tundra colony.':
+                shields['description'] = '+2 credits per desert or ice colony.'
+        profile['version'] = 18
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 18:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            data.setdefault('environments', deepcopy(_defaults()['data']['environments']))
+            if isinstance(data.get('biomes'), dict):
+                data['biomes'].setdefault('Toxic', deepcopy(_defaults()['data']['biomes']['Toxic']))
+        profile['version'] = 19
     return profile
 
 
@@ -627,6 +650,9 @@ def activate(profile):
     for biome, entry in data['biomes'].items():
         pop.BASE_FOOD[biome], pop.FARMER_OUTPUT[biome] = entry['base_food'], entry['farmer_output']
         module('model').HABITABILITY[biome] = entry['habitability']
+    environments = module('environments').PREFERENCES
+    environments.clear()
+    environments.update(deepcopy(data['environments']))
     module('model').GALAXY_SIZES.update({key:v['star_count'] for key,v in data['galaxy_sizes'].items()})
     b.MINERAL_FACTORS.update({key: v['multiplier'] for key,v in data['minerals'].items()})
     for group, (owner, keys) in RULES.items():

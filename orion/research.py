@@ -97,7 +97,7 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("disruptor_beams", "physics", 8, "Disruptor Beams", "Unlock disruptors: 40 base damage, range 5. Each fills one offensive slot and scales with hull size. Must recharge for one full combat turn after firing."),
 
     tech("radiation_shields", "fields", 1, "Radiation Shields", "Colony ships can settle barren worlds. Unlock ship shield generators (+12 shields per module).", barren=1),
-    tech("habitat_shields", "fields", 1, "Habitat Shields", "+2 credits per desert or tundra colony.", rough_income=2),
+    tech("habitat_shields", "fields", 1, "Habitat Shields", "+2 credits per desert or ice colony.", rough_income=2),
     tech("thermal_barriers", "fields", 2, "Thermal Barriers", "Colony ships can settle volcanic worlds.", volcanic=1),
     tech("industrial_force_fields", "fields", 2, "Industrial Force Fields", "+2 resources per operational mine, regardless of mineral richness.", mine_resources=2),
     tech("planetary_shielding", "fields", 3, "Planetary Shielding", "Unlock 100-point planetary shield generators. Suppress the shield before landing troops.", shield_capacity=100),
@@ -415,7 +415,7 @@ def gross_colony_yields(planet, bonuses):
         extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
         industry, income, research = industry+extra[0], income+extra[1], research+extra[2]
     income += (planet.workforce//2)*bonuses.get("income_per_two_pop", 0)
-    if planet.biome in ("Desert", "Tundra"):
+    if planet.biome in ("Desert", "Ice"):
         income += bonuses.get("rough_income", 0)
     industry_percent = bonuses.get("industry_percent", 0)
     if planet.biome not in LUSH_BIOMES:

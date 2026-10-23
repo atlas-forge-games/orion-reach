@@ -82,6 +82,7 @@ def draw_colony(app):
 
     industry, income, science = game.planet_yields(planet)
     food = game.population_report(planet)
+    text(surface, f"Environment: {food.environment_percent}% growth efficiency", (818, 266), 12, MUTED)
     food_color = RED if food.balance < 0 else GOLD if food.balance == 0 else CYAN
     stats = [("INDUSTRY / TURN", f"{industry} IND", "Construction aboard this home" if planet.habitat else "Construction on this world", CYAN),
              ("NET INCOME / TURN", f"{income:+} CR", f"{income+game.planet_maintenance(planet)} gross − {game.planet_maintenance(planet)} upkeep", RED if income < 0 else INK),

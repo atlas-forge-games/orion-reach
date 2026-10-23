@@ -10,6 +10,7 @@ from .building_art import draw_building_art
 from .buildings import BUILDINGS, ADVANCED_FACILITIES, facility_family
 from .economy import building_status
 from .model import PLAYER, RIVAL
+from .planet_surface_art import surface_background
 from .production import SHIP_TYPES
 from .ui import CYAN, GOLD, INK, MUTED, RIVAL_COLOR, panel, text, text_image
 
@@ -55,9 +56,10 @@ PALETTES = {
     "Gaia": ((21, 81, 101), (164, 214, 191), (52, 122, 111), (60, 128, 80), (23, 69, 51)),
     "Ocean": ((27, 66, 102), (139, 190, 206), (49, 103, 130), (35, 91, 123), (17, 47, 72)),
     "Desert": ((72, 71, 83), (211, 174, 125), (126, 104, 83), (155, 123, 79), (87, 72, 52)),
-    "Tundra": ((54, 81, 108), (194, 213, 220), (111, 144, 162), (167, 186, 190), (93, 121, 137)),
+    "Ice": ((91, 142, 184), (220, 235, 245), (145, 181, 204), (213, 231, 240), (161, 195, 215)),
     "Barren": ((12, 19, 34), (67, 75, 94), (57, 62, 72), (90, 90, 91), (48, 51, 62)),
     "Volcanic": ((41, 26, 35), (148, 82, 59), (82, 52, 53), (70, 59, 58), (32, 34, 42)),
+    "Toxic": ((80, 87, 40), (181, 180, 91), (98, 106, 56), (135, 127, 69), (65, 72, 38)),
 }
 
 
@@ -65,11 +67,16 @@ def blend(a, b, value):
     return tuple(round(x+(y-x)*value) for x, y in zip(a, b))
 
 
-@lru_cache(maxsize=24)
 def landscape(biome, seed, size, settled):
-    """A seeded backdrop, cached independently from buildings and queue state."""
+    """Detailed artwork, with a seeded fallback if its PNG is unavailable."""
+    artwork = surface_background(biome, size)
+    return artwork if artwork is not None else fallback_landscape(biome, seed, size, settled)
+
+
+@lru_cache(maxsize=24)
+def fallback_landscape(biome, seed, size, settled):
     if size != (928, 473):
-        return pg.transform.smoothscale(landscape(biome, seed, (928, 473), settled), size)
+        return pg.transform.smoothscale(fallback_landscape(biome, seed, (928, 473), settled), size)
     width, height = size
     image = pg.Surface(size)
     rng = random.Random(seed)
@@ -116,16 +123,6 @@ def landscape(biome, seed, size, settled):
         for _ in range(14):
             x, y = rng.randrange(width), rng.randrange(skyline+28, height)
             pg.draw.ellipse(image, blend(ground, foreground, .55), (x, y, rng.randrange(14, 58), 7), 1)
-    if settled:
-        # Service roads connect the colony's developed areas.
-        for bottom in (216, 404):
-            points = [(165, bottom-4), (464, bottom-4), (762, bottom-4)]
-            pg.draw.lines(image, (70, 77, 76), False, points, 19)
-            pg.draw.lines(image, (44, 52, 54), False, points, 11)
-            for x in range(191, 754, 52):
-                pg.draw.line(image, (136, 151, 146), (x, bottom-4), (x+14, bottom-4), 1)
-        pg.draw.line(image, (70, 77, 76), (464, 211), (464, height), 24)
-        pg.draw.line(image, (44, 52, 54), (464, 211), (464, height), 16)
     if biome in ("Terran", "Gaia"):
         for _ in range(36):
             x = rng.choice((rng.randrange(4, 41), rng.randrange(width-38, width-3)))
@@ -135,28 +132,28 @@ def landscape(biome, seed, size, settled):
     return image
 
 
-# Positions match the road foundations; sprites stay large enough to read.
+# Independent positions sit on the open foreground, away from coastlines.
 PLACEMENTS = {
-    "space_hub": (530, 305, 138, 90),
-    "research_lab": (130, 211, 174, 142),
-    "headquarters": (354, 211, 177, 169),
-    "factory": (579, 211, 218, 145),
-    "hydroponic_farm": (803, 211, 157, 144),
-    "mine": (165, 399, 168, 146),
-    "trade_center": (464, 399, 187, 146),
-    "shipyard": (762, 399, 248, 148),
-    "barracks": (314, 305, 140, 58),
-    "fortifications": (606, 305, 124, 58),
-    "missile_base": (60, 292, 84, 86),
-    "planetary_shield": (238, 292, 86, 87),
-    "sensor_array": (443, 294, 88, 90),
-    "jump_gate": (706, 297, 82, 94),
-    "interdictor": (859, 299, 85, 94),
-    "solar_array": (65, 383, 115, 85),
-    "fusion_plant": (880, 398, 105, 111),
-    "geothermal_plant": (350, 405, 105, 100),
-    "thermal_plant": (600, 410, 110, 100),
-    "singularity_plant": (805, 415, 112, 105),
+    "space_hub": (508, 341, 138, 90),
+    "research_lab": (212, 280, 174, 142),
+    "headquarters": (378, 280, 177, 169),
+    "factory": (545, 280, 218, 145),
+    "hydroponic_farm": (711, 280, 157, 144),
+    "mine": (238, 402, 168, 146),
+    "trade_center": (460, 402, 187, 146),
+    "shipyard": (681, 402, 248, 148),
+    "barracks": (348, 341, 140, 58),
+    "fortifications": (565, 341, 124, 58),
+    "missile_base": (160, 333, 84, 86),
+    "planetary_shield": (292, 333, 86, 87),
+    "sensor_array": (444, 334, 88, 90),
+    "jump_gate": (639, 336, 82, 94),
+    "interdictor": (752, 337, 85, 94),
+    "solar_array": (164, 392, 115, 85),
+    "fusion_plant": (768, 402, 105, 111),
+    "geothermal_plant": (375, 406, 105, 100),
+    "thermal_plant": (560, 409, 110, 100),
+    "singularity_plant": (712, 413, 112, 105),
 }
 from .race_victory import PROJECT_RACES
 for _identifier in PROJECT_RACES:
@@ -201,10 +198,18 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     targets = [target_rect(PLACEMENTS[item.asset_id]) for item in items]
     hits = [hit_rect(target) for target in targets]
     expanded = expanded or any(a.colliderect(b) for i, a in enumerate(hits) for b in hits[i+1:])
-    row_height = min(130, 400//max(1, (len(items)+4)//5))
+    rows = max(1, (len(items)+4)//5)
+    if rows <= 3:
+        row_height = min(130, 195//max(1, rows-1))
+        first_bottom = 340 if rows == 1 else 420-(rows-1)*row_height
+    else:
+        # Extremely dense/custom colonies retain enough room for click targets.
+        row_height = min(130, 400//rows)
+        first_bottom = row_height+33
     for index, item in enumerate(items):
         if expanded:
-            target = target_rect((88+index%5*188, row_height+33+index//5*row_height, 128, min(90, row_height-34)))
+            width = 160 if rows <= 2 else 128
+            target = target_rect((160+index%5*152, first_bottom+index//5*row_height, width, min(110, row_height-34)))
             # Labels and click padding keep their pixel size when the overview
             # reserves space below the city for its administration breakdown.
             bottom = target.bottom
@@ -232,9 +237,6 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
         button = app.button("surface_"+item.asset_id, "", hit, action, "hotspot", enabled=live)
         active = app.is_active(button)
         color = GOLD if active or not item.completed else app.empire_color(planet.owner)
-        pg.draw.ellipse(surface, (29, 39, 41), (target.x+5, target.bottom-19, target.w-10, 23))
-        if not item.completed:
-            pg.draw.ellipse(surface, GOLD, (target.x, target.bottom-24, target.w, 29), 1)
         draw_building_art(surface, item.asset_id, target, alpha=255 if item.completed else 115)
         label = item.label+(f" ×{item.completed}" if item.completed > 1 else "")
         name_image = text_image(label, 12, INK)

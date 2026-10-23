@@ -8,7 +8,7 @@ from .frame_cache import cached_in_frame
 
 FINAL_TURNS = 5
 PROJECT_TECHS = 8
-HARSH = frozenset(("Desert", "Tundra", "Barren", "Volcanic"))
+HARSH = frozenset(("Desert", "Ice", "Barren", "Volcanic", "Toxic"))
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ LEGACIES = {
         "The Living Archive preserves the galaxy's extraordinary diversity for civilizations yet to be born."),
     "lithar": Legacy("Awaken the Mountains", "planetary_mind", "Planetary Mind",
         "Bring the deep minds of hostile worlds into a shared consciousness.",
-        "Build on Desert, Tundra, Barren or Volcanic worlds. Each mind needs twelve consecutive operating turns; interruptions reset its awakening.",
+        "Build on Desert, Ice, Barren, Volcanic or Toxic worlds. Each mind needs twelve consecutive operating turns; interruptions reset its awakening.",
         "The mountains answer across the void. A constellation of planetary minds awakens."),
     "varkesh": Legacy("The Throne of Fear", "great_moot", "Great Moot",
         "Unite the war clans through warriors, reputation and trophies.",
@@ -148,7 +148,7 @@ def build_error(game, sid, planet, identifier, owner):
     if len(game.research_state(owner).completed) < PROJECT_TECHS:
         return f"Discover {PROJECT_TECHS} technologies to unlock your legacy installation."
     if not suitable(game, owner, planet):
-        return "Planetary Minds need a Desert, Tundra, Barren or Volcanic world." if race(game, owner) == "lithar" else "Legacy installations require a planet."
+        return "Planetary Minds need a Desert, Ice, Barren, Volcanic or Toxic world." if race(game, owner) == "lithar" else "Legacy installations require a planet."
     if race(game, owner) == "varkesh":
         from .raiding import home_location
         if (sid, planet.id) != home_location(game, owner):

@@ -37,6 +37,9 @@ def draw_race_select(app):
     for trait in race.traits:
         y = paragraph(surface, "• "+trait, (914, y), 436, 11, race.color, 16)+4
     text(surface, "Next: galaxy options, rivals and victory conditions.", (66, 835), 14, MUTED)
+    if race.id != 'observer':
+        from .environments import race_caption
+        text(surface, race_caption(race.id), (66, 803), 13, race.color)
     app.button("setup_next", "Continue → Galaxy options", (966, 815, 410, 57),
                lambda: app.go("setup"), "primary")
 
@@ -54,6 +57,10 @@ def draw_setup(app):
     text(surface, race.focus, (88, 620), 13, INK)
     text(surface, "Full galaxy visibility" if observer else f"Home system: {race.home_system}", (88, 654), 14, MUTED)
     text(surface, "No homeworld or fleet" if observer else f"Homeworld: {race.homeworld}", (88, 681), 14, MUTED)
+    if not observer:
+        from .environments import NATIVE_HOMES
+        environment = 'Mobile habitat' if race.id == 'wanderers' else NATIVE_HOMES.get(race.id, 'Terran')
+        text(surface, f"Home environment: {environment}", (88, 708), 12, race.color)
     app.button("setup_back", "← Change race", (86, 733, 294, 42), lambda: app.go("race_select"))
     app.input_box("empire", "OBSERVATION NAME" if observer else "EMPIRE NAME", app.empire, (430, 325, 586, 55), "Your civilization")
     app.input_box("seed", "GALAXY SEED · OPTIONAL", app.seed, (1034, 325, 342, 55), "Random")

@@ -67,6 +67,7 @@ class HomeSystemTests(unittest.TestCase):
         surveyed = game.known_system(system.id).worlds[home.id]
         self.assertEqual((system.name, home.name, home.owner), ("Axiom", "Origin", "rival"))
         self.assertEqual(surveyed.name, "Origin")
+        self.assertEqual((home.biome, surveyed.biome), ("Ice", "Ice"))
         self.assertEqual((surveyed.owner, surveyed.population), (before["owner"], before["population"]))
         self.assertEqual(game, GameState.from_dict(game.to_dict()))
 

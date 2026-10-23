@@ -187,6 +187,23 @@ class SceneInterfaceTests(unittest.TestCase):
             building_art.load_building_art.cache_clear()
             building_art.building_sprite.cache_clear()
 
+    def test_building_hit_areas_fit_the_foreground_with_administration_visible(self):
+        earth = self.app.game.systems[0].worlds[2]
+        earth.size = 'Huge'
+        scene = pg.Rect(24, 314, 1392, 406)
+        for buildings in ([], ['hydroponic_farm', 'fusion_plant', 'solar_array'],
+                          list(BUILDINGS)[:earth.building_capacity]):
+            with self.subTest(buildings=len(buildings)):
+                earth.buildings = buildings.copy()
+                self.app.render()
+                buttons = [b for b in self.app.buttons if b.key.startswith('surface_')]
+                self.assertEqual(len(buttons), len(buildings)+2)
+                for i, button in enumerate(buttons):
+                    self.assertTrue(scene.contains(button.rect), button.key)
+                    self.assertGreaterEqual(button.rect.bottom-38, scene.y+scene.h*.44)
+                    for other in buttons[i+1:]:
+                        self.assertFalse(button.rect.colliderect(other.rect), (button.key, other.key))
+
 
 if __name__ == "__main__":
     unittest.main()

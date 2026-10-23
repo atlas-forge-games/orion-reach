@@ -94,7 +94,7 @@ class GuardianRulesTests(unittest.TestCase):
             if g.kind == "space_serpent":
                 food = game.population_report(p)
                 self.assertEqual((p.size, p.population_capacity, food.produced, food.growth_rate, food.turns_to_growth),
-                                 ("Huge", 28, 9, 35, 3))  # Remote Gaia output after local strain.
+                                 ("Huge", 28, 9, 43, 3))  # Remote Gaia: base 35 growth × Terran affinity 125%.
                 p.farmers = 1
                 self.assertEqual(game.population_report(p).produced, 11)
             elif g.kind == "crystal_guardian":

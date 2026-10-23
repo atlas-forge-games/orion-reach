@@ -27,7 +27,7 @@ def scenario(*, enemy_ships=True, damaged_base=False, extra_world=False):
     worlds = [earth, mars]
     if extra_world:
         venus = game.planet_at(0, 1)
-        venus.colonized, venus.owner, venus.population, venus.biome = True, PLAYER, 3, "Tundra"
+        venus.colonized, venus.owner, venus.population, venus.biome = True, PLAYER, 3, "Ice"
         worlds.append(venus)
     for world in worlds:
         world.buildings.append("missile_base")

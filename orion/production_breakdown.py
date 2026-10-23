@@ -56,7 +56,7 @@ def describe(game, planet, kind):
             raw = add(f'{planet.workforce} population × {research.POPULATION_INCOME:g}', planet.workforce*research.POPULATION_INCOME)
             raw += add(f'Facility income: floor({planet.workforce} × {staff.income:g})', int(planet.workforce*staff.income))
             raw += add('Colony bonuses (race, research, leader)', b.get('colony_income', 0))
-            raw += add('Population / terrain bonuses', (planet.workforce//2)*b.get('income_per_two_pop', 0)+(b.get('rough_income', 0) if planet.biome in ('Desert','Tundra') else 0))
+            raw += add('Population / terrain bonuses', (planet.workforce//2)*b.get('income_per_two_pop', 0)+(b.get('rough_income', 0) if planet.biome in ('Desert','Ice') else 0))
             percent, index = b.get('income_percent', 0), 1
         for identifier in active:
             value = research.building_yields(BUILDINGS[identifier], planet.richness, b)[index]
@@ -81,6 +81,9 @@ def describe(game, planet, kind):
             lines.append('This civilization does not require food; food production is 0.')
         else:
             raw = add('Habitat life support' if planet.habitat else 'Natural food ('+planet.biome+')', population.BASE_FOOD[planet.biome])
+            from .environments import native_food
+            if native_food(planet):
+                raw += add('Food from species adapted to toxic biota', native_food(planet))
             raw += add('Colony / terrain bonuses', b.get('colony_food', 0)+(b.get('lush_food', 0) if planet.biome in population.LUSH_BIOMES else 0))
             raw += add(f'{planet.farmers} farmers × ({population.FARMER_OUTPUT[planet.biome]:g} base + {staff.food:g} facilities)', planet.farmers*population.farmer_output(planet,b))
             raw += buildings('food')

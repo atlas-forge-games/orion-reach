@@ -114,6 +114,8 @@ def guides():
         Article("settlement", "colonies", "Settling new worlds", "Colony ships and habitability", (
             ("COLONIZATION", "Send a colony ship to an unclaimed, habitable planet within reach. Arriving does not settle automatically: select the planet and choose colonization. The colony ship is consumed."),
             ("HABITABILITY", "Planet biome, your civilization and researched technology determine which worlds can be settled. A new colony becomes a supply point for future voyages."),
+            ("ENVIRONMENT", "Growth efficiency depends on species and terrain. The planet overview shows the prospective factor before colonization. This scales food-driven growth, machine assembly and passive growth after existing race traits. It does not remove food or technology requirements. Richness, size, travel distance and empire strain still matter."),
+            ("TOXIC WORLDS", "Corrosive worlds are difficult for most biological species. Skirr thrive here and obtain six natural food from native toxic biota at a fully Skirr colony; mixed colonies receive a population-weighted share. New Skirr games start on Toxic worlds, Nexus on Ice and Aelari on Ocean. Existing homeworlds are preserved."),
             ("EXCEPTIONS", "The Varkesh cannot colonize. They raid for slaves and credits. The Observer controls no colonies and watches the computer empires instead."),
         )),
         Article("population", "colonies", "Population and assignments", "Farmers, workers, scientists and miners", (
@@ -279,6 +281,10 @@ def articles():
         )))
     for spec in SETUP_RACES.values():
         sections = [("CIVILIZATION", spec.description), ("TRAITS", "\n".join(spec.traits))]
+        if spec.id != 'observer':
+            from .environments import BIOMES, PREFERENCES
+            sections.append(("GROWTH ENVIRONMENTS", '\n'.join(f'{biome}: {PREFERENCES[spec.id][biome]}%' for biome in BIOMES)
+                             +'\n100% is the usual rate. Mixed colonies weight resident species; mobile habitats use 100%.'))
         if spec.home_system:
             sections.append(("HOME", spec.home_system+" · "+spec.homeworld))
         if spec.id in PERSONALITIES:

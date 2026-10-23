@@ -42,7 +42,7 @@ def prepared(rid, game=None, owner="player"):
     for i, (s, p) in enumerate(candidates[:count]):
         p.colonized, p.owner, p.population, p.size = True, owner, 12, "Huge"
         p.species = {rid: 12}
-        p.biome = ("Desert", "Tundra", "Barren")[i % 3] if rid == "lithar" else ("Gaia", "Terran", "Ocean")[i % 3]
+        p.biome = ("Desert", "Ice", "Barren")[i % 3] if rid == "lithar" else ("Gaia", "Terran", "Ocean")[i % 3]
         p.buildings = ["solar_array", "hydroponic_farm", spec.building]
         p.disabled_buildings = []; p.construction_queue = []
         p.farmers = 0 if rid == "nexus" else 6

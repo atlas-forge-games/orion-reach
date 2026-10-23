@@ -50,12 +50,14 @@ GALAXY_SIZES = {"Compact": 24, "Standard": 48, "Expansive": 72}
 GALAXY_BOUNDS = (.02, .98, .04, .96)
 MIN_STAR_DISTANCE = 6  # ly; keeps stars distinct and clickable.
 STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dwarf")
-BIOMES = ("Terran", "Ocean", "Desert", "Tundra", "Barren", "Volcanic", "Gaia")
+BIOMES = ("Terran", "Ocean", "Desert", "Ice", "Barren", "Volcanic", "Toxic", "Gaia")
+# Toxic worlds are seeded independently to preserve the galaxy-generation RNG.
+GENERATED_BIOMES = tuple(b for b in BIOMES if b not in ("Toxic", "Gaia"))
 RICHNESSES = ("Poor", "Average", "Rich", "Ultra-rich")
 PLANET_SIZES = ("Tiny", "Small", "Medium", "Large", "Huge")
 GRAVITIES = ("Low", "Normal", "High")
 HABITABILITY = {"Terran": 100, "Ocean": 80, "Desert": 40,
-                "Tundra": 35, "Barren": 0, "Volcanic": 0, "Gaia": 100}
+                "Ice": 35, "Barren": 0, "Volcanic": 0, "Toxic": 15, "Gaia": 100}
 PLAYER, RIVAL = "player", "rival"
 NAMES = (
     "Vega Altair Deneb Sirius Rigel Arcturus Antares Procyon Spica Pollux "
@@ -204,7 +206,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=53):
+    def from_dict(cls, data, systems, *, version=55):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -505,9 +507,12 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=53):
+    def from_dict(cls, data, expected_id, *, version=55):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
+        if version < 54 and data.get("biome") == "Tundra":
+            # Includes stored scout surveys; never rewrite the source save.
+            data = {**data, "biome": "Ice"}
         if not _name(data["name"], 40):
             raise ValueError
         if data["biome"] not in BIOMES or data["size"] not in PLANET_SIZES:
@@ -685,7 +690,7 @@ def generate_planets(system, galaxy_seed, *, player_home=True):
             continue
         roman = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")[i]
         # Keep the old system-level primary-world information on the first world.
-        biome = system.biome if i == 0 else rng.choice(BIOMES[:-1])
+        biome = system.biome if i == 0 else rng.choice(GENERATED_BIOMES)
         richness = system.richness if i == 0 else rng.choice(RICHNESSES[:-1])
         size = rng.choice(PLANET_SIZES)
         gravity = "Low" if size == "Tiny" else "High" if size == "Huge" else "Normal"
@@ -1347,13 +1352,15 @@ class GameState:
         return planet
 
     def _place_opponent(self, owner, race_id, system, planet, name):
+        from .environments import prepare_home
+        prepare_home(system, planet, race_id, surveys=self.exploration.surveys)
         name_home(self, system, planet, race_id)
         self._register_opponent(owner, race_id, system, planet, name)
         planet.colonized, planet.owner, planet.population = True, owner, economy.STARTING_POPULATION
         planet.species = {race_id: planet.population}
         planet.farmers, planet.scientists, planet.miners = 2, 0, 2
-        if race_id == "skirr":
-            planet.farmers = population_rules.farmers_needed(planet, self.bonuses_for(owner), surplus=4)
+        if race_id in ("skirr", "aelari"):
+            planet.farmers = population_rules.farmers_needed(planet, self.bonuses_for(owner), surplus=4 if race_id == "skirr" else 2)
         if not population_rules.food_required(planet.population, self.bonuses_for(owner)):
             planet.farmers = 0
         population_rules.clamp_workforce(planet)
@@ -1942,7 +1949,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=53):
+    def from_dict(cls, data, *, version=55):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -1974,6 +1981,8 @@ class GameState:
             for i, s in enumerate(records):
                 if not isinstance(s, dict) or not _integer(s["id"], i, i) or not _name(s["name"]):
                     raise ValueError
+                if version < 54 and s.get("biome") == "Tundra":
+                    s = {**s, "biome": "Ice"}
                 for axis in ("x", "y"):
                     if type(s[axis]) not in (int, float) or not math.isfinite(s[axis]) or not 0 <= s[axis] <= 1:
                         raise ValueError
@@ -2231,19 +2240,23 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         else:
             raise SaveError("Could not place this galaxy. Please try a different seed.")
         systems.append(StarSystem(i, names[i-1], x, y, rng.choice(STAR_TYPES),
-                                  rng.randint(0, 7), rng.choice(BIOMES[:-1]), rng.choice(RICHNESSES[:-1])))
+                                  rng.randint(0, 7), rng.choice(GENERATED_BIOMES), rng.choice(RICHNESSES[:-1])))
     for system in systems:
         system.worlds = generate_planets(system, seed, player_home=not observer)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, economy.STARTING_CREDITS, systems,
                      race_id=race_id, fog_of_war=fog_of_war, victory_conditions=victory_conditions)
+    from .environments import seed_toxic_worlds
+    seed_toxic_worlds(game)
     if observer:
         game.credits = game.resources = 0
     else:
         name_home(game, systems[0], systems[0].worlds[2], race_id)
+        from .environments import prepare_home
+        prepare_home(systems[0], systems[0].worlds[2], race_id)
         game.planet_at(0, 2).species = {race_id: game.planet_at(0, 2).population}
         game.research = RACES[race_id].starting_research
-        if race_id == "skirr":
-            game.planet_at(0, 2).farmers = population_rules.farmers_needed(game.planet_at(0, 2), game.bonuses_for(), surplus=4)
+        if race_id in ("skirr", "aelari"):
+            game.planet_at(0, 2).farmers = population_rules.farmers_needed(game.planet_at(0, 2), game.bonuses_for(), surplus=4 if race_id == "skirr" else 2)
         if not population_rules.food_required(game.planet_at(0, 2).population, game.bonuses_for()):
             game.planet_at(0, 2).farmers = 0
         game.planet_at(0, 2).miners = 2
@@ -2264,7 +2277,7 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
             candidates = [s for s in systems if s not in homes and s.worlds]
             separated = [s for s in candidates if all(distance_ly(s, h) >= 20 for h in homes)]
             system = starts.choice(separated) if separated else max(candidates, key=lambda s: min(distance_ly(s, h) for h in homes))
-            # Equal foundations: race traits, rather than a lucky starting biome, set the opening economy.
+            # Equal size/minerals; native biomes are applied by _place_opponent.
             planet = starts.choice(system.worlds)
             planet.biome, planet.size, planet.richness, planet.gravity = "Terran", "Medium", "Average", "Normal"
             if planet.id == 0:

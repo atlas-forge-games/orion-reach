@@ -92,7 +92,9 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(self.store.load_settings()["fullscreen"],False)
 
     def test_v1_save_migration_preserves_campaign_and_original_file(self):
-        old_game=new_game("Old campaign",seed=44)
+        # v1 stored only system-level terrain; its worlds predate Toxic seeding.
+        with patch("orion.environments.seed_toxic_worlds"):
+            old_game=new_game("Old campaign",seed=44)
         old_game.advance_turn()
         old_game.planet_at(0, 2).growth_progress=0  # v1 had no population growth.
         old_game.selected_system=4

@@ -197,7 +197,7 @@ class ResearchRulesTests(unittest.TestCase):
         earth.biome = "Desert"
         for identifier in ("habitat_shields", "symbiotic_farming", "ecology_networks", "trade_algorithms"):
             discover(game, identifier)
-        self.assertEqual(game.planet_yields(earth), (6, 25, 0))  # 8 + trade 6+4 + habitat 2 + farming 2 + ecology 4 - upkeep 1
+        self.assertEqual(game.planet_yields(earth), (5, 25, 0))  # Three starting Aelari farmers; income: 8 + trade 6+4 + habitat 2 + farming 2 + ecology 4 - upkeep 1.
         discover(game, "cultural_exchange")
         self.assertEqual(game.diplomatic_yields(), (0, 0))
         game.diplomacy.trade_active = game.diplomacy.research_active = True
@@ -287,7 +287,8 @@ class ResearchSaveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             restored, _ = storage.load(storage.save(game))
-            for _ in range(100):
+            # Native Ocean growth changes the order of food, expansion and labs.
+            for _ in range(160):
                 if game.result is not None:
                     break
                 self.assertEqual(game.advance_turn(), restored.advance_turn())

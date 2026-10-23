@@ -94,7 +94,7 @@ class AwakeningTests(unittest.TestCase):
         self.assertEqual(game, GameState.from_dict(game.to_dict()))
 
     def test_harsh_worlds_have_life_support_and_working_economies(self):
-        for biome in ("Barren", "Volcanic", "Desert", "Tundra", "Gaia"):
+        for biome in ("Barren", "Volcanic", "Desert", "Ice", "Gaia"):
             game = scenario(with_ai=False)
             tomb = vault(game)
             planet = game.planet_at(0, 3)

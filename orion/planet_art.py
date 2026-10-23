@@ -10,9 +10,10 @@ COLORS = {
     "Terran": ((25, 87, 125), (80, 128, 98), (117, 192, 226)),
     "Ocean": ((18, 93, 156), (59, 131, 125), (99, 194, 245)),
     "Desert": ((167, 98, 54), (216, 153, 83), (231, 181, 113)),
-    "Tundra": ((105, 148, 166), (192, 217, 221), (177, 228, 243)),
+    "Ice": ((165, 203, 225), (225, 240, 246), (184, 229, 250)),
     "Barren": ((113, 116, 124), (151, 150, 144), (143, 160, 182)),
     "Volcanic": ((63, 55, 62), (103, 77, 68), (242, 139, 76)),
+    "Toxic": ((112, 116, 49), (187, 169, 65), (204, 212, 112)),
 }
 SIZE = 384
 
@@ -43,7 +44,7 @@ def globe(biome, seed):
     base, terrain, atmosphere = COLORS[biome]
     result = pg.Surface((SIZE, SIZE), pg.SRCALPHA)
     result.fill((*base, 255))
-    if biome in ("Terran", "Ocean", "Tundra", "Gaia"):
+    if biome in ("Terran", "Ocean", "Ice", "Gaia", "Toxic"):
         count = 22 if biome in ("Terran", "Gaia") else 8 if biome == "Ocean" else 34
         for _ in range(count):
             x, y = rng.randrange(SIZE), rng.randrange(SIZE)
@@ -56,12 +57,14 @@ def globe(biome, seed):
             shade = tuple(max(0, min(255, c+rng.randrange(-13, 14))) for c in terrain)
             pg.draw.polygon(result, shade, points)
         # Icecaps and wispy cloud bands.
-        for y in (0, SIZE-16):
-            pg.draw.ellipse(result, (205, 224, 225), (66, y-14, 248, 48))
+        if biome != "Toxic":
+            for y in (0, SIZE-16):
+                pg.draw.ellipse(result, (205, 224, 225), (66, y-14, 248, 48))
         clouds = pg.Surface((SIZE, SIZE), pg.SRCALPHA)
         for _ in range(26):
             x, y = rng.randrange(-45, SIZE), rng.randrange(SIZE)
-            pg.draw.arc(clouds, (214, 235, 234, rng.randrange(50, 133)),
+            cloud_color = (208, 205, 120) if biome == "Toxic" else (214, 235, 234)
+            pg.draw.arc(clouds, (*cloud_color, rng.randrange(50, 133)),
                         (x, y, rng.randrange(55, 160), rng.randrange(20, 70)),
                         .2, 2.3, rng.randrange(2, 5))
         result.blit(clouds, (0, 0))

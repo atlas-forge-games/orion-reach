@@ -4,10 +4,11 @@ from dataclasses import dataclass
 
 from .buildings import BUILDINGS, workforce_bonuses
 from .economy import active_buildings
+from . import environments
 
 POPULATION_LIMITS = {"Tiny": 8, "Small": 12, "Medium": 16, "Large": 20, "Huge": 24}
-BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Tundra": 0, "Barren": 0, "Volcanic": 0, "Gaia": 12}
-FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Tundra": 2, "Barren": 1, "Volcanic": 1, "Gaia": 3}
+BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Ice": 0, "Barren": 0, "Volcanic": 0, "Toxic": 0, "Gaia": 12}
+FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Ice": 2, "Barren": 1, "Volcanic": 1, "Toxic": 2, "Gaia": 3}
 WORKER_ROLES = ("farmers", "workers", "scientists", "miners")
 GROWTH_THRESHOLD = 100
 GROWTH_LIMIT = 25
@@ -91,6 +92,7 @@ class PopulationReport:
     assembly_industry: int = 0
     passive_growth: int = 0
     swarm: bool = False
+    environment_percent: int = 100
 
     @property
     def consumed(self):
@@ -101,7 +103,7 @@ class PopulationReport:
         return self.produced-self.consumed
 
     @property
-    def growth_rate(self):
+    def base_growth_rate(self):
         if not self.colonized or not 0 < self.population < self.capacity:
             return 0
         if self.assembly:
@@ -110,6 +112,11 @@ class PopulationReport:
             return self.passive_growth
         base = max(0, min(self.growth_limit, GROWTH_PER_FOOD*self.balance))
         return max(1, base*self.growth_percent//100) if base else 0
+
+    @property
+    def growth_rate(self):
+        base = self.base_growth_rate
+        return max(1, base*self.environment_percent//100) if base else 0
 
     @property
     def turns_to_growth(self):
@@ -150,7 +157,7 @@ def food_production(planet, bonuses=None, *, farmers=None):
     produced = 0
     needs_food = 100+bonuses.get("food_use_percent", 0) > 0
     if planet.colonized and needs_food:
-        produced = BASE_FOOD[planet.biome] + bonuses.get("colony_food", 0)
+        produced = BASE_FOOD[planet.biome] + bonuses.get("colony_food", 0) + environments.native_food(planet)
         if planet.biome in LUSH_BIOMES:
             produced += bonuses.get("lush_food", 0)
         produced += (planet.farmers if farmers is None else farmers)*farmer_output(planet, bonuses)
@@ -173,7 +180,7 @@ def report(planet, bonuses=None):
                             planet.growth_progress, planet.colonized, GAIA_GROWTH_LIMIT if planet.biome == "Gaia" else GROWTH_LIMIT,
                             food_required(planet.workforce, bonuses), growth,
                             bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0),
-                            bool(bonuses.get("swarm_growth")))
+                            bool(bonuses.get("swarm_growth")), environments.growth_factor(planet))
 
 
 def advance(planet, start):

@@ -1,0 +1,44 @@
+ORION REACH v0.77 — ICE WORLDS AND DETAILED PLANET SURFACES
+
+Install over your existing v0.76.1 game folder:
+1. Close the game.
+2. Extract this ZIP into the project root, where orion/ and assets/ already are.
+3. Allow the included files to replace their previous versions.
+4. Start the game normally. Existing campaigns use the new artwork on load.
+
+Included changes
+- Seven detailed landscapes: Terran, Gaia, Ocean, Desert, Ice, Barren, Volcanic.
+- Ice replaces Tundra in world generation, the interface and terrain rules.
+- A matching pale-blue icy globe in system and combat views.
+- Backgrounds retain their proportions and are cached across colonies.
+- Buildings sit on the open foreground and remain independently clickable.
+- Procedural service roads and oval bases under buildings/outposts are removed.
+- Construction previews, counts, captions and building actions remain available.
+- Missing or corrupt landscape PNGs use a procedural fallback.
+
+Compatibility
+- Save formats 1–53 migrate Tundra terrain to Ice, including stored surveys.
+- Old balance profiles migrate their Tundra entry to Ice while retaining all
+  custom food, farmer-output and habitability values.
+- Default Ice values remain 35 habitability, 0 base food and 2 food per farmer.
+- Habitat Shields and harsh-world civilization rules also apply to Ice.
+- Loading never overwrites the source save or custom balance file.
+- New saves use format 54; balance profiles use format 18.
+- Custom balance.json files, saved games and settings are not part of this ZIP.
+- The obsolete tundra-v1.png may remain from the earlier artwork pack; it is
+  no longer loaded. Original building sprites remain in use.
+
+Validation
+- 236 relevant tests ran: 231 passed; four failures and one error also occur
+  in the unchanged v0.76.1 baseline. No new failure identities were introduced.
+- All eight final colony-scene tests pass, including a new foreground/click
+  geometry check. The final outpost tests also pass.
+- New tests cover legacy save/survey migration, custom balance preservation,
+  current-save validation, Ice rules, all seven image files, aspect-ratio
+  cropping, shared caches and missing/corrupt-image fallback.
+- All seven overviews and dense/queued Ice colonies were rendered for review.
+- Asset checksums match the original generated PNGs.
+- See docs/planet-surface-validation.md for commands and baseline details.
+
+This is an incremental update, not a complete game distribution.
+No commits or pushes were made.

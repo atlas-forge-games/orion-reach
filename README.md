@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.76.1
+# Orion Reach — Python prototype 0.78
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,48 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.78: species environments and Toxic worlds
+
+All 13 species now have growth preferences for the eight planet types. The
+environment multiplies their usual food-based growth, assembly or passive
+growth. For example, Terrans grow at 100% on Terran worlds and 50% on Ice;
+Nexus uses 60% on Terran worlds and 150% on Ice. Mixed colonies use the
+population-weighted preferences of their residents. Mobile habitats stay at 100%.
+
+The new **Toxic** biome has its own detailed landscape and globe. It is difficult
+for most species, while the Skirr Swarm thrives at 150% and can feed on its toxic
+biosphere. New campaigns give Skirr a Toxic home, Nexus an Ice home and Aelari an
+Ocean home. Toxic worlds also appear across newly generated galaxies.
+
+The interface shows the growth efficiency before settling and in established
+colonies. AI colonization considers species suitability alongside world size and
+mineral richness. Existing settlement technologies and racial restrictions still
+apply. Preferences can be edited under **Species / planet growth (%)** in the
+balance editor.
+
+Existing campaigns gain the growth rules on load; their planets and homeworlds
+are not regenerated. New saves use format 55 and balance format 19. See the
+[complete preference matrix and compatibility notes](docs/planet-environments.md)
+and [validation report](docs/planet-environment-validation.md).
+
+![Toxic planet landscape](assets/planet_surfaces/toxic-v1.png)
+
+## New in v0.77: detailed planet surfaces and Ice worlds
+
+The planet overview uses seven detailed landscape images: Terran, Gaia, Ocean,
+Desert, Ice, Barren and Volcanic. Each keeps its natural proportions when the
+viewport changes. Buildings remain separate, clickable sprites; the old road
+grid and artificial oval building bases are removed. Queued buildings still
+appear faded with their construction captions.
+
+Ice replaces Tundra with a fully frozen surface and a pale icy globe. Existing
+saves and custom balance profiles migrate automatically on load, including
+stored scout surveys. Habitability, food production, technology bonuses and
+custom balance values are preserved. Loading does not rewrite the original
+save or balance file. New saves use format 54 and balance format 18.
+
+![Ice planet landscape](assets/planet_surfaces/ice-v1.png)
 
 ## New in v0.76.1: a quieter galaxy map
 
@@ -2466,7 +2508,7 @@ feed another colony. There is no food stockpile or shipping in this version.
 | --- | ---: | ---: |
 | Terran | 6 | 2 |
 | Ocean | 4 | 2 |
-| Desert / Tundra | 0 | 2 |
+| Desert / Ice | 0 | 2 |
 | Barren / Volcanic | 0 | 1 |
 
 Build a **Hydroponic farm** through **Change** for **30 Resources, 18 construction
@@ -2662,9 +2704,14 @@ preserves its finances, orders, ships, ownership and recent activity.
 
 ## Planet surface and building graphics
 
-Open a planet to see its surface. Terran, Ocean, Desert,
-Tundra, Barren and Volcanic worlds have distinct seeded landscapes. The compact
+Open a planet to see its surface. Terran, Gaia, Ocean, Desert,
+Ice, Barren and Volcanic worlds have distinct detailed landscapes. The compact
 system list keeps the other planets available without leaving the colony view.
+
+Backgrounds are loaded from `assets/planet_surfaces/`, cropped to fit without
+stretching and cached across colonies. If an image is missing or corrupt, a
+seeded procedural landscape remains available. Buildings and their hit areas
+remain independent of the background.
 
 - Completed catalogue buildings, including defenses and power plants, appear on
   the surface. Repeated types share a graphic with a count, such as **Factory ×3**.
@@ -2847,7 +2894,7 @@ order is needed between planets in the same system.
 
 | Rule | Prototype behavior |
 | --- | --- |
-| Suitable planets | Uncolonized Terran, Ocean, Desert and Tundra worlds |
+| Suitable planets | Uncolonized Terran, Ocean, Desert and Ice worlds |
 | Hostile worlds | Barren requires Radiation Shields; Volcanic requires Thermal Barriers |
 | Ship construction | Shares the sequential queue and industry with buildings; no building slot |
 | Queue capacity | Up to 20 total projects per planet |

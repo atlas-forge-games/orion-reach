@@ -1,0 +1,94 @@
+{
+  "version": 3,
+  "purpose": "Planet overview backgrounds integrated in Orion Reach 0.78",
+  "assets": [
+    {
+      "biome": "Terran",
+      "file": "terran-v1.png",
+      "project_path": "assets/planet_surfaces/terran-v1.png",
+      "width": 2172,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3224710,
+      "sha256": "f16bb546839f659312df8cb872b03ccbf0c5a9c32172e4df0cbf8e87606ddaf1"
+    },
+    {
+      "biome": "Gaia",
+      "file": "gaia-v1.png",
+      "project_path": "assets/planet_surfaces/gaia-v1.png",
+      "width": 2172,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3694934,
+      "sha256": "00995d576bfa092012182685b62ce2e30a2764e829e9833ef3af4ea885abbb6b"
+    },
+    {
+      "biome": "Ocean",
+      "file": "ocean-v1.png",
+      "project_path": "assets/planet_surfaces/ocean-v1.png",
+      "width": 2172,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3516508,
+      "sha256": "45d37f7981d3d3ff8575851cd882e9d0cc21c75bf2250c7e747a77a977384970"
+    },
+    {
+      "biome": "Desert",
+      "file": "desert-v1.png",
+      "project_path": "assets/planet_surfaces/desert-v1.png",
+      "width": 2172,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3300678,
+      "sha256": "8d0038f710ec4fd81ade5b1b390352feaa0740277ed51495840e265dd0f96971"
+    },
+    {
+      "biome": "Ice",
+      "file": "ice-v1.png",
+      "project_path": "assets/planet_surfaces/ice-v1.png",
+      "width": 2171,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3078689,
+      "sha256": "0010c389392c92002ef4074c364a6c2832eecbed3ab11a39856882d8d463885e"
+    },
+    {
+      "biome": "Barren",
+      "file": "barren-v1.png",
+      "project_path": "assets/planet_surfaces/barren-v1.png",
+      "width": 2172,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3300994,
+      "sha256": "18316c1ba09f577eea1a0acdf703140fcdda3f77ce296900b88d7c941f18610b"
+    },
+    {
+      "biome": "Volcanic",
+      "file": "volcanic-v1.png",
+      "project_path": "assets/planet_surfaces/volcanic-v1.png",
+      "width": 2172,
+      "height": 724,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 3128809,
+      "sha256": "9c6a111aa834ad21f4eea710b9b2f6ce9267b3b5de3fcb77de061f7c6da9d87e"
+    },
+    {
+      "biome": "Toxic",
+      "file": "toxic-v1.png",
+      "project_path": "assets/planet_surfaces/toxic-v1.png",
+      "width": 2171,
+      "height": 724,
+      "mode": "RGB",
+      "format": "PNG",
+      "bytes": 3460079,
+      "sha256": "fe2c80df7a4801012496e06df8d28aea71efe4ba88af6cd7ba78df95359d81cb"
+    }
+  ]
+}

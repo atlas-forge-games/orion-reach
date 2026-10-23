@@ -1,0 +1,45 @@
+ORION REACH v0.78 — SPECIES ENVIRONMENTS AND TOXIC WORLDS
+
+Install over your existing v0.77 game folder:
+1. Close the game.
+2. Extract this ZIP into the project root, where orion/ and assets/ already are.
+3. Allow the included files to replace their previous versions.
+4. Start the game normally. Start a new campaign to get the new native homes
+   and naturally generated Toxic worlds.
+
+Included changes
+- Growth preferences for all 13 species across all eight planet types.
+- Terrans: 100% on Terran, 50% on Ice, 25% on Toxic.
+- Nexus: 60% on Terran, 150% on Ice, 110% on Toxic.
+- Skirr: 80% on Terran, 40% on Ice, 150% on Toxic.
+- The multiplier applies to food-driven growth, assembly and passive growth.
+- Mixed colonies use a population-weighted factor from their actual residents.
+- Mobile habitats retain 100% environmental growth efficiency.
+- Toxic planets have a detailed new landscape, globe and procedural fallback.
+- A full Skirr population can use toxic biota for six natural food per colony.
+- New Skirr homes are Toxic, Nexus homes Ice and Aelari homes Ocean.
+- AI planet choices consider the species' preference, richness and world size.
+- Race selection, setup, planet/colony views and the encyclopedia show the rules.
+- All growth preferences and the toxic-food bonus are editable in balance settings.
+
+Compatibility
+- Existing saves keep their current planets, homeworlds and populations.
+- The new multipliers apply to their future growth after loading, so older
+  campaigns can have different growth estimates and economic timing.
+- Older custom balance profiles retain their previous settings and gain the
+  new defaults. Loading does not rewrite the source save or balance file.
+- Save format is 55; balance profile format is 19.
+- Adding a new rival initializes its native terrain and updates charted terrain
+  without revealing stale ownership or population changes.
+- Existing food, capacity, racial settlement and technology rules still apply.
+- Custom balance.json files, saved games and settings are not in this ZIP.
+
+Details and validation
+- docs/planet-environments.md contains the full preference matrix and formulas.
+- docs/planet-environment-validation.md records checks and baseline limitations.
+- tools/preview_environments.py renders the new screens for local review.
+- This package includes only the new Toxic PNG; the seven v0.77 landscapes and
+  the original building sprites must already be installed.
+
+This is an incremental update, not a complete game distribution.
+No commits or pushes were made.

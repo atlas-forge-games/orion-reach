@@ -140,7 +140,7 @@ class ColonizationRulesTests(unittest.TestCase):
         self.assertEqual(self.game.to_dict(), before)
 
     def test_settlement_requires_suitable_world_and_a_local_arrived_ship(self):
-        for biome in ("Terran", "Ocean", "Desert", "Tundra", "Barren", "Volcanic"):
+        for biome in ("Terran", "Ocean", "Desert", "Ice", "Barren", "Volcanic"):
             with self.subTest(biome=biome):
                 game = new_game(seed=2408)
                 game.systems[0].worlds[3].biome = biome
