@@ -2704,11 +2704,11 @@ class App:
             selected=star.id==preview
             if star.kind==black_holes.KIND:
                 black_hole_view.draw_marker(self,star,selected)
-                label=labels[star.id]
-                if abs(label.x-(x+34))+abs(label.y-(y-9))>12:
-                    tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
-                    pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
-                draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
+                if label:=labels.get(star.id):
+                    if abs(label.x-(x+34))+abs(label.y-(y-9))>12:
+                        tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
+                        pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
+                    draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
                 continue
             known=state.known_system(star.id)
             color=STAR_COLORS[star.kind] if known else tuple(c//3 for c in STAR_COLORS[star.kind])
@@ -2732,11 +2732,11 @@ class App:
                 pg.draw.circle(self.canvas,self.empire_color(PLAYER),(int(x),int(y)),11,2)
             for index,owner in enumerate(o for o in state.opponents if o in owners):
                 pg.draw.circle(self.canvas,self.empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,2)
-            label=labels[star.id]
-            if abs(label.x-(x+17))+abs(label.y-(y-9))>12:
-                tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
-                pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
-            draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
+            if label:=labels.get(star.id):
+                if abs(label.x-(x+17))+abs(label.y-(y-9))>12:
+                    tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
+                    pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
+                draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
             self.map_button(f"star_{star.id}",(int(x)-18,int(y)-18,36,36),lambda s=star.id:self.select_star(s))
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)

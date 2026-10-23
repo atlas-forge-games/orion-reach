@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.76
+# Orion Reach — Python prototype 0.76.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,18 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.76.1: a quieter galaxy map
+
+Undiscovered stars have no map label or label connector line. Their markers
+remain selectable, and names appear after exploration. Known labels and fleet
+badges no longer have to avoid invisible catalogue labels.
+
+The nebula background keeps its clouds and colours, with the bright decorative
+stars removed so they cannot be confused with selectable systems. This visual
+update applies to existing campaigns as soon as they are loaded.
+
+![Galaxy map with unlabeled unexplored systems](screenshots/v0761_clean_galaxy.png)
 
 ## New in v0.76: ship costs and strength from a common size model
 

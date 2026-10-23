@@ -14,6 +14,7 @@ import pygame as pg
 
 from orion.empires import empire_color
 from orion.exploration import refresh
+from orion.galaxy_fleet_view import star_label_rects
 from orion.galaxy_labels import LABEL_FAMILY, LABEL_SIZE, draw_system_label, label_bands, system_label
 from orion.model import Ship
 from orion.ui import font, text_image
@@ -43,17 +44,23 @@ class GalaxyHudTests(unittest.TestCase):
             self.app.render()
 
     def test_unexplored_names_become_surveyed_and_never_leak_later_ownership(self):
+        from orion.app import MAP
         game = self.app.game = new_game(seed=2408, fog_of_war=True, with_guardians=False)
         target = game.systems[game.opponent.home_system]
         before = game.to_dict()
-        self.assertEqual(system_label(game, target), f"UNK-{target.id:03d}")
-        self.assertNotEqual(label_bands(game, target)[1][0][2], empire_color("rival"))
+        self.assertEqual(system_label(game, target), "")
+        self.assertEqual(label_bands(game, target), ("", ()))
+        self.assertNotIn(target.id, star_label_rects(self.app, MAP))
         self.assertEqual(game.to_dict(), before)
+        self.click(f"star_{target.id}")
+        self.assertEqual(game.selected_system, target.id)
+        self.assertNotIn(target.id, star_label_rects(self.app, MAP))
         scout = Ship(game.next_ship_id, "scout", target.id)
         game.next_ship_id += 1
         game.ships.append(scout)
         refresh(game)
         self.assertEqual(system_label(game, target), target.name.upper())
+        self.assertIn(target.id, star_label_rects(self.app, MAP))
         expected = label_bands(game, target)
         self.assertEqual(expected[1][0][2], empire_color("rival"))
         scout.system_id = 0
@@ -163,11 +170,14 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertIn("22 made / 13 used", values)
         self.assertIn("1 local shortage", values)
 
-    def test_unexplored_catalogue_labels_fit_without_overlap(self):
+    def test_only_explored_system_names_reserve_map_space(self):
         from orion.app import MAP
-        from orion.galaxy_fleet_view import star_label_rects
-        self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5)
+        self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5, fog_of_war=True)
         labels = star_label_rects(self.app, MAP)
+        self.assertEqual(set(labels), {s.id for s in self.app.map_systems()
+                                       if self.app.game.system_explored(s.id)})
+        self.assertTrue(labels)
+        self.assertLess(len(labels), len(self.app.map_systems()))
         for i, (identifier, rect) in enumerate(labels.items()):
             self.assertEqual(rect.size, font(LABEL_SIZE, LABEL_FAMILY).size(system_label(self.app.game, self.app.game.systems[identifier])))
             self.assertTrue(MAP.contains(rect))

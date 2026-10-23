@@ -1,0 +1,38 @@
+Orion Reach v0.76.1 — cleaner galaxy map
+
+Install on top of v0.76:
+1. Close the game.
+2. Extract this ZIP into the folder containing main.py, orion/ and assets/.
+3. Replace the included files, then run python main.py normally.
+
+This is an incremental update, not a full game. Existing campaigns use the
+new presentation immediately; no new campaign or dependency is required.
+
+Undiscovered systems no longer show map labels such as UNK-012 or their label
+connector lines. Their star markers remain clickable. Names appear after
+exploration, and stored survey names remain visible. Disabling fog of war or
+using observer mode continues to show known names. Charted black holes retain
+their detected names. Fleet and name placement no longer reserves space for
+unexplored labels.
+
+The background keeps the blue and copper nebula composition, with prominent
+decorative stars and diffraction spikes removed. Fine, dim texture and diffuse
+distant galaxies remain. The active asset is assets/backgrounds/galaxy-v2.png;
+the original galaxy-v1.png is preserved. The background setting still works.
+The built-in image edit mode and exact prompt are documented in
+assets/backgrounds/README.md.
+
+VALIDATION
+103 relevant tests ran: 100 passed, 3 failed. All map presentation, camera,
+click, label, fog, fleet, and black-hole tests passed. The three failures in
+test_exploration also occur with the exact v0.76 source and tests, in the same
+test order: the old shipyard return-screen expectation, AI expansion after a
+fixed number of turns, and an old-v9 save-migration comparison. No new failures
+were introduced in this run. A full unrelated test-suite run was not repeated.
+
+The actual game was rendered and visually checked at 100% and 381% zoom.
+screenshots/v0761_clean_galaxy.png shows the 72-system starting map with only
+the explored home system named. Unexplored star selection and name appearance
+after exploration are checked through the real UI tests.
+
+No files have been committed or pushed.

@@ -11,6 +11,10 @@ LABEL_FAMILY = "mono_bold"
 
 
 def system_label(game, system):
+    """Only discovered names belong on the map; unknown stars stay clickable."""
+    if not (game.system_explored(system.id)
+            or system.kind == black_holes.KIND and black_holes.charted(game, system)):
+        return ""
     return game.system_name(system.id).upper()
 
 
@@ -28,6 +32,8 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE):
     owners than letters, share its pixels so every known owner still appears.
     """
     label = system_label(game, system)
+    if not label:
+        return "", ()
     owners = known_owners(game, system)
     face = font(LABEL_SIZE, LABEL_FAMILY)
     width = face.size(label)[0]

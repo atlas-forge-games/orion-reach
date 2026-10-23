@@ -96,18 +96,19 @@ def marker_layout(bounds, star_obstacles, preferred_rects, padding=4):
 def star_label_rects(app, map_rect):
     """Keep names inside the rectangular map and clear of nearby stars and names."""
     systems = app.map_systems()
+    named_systems = [s for s in systems if system_label(app.game, s)]
     obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
                  pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
                  for s in systems]
     obstacles += [pg.Rect(map_rect.x, map_rect.y, map_rect.w, 34), guardian_legend_rect(map_rect)]
     preferred = []
-    for system in systems:
+    for system in named_systems:
         x, y = app.star_pos(system)
         width, height = font(LABEL_SIZE, LABEL_FAMILY).size(system_label(app.game, system))
         preferred.append((round(x)+(34 if system.kind == black_holes.KIND else 17), round(y)-9, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))
-    return {s.id: pg.Rect(rect) for s, rect in zip(systems, rectangles)}
+    return {s.id: pg.Rect(rect) for s, rect in zip(named_systems, rectangles)}
 
 
 def star_obstacles(app, map_rect, radius=21):

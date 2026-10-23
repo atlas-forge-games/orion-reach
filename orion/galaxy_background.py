@@ -7,7 +7,7 @@ import pygame as pg
 
 from .ui import ASSETS, panel
 
-BACKGROUND_PATH = ASSETS / "backgrounds" / "galaxy-v1.png"
+BACKGROUND_PATH = ASSETS / "backgrounds" / "galaxy-v2.png"
 MAP_COLOR = (7, 17, 25)
 
 

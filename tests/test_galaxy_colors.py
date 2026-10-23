@@ -16,7 +16,7 @@ from orion.empires import PLAYER_PALETTES
 from orion.galaxy_fleet_view import fleet_markers, star_label_rects
 from orion.galaxy_labels import label_bands
 from orion.storage import Storage
-from orion.ui import FAINT, MUTED
+from orion.ui import MUTED
 from scenarios import fixed_start_game as new_game
 
 
@@ -135,8 +135,7 @@ class ColorPreferenceUITests(unittest.TestCase):
         for palette in PLAYER_PALETTES:
             self.app.set_galaxy_palette(palette)
             label, bands = label_bands(game, unknown, palette=palette)
-            self.assertEqual(label, f"UNK-{unknown.id:03d}")
-            self.assertEqual(bands[0][2], FAINT)
+            self.assertEqual((label, bands), ("", ()))
             self.assertEqual(label_bands(game, neutral, palette=palette)[1][0][2], MUTED)
             label, bands = label_bands(game, shared, palette=palette)
             self.assertEqual(label, "OBERON")
