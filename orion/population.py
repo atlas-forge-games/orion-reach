@@ -7,8 +7,8 @@ from .economy import active_buildings
 from . import environments
 
 POPULATION_LIMITS = {"Tiny": 8, "Small": 12, "Medium": 16, "Large": 20, "Huge": 24}
-BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Ice": 0, "Barren": 0, "Volcanic": 0, "Toxic": 0, "Gaia": 12}
-FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Ice": 2, "Barren": 1, "Volcanic": 1, "Toxic": 2, "Gaia": 3}
+BASE_FOOD = {"Terran": 6, "Ocean": 4, "Desert": 0, "Ice": 0, "Barren": 0, "Volcanic": 0, "Toxic": 0, "Gaia": 12, "Gas Giant": 0}
+FARMER_OUTPUT = {"Terran": 2, "Ocean": 2, "Desert": 2, "Ice": 2, "Barren": 1, "Volcanic": 1, "Toxic": 2, "Gaia": 3, "Gas Giant": 0}
 WORKER_ROLES = ("farmers", "workers", "scientists", "miners")
 GROWTH_THRESHOLD = 100
 GROWTH_LIMIT = 25
@@ -24,6 +24,8 @@ def population_capacity(planet, bonuses=None):
     if planet.habitat:
         from .motherships import CAPACITY
         return CAPACITY
+    if planet.is_gas_giant:
+        return 0
     base = POPULATION_LIMITS[planet.size] + (GAIA_CAPACITY if planet.biome == "Gaia" else 0)
     return base*(100+(bonuses or {}).get("capacity_percent", 0))//100
 

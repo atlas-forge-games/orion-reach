@@ -24,6 +24,9 @@ def deployment_error(game, system_id, planet_id, owner="player"):
     if game.strategy_error(owner):
         return game.strategy_error(owner)
     planet = game.planet_at(system_id, planet_id)
+    if planet.is_gas_giant:
+        from .gas_giants import OUTPOST_ERROR
+        return OUTPOST_ERROR
     if planet.colonized:
         return "Choose an uncolonized planet for the outpost."
     if at(game, system_id):
@@ -125,7 +128,7 @@ def expansion_targets(game, owner):
         if system.id not in reachable or system in game.supply_systems(owner):
             continue
         known = game.known_system(system.id, owner)
-        if (not known or not any(not p.colonized for p in known.worlds)
+        if (not known or not any(not p.colonized and not p.is_gas_giant for p in known.worlds)
                 or any(p.outpost_owner for p in known.worlds)
                 or monsters.known_status(game, system.id, owner) == "alive"):
             continue

@@ -31,9 +31,10 @@ def system_layout(worlds, *, with_motherships=False):
         if with_motherships:
             y = 391 + (24 if i%2 == 0 else -26)
             factor = min(factor, 1.15)
-        diameter = round(DIAMETERS[world.size]*factor)
+        diameter = round((82 if world.is_gas_giant else DIAMETERS[world.size])*factor)
         # Include the planet's caption in its accessible hit target.
         width = 116 if count <= 6 else 88
+        width = max(width, diameter+16)
         hit = pg.Rect(int(x-width/2), int(y-diameter/2-18), width, int(diameter+(90 if with_motherships else 105)))
         layout.append((world, (x, y), diameter, hit))
     return layout
@@ -153,6 +154,8 @@ def draw_system(app):
         text(surface, shorten(world.name, hit.w-4, label_size), (hit.x+2, y+diameter/2+22), label_size,
              GOLD if active else INK)
         text(surface, world.biome.upper(), (hit.x+2, y+diameter/2+45), 9, MUTED, "mono")
+        if world.is_gas_giant:
+            text(surface, "NO SURFACE", (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")
         if guardian and world.id in monsters.prize_ids(system, guardian):
             text(surface, "ANCIENT RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE WORLD",
                  (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")

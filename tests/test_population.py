@@ -33,6 +33,8 @@ class PopulationRulesTests(unittest.TestCase):
     def test_limits_and_food_follow_size_and_biome_without_mutation(self):
         for size, capacity in POPULATION_LIMITS.items():
             for biome, food in BASE_FOOD.items():
+                if biome == "Gas Giant":
+                    continue  # Gas giants cannot contain this populated-colony fixture.
                 self.earth.size, self.earth.biome = size, biome
                 before = self.game.to_dict()
                 info = self.game.population_report(self.earth)

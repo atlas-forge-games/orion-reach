@@ -27,7 +27,7 @@ class TombWorld:
 def seed_worlds(game):
     # Independent, per-world streams leave galaxy layouts and race picks intact.
     game.tomb_worlds = [TombWorld(s.id, p.id) for s in game.systems for p in s.worlds
-                        if random.Random(f"orion-tombs-v1:{game.seed}:{s.id}:{p.id}").randrange(TOMB_CHANCE) == 0]
+                        if not p.is_gas_giant and random.Random(f"orion-tombs-v1:{game.seed}:{s.id}:{p.id}").randrange(TOMB_CHANCE) == 0]
 
 
 def awakening_due(game, tomb):
@@ -83,6 +83,8 @@ def awaken(game, tomb):
     if tomb.awakened_turn is not None:
         return None
     planet = game.planet_at(tomb.system_id, tomb.planet_id)
+    if planet.is_gas_giant:
+        return None
     previous_systems = administration.snapshot(game)
     aware = [owner for owner in game.owners if game.system_explored(tomb.system_id, owner)]
     owner, defender = remnant_empire(game), planet.owner
@@ -161,6 +163,8 @@ def parse(data, game):
         if (not _integer(sid, 0, len(game.systems)-1)
                 or not _integer(pid, 0, len(game.systems[sid].worlds)-1) or (sid, pid) in seen):
             raise ValueError("Invalid tomb world location")
+        if game.planet_at(sid, pid).is_gas_giant:
+            raise ValueError("Gas giants cannot contain buried tomb worlds")
         turn, owner, defender = row["awakened_turn"], row["remnant_owner"], row["defender"]
         observers = row["notified_owners"]
         if (not isinstance(observers, list) or len(observers) > len(game.owners)

@@ -50,14 +50,14 @@ GALAXY_SIZES = {"Compact": 24, "Standard": 48, "Expansive": 72}
 GALAXY_BOUNDS = (.02, .98, .04, .96)
 MIN_STAR_DISTANCE = 6  # ly; keeps stars distinct and clickable.
 STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dwarf")
-BIOMES = ("Terran", "Ocean", "Desert", "Ice", "Barren", "Volcanic", "Toxic", "Gaia")
+BIOMES = ("Terran", "Ocean", "Desert", "Ice", "Barren", "Volcanic", "Toxic", "Gaia", "Gas Giant")
 # Toxic worlds are seeded independently to preserve the galaxy-generation RNG.
-GENERATED_BIOMES = tuple(b for b in BIOMES if b not in ("Toxic", "Gaia"))
+GENERATED_BIOMES = tuple(b for b in BIOMES if b not in ("Toxic", "Gaia", "Gas Giant"))
 RICHNESSES = ("Poor", "Average", "Rich", "Ultra-rich")
 PLANET_SIZES = ("Tiny", "Small", "Medium", "Large", "Huge")
 GRAVITIES = ("Low", "Normal", "High")
 HABITABILITY = {"Terran": 100, "Ocean": 80, "Desert": 40,
-                "Ice": 35, "Barren": 0, "Volcanic": 0, "Toxic": 15, "Gaia": 100}
+                "Ice": 35, "Barren": 0, "Volcanic": 0, "Toxic": 15, "Gaia": 100, "Gas Giant": 0}
 PLAYER, RIVAL = "player", "rival"
 NAMES = (
     "Vega Altair Deneb Sirius Rigel Arcturus Antares Procyon Spica Pollux "
@@ -206,7 +206,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=55):
+    def from_dict(cls, data, systems, *, version=56):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -417,12 +417,16 @@ class Planet:
         return population_rules.population_capacity(self)
 
     @property
+    def is_gas_giant(self):
+        return self.biome == "Gas Giant" and not self.habitat
+
+    @property
     def habitability(self):
         return HABITABILITY[self.biome]
 
     @property
     def building_capacity(self):
-        return 12 if self.habitat else BUILDING_SLOTS[self.size]
+        return 12 if self.habitat else 0 if self.is_gas_giant else BUILDING_SLOTS[self.size]
 
     @property
     def used_slots(self):
@@ -507,7 +511,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=55):
+    def from_dict(cls, data, expected_id, *, version=56):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -538,6 +542,8 @@ class Planet:
                 or bool(record["outpost_owner"]) != bool(record["outpost_hull"])
                 or (record["outpost_owner"] and data["colonized"])):
             raise ValueError("Invalid planetary outpost")
+        if data["biome"] == "Gas Giant" and not record["habitat"] and (data["colonized"] or record["outpost_owner"]):
+            raise ValueError("Gas giants cannot contain colonies or surface outposts")
         if version < 35:
             record["trade_goods"] = False
         if type(record["trade_goods"]) is not bool or (record["trade_goods"] and not data["colonized"]):
@@ -1265,6 +1271,8 @@ class GameState:
         return None
 
     def can_settle(self, planet, owner=PLAYER):
+        if planet.is_gas_giant:
+            return False
         if (self.is_observer and owner == PLAYER) or raid_rules.is_varkesh(self, owner) or motherships.is_wanderer(self, owner):
             return False
         return planet.habitability > 0 or bool(self.bonuses_for(owner).get(planet.biome.lower(), 0))
@@ -1687,6 +1695,9 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if planet.colonized:
             return "This planet is already colonized."
+        if planet.is_gas_giant:
+            from .gas_giants import SETTLEMENT_ERROR
+            return SETTLEMENT_ERROR
         if planet.outpost_owner not in (None, owner):
             return "Destroy the opposing outpost before colonizing this planet."
         guardian = monster_rules.alive_at(self, system_id)
@@ -1949,7 +1960,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=55):
+    def from_dict(cls, data, *, version=56):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2294,6 +2305,8 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         tomb_rules.seed_worlds(game)
     hyperlanes.seed_network(game)
     encounter_rules.seed(game, with_encounters)
+    from .gas_giants import seed as seed_gas_giants
+    seed_gas_giants(game)
     species.normalize(game)
     exploration_rules.refresh(game)
     from . import statistics as statistics_rules

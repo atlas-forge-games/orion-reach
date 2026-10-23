@@ -79,6 +79,17 @@
       "file": "toxic-v1.png",
       "input_reference": "barren-v1.png",
       "prompt": "Use case: style-transfer. Asset: one building-free Toxic planet landscape for a space strategy colony overview, matching a coordinated high-quality pre-rendered 3D landscape set. Image 1 is the Barren surface reference: preserve its very wide 3:1 panorama, elevated three-quarter camera, horizon in the upper third, fine crisp physical textures and broad open level foreground for independently rendered colony buildings. Transform it into a toxic alien world with sulfur-yellow mineral crusts, ochre and dark olive rocky soil, subtle slick chemical sediments, weathered rock ridges, low acid pools restricted to the distant valleys and outer margins, sparse dark alien fungal mats at edges, and a heavy yellow-green clouded atmosphere with thin toxic vapour drifting near distant vents. This is the natural home of an insectoid swarm, but show NO creatures, hives or buildings. Foreground and middle ground must be firm, open, continuous dry terrain on which separate buildings can stand. No central lakes, deep fissures or tall objects. Neutral diffuse upper-left lighting with restrained sulphurous haze, readable detailed ground, physically convincing depth. Do not merely tint the Barren image: create genuine sediment, chemical geology and cloudy atmosphere. Preserve realistic game-art quality and the compositional space of the reference. No ordinary trees, grass, Earth vegetation, snow, water-blue lakes, roads, paths, artificial foundations, pads, circles, selection markers, vehicles, text, UI, border or watermark. One seamless opaque PNG, approximately 2172 by 724 pixels, no collage."
+    },
+    {
+      "id": "gas-giant",
+      "name": "Gas Giant",
+      "file": "gas-giant-v1.png",
+      "requested_dimensions": [
+        2172,
+        724
+      ],
+      "input_reference": null,
+      "prompt": "Use case: stylized-concept. Asset type: high-resolution atmospheric panorama for a polished science-fiction strategy game's gas-giant overview. Create a brand-new ultra-wide 3:1 image, about 2172 by 724 pixels. View from low orbit above the enormous cloud envelope of a Jupiter-like gas giant. Cream, pale gold and copper bands of dense turbulent gas curve gently toward a distant luminous atmospheric limb, with a few vast storm vortices and intricate fine cloud filaments. The globe is much larger than the frame: the lower four-fifths of the image is entirely richly detailed cloud tops; a narrow dark space band and atmospheric glow above the curved horizon provide depth. Upper-left sunlight, soft physically coherent shadows in cloud folds, cinematic but restrained lighting, realistic premium painted game concept art with crisp material detail. Match the quality and readability of detailed pre-rendered science-fiction colony landscapes. The cloud envelope has NO solid ground, mountains, rocks, land, water surface, trees or buildable platforms. No ships, buildings, roads, characters, text, UI, labels or borders. Opaque image, full-bleed, no transparency."
     }
   ]
 }

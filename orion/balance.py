@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 19
+VERSION = 20
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -558,6 +558,17 @@ def upgrade_profile(profile):
             if isinstance(data.get('biomes'), dict):
                 data['biomes'].setdefault('Toxic', deepcopy(_defaults()['data']['biomes']['Toxic']))
         profile['version'] = 19
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 19:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict) and isinstance(data.get('biomes'), dict):
+            data['biomes'].setdefault('Gas Giant', deepcopy(_defaults()['data']['biomes']['Gas Giant']))
+        if isinstance(data, dict) and isinstance(data.get('races'), dict):
+            for race in data['races'].values():
+                if isinstance(race, dict) and isinstance(race.get('abilities'), list):
+                    race['abilities'] = [line.replace('Settle every biome;', 'Settle every solid-surface biome;')
+                                         if isinstance(line, str) else line for line in race['abilities']]
+        profile['version'] = 20
     return profile
 
 

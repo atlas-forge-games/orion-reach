@@ -1,0 +1,30 @@
+ORION REACH v0.79 — GAS GIANTS
+
+Install over your existing v0.78 game folder:
+1. Close the game.
+2. Extract this ZIP into the project root, where orion/ and assets/ already are.
+3. Allow the included files to replace their previous versions.
+4. Start a new campaign to generate gas giants. Existing campaigns still load
+   with their previous worlds intact.
+
+Changes
+- Gas giants appear in outer orbits alongside the existing terrestrial worlds.
+- Large banded globe artwork and a detailed atmospheric panorama.
+- No colonies for any species or current technology, including Nexus/Aetheri.
+- No population, building slots or surface outposts on gas giants.
+- Atmospheric overview replaces worker controls and building prompts.
+- AI settlement targets exclude gas giants; exploration and surveys work normally.
+- Buried Remnant tombs cannot create colonies on gas giants.
+- Existing home systems and special sites retain their previous layout.
+- New save format 56 and balance format 20; older files upgrade on load.
+- Loading preserves existing maps, custom species preferences and source files.
+
+The original gas-giant PNG, its generation prompt and integration documentation
+are included. The eight v0.78 planetary landscapes must already be installed.
+Custom balance.json files, saves, settings and QA screenshots are not included.
+
+See docs/gas-giants.md for rules and docs/gas-giant-validation.md for checks.
+Run python tools/preview_gas_giants.py to render the new game screens locally.
+
+This is an incremental update, not a complete game distribution.
+No commits or pushes were made.

@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.78
+# Orion Reach — Python prototype 0.79
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,24 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.79: gas giants
+
+New galaxies include gas giants in outer orbits, with larger banded globes and
+a detailed atmospheric panorama. They are explorable but **cannot be colonized
+by any species or current technology**. They have no population capacity,
+building slots or surface outposts. The planet view shows an atmospheric survey
+and clearly disables settlement controls.
+
+Gas giants are added alongside existing worlds, leaving terrestrial worlds,
+starting homes and special sites intact. Existing saved galaxies are preserved;
+start a new campaign to generate gas giants. Saves use format 56 and balance
+profiles use format 20, with automatic upgrades for older profiles.
+
+See [gas giant rules and compatibility](docs/gas-giants.md) and
+[validation results](docs/gas-giant-validation.md).
+
+![Gas giant atmosphere](assets/planet_surfaces/gas-giant-v1.png)
 
 ## New in v0.78: species environments and Toxic worlds
 

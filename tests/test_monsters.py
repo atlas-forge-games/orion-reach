@@ -306,7 +306,8 @@ class GuardianExpansionTests(unittest.TestCase):
         self.assertEqual([(system.worlds[i].biome, system.worlds[i].size, system.worlds[i].richness) for i in ids],
                          [("Gaia", "Huge", "Rich"), ("Terran", "Large", "Ultra-rich"), ("Ocean", "Large", "Rich")])
         for planet in system.worlds:
-            self.assertIn("Void Leviathan", game.colonize_error(system.id, planet.id))
+            self.assertIn("Gas giants" if planet.is_gas_giant else "Void Leviathan",
+                          game.colonize_error(system.id, planet.id))
         game.start_combat(system.id)
         fight(game)
         self.assertEqual(game.combat.status, "player_victory")
@@ -315,6 +316,9 @@ class GuardianExpansionTests(unittest.TestCase):
             self.assertIsNone(game.colonize_error(system.id, pid))
             game.colonize(ship.id, system.id, pid)
             self.assertEqual(system.worlds[pid].owner, PLAYER)
+        for planet in system.worlds:
+            if planet.is_gas_giant:
+                self.assertIn("Gas giants", game.colonize_error(system.id, planet.id))
         self.assertEqual([system.worlds[i].population_capacity for i in ids], [28, 20, 20])
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 

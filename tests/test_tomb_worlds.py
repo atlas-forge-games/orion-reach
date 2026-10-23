@@ -49,15 +49,16 @@ class GenerationTests(unittest.TestCase):
         self.assertNotEqual(a.tomb_worlds, new_game(seed=15, rival_count=5).tomb_worlds)
         self.assertEqual(a, GameState.from_dict(a.to_dict()))
 
-    def test_every_world_including_homes_harsh_worlds_and_guardian_prizes_is_eligible(self):
+    def test_solid_worlds_including_homes_harsh_worlds_and_guardian_prizes_are_eligible(self):
         game = new_game(seed=2408, rival_count=5, with_tombs=False)
         with patch("orion.tomb_worlds.random.Random") as rng:
             rng.return_value.randrange.return_value = 0
             tombs.seed_worlds(game)
-            self.assertEqual(rng.return_value.randrange.call_count, sum(s.planets for s in game.systems))
+            self.assertEqual(rng.return_value.randrange.call_count,
+                             sum(not p.is_gas_giant for s in game.systems for p in s.worlds))
             self.assertTrue(all(call.args == (10,) for call in rng.return_value.randrange.call_args_list))
         self.assertEqual({(t.system_id, t.planet_id) for t in game.tomb_worlds},
-                         {(s.id, p.id) for s in game.systems for p in s.worlds})
+                         {(s.id, p.id) for s in game.systems for p in s.worlds if not p.is_gas_giant})
         refresh(game)
         self.assertFalse(tombs.news(game))
         self.assertTrue(all("tomb" not in key for s in game.exploration.surveys for p in s.worlds for key in p))

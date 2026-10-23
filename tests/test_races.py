@@ -44,12 +44,12 @@ class RaceRulesTests(unittest.TestCase):
             self.assertEqual((game.population_report(world).consumed, game.population_report(world).growth_rate), (8, 15 if race == 'aelari' else 10))
             self.assertEqual(game.project_price("frigate"), human.project_price("frigate"))
 
-    def test_lithar_settle_every_biome_and_keep_growing_beyond_the_old_limit(self):
+    def test_lithar_settle_solid_surface_biomes_and_keep_growing_beyond_the_old_limit(self):
         game = solo("lithar")
         world = game.planet_at(0, 2)
         for biome in BIOMES:
             world.biome = biome
-            self.assertTrue(game.can_settle(world))
+            self.assertEqual(game.can_settle(world), biome != "Gas Giant")
         world.biome, world.size = "Gaia", "Huge"
         world.population, world.farmers, world.growth_progress = 55, 0, 99
         world.farmers = farmers_needed(world, game.bonuses_for())

@@ -37,6 +37,8 @@ def growth_factor(planet, race_id=None):
     """Actual residents for colonies; an explicit prospective race for surveys/AI."""
     if planet.habitat:
         return 100
+    if planet.is_gas_giant:
+        return 0
     if race_id is not None:
         return PREFERENCES.get(race_id, PREFERENCES['terran'])[planet.biome]
     return _weighted(planet, planet.biome)

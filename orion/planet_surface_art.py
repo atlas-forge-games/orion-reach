@@ -11,9 +11,10 @@ SURFACE_FILES = {
     biome: f"{biome.lower()}-v1.png"
     for biome in ("Terran", "Gaia", "Ocean", "Desert", "Ice", "Barren", "Volcanic", "Toxic")
 }
+SURFACE_FILES['Gas Giant'] = 'gas-giant-v1.png'
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=9)
 def load_surface_art(biome):
     """Keep the original pixels; missing optional art uses the seeded fallback."""
     filename = SURFACE_FILES.get(biome)
@@ -36,7 +37,7 @@ def cover_crop(source_size, target_size):
     return crop.clip(pg.Rect(0, 0, width, height))
 
 
-@lru_cache(maxsize=24)
+@lru_cache(maxsize=27)
 def surface_background(biome, size):
     """Scale once from the source, sharing cached backgrounds between colonies."""
     original = load_surface_art(biome)

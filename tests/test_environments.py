@@ -41,8 +41,8 @@ class EnvironmentTests(unittest.TestCase):
     def test_complete_preference_table_and_soft_growth_penalties(self):
         self.assertEqual(set(environments.PREFERENCES), set(RACES))
         for values in environments.PREFERENCES.values():
-            self.assertEqual(set(values), {*BIOMES, 'toxic_food'})
-            self.assertTrue(all(10 <= values[b] <= 200 for b in BIOMES))
+            self.assertEqual(set(values), {*environments.BIOMES, 'toxic_food'})
+            self.assertTrue(all(10 <= values[b] <= 200 for b in environments.BIOMES))
 
     def test_terran_growth_is_slower_on_ice_with_equal_food_surplus(self):
         game = self.game()

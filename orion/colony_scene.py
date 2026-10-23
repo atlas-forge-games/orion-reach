@@ -78,6 +78,9 @@ def fallback_landscape(biome, seed, size, settled):
     if size != (928, 473):
         return pg.transform.smoothscale(fallback_landscape(biome, seed, (928, 473), settled), size)
     width, height = size
+    if biome == "Gas Giant":
+        from .planet_art import gas_clouds
+        return gas_clouds(seed, size)
     image = pg.Surface(size)
     rng = random.Random(seed)
     sky, horizon, ridge, ground, foreground = PALETTES[biome]
@@ -176,9 +179,9 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
         return
     if framed:
         pg.draw.rect(surface, (10, 20, 29), (rect.x, rect.y, rect.w, 35))
-        text(surface, "PLANET SURFACE", (rect.x+18, rect.y+12), 10, GOLD, "mono", 2)
+        text(surface, "ATMOSPHERE" if planet.is_gas_giant else "PLANET SURFACE", (rect.x+18, rect.y+12), 10, GOLD, "mono", 2)
     summary = (f"{len(planet.buildings)} built · {len(planet.building_projects)} queued / {planet.building_capacity} slots"
-               if planet.colonized else f"{planet.biome.upper()} · UNSETTLED")
+               if planet.colonized else "GAS GIANT · NOT COLONIZABLE" if planet.is_gas_giant else f"{planet.biome.upper()} · UNSETTLED")
     if framed:
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
@@ -250,6 +253,12 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
             surface.blit(caption_image, caption_image.get_rect(midtop=(target.centerx, label_box.y+19)))
         elif item.completed > 1:
             text(surface, f"×{item.completed}", (target.centerx-10, target.bottom+5), 16, INK)
+    if planet.is_gas_giant:
+        if framed:
+            text(surface, "Atmospheric survey · No colonies or surface outposts", (rect.x+18, rect.bottom-24), 12, INK)
+        pg.draw.rect(surface, (38, 57, 68), rect, 1)
+        surface.set_clip(old_clip)
+        return
     if not planet.colonized:
         left, top = rect.centerx-226, rect.y+round(rect.h*.51)
         panel(surface, (left, top, 452, 94), (15, 29, 38))

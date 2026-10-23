@@ -14,8 +14,37 @@ COLORS = {
     "Barren": ((113, 116, 124), (151, 150, 144), (143, 160, 182)),
     "Volcanic": ((63, 55, 62), (103, 77, 68), (242, 139, 76)),
     "Toxic": ((112, 116, 49), (187, 169, 65), (204, 212, 112)),
+    "Gas Giant": ((172, 127, 92), (228, 202, 157), (233, 203, 160)),
 }
 SIZE = 384
+
+
+def gas_clouds(seed, size):
+    """Banded cloud decks and oval storms, without terrestrial land or craters."""
+    rng = random.Random(seed)
+    width, height = size
+    image = pg.Surface(size, pg.SRCALPHA)
+    dark, light = (135, 86, 63), (238, 216, 174)
+    phase = rng.uniform(0, math.tau)
+    for y in range(height):
+        latitude = y/height
+        band = .5+.32*math.sin(latitude*math.tau*8+phase)+.12*math.sin(latitude*math.tau*21)
+        shade = tuple(round(a+(b-a)*band) for a, b in zip(dark, light))
+        pg.draw.line(image, shade, (0, y), (width, y))
+    for _ in range(110):
+        y = rng.randrange(height)
+        offset = rng.uniform(0, math.tau)
+        shade = tuple(max(0, min(255, c+rng.randrange(-12, 13))) for c in light)
+        points = [(x, y+math.sin(x/max(1,width)*math.tau*2+offset)*height*.009)
+                  for x in range(0, width+8, 8)]
+        pg.draw.lines(image, (*shade, 255), False, points, 1)
+    for _ in range(3):
+        x, y = rng.uniform(.2, .8)*width, rng.uniform(.24, .76)*height
+        w, h = width*rng.uniform(.09, .18), height*rng.uniform(.035, .065)
+        for i, shade in enumerate(((225, 197, 153), (174, 112, 80), (204, 144, 100), (231, 184, 133))):
+            inset = i*.12
+            pg.draw.ellipse(image, shade, (x-w/2+w*inset, y-h/2+h*inset, w*(1-2*inset), h*(1-2*inset)))
+    return image
 
 
 @lru_cache(maxsize=1)
@@ -44,7 +73,9 @@ def globe(biome, seed):
     base, terrain, atmosphere = COLORS[biome]
     result = pg.Surface((SIZE, SIZE), pg.SRCALPHA)
     result.fill((*base, 255))
-    if biome in ("Terran", "Ocean", "Ice", "Gaia", "Toxic"):
+    if biome == "Gas Giant":
+        result.blit(gas_clouds(seed, (SIZE, SIZE)), (0, 0))
+    elif biome in ("Terran", "Ocean", "Ice", "Gaia", "Toxic"):
         count = 22 if biome in ("Terran", "Gaia") else 8 if biome == "Ocean" else 34
         for _ in range(count):
             x, y = rng.randrange(SIZE), rng.randrange(SIZE)

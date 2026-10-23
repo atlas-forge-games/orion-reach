@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "purpose": "Planet overview backgrounds integrated in Orion Reach 0.78",
+  "version": 4,
+  "purpose": "Planet overview artwork integrated in Orion Reach 0.79",
   "assets": [
     {
       "biome": "Terran",
@@ -89,6 +89,17 @@
       "format": "PNG",
       "bytes": 3460079,
       "sha256": "fe2c80df7a4801012496e06df8d28aea71efe4ba88af6cd7ba78df95359d81cb"
+    },
+    {
+      "biome": "Gas Giant",
+      "file": "gas-giant-v1.png",
+      "project_path": "assets/planet_surfaces/gas-giant-v1.png",
+      "width": 2170,
+      "height": 725,
+      "format": "PNG",
+      "mode": "RGB",
+      "bytes": 2662625,
+      "sha256": "478e405e394b99fae1a334687d84eeb73293612b1b329fb8d6bbb0b6e9850f92"
     }
   ]
 }

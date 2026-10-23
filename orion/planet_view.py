@@ -138,7 +138,8 @@ def system_panel(app, game, system, planet, live):
         label = world.name if row_height>=30 else f"{world.name} · {world.biome}"
         text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
         if row_height>=30:
-            text(app.canvas, f"{world.biome} · {world.size} · {world.richness}", (64, y+18), 9, MUTED)
+            detail = "Gas Giant · No solid surface" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
+            text(app.canvas, detail, (64, y+18), 9, MUTED)
         basic = f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
         text(app.canvas, basic, (255, y+1), 10, color, right=True)
     if len(system.worlds) <= 4:
@@ -149,6 +150,15 @@ def workforce_panel(app, game, planet, live):
     surface = app.canvas
     owned = live and planet.owner == PLAYER
     panel(surface, (286, 54, 774, 244))
+    if planet.is_gas_giant:
+        text(surface, "ATMOSPHERIC SURVEY", (302, 66), 10, GOLD, "mono", 1)
+        draw_planet(surface, planet, (413, 181), 158, f"{game.seed}:{game.selected_system}:{planet.id}")
+        text(surface, "Gas giant", (535, 104), 30, INK, "title")
+        text(surface, "Cloud bands, powerful storms and a deep atmosphere.", (535, 153), 14, MUTED)
+        text(surface, "No solid surface for colonies or buildings.", (535, 182), 14, MUTED)
+        text(surface, f"Outer orbit · {planet.orbit_au:.2f} AU · {planet.gravity} gravity", (535, 222), 13, GOLD)
+        text(surface, "Survey only · Not colonizable by any civilization", (302, 279), 11, MUTED)
+        return
     text(surface, "HABITAT PRODUCTION / TURN" if planet.habitat else "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
     industry, credits, research = game.planet_yields(planet) if live else (None, None, None)
     food = game.population_report(planet) if live else None
@@ -234,6 +244,14 @@ def workforce_panel(app, game, planet, live):
 def construction_panel(app, game, system, planet, live):
     surface = app.canvas
     panel(surface, (1074, 54, 342, 244))
+    if planet.is_gas_giant:
+        text(surface, "SETTLEMENT", (1090, 66), 10, GOLD, "mono", 1)
+        text(surface, "Not colonizable", (1090, 97), 22, INK)
+        paragraph(surface, "Gas giants cannot support colonies or surface outposts. This applies to every civilization, including machines and energy beings.",
+                  (1090, 143), 306, 14, MUTED, 23)
+        app.button("colonize_planet", "Colonize", (1090, 257, 146, 29), app.colonize_request, enabled=False)
+        app.button("establish_outpost", "Build outpost", (1246, 257, 154, 29), app.outpost_request, enabled=False)
+        return
     text(surface, "CURRENT PROJECT", (1090, 66), 10, GOLD, "mono", 1)
     if planet.outpost_owner:
         from . import outposts
@@ -294,7 +312,7 @@ def construction_panel(app, game, system, planet, live):
                   "Defeat the space defenses, then use the actions below to board, raid or destroy this mobile home." if planet.habitat else
                   f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
                   "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
-                  "A colony ship settles this world. An outpost ship builds a refuelling base on any biome.",
+                  "A colony ship settles this world. An outpost ship builds a surface refuelling base.",
                   (1090, 143), 306, 14, MUTED, 25)
     if game.is_observer:
         if planet.colonized:
@@ -382,7 +400,10 @@ def draw_planet_overview(app):
     facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {planet.richness} minerals"
     from .environments import growth_factor
     factor = growth_factor(planet, game.race_id if not planet.colonized else None)
-    facts += " · Growth varies by species" if game.is_observer and not planet.colonized else f" · Growth environment {factor}%"
+    if planet.is_gas_giant:
+        facts = "Gas Giant · Deep atmosphere · No solid surface · Not colonizable"
+    else:
+        facts += " · Growth varies by species" if game.is_observer and not planet.colonized else f" · Growth environment {factor}%"
     panel(surface, (40, 330, 700, 34), (10, 23, 30))
     text(surface, facts, (52, 339), 13, INK)
     if planet.slaves or (raiding.is_varkesh(game, planet.owner) and (system.id, planet.id) == raiding.home_location(game, planet.owner)):
@@ -411,10 +432,13 @@ def draw_planet_overview(app):
         elif training_limit(planet, game.bonuses_for(planet.owner) if live else {}):
             caption += f" · Barracks +1/turn, limit {training_limit(planet, game.bonuses_for(planet.owner) if live else {})}"
         text(surface, shorten(caption, 1162, 12), (24, 854), 12, CYAN)
+    elif planet.is_gas_giant:
+        text(surface, f"Atmospheric world · No population or building slots · Orbit {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
     else:
         suitability = 'Growth varies by species' if game.is_observer else f'Your species: {factor}% growth efficiency'
         text(surface, f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
-    text(surface, "Click buildings to inspect · E: End turn · R: Research · I: Empire · P: Menu · F5: Save", (24, 877), 11, MUTED)
+    hint = "E: End turn · R: Research · I: Empire · P: Menu · F5: Save"
+    text(surface, hint if planet.is_gas_giant else "Click buildings to inspect · "+hint, (24, 877), 11, MUTED)
     if planet.colonized:
         from .accession_view import open_panel
         app.button("planet_populations", "Populations & accession", (875, 870, 315, 24),

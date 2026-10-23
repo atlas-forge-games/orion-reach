@@ -1,7 +1,8 @@
 # Planet surface artwork
 
 Eight detailed, pre-rendered landscape backgrounds match the approved Terran
-colony concept. They use a shared elevated viewpoint, a wide 3:1 composition,
+colony concept; a ninth image shows a gas giant's cloud envelope from low orbit.
+The terrestrial landscapes use a shared elevated viewpoint, a wide 3:1 composition,
 an open foreground for colony buildings, and lighting from the upper left.
 The landscapes contain no buildings, roads, artificial circular bases or UI.
 
@@ -15,6 +16,7 @@ The landscapes contain no buildings, roads, artificial circular bases or UI.
 | Barren | `barren-v1.png` | Lifeless regolith, broken rock, cratered ridges and an airless sky |
 | Volcanic | `volcanic-v1.png` | Cooled basalt plateau, distant lava and smoking volcanoes |
 | Toxic | `toxic-v1.png` | Sulfur-stained rock, dry mineral crust and a dense toxic atmosphere |
+| Gas Giant | `gas-giant-v1.png` | Banded cloud decks and enormous storms below a curved atmospheric limb; no ground |
 
 ## Files and integration
 
@@ -26,9 +28,9 @@ references and editing mode, including the Barren vegetation-removal pass
 and the replacement of the earlier Tundra concept with Ice. The Toxic landscape
 uses Barren as its visual reference.
 
-As of v0.78, `orion/planet_surface_art.py` loads these images for the colony
+As of v0.79, `orion/planet_surface_art.py` loads these images for the planet
 overview. It crops centrally to the viewport aspect ratio and scales directly
-from the original PNG. Eight source images and up to 24 viewport images are
+from the original PNG. Nine source images and up to 27 viewport images are
 cached, shared between colonies. Missing or corrupt images fall back to the
 seeded renderer in `orion/colony_scene.py`.
 
@@ -37,6 +39,11 @@ service roads or oval pads beneath them. Ocean artwork provides natural dry
 ground for buildings; Ice has a solid glacial placement area and Toxic a dry
 mineral plain. Original sprites,
 construction queues, counts and building actions are unchanged.
+
+Gas giants use an atmospheric survey with no buildings or settlement controls
+enabled. Their procedural fallback consists of clouds rather than terrain.
+The exact gas-giant prompt and built-in generation mode are recorded in
+`generation-prompts.json`; its original PNG is 2170 × 725 pixels.
 
 The earlier `tundra-v1.png` is obsolete and is not loaded by the game. It may
 remain in installations that used the concept artwork pack. Legacy Tundra

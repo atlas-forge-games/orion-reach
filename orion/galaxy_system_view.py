@@ -113,13 +113,13 @@ def draw_system_panel(app, star):
             pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
         left = row.x+48
         text(surface, shorten(world.name, row.w-102, 14), (left, row.y+4), 14, GOLD if active else INK)
-        value = "HOME" if world.habitat else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else f"{world.habitability}%"
+        value = "HOME" if world.habitat else "GAS" if world.is_gas_giant else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else f"{world.habitability}%"
         text(surface, value, (row.right-9, row.y+6), 10, color, right=True)
-        detail = "Mobile habitat · Quarter-speed travel" if world.habitat else f"{world.biome} · {world.size} · {world.richness}"
+        detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
         text(surface, shorten(detail, row.w-58, 10),
              (left, row.y+24), 10, MUTED)
         owner = (game.empire_name_for(world.owner) if world.colonized else
-                 "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Uncolonized")
+                 "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Not colonizable" if world.is_gas_giant else "Uncolonized")
         if world.id in prizes:
             owner += " · Ancient ruins" if guardian.kind == "ancient_sentinel" else " · Prize world"
         text(surface, shorten(owner, row.w-58, 9), (left, row.y+40), 9, color)
