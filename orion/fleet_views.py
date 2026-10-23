@@ -52,7 +52,7 @@ def draw_shipyard(app):
         captions = {"mothership": "Adds 15 ly range to ships travelling with it.", "colony_ship": "Consumed when settling a world.", "frigate": "Engage opposing fleets in the same system.",
                     "outpost_ship": "Consumed on deployment. One outpost per system; any biome.",
                     "troop_transport": "Needs a training module. Includes 8 troops; hull losses follow casualties." if planet.habitat else "Needs barracks. Includes 8 troops; hull losses follow casualties.",
-                    "scout": "Charts systems and recovers one-time discoveries."}
+                    "scout": "2× normal fuel range. Surveys systems and finds discoveries."}
         forecast = game.queue_estimates(planet, spec.id)
         eta = f"Ready in {turn_label(forecast[-1])}" if forecast else "Requires a colony"
         text(surface, shorten(f"{game.project_price(spec.id, planet.owner or PLAYER)} RES · {spec.work_cost} work · {eta}", 277, 11),

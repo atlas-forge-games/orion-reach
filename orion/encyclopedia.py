@@ -167,6 +167,7 @@ def guides():
         )),
         Article("travel", "ships", "Fleet movement and fuel", "Range is different from speed", (
             ("RANGE", f"The base fuel range is {production_balance.BASE_FUEL_RANGE} light-years from an owned colony or outpost. The map shows the combined supply area with one outer boundary. Scouts do not extend supply. Civilization traits and researched fuel tanks can extend it."),
+            ("SCOUTS", "Scouts have twice the normal fuel range, including civilization and research bonuses. This applies to a single scout or a fleet consisting entirely of scouts. Adding an ordinary ship restores the normal fleet range; a mothership convoy keeps its existing reserve bonus. The map boundary and route preview follow the selected ships. Scouts do not create supply points or travel faster."),
             ("SPEED", "Drive research reduces voyage time. Fuel tanks extend reach without speeding up a voyage. Navigation networks and jump gates can improve travel between your colonies; enemy interdiction can slow an approach."),
             ("ORDERS", "Click a fleet marker, select ships, then choose a destination. Queued departures can be changed before End turn. Ships already in transit continue their ordered voyage."),
         )),
@@ -250,7 +251,7 @@ def articles():
     roles = {"colony_ship": "Establish a new colony on a suitable, unclaimed world. Consumed on settlement.",
              "outpost_ship": "Establish an unarmed refuelling outpost on any uncolonized solid-surface planet, regardless of habitability. Gas giants are excluded. Consumes the ship. Only one outpost may exist per solar system, across all empires. Outposts extend fuel range and observe the local system, but have no population, production or upkeep. An owned outpost can be replaced by a colony using a colony ship. Enemy armed ships can attack it from the planet overview after defeating orbital defenders; destruction removes its fuel coverage.",
              "mothership": "A mobile city with 50 B population capacity, defensive lasers and a 12-point shield generator. Defeated homes can be boarded, raided or destroyed. Only Wanderers construct them; any empire can operate captured ones.",
-             "scout": "Explore systems and search for discoveries. Unarmed.",
+             "scout": "Explore systems and search for discoveries. Twice the normal fuel range, including civilization and research bonuses, when travelling alone or with other scouts. Unarmed.",
              "troop_transport": "Carry troops for planetary invasions or raids. Unarmed.",
              "frigate": "Small, agile warship with fast-tracking mounts. Useful against small attackers and exposed support ships.",
              "destroyer": "Small warship suited to escorts or torpedo attacks. Standard ships include an escort array; custom designs need to fit one to protect nearby allies.",

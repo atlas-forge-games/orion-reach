@@ -61,6 +61,39 @@ class FuelRulesTests(unittest.TestCase):
                 game.send_ships([1, 2, 3], target.id)
             self.assertEqual(game.to_dict(), before)
 
+    def test_scouts_reach_double_radius_but_cannot_carry_ordinary_ships(self):
+        game = new_game(seed=2408, with_ai=False, with_guardians=False)
+        target = place_near(game, 1, distance=14)
+        for identifiers in ([1], [1, 2]):
+            with self.subTest(ships=identifiers):
+                self.assertEqual(game.send_ships(identifiers, target.id), 7)
+                self.assertEqual(GameState.from_dict(game.to_dict()), game)
+                game.cancel_departures(identifiers)
+        before = game.to_dict()
+        with self.assertRaisesRegex(RuleError, "range 7 ly"):
+            game.send_ships([1, 3], target.id)
+        self.assertEqual(game.to_dict(), before)
+        place_near(game, target.id, distance=14.001)
+        before = game.to_dict()
+        with self.assertRaisesRegex(RuleError, "range 14 ly"):
+            game.send_ship(1, target.id)
+        self.assertEqual(game.to_dict(), before)
+
+    def test_scout_bonus_includes_research_and_every_civilization_without_extra_speed(self):
+        from orion.races import RACES
+        from scenarios import research_to
+        for race_id in RACES:
+            with self.subTest(race=race_id):
+                game = new_game(seed=2408, race_id=race_id, with_ai=False, with_guardians=False)
+                scouts = [s for s in game.ships if s.kind == "scout"]
+                self.assertEqual(game.fuel_range(ships=scouts), 2*game.fuel_range())
+                research_to(game, "lightweight_alloys")
+                self.assertEqual(game.fuel_range(ships=iter(scouts)), 2*game.fuel_range())
+                self.assertEqual(game.fuel_range(ships=scouts[:1]), 2*game.fuel_range())
+                origin, target = game.systems[:2]
+                self.assertEqual(game.travel_turns(origin, target, ships=scouts),
+                                 game.travel_turns(origin, target))
+
     def test_scouts_and_enemy_worlds_do_not_extend_range_but_colonization_does(self):
         game = new_game(seed=2408)
         frontier = next(s for s in game.systems[1:] if s.id != game.opponent.home_system
@@ -72,8 +105,11 @@ class FuelRulesTests(unittest.TestCase):
         refresh(game)
         self.assertLess(distance_ly(frontier, remote), game.fuel_range())
         self.assertFalse(game.within_fuel_range(remote.id))
+        self.assertAlmostEqual(game.supply_distance(remote.id), 10)
+        game.send_ship(1, remote.id)
+        game.cancel_departures([1])
         with self.assertRaisesRegex(RuleError, "fuel range"):
-            game.send_ship(1, remote.id)
+            game.send_ship(3, remote.id)
         place_near(game, game.opponent.home_system, distance=10)
         self.assertFalse(game.within_fuel_range(remote.id))
         game.ship_at(3).system_id = frontier.id
@@ -127,7 +163,8 @@ class FuelRulesTests(unittest.TestCase):
         scouting_orders(game)
         destinations = [s.destination for s in game.ships_owned_by(RIVAL) if s.kind == "scout"]
         self.assertEqual(len(set(destinations)), 2)
-        self.assertTrue(all(game.within_fuel_range(sid, RIVAL) for sid in destinations))
+        self.assertTrue(all(game.within_fuel_range(s.destination, RIVAL, ships=[s])
+                            for s in game.ships_owned_by(RIVAL) if s.kind == "scout"))
         # Survey its current supply area, leaving unknown stars beyond it.
         for system in game.systems:
             if game.within_fuel_range(system.id, RIVAL):
@@ -139,6 +176,19 @@ class FuelRulesTests(unittest.TestCase):
         research_choice(game)
         self.assertIn("lightweight_alloys", game.opponent.technology.completed)
         self.assertEqual(game.fuel_range(RIVAL), 17)
+
+    def test_ai_scout_explores_beyond_ordinary_fleet_range(self):
+        game = new_game(seed=2408, rival_race_id="terran", with_guardians=False)
+        home = game.opponent.home_system
+        target_id = next(s.id for s in game.systems if s.id not in (0, home))
+        target = place_near(game, target_id, anchor=home, distance=10)
+        game.exploration.scanned_rival = [s.id for s in game.systems if s.id != target.id]
+        self.assertFalse(game.within_fuel_range(target.id, RIVAL))
+        scouting_orders(game)
+        arrivals = [s for s in game.ships_owned_by(RIVAL) if s.destination == target.id]
+        self.assertEqual(len(arrivals), 1)
+        self.assertEqual(arrivals[0].kind, "scout")
+        self.assertEqual(arrivals[0].travel_total, 5)
 
     def test_hostile_ai_and_retreat_destinations_respect_colony_range(self):
         game = new_game(seed=2408, fog_of_war=False)
@@ -241,7 +291,7 @@ class FuelInterfaceTests(unittest.TestCase):
 
     def test_popup_blocks_remote_orders_then_allows_nearby_course_and_cancellation(self):
         app, game = self.app, self.app.game
-        far = next(s for s in game.systems if not game.within_fuel_range(s.id))
+        far = next(s for s in game.systems if not game.within_fuel_range(s.id, ships=[game.ship_at(1)]))
         self.click("map_fleet_1")
         self.click("fleet_select_2")
         self.click("fleet_select_3")
@@ -257,7 +307,7 @@ class FuelInterfaceTests(unittest.TestCase):
             app.render()
         labels = " ".join(str(call.args[1]) for call in drawn.call_args_list)
         self.assertIn("Out of range", labels)
-        self.assertIn("7 ly", labels)
+        self.assertIn("14 ly", labels)
         self.click("star_11")
         self.assertEqual(game.ship_at(1).turns_remaining, 4)
         self.click("star_0")
@@ -267,7 +317,7 @@ class FuelInterfaceTests(unittest.TestCase):
 
     def test_individual_course_button_disables_unreachable_destination(self):
         app, game = self.app, self.app.game
-        far = next(s.id for s in game.systems if not game.within_fuel_range(s.id))
+        far = next(s.id for s in game.systems if not game.within_fuel_range(s.id, ships=[game.ship_at(1)]))
         app.plot_course(1)
         app.select_star(far)
         app.render()
@@ -282,6 +332,25 @@ class FuelInterfaceTests(unittest.TestCase):
         button = next(b for b in app.buttons if b.key == "send_course")
         self.assertTrue(button.enabled)
         self.assertIn("4 turns", button.label)
+
+    def test_route_preview_uses_scout_range_and_blocks_a_mixed_fleet(self):
+        app, game = self.app, self.app.game
+        target = place_near(game, 11, distance=10)
+        app.plot_course(1)
+        app.select_star(target.id)
+        app.render()
+        self.assertTrue(next(b for b in app.buttons if b.key == "send_course").enabled)
+        self.click("send_course")
+        self.assertEqual(game.ship_at(1).destination, target.id)
+        self.assertEqual(game.ship_at(1).travel_total, 5)
+        game.cancel_departures([1])
+        app.open_map_fleet(1)
+        self.click("fleet_select_2")
+        self.assertEqual(app.fleet_selected_ids, {1, 3})
+        before = game.to_dict()
+        self.click(f"star_{target.id}")
+        self.assertEqual(game.to_dict(), before)
+        self.assertTrue(all(not s.has_course for s in game.ships))
 
     def test_reclicking_an_old_queued_course_keeps_its_actual_eta_until_redirected(self):
         game = self.app.game

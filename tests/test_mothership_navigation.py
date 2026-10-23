@@ -18,7 +18,7 @@ class MothershipRangeTests(unittest.TestCase):
         escorts = [s for s in game.ships if s.habitat is None]
         dest = target(game, 25)
         self.assertEqual(game.fuel_range(ships=[home]), 25)
-        self.assertEqual(game.fuel_range(ships=escorts), 10)
+        self.assertEqual(game.fuel_range(ships=escorts), 20)
         self.assertFalse(game.within_fuel_range(dest.id, ships=escorts))
         with self.assertRaisesRegex(RuleError, 'fuel range'):
             game.send_ships([s.id for s in escorts], dest.id)
@@ -54,7 +54,7 @@ class MothershipRangeTests(unittest.TestCase):
 
     def test_retreat_uses_reserves_only_while_a_mothership_survives(self):
         game = campaign(with_ai=True, rival_race_id='terran')
-        dest = target(game, 20)
+        dest = target(game, 23)
         for system in game.systems[2:]:
             system.x, system.y = game.systems[0].x+.5, game.systems[0].y
         enemy = Ship(game.next_ship_id, 'frigate', 0, owner='rival')
@@ -181,12 +181,12 @@ class MothershipSystemTests(unittest.TestCase):
         labels = [str(c.args[1]) for c in drawn.call_args_list]
         self.assertTrue(labels)
         self.assertFalse(any('/50' in s or s.endswith(' B') for s in labels))
-        dest = target(self.app.game, 20)
+        dest = target(self.app.game, 22)
         self.app.open_map_fleet(self.home.id)
         self.app.game.selected_system = dest.id
         self.assertIn('RANGE 25 LY', self.drawn_text())
         self.click(f'fleet_select_{self.home.id}')
-        self.assertIn('RANGE 10 LY', self.drawn_text())
+        self.assertIn('RANGE 20 LY', self.drawn_text())
         self.assertIn('Out of range', self.drawn_text())
         self.app.open_mothership(self.home.id)
         self.click('mothership_course')

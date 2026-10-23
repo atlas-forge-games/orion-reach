@@ -1,0 +1,40 @@
+ORION REACH v0.79.1 — DOUBLE SCOUT RANGE
+
+Install over your existing v0.79 game folder:
+1. Close the game.
+2. Extract this ZIP into the project root, where orion/ and tests/ already are.
+3. Allow the included files to replace their previous versions.
+4. Load your existing campaign or start a new one.
+
+Scouts now have twice the normal fuel range, including research and civilization
+bonuses. Standard Terran scouts start with 14 ly instead of 7 ly. The bonus
+applies to a single scout or a fleet consisting entirely of scouts. Selecting
+an ordinary ship with them uses the normal fleet range. Mothership convoys keep
+their existing reserve bonus.
+
+AI scouts, map range boundaries, destination checks and route previews all use
+the same rule. Shipyard help and encyclopedia entries explain the bonus.
+Scouts do not create supply points. Speed, fuel research values and other ship
+statistics are unchanged. Existing voyages keep their route and arrival time.
+Save format 56 and balance format 20 are unchanged; no migration is required.
+
+Validation: 61 focused tests passed, covering range boundaries, mixed fleets,
+all 13 civilizations, research, AI exploration, mothership convoys and retreats,
+map geometry, actual course controls and current save round trips.
+
+Run the verified checks from the project root:
+python -m unittest discover -s tests -p test_fuel_range.py
+python -m unittest discover -s tests -p test_mothership_navigation.py
+python -m unittest discover -s tests -p test_galaxy_camera.py
+python -m unittest discover -s tests -p test_galaxy_fleets.py
+
+The full fuel-range module also contains one existing failing v14 save fixture:
+TravelSaveTests.test_v14_fast_and_pending_voyages_keep_eta_and_can_be_cancelled_or_resumed.
+It fails with the same invalid-ship/save error on the unchanged v0.79 baseline.
+The final 61-test run excludes that baseline failure and additionally includes
+the six AdvancedFuelTests in test_victory_options.py. No full-suite run was
+performed for this small patch.
+
+This is an incremental update, not a complete game distribution.
+No assets, custom balance files, saves or settings are included.
+No commits or pushes were made.

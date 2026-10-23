@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.79
+# Orion Reach — Python prototype 0.79.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,16 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.79.1: scout range
+
+Scouts have **twice the normal fuel range**, including research and civilization
+bonuses: initially 14 ly instead of 7 ly for Terrans. This applies to a single
+scout or a fleet made entirely of scouts. Mixed fleets retain their normal
+range, including any existing mothership reserve bonus. AI scouts, map range
+boundaries and route previews use the same rule. Travel speed and supply points
+are unchanged. Existing campaigns receive the bonus when loaded; saved voyages
+keep their current course and arrival time. No save or balance migration is needed.
 
 ## New in v0.79: gas giants
 

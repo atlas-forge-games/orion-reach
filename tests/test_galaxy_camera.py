@@ -214,7 +214,7 @@ class CameraInterfaceTests(unittest.TestCase):
         app.route_ship_id = 2
         app.show_sensors = True
         home = game.systems[0]
-        radius = game.fuel_range()
+        radius = game.fuel_range(ships=[game.ship_at(app.route_ship_id)])
         with patch("pygame.draw.ellipse") as ellipse:
             draw_fuel_range(app, MAP)
             fuel = ellipse.call_args_list[0].args[2]

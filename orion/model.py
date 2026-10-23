@@ -1216,9 +1216,13 @@ class GameState:
         return int(value) if value.is_integer() else value
 
     def fuel_range(self, owner=PLAYER, *, ships=()):
+        """Scouts double normal reach only when every selected ship is a scout."""
+        ships = tuple(ships)
         bonuses = self.bonuses_for(owner)
         reserves = motherships.FUEL_RANGE_BONUS if any(s.habitat is not None and s.owner == owner for s in ships) else 0
         value = (production_balance.BASE_FUEL_RANGE+bonuses.get("fuel_range", 0)+reserves)*(100+bonuses.get("fuel_range_percent", 0))/100
+        if ships and all(s.kind == "scout" and s.owner == owner for s in ships):
+            value *= 2
         return int(value) if value.is_integer() else value
 
     def settlements(self, owner=None):
