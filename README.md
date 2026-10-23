@@ -1,4 +1,4 @@
-# Orion Reach — Python prototype 0.75.3
+# Orion Reach — Python prototype 0.76
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,37 @@ MOO2-inspired space strategy game.
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.76: ship costs and strength from a common size model
+
+Warship hulls, construction budgets, equipment strength and upkeep now come
+from a shared size index. Standard warships are predefined designer loadouts:
+they pay for their fitted weapons, point defense and support modules.
+
+| Class | Base hull | Standard cost (RES) | Work | Nominal volley | Upkeep (CR/turn) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Scout | 20 | 50 | 30 | 0 | 1 |
+| Frigate | 40 | 134 | 82 | 10 | 2 |
+| Destroyer | 120 | 600 | 372 | 60 | 6 |
+| Cruiser | 240 | 1,118 | 690 | 120 | 12 |
+| Carrier | 400 | 2,190 | 1,330 | 50 + drone wings | 20 |
+| Battleship | 500 | 2,720 | 1,682 | 376 | 25 |
+| Titan | 1,600 | 11,320 | 7,080 | 1,200 | 80 |
+
+The designer shows sustained damage before accuracy and defenses, including
+reload time. Carrier markers represent wings whose hull and damage scale with
+their mounts. Peaceful dockyards repair 5% of maximum hull per turn, minimum 4.
+Civilian transports and motherships retain their separate mission budgets.
+
+New campaigns use this balance by default. Existing saves retain their embedded
+balance, including ships, paid orders and battles. If you already have a custom
+`balance.json`, open the balance editor and enable **Global rules → Ship scaling
+→ Enabled**, then save and start a new campaign. Other balance settings remain
+available; ship sizes and modules drive the calculated ship fields.
+
+See [the formulas, loadouts and compatibility notes](docs/ship-size-balance.md).
+
+![Titan equipment and derived values](screenshots/v076_ship_scaling.png)
 
 ## New in v0.75: physical hull footprints, firing lanes and combat sound
 
@@ -2957,7 +2988,8 @@ destination and travel time. Retreat uses normal strategic travel, and damage is
 retained. Winning a space battle clears orbit; use troop transports to capture
 colonies and their buildings afterward.
 
-**Repairs:** ships recover **4 hull per End Turn**, up to full health, after a
+**Repairs:** with the v0.76 size model, ships recover **5% of maximum hull per
+End Turn, minimum 4** (older campaign profiles retain 4), up to full health, after a
 complete turn in orbit at a system containing one of their colonies and no
 opposing ships. Travelling ships and ships that only just arrived do not repair
 that turn. Repair has no credit cost in this prototype.

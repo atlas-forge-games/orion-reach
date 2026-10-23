@@ -7,6 +7,7 @@ from .habitat_modules import display_name
 from .fleet_art import ship_icon
 from .production import MAX_QUEUE, PROJECTS, SHIP_TYPES
 from . import production as production_balance
+from . import ship_scaling
 from .model import PLAYER, RIVAL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
@@ -44,7 +45,7 @@ def draw_shipyard(app):
                        if spec.id == "colony_ship" else f"{spec.hull} hull · Planetary refuelling base · Unarmed"
                        if spec.id == "outpost_ship" else f"{spec.hull} hull · {production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
                        if spec.id == "troop_transport" else f"{spec.hull} hull · Surveys & discoveries · Unarmed"
-                       if spec.id == "scout" else f"{spec.hull} hull · {game.beam_for(spec.id, planet.owner or PLAYER).damage} damage per shot")
+                       if spec.id == "scout" else f"{spec.hull} hull · {game.project_spec(spec.id, planet.owner or PLAYER).damage if ship_scaling.ENABLED else game.beam_for(spec.id, planet.owner or PLAYER).damage} damage / volley")
         if spec.drone_bays:
             description = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches/battle"
         text(surface, description+f" · {spec.maintenance} CR/turn", (154, y+37), 12, CYAN)
@@ -147,7 +148,7 @@ def draw_fleets(app):
         caption = ("Departure queued · editable until End Turn" if ship.departure_pending else
                    f"Arrives in {turn_label(ship.turns_remaining)}" if ship.in_transit else
                    "Opposing fleet here · Engage to begin combat" if encounter else
-                   "Repairing +4 hull / turn" if ship.hull < ship.max_hull and game.can_repair(ship) else "Ready for orders")
+                   f"Repairing +{ship_scaling.repair_amount(ship.max_hull, production_balance.REPAIR_PER_TURN)} hull / turn" if ship.hull < ship.max_hull and game.can_repair(ship) else "Ready for orders")
         text(surface, caption, (474, y+43), 12, MUTED)
         if ship.in_transit:
             pg.draw.rect(surface, LINE, (474, y+65, 454, 2))
@@ -177,5 +178,6 @@ def draw_fleets(app):
     app.button("fleets_next", "Next →", (1243, 785, 133, 37), lambda: app.change_fleet_page(1), enabled=app.fleet_page<last)
     app.button("fleets_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("fleets_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "+4 hull / turn at friendly colonies with no opposing ships in orbit.", (400, 845), 12, MUTED)
+    repair = f"{ship_scaling.REPAIR_PERCENT}% of maximum hull (minimum {production_balance.REPAIR_PER_TURN})" if ship_scaling.ENABLED else str(production_balance.REPAIR_PER_TURN)
+    text(surface, f"Repairs: +{repair} / turn at peaceful friendly colonies.", (400, 845), 12, MUTED)
     app.button("fleets_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)

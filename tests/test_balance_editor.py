@@ -82,7 +82,7 @@ class BalanceTests(BalanceTestCase):
         self.assertEqual(SETUP_RACES['terran'].name,'Test Terrans')
         self.assertEqual(HULL_TECHNOLOGIES['cruiser'],'ion_drives')
         ship=ShipDesign('design_1','Test','frigate',('laser','armor','scanner'))
-        self.assertEqual((ship.hull,ship.weapon_range),(41,10))
+        self.assertEqual((ship.hull,ship.weapon_range),(61,10))
         from orion.combat import CombatShip
         tactical=CombatShip(1,'frigate','player',ship.hull,ship.hull,design=ship)
         self.assertEqual(tactical.ready_range,10)
@@ -204,7 +204,11 @@ class BalanceTests(BalanceTestCase):
         clone=GameState.from_dict(restored.to_dict())
         self.assertEqual(balance.profile_for(clone),profile)
         self.assertEqual(store.load(store.save(clone))[0],clone)
-        payload=json.loads(second.read_text())
+        # A pre-profile save must be generated with its historical ship values.
+        with balance.using_profile(balance.legacy_profile()):
+            normal=game()
+            normal.victory_conditions=CONDITIONS
+            payload=json.loads(store.save(normal).read_text())
         payload['version']=35
         payload['game']['victory_conditions']=['conquest', 'science', 'council']
         normal.legacy.last_turn=normal.turn

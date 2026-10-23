@@ -1,9 +1,10 @@
 """Construction catalogue and initial colonization balance."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
 from .buildings import BUILDINGS
+from .ship_scaling import HULL_TECHNOLOGIES
 
 
 @dataclass(frozen=True)
@@ -19,12 +20,6 @@ class ShipSpec:
     maintenance: int = 0
 
 
-HULL_TECHNOLOGIES = {
-    "frigate": None, "destroyer": "destroyer_hulls", "cruiser": "cruiser_hulls",
-    "battleship": "battleship_hulls", "carrier": "drone_carriers", "titan": "titan_hulls",
-}
-
-
 SHIP_TYPES = {
     "mothership": ShipSpec("mothership", "Mothership", 1200, 600, hull=180, damage=5, maintenance=4),
     "colony_ship": ShipSpec("colony_ship", "Colony ship", 800, 420, hull=12, maintenance=2),
@@ -38,6 +33,21 @@ SHIP_TYPES = {
     "carrier": ShipSpec("carrier", "Drone carrier", 210, 126, hull=55, damage=5, technology="drone_carriers", drone_bays=2, maintenance=6),
     "titan": ShipSpec("titan", "Titan", 420, 252, hull=125, damage=26, technology="titan_hulls", maintenance=12),
 }
+
+# The legacy catalogue remains available for saves predating embedded profiles.
+LEGACY_SHIP_TYPES = dict(SHIP_TYPES)
+from . import ship_scaling
+from .designs import standard_design
+for _kind, _size in ship_scaling.SIZES.items():
+    _frame = ship_scaling.hull_values(_size)
+    _frame.pop('module_scale')
+    _design = standard_design(_kind)
+    if _design:
+        _frame.update(hull=_design.hull, resource_cost=_design.resource_cost,
+                      work_cost=_design.work_cost, damage=_design.damage,
+                      drone_bays=_design.drone_bays)
+    SHIP_TYPES[_kind] = replace(SHIP_TYPES[_kind], **_frame,
+                               maintenance=math.ceil(_size * ship_scaling.UPKEEP_PER_SIZE))
 
 
 @dataclass(frozen=True)

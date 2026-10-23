@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass, replace
 from functools import lru_cache
-from .research import TECHNOLOGIES
-from .production import HULL_TECHNOLOGIES
+from . import ship_scaling
+from .ship_scaling import HULL_TECHNOLOGIES
 
 MAX_DESIGNS = 24
 DRONE_BAYS = {"drone_bay": "assault", "interceptor_bay": "interceptor", "bomber_bay": "bomber"}
@@ -47,6 +47,10 @@ HULLS = {
     "titan": Hull("Titan", 125, 18, 12, 9, 3, 1, 220, 132, defensive_slots=3,
                   module_size="heavy", module_scale=400, tracking_penalty=35),
 }
+
+LEGACY_HULLS = dict(HULLS)
+HULLS.update({kind: replace(hull, **ship_scaling.hull_values(ship_scaling.SIZES[kind]))
+              for kind, hull in HULLS.items()})
 
 MODULE_SIZES = {"small": 1, "medium": 2, "heavy": 3}
 SLOT_FIELDS = {"weapon": "offensive_slots", "defense": "defensive_slots", "support": "support_slots"}
@@ -198,6 +202,7 @@ def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_
     if completed is not None:
         missing = missing_research(kind, modules, completed, legacy_hulls=legacy_hulls)
         if missing:
+            from .research import TECHNOLOGIES
             return f"Requires {TECHNOLOGIES[missing[0]].name}."
     if require_weapon and not any(m.damage for m in specs) and not any(m in DRONE_BAYS for m in modules):
         return "Fit at least one weapon or drone bay before saving."
@@ -258,6 +263,15 @@ class ShipDesign:
         return sum(m.damage for m in self.specs)
 
     @property
+    def sustained_damage(self):
+        """Nominal damage per turn, before aim, range and target defenses.
+
+        Module damage already includes every shot in a salvo (e.g. MIRV).
+        """
+        from .weapons import BEAMS
+        return sum(m.damage / (1 + BEAMS[m.weapon].reload) for m in self.specs if m.damage)
+
+    @property
     def drone_bays(self):
         return sum(self.modules.count(m) for m in DRONE_BAYS)
 
@@ -297,3 +311,17 @@ class ShipDesign:
                 or loadout_error(data["kind"], data["modules"], fit_version=fit_version)):
             raise ValueError("Invalid ship blueprint")
         return cls(identifier, name, data["kind"], tuple(data["modules"]), fit_version)
+
+
+def standard_design(kind):
+    """A stock ship is an immutable preset using the ordinary designer rules."""
+    if ship_scaling.ENABLED and kind in ship_scaling.STANDARD_LOADOUTS:
+        # Snapshot IDs need not refer to the player's editable design library;
+        # AI blueprints already use the same convention.
+        return ShipDesign("design_24", HULLS[kind].name,
+                          kind, ship_scaling.STANDARD_LOADOUTS[kind])
+    return None
+
+
+def is_standard_design(design):
+    return design is not None and design == standard_design(design.kind)

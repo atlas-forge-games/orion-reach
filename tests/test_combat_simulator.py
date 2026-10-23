@@ -80,7 +80,12 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(game.bonuses_for("player").get("accuracy", 0), 0)
         self.assertGreater(game.bonuses_for("rival")["accuracy"], 0)
         self.assertEqual(game.combat.fleet("player")[1].weapon, "laser")
-        self.assertIn("quantum", [s.weapon for s in game.combat.fleet("rival")])
+        if balance.active_profile()['data']['rules']['ship_scaling']['ENABLED']:
+            # Research improves aim; preset hardware is paid for at construction.
+            self.assertEqual([s.design.modules for s in game.combat.fleet('player')],
+                             [s.design.modules for s in game.combat.fleet('rival')])
+        else:
+            self.assertIn("quantum", [s.weapon for s in game.combat.fleet("rival")])
         first = game.combat.fleet("rival")[0]
         game.combat_hold(first.id, "rival")
         self.assertIn(first.id, game.combat.acted)
@@ -163,6 +168,7 @@ class ScenarioTests(unittest.TestCase):
         original = balance.active_profile()
         try:
             profile = deepcopy(original)
+            profile['data']['rules']['ship_scaling']['ENABLED'] = False
             profile["data"]["ships"]["frigate"]["hull"] = 37
             balance.activate(profile)
             state = build_game(Scenario()).combat
@@ -298,7 +304,7 @@ class SimulatorUITests(unittest.TestCase):
         self.click("design_add_rival")
         self.click("design_build")
         self.click("sim_launch_manual")
-        customs = [s for s in self.app.game.combat.ships if s.design]
+        customs = [s for s in self.app.game.combat.ships if s.design in self.app.scenario.designs]
         self.assertEqual(len(customs), 2)
         self.assertTrue(all("bomber_bay" in s.design.modules for s in customs))
         self.assertEqual(self.app.game.technology.completed, [])

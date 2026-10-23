@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 16
+VERSION = 17
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -40,6 +40,8 @@ CATALOGUES = {
 }
 # Explicit allowlist: UI geometry, save limits and identifiers are not balance.
 RULES = {
+    'ship_scaling': ('ship_scaling', ('ENABLED', 'HULL_PER_SIZE', 'FRAME_RES_PER_SIZE',
+                     'FRAME_COST_EXPONENT', 'WORK_PER_RESOURCE', 'UPKEEP_PER_SIZE', 'REPAIR_PERCENT')),
     'coalitions': ('coalitions', ('ACCEPTANCE', 'MIN_THREAT')),
     'tribute': ('tribute', ('COOLDOWN', 'FEAR_THRESHOLD', 'INCOME_TURNS', 'RELATION_PENALTY')),
     'alignment': ('alignment', ('REFERENCE_DISTANCE', 'MAX_MODIFIER')),
@@ -71,6 +73,7 @@ LABELS = {
     'alignment': 'Diplomatic values',
     'megastructures': 'Megastructures',
     'buildings': 'Buildings', 'ships': 'Standard ships', 'hulls': 'Designer hulls',
+    'ship_sizes': 'Ship sizes',
     'modules': 'Ship modules', 'weapons': 'Weapons', 'races': 'Races',
     'technologies': 'Technologies', 'branches': 'Research branches',
     'guardians': 'Guardians', 'personalities': 'AI personalities',
@@ -121,6 +124,8 @@ def _defaults():
     data['research_costs'] = {str(tier): {'cost': cost} for tier, cost in enumerate(r.TIER_COSTS, 1)}
     data['research_costs']['ascension'] = {'cost': r.ASCENSION_COST}
     data['drones'] = {name: dict(zip(('name', 'weapon', 'movement'), values)) for name, values in module('weapons').DRONE_ROLES.items()}
+    data['ship_sizes'] = {kind: {'size': size} for kind, size in module('ship_scaling').SIZES.items()}
+    module('ship_scaling').derive(data)
     return {'format': FORMAT, 'version': VERSION, 'name': 'Standard balance',
             'branch_order': list(r.BRANCHES), 'data': data}
 
@@ -130,9 +135,17 @@ def default_profile():
 
 
 def legacy_profile():
-    """Preserve the research choices of campaigns without a saved profile."""
+    """Preserve research and ship values of campaigns without a saved profile."""
     from .legacy_research import PRE_REBALANCE_TIERS
     profile = default_profile()
+    profile['data']['rules']['ship_scaling']['ENABLED'] = False
+    for kind, spec in module('production').LEGACY_SHIP_TYPES.items():
+        entry = json_value(asdict(spec))
+        entry.pop('id')
+        entry['movement'] = 3 if kind == 'frigate' else profile['data']['ships'][kind]['movement']
+        profile['data']['ships'][kind] = entry
+    profile['data']['hulls'] = {kind: json_value(asdict(hull))
+                                for kind, hull in module('designs').LEGACY_HULLS.items()}
     for branch, tiers in PRE_REBALANCE_TIERS.items():
         for tier, pair in enumerate(tiers, 1):
             for order, identifier in enumerate(pair):
@@ -150,6 +163,12 @@ def effect_keys():
 
 
 def numeric_bounds(section, field):
+    if section == 'ship_sizes' and field == 'size': return 1, 100
+    if field in ('HULL_PER_SIZE', 'FRAME_RES_PER_SIZE'): return 1, 100
+    if field == 'FRAME_COST_EXPONENT': return 1.0, 1.3
+    if field == 'WORK_PER_RESOURCE': return .1, 1.0
+    if field == 'UPKEEP_PER_SIZE': return .1, 10.0
+    if field == 'REPAIR_PERCENT': return 0, 100
     if section == 'diplomatic_preferences': return (-20, 20) if field == 'resolve' else (0, 20)
     if field == 'COOLDOWN': return 100, 10000
     if field in ('FEAR_THRESHOLD', 'MIN_THREAT', 'ACCEPTANCE', 'RELATION_PENALTY'): return 1, 100
@@ -172,7 +191,7 @@ def numeric_bounds(section, field):
     if field in ('XP_PER_LEVEL', 'VISIT_INTERVAL', 'VISIT_DURATION', 'SURVEY_WORK', 'difficulty', 'work'): return 1, 10000
     if section == 'specialists' and field in module('specialists').SKILLS: return 0, 100
     if field in ('offensive_slots', 'defensive_slots', 'support_slots'): return 1 if field == 'offensive_slots' else 0, 12
-    if field == 'module_scale': return 1, 1000
+    if field == 'module_scale': return 1, 5000
     if field == 'tracking_penalty': return 0, 100
     if field == 'tier': return 1, 8
     if field in ('accuracy', 'shield_bypass', 'interception_piercing', 'shield_hardening', 'interception', 'interception_cap', 'TRADE_GOODS_PERCENT',
@@ -290,6 +309,7 @@ def validate(profile):
                         if len(set(value)) != len(value) or any(v not in allowed for v in value): errors.append(path+': choose distinct existing items.')
     if errors:
         return errors
+    errors.extend(module('ship_scaling').loadout_errors(data))
     for key, entry in data['technologies'].items():
         if (key == 'ascension_theory') != (entry['branch'] == 'ascension'):
             errors.append('Ascension Theory must remain the separate finale; other technologies belong to a branch.')
@@ -361,7 +381,7 @@ def upgrade_profile(profile):
                 if isinstance(hulls.get(identifier), dict):
                     for key in ('offensive_slots', 'defensive_slots', 'support_slots',
                                 'module_size', 'module_scale', 'tracking_penalty'):
-                        hulls[identifier].setdefault(key, defaults[key])
+                        hulls[identifier].setdefault(key, getattr(module('designs').LEGACY_HULLS[identifier], key))
         profile['version'] = 2
     if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 2:
         from .buildings import ADVANCED_FACILITIES
@@ -463,7 +483,7 @@ def upgrade_profile(profile):
         if isinstance(data, dict) and isinstance(data.get('ships'), dict):
             for kind, spec in _defaults()['data']['ships'].items():
                 if isinstance(data['ships'].get(kind), dict):
-                    data['ships'][kind].setdefault('maintenance', spec['maintenance'])
+                    data['ships'][kind].setdefault('maintenance', module('production').LEGACY_SHIP_TYPES[kind].maintenance)
         profile['version'] = 13
     if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 13:
         profile = deepcopy(profile)
@@ -503,7 +523,18 @@ def upgrade_profile(profile):
             from .race_victory import PROJECT_RACES
             for identifier in PROJECT_RACES:
                 buildings.setdefault(identifier, deepcopy(_defaults()['data']['buildings'][identifier]))
-        profile['version'] = VERSION
+        profile['version'] = 16
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 16:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            data.setdefault('ship_sizes', deepcopy(_defaults()['data']['ship_sizes']))
+            if isinstance(data.get('rules'), dict):
+                # Never silently reprice queued ships or resize an active battle.
+                rules = deepcopy(_defaults()['data']['rules']['ship_scaling'])
+                rules['ENABLED'] = False
+                data['rules']['ship_scaling'] = rules
+        profile['version'] = 17
     return profile
 
 
@@ -521,6 +552,8 @@ def read_profile(path=DEFAULT_PATH, *, missing_ok=False):
                 result[k] = v
             return result
         profile = upgrade_profile(json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_pairs))
+        require_valid(profile)
+        module('ship_scaling').derive(profile['data'])
         require_valid(profile)
         return profile
     except (OSError, ValueError, RecursionError) as exc:
@@ -545,6 +578,9 @@ def atomic_write(path, content):
 
 def write_profile(path, profile, *, expected=None):
     require_valid(profile)
+    profile = deepcopy(profile)
+    module('ship_scaling').derive(profile['data'])
+    require_valid(profile)
     path = Path(path).expanduser()
     current = path.read_text(encoding='utf-8') if path.exists() else ''
     if expected is not None and current != expected:
@@ -560,6 +596,9 @@ def activate(profile):
     global _active
     profile = upgrade_profile(profile)
     require_valid(profile)  # Validate everything before changing any catalogue.
+    profile = deepcopy(profile)
+    module('ship_scaling').derive(profile['data'])
+    require_valid(profile)
     data = profile['data']
     for section, (owner, attribute) in CATALOGUES.items():
         catalogue = getattr(module(owner), attribute)
@@ -594,6 +633,7 @@ def activate(profile):
         for key in keys:
             value = data['rules'][group][key]
             setattr(module(owner), key, float(value) if key == 'SHIP_SPEED' else value)
+    module('ship_scaling').SIZES.update({kind: entry['size'] for kind, entry in data['ship_sizes'].items()})
     r.TIER_COSTS = tuple(data['research_costs'][str(t)]['cost'] for t in r.TIERS)
     r.ASCENSION_COST = data['research_costs']['ascension']['cost']
     r._bonuses.cache_clear()
@@ -603,7 +643,8 @@ def activate(profile):
     w.DRONE_ROLES.update({key: tuple(v[k] for k in ('name','weapon','movement')) for key,v in data['drones'].items()})
     c.BASE_SPEC = replace(c.BASE_SPEC, hull=module('defenses').BASE_HULL,
                           damage=w.BEAMS['missile'].damage, name=b.BUILDINGS['missile_base'].name)
-    c.DRONE_SPEC = replace(c.DRONE_SPEC, hull=c.DRONE_HULL, damage=w.BEAMS['drone_beam'].damage)
+    c.DRONE_SPEC = replace(c.DRONE_SPEC, hull=c.drone_strength(c.DRONE_HULL),
+                          damage=c.drone_strength(w.BEAMS['drone_beam'].damage))
     c.COMBAT_TYPES.clear()
     c.COMBAT_TYPES.update({**p.SHIP_TYPES, **module('monsters').MONSTERS, 'missile_base':c.BASE_SPEC, 'combat_drone':c.DRONE_SPEC})
     c.MOVEMENT.update({key: v['movement'] for key,v in data['ships'].items()})
@@ -639,6 +680,7 @@ def prepare_new_game():
 
 def tag_game(game, profile=None):
     game._balance_profile = deepcopy(upgrade_profile(profile) if profile is not None else active_profile())
+    module('ship_scaling').derive(game._balance_profile['data'])
     return game
 
 

@@ -63,6 +63,9 @@ class BalanceEditor:
         self.inform('Draft updated. Save to use these settings in new campaigns.')
 
     def edit_value(self, path):
+        if self.document.is_derived(self.section, self.identifier, path):
+            self.inform('Calculated from Ship sizes, Ship modules and ship_scaling rules. Disable ship_scaling ENABLED for manual values.')
+            return
         value = self.document.get(self.section,self.identifier,path)
         if type(value) is bool:
             self.document.set(self.section,self.identifier,path,not value)

@@ -7,8 +7,8 @@ import math
 import hashlib
 
 from .production import SHIP_TYPES, ShipSpec
-from . import defenses, fleet_support, combat_projectiles, flagships, combat_geometry as geometry
-from .designs import HULLS, MODULE_SIZES, ShipDesign
+from . import defenses, fleet_support, combat_projectiles, flagships, ship_scaling, combat_geometry as geometry
+from .designs import HULLS, MODULE_SIZES, ShipDesign, standard_design
 from .weapons import Beam, BEAMS, DRONE_ROLES, CAPITAL_TARGETS
 from .empires import EMPIRE_IDS
 from .monsters import MONSTER, MONSTERS, alive_at, at as guardian_at, observe, known_status, commit_battle_result
@@ -16,7 +16,15 @@ from . import encounters
 
 BASE_SPEC = ShipSpec("missile_base", "Missile base", 100, 60, hull=40, damage=10)
 DRONE_HULL = 6
-DRONE_SPEC = ShipSpec("combat_drone", "Combat drone", 0, 0, hull=DRONE_HULL, damage=3)
+
+
+def drone_strength(value):
+    """Each tactical marker represents the wing housed in one carrier mount."""
+    return ship_scaling.scaled(value, HULLS['carrier'].module_scale) if ship_scaling.ENABLED else value
+
+
+DRONE_SPEC = ShipSpec("combat_drone", "Combat drone", 0, 0,
+                      hull=drone_strength(DRONE_HULL), damage=drone_strength(3))
 DRONE_ID_BASE = -1_000_000
 DRONES_PER_BAY = 2
 LAUNCHES_PER_BAY = 4
@@ -32,11 +40,15 @@ MOVEMENT.update({kind: hull.movement for kind, hull in HULLS.items() if kind != 
 MOVEMENT.update({kind: spec.movement for kind, spec in MONSTERS.items()})
 MOVEMENT["missile_base"] = 0
 MOVEMENT["combat_drone"] = 5
+if ship_scaling.ENABLED:
+    MOVEMENT.update({kind: standard_design(kind).movement for kind in HULLS})
 
 
 def weapon_for(game, kind, owner):
     if owner == encounters.PIRATES:
         return "laser"
+    if design := standard_design(kind):
+        return design.weapon
     if kind in ("destroyer", "cruiser", "battleship", "titan", "combat_drone"):
         return {"destroyer": "torpedo", "cruiser": "cruiser_battery", "battleship": "battleship_battery",
                 "titan": "titan_battery", "combat_drone": "drone_beam"}[kind]
@@ -79,6 +91,12 @@ class CombatShip:
     drone_role: str | None = None
     large_hull: bool = True
 
+    def __post_init__(self):
+        if self.design is None and self.owner in OWNERS:
+            self.design = standard_design(self.kind)
+            if self.design:
+                self.weapon = self.design.weapon
+
     @property
     def name(self):
         if self.owner == encounters.PIRATES:
@@ -99,6 +117,8 @@ class CombatShip:
 
     @property
     def damage(self):
+        if self.kind == 'combat_drone':
+            return drone_strength(BEAMS[self.weapon].damage)
         return self.design.damage if self.design else BEAMS[self.weapon].damage
 
     @property

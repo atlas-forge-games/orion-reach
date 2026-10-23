@@ -111,17 +111,20 @@ class HullResearchTests(unittest.TestCase):
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_ai_researches_and_selects_buildable_advanced_ships(self):
+        from orion.production import SHIP_TYPES
         game = campaign()
         game.opponent.resources = 10000
         research(game, "destroyer_hulls", "cruiser_hulls", "drone_carriers", owner=RIVAL)
-        self.assertEqual(ai.warship_choice(game, RIVAL), "carrier")
+        with patch('orion.ai.projected_income', return_value=SHIP_TYPES['carrier'].maintenance+1):
+            self.assertEqual(ai.warship_choice(game, RIVAL), "carrier")
         game.ships = [Ship(1, "carrier", 0, owner=RIVAL)]
         game.next_ship_id = 2
-        # The carrier already costs six credits per turn. A developed economy
-        # is needed before another capital hull is affordable.
-        self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")
-        game.headquarters(RIVAL)[1].buildings = ["trade_center"]
-        self.assertEqual(ai.warship_choice(game, RIVAL), "destroyer")  # Escort the existing carrier.
+        # After existing upkeep, a small surplus supports only a frigate;
+        # a developed economy can afford an escort for the existing carrier.
+        with patch('orion.ai.projected_income', return_value=3):
+            self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")
+        with patch('orion.ai.projected_income', return_value=SHIP_TYPES['destroyer'].maintenance+1):
+            self.assertEqual(ai.warship_choice(game, RIVAL), "destroyer")
         game.opponent.resources = 0
         self.assertEqual(ai.warship_choice(game, RIVAL), "frigate")
 

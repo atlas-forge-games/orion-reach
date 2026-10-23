@@ -174,7 +174,7 @@ class ProgressionTests(unittest.TestCase):
         for section, table in original['data'].items():
             for identifier, entry in table.items():
                 if section == 'ships':
-                    entry = {**entry, 'maintenance': balance.default_profile()['data']['ships'][identifier]['maintenance']}
+                    entry = {**entry, 'maintenance': balance.legacy_profile()['data']['ships'][identifier]['maintenance']}
                 if section == 'modules':
                     entry = {**entry, 'support_range': 0, 'escort_interception': 0, 'command_accuracy': 0, 'jamming': 0}
                 if section == 'ships' and identifier == 'colony_ship':

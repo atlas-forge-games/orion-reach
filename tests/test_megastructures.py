@@ -220,7 +220,8 @@ class MegastructureTests(unittest.TestCase):
         self.p.construction_queue = [ship, ConstructionProject("factory")]
         self.p.advance_construction(self.g.bonuses_for(), fund=lambda q: True)
         self.assertEqual(len(self.p.construction_queue), 1)
-        self.assertEqual(self.p.construction_queue[0].progress, 3)  # 52 ticks - 12 ship ticks; 13 per building work.
+        # Ships get the 13x forge bonus; remaining ticks pay normal building work.
+        self.assertEqual(self.p.construction_queue[0].progress, (52-ship.spec.work_cost)//13)
 
     def test_forge_is_local_to_its_system(self):
         other = settle(self.g, self.sid)
@@ -311,7 +312,9 @@ class MegastructureTests(unittest.TestCase):
         profile["version"] = 6
         del profile["data"]["megastructures"]
         del profile["data"]["rules"]["megastructures"]
-        self.assertEqual(balance.upgrade_profile(profile), balance.default_profile())
+        expected = balance.default_profile()
+        expected['data']['rules']['ship_scaling']['ENABLED'] = False
+        self.assertEqual(balance.upgrade_profile(profile), expected)
 
     def test_editor_changes_real_outputs_and_rejects_invalid_branch(self):
         from orion.balance_document import BalanceDocument

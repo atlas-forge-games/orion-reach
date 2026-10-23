@@ -167,6 +167,9 @@ class Ship:
     assaulted_turn: int = 0
 
     def __post_init__(self):
+        if self.design is None:
+            from .designs import standard_design
+            self.design = standard_design(self.kind)
         if self.hull is None:
             self.hull = self.max_hull
 
@@ -821,7 +824,8 @@ class GameState:
 
     def production_design(self, identifier, owner=PLAYER):
         if owner == PLAYER:
-            return self.design_for(identifier)
+            from .designs import standard_design
+            return self.design_for(identifier) or standard_design(identifier)
         state = self.research_state(owner)
         if identifier in HULLS:
             from .auto_designs import auto_design
@@ -1537,9 +1541,13 @@ class GameState:
         design = self.design_for(kind) if isinstance(kind, str) and owner == PLAYER else None
         if not isinstance(kind, str) or (kind not in SHIP_TYPES and design is None):
             return "Unknown ship type."
+        if design is None and kind in SHIP_TYPES:
+            from .designs import standard_design
+            design = standard_design(kind)
         if design:
-            error = loadout_error(design.kind, design.modules, self.technology.completed,
-                                  legacy_hulls=self.technology.legacy_starships, fit_version=design.fit_version)
+            research = self.research_state(owner)
+            error = loadout_error(design.kind, design.modules, research.completed,
+                                  legacy_hulls=research.legacy_starships, fit_version=design.fit_version)
             if error:
                 return error
         if not design and not self.research_state(owner).hull_unlocked(kind):
@@ -1894,7 +1902,8 @@ class GameState:
         alerts.extend(megastructures.discover(self))
         for ship in self.ships:
             if ship.id in repairable and self.can_repair(ship):
-                ship.hull = min(ship.max_hull, ship.hull+production_balance.REPAIR_PER_TURN)
+                from .ship_scaling import repair_amount
+                ship.hull = min(ship.max_hull, ship.hull+repair_amount(ship.max_hull, production_balance.REPAIR_PER_TURN))
         victory_rules.advance_gates(self, gates)
         for owner in self.opponents:
             rival_gate = victory_rules.gate_site(self, owner)
@@ -2079,11 +2088,15 @@ class GameState:
                 # blueprints. Their technology may belong to a former owner;
                 # inheriting a hull does not unlock construction of new copies.
                 research_states = [game.research_state(owner) for owner in game.owners]
-                from .designs import MODULES
+                from .designs import MODULES, is_standard_design
                 snapshots = [(s.owner, s.design) for s in ships if s.design]
                 snapshots += [(world.owner, q.design) for _, world in game.settlements()
                               for q in world.construction_queue if q.design]
                 for owner, design in snapshots:
+                    # Stock hulls can be awarded or captured without unlocking
+                    # their technology, as before stock equipment used presets.
+                    if is_standard_design(design):
+                        continue
                     new_equipment = any(MODULES[m].technology in ARSENAL_TECHNOLOGIES for m in design.modules)
                     if (owner == PLAYER or new_equipment) and not any(
                             loadout_error(design.kind, design.modules, state.completed,

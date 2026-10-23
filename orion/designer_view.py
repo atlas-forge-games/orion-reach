@@ -155,6 +155,7 @@ def draw_designer(app):
         y = 471+index*29
         text(surface, label, (1003, y), 13, MUTED)
         text(surface, value, (1357, y), 13, CYAN, right=True)
+    text(surface, f"Sustained: {design.sustained_damage:g} / turn before aim and defenses", (1003, 638), 11, MUTED)
     caption = " · ".join(f"{count}× {MODULES[m].name}" for m, count in Counter(design.modules).items()) or "No modules fitted."
     lines = wrapped_lines(caption, 350, 12)
     for index, line in enumerate(lines[:3]):

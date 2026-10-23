@@ -30,7 +30,7 @@ UPGRADES = {
 UPGRADE_DETAILS = {
     "none": "Base accuracy; standard ship weapons. Custom equipment is always available.",
     "targeting": "Targeting Computers research. Custom equipment is always available.",
-    "advanced": "Quantum Targeting, Electronic Countermeasures, Precision Beam Optics, Quantum Optics and Advanced Torpedo Guidance.",
+    "advanced": "Quantum Targeting, Electronic Countermeasures, Precision Beam Optics, Quantum Optics and Advanced Torpedo Guidance. Preset equipment stays fixed; fit advanced weapons in the designer.",
 }
 
 

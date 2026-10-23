@@ -14,6 +14,7 @@ from .encyclopedia_artifacts import ARTIFACT_CONCEPTS
 from .personalities import PERSONALITIES
 from .production import ASCENSION_GATE, SHIP_TYPES
 from . import production as production_balance
+from . import ship_scaling
 from .races import SETUP_RACES
 from .research import BRANCHES, TECHNOLOGIES, TIER_NAMES, ResearchState
 
@@ -256,12 +257,16 @@ def articles():
              "carrier": "A warship with drone bays. Can launch combat drones during a battle."}
     for spec in SHIP_TYPES.values():
         sections = [("ROLE", roles.get(spec.id, "An armed warship. Standard ships or custom blueprints can be built after unlocking this hull.")),
-                    ("STANDARD SHIP", f"Base cost: {spec.resource_cost} Resources · {spec.work_cost} work\nBase hull: {spec.hull}"),
+                    ("STANDARD SHIP", f"Equipped cost: {spec.resource_cost} Resources · {spec.work_cost} work\nHull: {spec.hull} · Nominal volley: {spec.damage}"),
                     ("MAINTENANCE", f"{spec.maintenance} CR per turn per ship, including custom designs of this hull class."),
                     ("RESEARCH REQUIRED", technology_name(spec.technology))]
         if spec.id in HULLS:
             hull = HULLS[spec.id]
             sections.append(("CUSTOM DESIGN SLOTS", f"Offense: {hull.offensive_slots} · Defense: {hull.defensive_slots} · Support: {hull.support_slots}\n{hull.module_size.title()} modules: {hull.module_scale}% output and cost.\nTracking penalty: {hull.tracking_penalty} percentage points per smaller target size.\nModule costs are added to the bare hull cost."))
+            if ship_scaling.ENABLED:
+                sections.append(("ENGINEERING BUDGET", f"Size index: {ship_scaling.SIZES[spec.id]}. Bare frame: {hull.hull} hull, {hull.resource_cost} Resources and {hull.work_cost} work. "
+                                 "Standard warships are predefined equipment fits using the same calculations as custom designs. Research unlocks new equipment; fit it in the designer to use it."))
+                sections.append(("STANDARD EQUIPMENT", ', '.join(MODULES[m].name for m in ship_scaling.STANDARD_LOADOUTS[spec.id])))
         if spec.id == "troop_transport":
             sections.append(("TRAINING REQUIRED", "The colony needs operational barracks to train transport troops."))
         sections.append(("NOTES", "Queue ships in an owned colony's shipyard. Research and racial bonuses can change new orders. Unlocking a later hull does not unlock classes skipped in earlier research tiers."))

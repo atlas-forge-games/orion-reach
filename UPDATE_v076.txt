@@ -1,0 +1,44 @@
+Orion Reach v0.76 — ship size, equipment and economy
+
+Install on top of v0.75.3:
+1. Close the game, simulator and balance editor.
+2. Extract this ZIP into the folder containing main.py, orion/ and assets/.
+3. Replace the included files. This is an incremental update, not a full game.
+4. Run python main.py or python combat_simulator.py normally.
+
+No new dependency is needed. No files have been committed or pushed.
+
+The new default derives frame costs, hull values, module strength, construction
+work and maintenance from ship size. Standard warships are predefined designer
+loadouts and pay for their equipment. Upkeep is Scout 1, Frigate 2, Destroyer 6,
+Cruiser 12, Carrier 20, Battleship 25 and Titan 80 credits per turn.
+
+A standard Titan now has 1,600 hull, 1,200 nominal volley damage, a flag bridge
+and point defense. Its complete construction price is 11,320 RES and 7,080 work;
+the bare frame is 6,200 RES. Custom weapons and defenses change the final price
+and capabilities. Carrier wings and dockyard repair scale with the larger hulls.
+
+IMPORTANT FOR EXISTING BALANCE FILES AND SAVES
+New campaigns use the new default when no custom balance.json is configured.
+If you already use balance.json, run python editor.py, select Global rules,
+Ship scaling, turn Enabled on, and Save. Then start a new campaign or relaunch
+the simulator. Other custom balance settings are preserved.
+
+Saved campaigns keep their original embedded balance. Old ships, paid queues
+and battles are not silently resized or repriced. This update does not migrate
+an in-progress campaign to the new economy. Simulator setups use whichever
+balance is active when launched.
+
+Read docs/ship-size-balance.md for the formulas, loadouts and compatibility
+details. README.md contains the complete standard-ship table. The included
+screenshots/v076_ship_scaling.png shows the real Titan designer preview.
+
+VALIDATION
+132 targeted tests passed, including size calculations, actual beam/torpedo
+damage, presets, upkeep, AI budgets, editor behavior, queued construction,
+saved games, carrier wings, repairs and simulator/presentation checks.
+
+Full suite: 1,346 tests; 1,326 passed. Its 16 failures and 4 errors are the
+identical 20 failures/errors reproduced on an exact pre-update snapshot
+(1,331 tests). No new failures were added. Existing failures include missing
+media in this reconstructed workspace and older save/footprint expectations.

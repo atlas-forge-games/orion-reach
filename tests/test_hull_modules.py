@@ -27,6 +27,18 @@ from test_arsenal import campaign, discover, duel, cycle
 
 
 class HullModuleTests(unittest.TestCase):
+    def setUp(self):
+        # This suite specifies the v0.53 mount scales and legacy-fit migration.
+        # The size-derived v0.76 model has separate combat/integration coverage.
+        previous = balance.active_profile()
+        profile = balance.default_profile()
+        legacy = balance.legacy_profile()['data']
+        for section in ('ships', 'hulls'):
+            profile['data'][section] = legacy[section]
+        profile['data']['rules']['ship_scaling']['ENABLED'] = False
+        balance.activate(profile)
+        self.addCleanup(lambda: balance.activate(previous))
+
     def test_four_graviton_weapons_fit_every_hull_and_a_fifth_is_rejected_atomically(self):
         for kind, damage, price, work in (('frigate',64,230,146), ('destroyer',64,245,155),
                                         ('cruiser',128,470,298), ('carrier',128,500,316),
@@ -182,6 +194,7 @@ class HullModuleTests(unittest.TestCase):
         previous = balance.active_profile()
         self.addCleanup(lambda:balance.activate(previous))
         profile = balance.default_profile()
+        profile['data']['rules']['ship_scaling']['ENABLED'] = False
         profile['data']['hulls']['frigate'].update(offensive_slots=2,module_scale=150,tracking_penalty=20,module_size='medium')
         balance.activate(profile)
         self.assertEqual(fitted_module('frigate','graviton').damage,24)

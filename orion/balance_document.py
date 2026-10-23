@@ -1,7 +1,7 @@
 """Editor document operations, independent of the window and active campaign."""
 from copy import deepcopy
 from pathlib import Path
-from . import balance
+from . import balance, ship_scaling
 
 
 class BalanceDocument:
@@ -41,16 +41,28 @@ class BalanceDocument:
         return value
 
     def set(self, section, identifier, path, value):
+        if self.is_derived(section, identifier, path):
+            raise ValueError('Derived ship value: edit Ship sizes, Ship modules or the ship_scaling rules.')
         if self.get(section, identifier, path) == value:
             return
         self.checkpoint()
         entry = self.entry(section, identifier)
         for key in path[:-1]: entry = entry[key]
         entry[path[-1]] = value
+        self.recalculate()
+
+    def is_derived(self, section, identifier, path):
+        return self.profile['data']['rules']['ship_scaling']['ENABLED'] and ship_scaling.derived_field(section, identifier, path[0])
+
+    def recalculate(self):
+        # Invalid drafts remain editable and are rejected by Save/validation.
+        if not balance.validate(self.profile):
+            ship_scaling.derive(self.profile['data'])
 
     def reset_entry(self, section, identifier):
         self.checkpoint()
         self.profile['data'][section][identifier] = balance.default_profile()['data'][section][identifier]
+        self.recalculate()
 
     def reset_all(self):
         self.checkpoint()

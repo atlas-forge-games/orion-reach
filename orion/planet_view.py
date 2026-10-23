@@ -453,7 +453,7 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
         else:
             detail = ("50 B capacity · Defensive lasers · 12 shields" if item_id == "mothership" else
                       f"{design.hull} hull · {design.damage} volley · {design.shields} shields" if design
-                      else f"{spec.hull} hull · {game.beam_for(item_id).damage} attack" if item_id in SHIP_TYPES
+                      else f"{spec.hull} hull · {spec.damage} volley" if item_id in SHIP_TYPES
                       else "Unlock a scientific victory")
             if getattr(spec, "drone_bays", 0):
                 detail = f"{spec.hull} hull · {spec.drone_bays*2} active drones · {spec.drone_bays*4} launches"

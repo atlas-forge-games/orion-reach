@@ -44,7 +44,14 @@ def arena(*ships):
 class FleetSupportTests(unittest.TestCase):
     def setUp(self):
         previous = balance.active_profile()
-        balance.activate(balance.default_profile())
+        # These isolated aura fixtures intentionally use the original unarmored
+        # standard ships. New preset equipment is covered by test_ship_scaling.
+        profile = balance.default_profile()
+        legacy = balance.legacy_profile()['data']
+        for section in ('ships', 'hulls'):
+            profile['data'][section] = legacy[section]
+        profile['data']['rules']['ship_scaling']['ENABLED'] = False
+        balance.activate(profile)
         self.addCleanup(lambda: balance.activate(previous))
 
     def test_escort_protection_tracks_real_movement_and_survives_spent_actions(self):
@@ -328,7 +335,9 @@ class SupportPresentationTests(unittest.TestCase):
         flights = combat.end_turn(self.app.game, "rival")
         self.app.after_combat_action({"kind": "end_turn", "flights": flights})
         animation = self.app.combat_animation
-        self.assertEqual(target.hull, target.initial_hull-8)
+        # New preset: two 30-damage torpedoes, 30% local PD + 25% escort.
+        damage = 28 if balance.active_profile()['data']['rules']['ship_scaling']['ENABLED'] else 8
+        self.assertEqual(target.hull, target.initial_hull-damage)
         self.assertTrue(animation.flights[0]["escorts"])
         animation.elapsed = .45
         self.app.render()

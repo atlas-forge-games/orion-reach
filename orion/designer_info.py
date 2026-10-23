@@ -93,12 +93,16 @@ def module_sections(kind, identifier, state):
     if module.movement_bonus:
         effects.append(f"Changes tactical movement by {module.movement_bonus:+} cells per turn. Bonuses and penalties add together, with a minimum movement of 1. Does not change travel speed between stars.")
     if identifier in DRONE_BAYS:
+        from .combat import drone_strength, DRONE_SPEC
+        from .ship_scaling import ENABLED
         role = DRONE_BAYS[identifier]
         name, weapon, movement = DRONE_ROLES[role]
         beam = BEAMS[weapon]
         effects.append("Carrier only; at most 2 drone bays in total. Each bay supports 2 active drones and 4 launches per battle. Launching uses the carrier's weapon action; drones then act independently.")
-        effects.append(f"Launches {name.lower()}s: {beam.damage} damage, range {beam.range}, {movement} movement cells. "
-                       "Drones are temporary and are lost when their carrier is destroyed. Larger bays do not increase drone counts or strength.")
+        effects.append(f"Launches {name.lower()}s: {drone_strength(beam.damage)} damage, {DRONE_SPEC.hull} hull, range {beam.range}, {movement} movement cells. "
+                       "Drones are temporary and are lost when their carrier is destroyed. " +
+                       ("Each marker represents a drone wing; its hull and damage scale with the carrier mount, while drone counts stay fixed."
+                        if ENABLED else "Larger bays do not increase drone counts or strength."))
         if role == "interceptor":
             effects.append(f"Deals {beam.versus_drones} times damage to drones. Each interceptor gives other friendly ships within 2 cells +20% interception, "
                            f"capped at +{fleet_support.DRONE_ESCORT_CAP}% from drones and +{fleet_support.ESCORT_CAP}% shared with destroyer arrays.")
