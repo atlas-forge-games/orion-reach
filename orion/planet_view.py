@@ -433,7 +433,7 @@ def draw_planet_overview(app):
         suitability = 'Growth varies by species' if game.is_observer else f'Your species: {factor}% growth efficiency'
         text(surface, f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
     hint = "E: End turn · R: Research · I: Empire · P: Menu · F5: Save"
-    text(surface, hint if planet.is_gas_giant else "Click buildings to inspect · "+hint, (24, 877), 11, MUTED)
+    text(surface, hint if planet.is_gas_giant else "Click buildings to manage · Right-click for info · "+hint, (24, 877), 11, MUTED)
     if planet.colonized:
         from .accession_view import open_panel
         app.button("planet_populations", "Populations & accession", (875, 870, 315, 24),

@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.81
+# Age of the Stars — Python prototype 0.81.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -8,6 +8,15 @@ existing names. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.81.1: building descriptions on right-click
+
+Right-click a building in the planetary overview to see its purpose, base
+effects, workforce bonuses, upkeep, energy demand and operating status. Queued
+buildings, headquarters, shipyards and mothership modules are supported.
+Close with Esc, another right-click or the Close button. Left-click keeps its
+existing management action. Stored surveys show only last-observed information.
+See [building information](docs/building-information.md).
 
 ## New in v0.81: gas giant orbital stations
 

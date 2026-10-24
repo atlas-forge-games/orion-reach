@@ -1,0 +1,17 @@
+AGE OF THE STARS / ORION REACH — v0.81.1 BUILDING INFORMATION
+
+Extract over v0.81 into the repository folder containing main.py and orion/.
+Replace the included files, then launch normally with python main.py.
+
+Right-click a building in the planetary overview to see what it does:
+- Purpose and base effects at that planet's mineral richness.
+- Workforce bonuses, base maintenance and energy demand.
+- Operating, disabled, unpowered or queued status.
+
+Also supports headquarters, shipyards and mothership modules. Empty module
+bays do not open construction on right-click. Old surveys show only information
+that was previously observed, without exposing current enemy conditions.
+
+Close with Esc, another right-click or Close. Left-click behavior is unchanged.
+This is an information-only UI change. Save format remains 57 and balance
+profiles remain version 20. No new artwork or dependencies are required.

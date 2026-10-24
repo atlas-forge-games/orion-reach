@@ -77,7 +77,7 @@ def draw_overview(app, ship):
             text(surface, label, (x+69, y+9+line*15), 12, INK)
         status_color = RED if status in ("DISABLED", "NO POWER", "NO FUEL") else CYAN if alpha == 255 else GOLD
         text(surface, shorten(status, 119, 9), (x+69, y+49), 9, status_color)
-    text(surface, "Click a module to manage it · Space Hub: recruit specialists", (780, 700), 12, INK)
+    text(surface, "Click to manage modules · Right-click for info", (780, 700), 12, INK)
     text(surface, "Ship construction and gate charging pause during flight.", (780, 725), 12, MUTED)
     strain = game.strain_report(home)
     text(surface, f"Administration: {strain.total:.1f}% strain · {strain.systems} home systems", (780, 752), 12, MUTED)

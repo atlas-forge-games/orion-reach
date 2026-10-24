@@ -2101,6 +2101,26 @@ class App:
         self.confirm("Buy current production?",f"Finish {name} immediately for {price} credits (2 CR per remaining work). "
                      f"Also reserves {project.needs_resources} Resources if not already reserved. Other queued projects are kept.","Buy",buy)
 
+    def show_building_info(self,key):
+        from .building_info import describe
+        if self.dialog or self.screen!="planet" or self.game.selected_planet is None:
+            return
+        game=self.game
+        home=self.selected_habitat()
+        system=game.known_system(game.selected_system)
+        if not home and system is None:
+            return
+        planet=home.habitat if home else system.worlds[game.selected_planet]
+        info=describe(game,game.selected_system,planet,key,
+                      live=bool(home) or game.system_visible(game.selected_system))
+        if info is None:
+            return
+        self.dialog={"building_info":info,"info_page":0,"return_focus":self.focus}
+        self.focus="dialog_close"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
+
     def inspect_surface_building(self,index):
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
         if not 0 <= index < planet.building_capacity:
@@ -2243,10 +2263,16 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
                     self.cancel_dialog()
             else:
                 if self.screen=="planet":
+                    building=next((b for b in reversed(self.buttons)
+                                   if b.key.startswith(("surface_","mothership_module_"))
+                                   and b.rect.collidepoint(self.mouse)),None)
+                    if building:
+                        self.show_building_info(building.key)
+                        return
                     from .production_breakdown import ROLES, KINDS
                     kind=next((value for role,value in ROLES.items() if worker_row_rect(role).collidepoint(self.mouse)),None)
                     if kind is None:
@@ -2911,6 +2937,10 @@ class App:
             return
         if "output_breakdown" in self.dialog:
             from .production_breakdown import draw
+            draw(self)
+            return
+        if "building_info" in self.dialog:
+            from .building_info import draw
             draw(self)
             return
         if "designer_info" in self.dialog:
