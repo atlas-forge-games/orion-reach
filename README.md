@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.81.1
+# Age of the Stars — Python prototype 0.81.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -8,6 +8,19 @@ existing names. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.81.2: population and growth details
+
+The planet overview now shows population prominently as **8 billion (+100 mil /
+turn) / 16 billion max**. Right-click the population line to inspect the current
+growth rate, food supply, species traits, environmental suitability, capacity
+and progress toward the next billion. Synthetic assembly, passive growth,
+starvation and mothership habitats use their actual simulation rules. Old
+surveys show only the observed population, with current growth and limits
+marked unknown. See [population display](docs/population-display.md).
+
+Install over v0.81.1. This update changes presentation only; population balance,
+save format 57 and balance profile version 20 are unchanged.
 
 ## New in v0.81.1: building descriptions on right-click
 

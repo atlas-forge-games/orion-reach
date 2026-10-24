@@ -13,6 +13,7 @@ from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .planet_art import draw_planet
 from .population import BASE_FOOD, WORKER_ROLES, farmer_output
+from .population_info import POPULATION_RECT, summary as population_summary
 from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS
 from .research import building_maintenance
 from .designs import HULLS
@@ -155,12 +156,12 @@ def workforce_panel(app, game, planet, live):
         from .gas_giant_view import draw_survey
         draw_survey(app, game, planet)
         return
-    text(surface, "HABITAT PRODUCTION / TURN" if planet.habitat else "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
     industry, credits, research = game.planet_yields(planet) if live else (None, None, None)
     food = game.population_report(planet) if live else None
-    counts = (f"{planet.population} NATIVE + {planet.slaves} SLAVES" if planet.slaves else
-              f"{planet.population} WORKERS / {food.capacity if food else '—'} B LIMIT")
-    text(surface, counts, (1043, 66), 10, INK, "mono", right=True)
+    app.button("population_info", "", POPULATION_RECT, app.show_population_info, "hotspot")
+    text(surface, "NATIVE POP." if planet.slaves else "POPULATION", (308, 67), 10, GOLD, "mono")
+    text(surface, population_summary(planet, food), (408, 60), 19, INK)
+    text(surface, "Right-click: growth", (1042, 67), 9, MUTED, right=True)
     needs_food = game.bonuses_for(planet.owner or PLAYER).get("food_use_percent", 0) > -100
     upkeep = game.planet_maintenance(planet)
     outputs = [("credits", "NET CREDITS", f"{credits:+}" if live else "—",
@@ -233,7 +234,9 @@ def workforce_panel(app, game, planet, live):
     elif preview:
         caption = f"Select {preview[1]} from {ROLE_LABELS[preview[0]].lower()} · Click here, then click the destination job."
     else:
-        caption = f"Left-click: assign workers. Right-click a row or total: calculation. · {food.growth_caption}"
+        caption = "Left-click: assign workers. Right-click population, a row or a total for details."
+        if planet.slaves:
+            caption = f"+{planet.slaves} billion slaves · Left-click: workers. Right-click: population / outputs."
     text(surface, shorten(caption, 742, 11), (302, 279), 11, MUTED)
 
 

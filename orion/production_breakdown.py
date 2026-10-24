@@ -131,18 +131,20 @@ def describe(game, planet, kind):
     return Breakdown(TITLES[kind]+' — '+planet.name, tuple(lines), total)
 
 
-def draw(app):
+def draw(app, *, data=None, caption=None):
     import pygame as pg
     from .ui import panel, text, wrapped_lines, INK, MUTED, GOLD, PANEL
-    data = app.dialog['output_breakdown']
+    if data is None:
+        data = app.dialog['output_breakdown']
     lines = [part for line in data.lines for part in wrapped_lines(line, 890, 16)]
     per_page = 18
     pages = max(1,(len(lines)+per_page-1)//per_page)
     page = min(app.dialog.get('info_page',0), pages-1)
     panel(app.canvas,(240,110,960,690),PANEL,GOLD)
     text(app.canvas,data.title,(272,137),28,INK,'title')
-    caption = ('LIVE HABITAT CALCULATION · only operational modules contribute' if app.selected_habitat()
-               else 'LIVE COLONY CALCULATION · only operational buildings contribute')
+    if caption is None:
+        caption = ('LIVE HABITAT CALCULATION · only operational modules contribute' if app.selected_habitat()
+                   else 'LIVE COLONY CALCULATION · only operational buildings contribute')
     text(app.canvas,caption,(272,184),12,MUTED)
     for i,line in enumerate(lines[page*per_page:(page+1)*per_page]):
         text(app.canvas,line,(272,217+i*26),16,GOLD if line.startswith('TOTAL ') else INK)

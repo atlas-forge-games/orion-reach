@@ -1919,6 +1919,25 @@ class App:
         self.pressed=None
         self.buttons=[]
 
+    def show_population_info(self):
+        from .population_info import describe
+        if self.dialog or self.screen!="planet" or self.game.selected_planet is None:
+            return
+        game=self.game
+        home=self.selected_habitat()
+        system=game.known_system(game.selected_system)
+        if not home and system is None:
+            return
+        planet=home.habitat if home else system.worlds[game.selected_planet]
+        if planet.is_gas_giant:
+            return
+        info=describe(game,planet,live=bool(home) or game.system_visible(game.selected_system))
+        self.dialog={"population_info":info,"info_page":0,"return_focus":self.focus}
+        self.focus="dialog_cancel"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
+
     def show_output_breakdown(self,kind):
         from .production_breakdown import describe
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
@@ -2263,10 +2282,14 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "population_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
                     self.cancel_dialog()
             else:
                 if self.screen=="planet":
+                    from .population_info import POPULATION_RECT
+                    if pg.Rect(POPULATION_RECT).collidepoint(self.mouse):
+                        self.show_population_info()
+                        return
                     building=next((b for b in reversed(self.buttons)
                                    if b.key.startswith(("surface_","mothership_module_"))
                                    and b.rect.collidepoint(self.mouse)),None)
@@ -2937,6 +2960,10 @@ class App:
             return
         if "output_breakdown" in self.dialog:
             from .production_breakdown import draw
+            draw(self)
+            return
+        if "population_info" in self.dialog:
+            from .population_info import draw
             draw(self)
             return
         if "building_info" in self.dialog:

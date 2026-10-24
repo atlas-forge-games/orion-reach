@@ -1,0 +1,23 @@
+AGE OF THE STARS / ORION REACH — v0.81.2 POPULATION DISPLAY
+
+Extract over v0.81.1 into the repository folder containing main.py and orion/.
+Replace the included files, then launch normally with python main.py.
+
+Population now appears prominently above colony production, for example:
+8 billion (+100 mil / turn) / 16 billion max
+
+Right-click the population line for the growth calculation:
+- Food production, consumption, surplus and growth caps.
+- Species growth traits and suitability for the current planet type.
+- Synthetic assembly and passive growth where applicable.
+- Population capacity, progress and time until the next billion.
+- Stopped growth, swarm starvation and separate slave populations.
+
+The same controls work aboard mothership habitats. Stored surveys show only
+last-observed population; current growth and capacity remain unknown.
+Clicking the population line or activating it with the keyboard also opens
+the explanation. Close with Esc, another right-click or Close.
+
+The displayed millions are growth progress per turn. The existing simulation
+still adds workers in full billions. Growth rules, costs, saves (format 57)
+and balance profiles (version 20) are unchanged. No new assets are required.
