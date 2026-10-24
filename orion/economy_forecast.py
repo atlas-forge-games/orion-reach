@@ -6,12 +6,13 @@ from . import economy, population, raiding, specialists, administration
 
 def queue_estimates(game, planet, additional=None):
     from .model import ConstructionProject
-    from . import megastructures
+    from . import megastructures, gas_giants
     if not planet.colonized:
         return []
     if planet.trade_goods and additional is None:
         return [None]*len(planet.construction_queue)
-    if megastructures.has_projects(game, planet.owner):
+    if (megastructures.has_projects(game, planet.owner)
+            or any(p.orbital_station.kind == 'energy' for _, p in gas_giants.installations(game, planet.owner))):
         return megastructure_estimates(game, planet, additional)
     colonies = [(s.id, p) for s, p in game.settlements(planet.owner)]
     target = next((i for i, (_, p) in enumerate(colonies)
@@ -86,7 +87,7 @@ def megastructure_estimates(game, planet, additional):
     from . import megastructures
     from .model import ConstructionProject
     sid = next(s.id for s, p in game.settlements(planet.owner) if p is planet)
-    signature = (repr(game.systems), repr(game.ships), repr(game.guardians), game.turn,
+    signature = (repr(game.systems), repr(game.ships), repr(game.guardians), repr(game.encounters), game.turn,
                  game.resources_for(planet.owner), repr(game._base_bonuses(planet.owner)),
                  repr(game.specialists), repr(game.system_integration), repr(game.designs),
                  repr(game.diplomacy), repr(game.other_diplomacy), repr(megastructures.MEGASTRUCTURES),

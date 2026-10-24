@@ -134,13 +134,14 @@ def system_panel(app, game, system, planet, live):
         if selected or app.is_active(button):
             pg.draw.rect(app.canvas, (24, 43, 50), button.rect)
         draw_planet(app.canvas, world, (46, y+(14 if row_height>=30 else 8)), 23 if row_height>=30 else 17, f"{game.seed}:{system.id}:{world.id}")
-        color = app.empire_color(world.owner or world.outpost_owner) if world.owner or world.outpost_owner else MUTED
+        visible_owner = world.owner or world.outpost_owner or (world.orbital_station.owner if world.orbital_station else None)
+        color = app.empire_color(visible_owner) if visible_owner else MUTED
         label = world.name if row_height>=30 else f"{world.name} · {world.biome}"
         text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
         if row_height>=30:
             detail = "Gas Giant · No solid surface" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
             text(app.canvas, detail, (64, y+18), 9, MUTED)
-        basic = f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
+        basic = "ORB" if world.orbital_station else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
         text(app.canvas, basic, (255, y+1), 10, color, right=True)
     if len(system.worlds) <= 4:
         text(app.canvas, "COLORS IDENTIFY EACH EMPIRE", (38, 272), 9, MUTED, "mono")
@@ -151,13 +152,8 @@ def workforce_panel(app, game, planet, live):
     owned = live and planet.owner == PLAYER
     panel(surface, (286, 54, 774, 244))
     if planet.is_gas_giant:
-        text(surface, "ATMOSPHERIC SURVEY", (302, 66), 10, GOLD, "mono", 1)
-        draw_planet(surface, planet, (413, 181), 158, f"{game.seed}:{game.selected_system}:{planet.id}")
-        text(surface, "Gas giant", (535, 104), 30, INK, "title")
-        text(surface, "Cloud bands, powerful storms and a deep atmosphere.", (535, 153), 14, MUTED)
-        text(surface, "No solid surface for colonies or buildings.", (535, 182), 14, MUTED)
-        text(surface, f"Outer orbit · {planet.orbit_au:.2f} AU · {planet.gravity} gravity", (535, 222), 13, GOLD)
-        text(surface, "Survey only · Not colonizable by any civilization", (302, 279), 11, MUTED)
+        from .gas_giant_view import draw_survey
+        draw_survey(app, game, planet)
         return
     text(surface, "HABITAT PRODUCTION / TURN" if planet.habitat else "COLONY PRODUCTION / TURN", (302, 66), 10, GOLD, "mono", 1)
     industry, credits, research = game.planet_yields(planet) if live else (None, None, None)
@@ -178,7 +174,7 @@ def workforce_panel(app, game, planet, live):
     outputs += [("resources", "RESOURCES", f"{game.planet_resources(planet):+}" if live else "—",
                  f"{game.resources:,} stored" if owned else "mined / turn", ROLE_COLORS["miners"]),
                 ("energy", "ENERGY", (f"∞ / {energy.demand}" if energy.unlimited else f"{energy.generated}/{energy.demand}") if live else "—",
-                 ("Dyson grid · no fuel" if energy.unlimited else f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
+                 ("Dyson grid · no fuel" if energy.unlimited else f"{energy.orbital_generated} orbital · {energy.fuel_used} fuel" if energy.orbital_generated else f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*124
         panel(surface, (x, 86, 120, 57), (15, 28, 37))
@@ -245,12 +241,8 @@ def construction_panel(app, game, system, planet, live):
     surface = app.canvas
     panel(surface, (1074, 54, 342, 244))
     if planet.is_gas_giant:
-        text(surface, "SETTLEMENT", (1090, 66), 10, GOLD, "mono", 1)
-        text(surface, "Not colonizable", (1090, 97), 22, INK)
-        paragraph(surface, "Gas giants cannot support colonies or surface outposts. This applies to every civilization, including machines and energy beings.",
-                  (1090, 143), 306, 14, MUTED, 23)
-        app.button("colonize_planet", "Colonize", (1090, 257, 146, 29), app.colonize_request, enabled=False)
-        app.button("establish_outpost", "Build outpost", (1246, 257, 154, 29), app.outpost_request, enabled=False)
+        from .gas_giant_view import draw_controls
+        draw_controls(app, game, system, planet, live)
         return
     text(surface, "CURRENT PROJECT", (1090, 66), 10, GOLD, "mono", 1)
     if planet.outpost_owner:
@@ -371,6 +363,9 @@ def draw_planet_overview(app):
     show_administration = live and planet.colonized and (planet.owner == PLAYER or game.is_observer)
     scene_rect = (24, 314, 1392, 406) if show_administration else SURFACE_RECT
     draw_colony_scene(app, scene_rect, game, system, planet, framed=False)
+    if planet.is_gas_giant:
+        from .gas_giant_view import draw_stations
+        draw_stations(app, game, system, planet, live)
     if show_administration:
         from .administration import MAX_STRAIN
         strain = game.strain_report(planet)

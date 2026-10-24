@@ -53,6 +53,7 @@ def refresh(game, *, historic=False, notify=True):
         for sid in visible:
             sightings.update((observer, p.owner) for p in game.systems[sid].worlds if p.owner is not None)
             sightings.update((observer, p.outpost_owner) for p in game.systems[sid].worlds if p.outpost_owner is not None)
+            sightings.update((observer, p.orbital_station.owner) for p in game.systems[sid].worlds if p.orbital_station)
         sightings.update((observer, s.owner) for s in game.ships if not s.in_transit and s.system_id in visible)
         sightings.update((observer, c.owner) for c in game.sensor_contacts
                          if c.observer == observer and (c.active or historic))

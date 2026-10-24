@@ -1,8 +1,10 @@
 # Gas giants — v0.79
 
-Gas giants are large atmospheric worlds available for exploration, not
-settlement. This update does not add atmospheric colonies, orbital settlements,
-moon colonization or gas extraction.
+Gas giants are large atmospheric worlds without surface settlement.
+This document describes their v0.79 introduction. Version 0.81 adds
+[orbital industry](gas-giant-stations.md), including gas extraction, shared
+system energy and research. Atmospheric colonies and moon colonization remain
+outside the current implementation.
 
 ## Rules
 

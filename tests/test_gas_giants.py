@@ -17,7 +17,7 @@ from orion import balance, environments, exploration, gas_giants, outposts, tomb
 from orion.ai import available_worlds
 from orion.model import GameState, HABITABILITY, RuleError, SaveError, Ship, new_game
 from orion.races import RACES
-from orion.storage import Storage
+from orion.storage import Storage, SAVE_VERSION
 
 
 class GasGiantTests(unittest.TestCase):
@@ -120,7 +120,7 @@ class GasGiantTests(unittest.TestCase):
         exploration.record_survey(game, system.id, 'player')
         storage = Storage(self.tmp.name)
         loaded, metadata = storage.load(storage.save(game))
-        self.assertEqual(metadata['version'], 56)
+        self.assertEqual(metadata['version'], SAVE_VERSION)
         self.assertEqual(loaded, game)
         self.assertTrue(loaded.known_system(system.id).worlds[giant.id].is_gas_giant)
         game.advance_turn(); loaded.advance_turn()

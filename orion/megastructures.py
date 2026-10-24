@@ -225,7 +225,8 @@ def make_plan(game, owner):
     """
     base = game._base_bonuses(owner)
     colonies = [(s.id, p) for s, p in game.settlements(owner)]
-    power = economy.dispatch_power([p for _, p in colonies], base, game.resources_for(owner))
+    from . import gas_giants
+    power = gas_giants.dispatch_power(game, owner, colonies, base, game.resources_for(owner))
     context = administration.Context(game, owner)
     from . import species
     def colony_effects(p):
@@ -298,7 +299,7 @@ def plan_for(game, owner):
         return frozen[owner]
     # UI redraws call yields many times. Include all production/ownership inputs.
     signature = (game.turn, game.resources_for(owner), repr(game._base_bonuses(owner)),
-                 repr(game.systems), repr(game.ships), repr(game.guardians), repr(game.specialists),
+                 repr(game.systems), repr(game.ships), repr(game.guardians), repr(game.encounters), repr(game.specialists),
                  repr(game.system_integration), repr(game.diplomacy), repr(game.other_diplomacy),
                  repr(MEGASTRUCTURES), REPAIR_WORK, REPAIR_RESOURCES)
     cache = getattr(game, "_mega_cache", {})

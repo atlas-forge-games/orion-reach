@@ -27,6 +27,7 @@ class EnergyReport:
     # Slot, actual generation, Resource use; includes standby generators.
     plants: tuple[tuple[int, int, int], ...] = ()
     unlimited: bool = False
+    orbital_generated: int = 0
 
     @property
     def balance(self):

@@ -31,7 +31,7 @@ from . import sensors
 from . import first_contact
 from . import economy
 from . import administration
-from . import megastructures
+from . import megastructures, gas_giants
 from . import coalitions, tribute
 from . import species, accession
 from . import motherships
@@ -206,7 +206,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=56):
+    def from_dict(cls, data, systems, *, version=57):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -399,6 +399,7 @@ class Planet:
     habitat: bool = False
     species: dict[str, int] = field(default_factory=dict)
     loyalty_until: int = 0
+    orbital_station: gas_giants.OrbitalStation | None = None
 
     @property
     def production_idle(self):
@@ -511,7 +512,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=56):
+    def from_dict(cls, data, expected_id, *, version=57):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -531,6 +532,11 @@ class Planet:
         if not data["colonized"] and data["population"] != 0:
             raise ValueError
         record = dict(data)
+        raw_station = data.get('orbital_station') if version >= 57 else None
+        record['orbital_station'] = (gas_giants.OrbitalStation.from_dict(raw_station, EMPIRE_IDS)
+                                     if raw_station is not None else None)
+        if raw_station is not None and (data['biome'] != 'Gas Giant' or expected_id < 0):
+            raise ValueError('Orbital stations require gas giants')
         species.validate(record, version)
         record.setdefault("habitat", False)
         if type(record["habitat"]) is not bool or record["habitat"] != (expected_id < 0):
@@ -801,6 +807,8 @@ class GameState:
             for planet in system.worlds:
                 if planet.outpost_owner in defeated:
                     outpost_rules.clear(planet)
+                if planet.orbital_station and planet.orbital_station.owner in defeated:
+                    planet.orbital_station = None
         if len(self.owners)-len(defeated) > 1:
             self.ships[:] = [ship for ship in self.ships if ship.owner not in defeated]
         for i, owner in enumerate(self.owners):
@@ -1124,19 +1132,21 @@ class GameState:
         frozen = getattr(self, "_turn_power", {})
         if id(planet) in frozen:
             return frozen[id(planet)]
-        # Most colonies have no fuel-burning plant; their grid stays fully local.
-        if not any(BUILDINGS[b].energy_per_resource for b in planet.buildings):
-            return economy.energy_report(planet, bonuses)
-        worlds = [p for _, p in self.settlements(planet.owner)]
+        colonies = self.settlements(planet.owner)
+        worlds = [p for _, p in colonies]
         if not any(p is planet for p in worlds):
-            # AI projected colonies are evaluated conservatively on steady power.
+            return economy.energy_report(planet, bonuses)
+        supply = gas_giants.power_supply(self, planet.owner)
+        if not supply and not any(BUILDINGS[b].energy_per_resource for b in planet.buildings):
             return economy.energy_report(planet, bonuses)
         bank = self.resources_for(planet.owner)
-        signature = (bank, tuple(sorted(bonuses.items())), tuple(
-            (id(p), tuple(p.buildings), tuple(p.disabled_buildings), p.ascension_gate) for p in worlds))
+        signature = (bank, tuple(sorted(bonuses.items())), tuple(sorted(supply.items())), tuple(
+            (s.id, id(p), tuple(p.buildings), tuple(p.disabled_buildings), p.ascension_gate)
+            for s, p in colonies), tuple(s.habitat.id for s in self.ships if s.habitat and s.in_transit))
         cache = getattr(self, "_power_cache", {})
         if planet.owner not in cache or cache[planet.owner][0] != signature:
-            cache[planet.owner] = (signature, economy.dispatch_power(worlds, bonuses, bank))
+            cache[planet.owner] = (signature, gas_giants.dispatch_power(
+                self, planet.owner, [(s.id, p) for s, p in colonies], bonuses, bank, supply=supply))
             self._power_cache = cache
         return cache[planet.owner][1][id(planet)]
 
@@ -1153,8 +1163,9 @@ class GameState:
                     m = self.systems[sid].megastructure
                     self._array_chances[sid] = min(100, m.stage*m.spec.discovery_chance_per_stage)
                 continue
-            worlds = [p for _, p in self.settlements(owner)]
-            self._turn_power.update(economy.dispatch_power(worlds, dict(self.bonuses_for(owner)), self.resources_for(owner)))
+            colonies = [(s.id, p) for s, p in self.settlements(owner)]
+            self._turn_power.update(gas_giants.dispatch_power(self, owner, colonies,
+                                    self._base_bonuses(owner), self.resources_for(owner)))
 
     def building_operational(self, planet, identifier):
         return economy.operational(planet, identifier, self.bonuses_for(planet.owner))
@@ -1768,6 +1779,9 @@ class GameState:
 
     def empire_rates_for(self, owner):
         income, research = self.diplomatic_yields(owner)
+        station_credits, station_research, station_upkeep = gas_giants.income(self, owner)
+        income += station_credits-station_upkeep
+        research += station_research
         income -= specialist_rules.salaries(self, owner)+self.fleet_maintenance(owner)
         income -= accession.upkeep(self, owner)
         for _, planet in self.settlements(owner):
@@ -1897,6 +1911,7 @@ class GameState:
         motherships.relocate_specialists(self)
         defense_rules.advance(self)
         outpost_rules.advance(self)
+        gas_giants.advance(self)
         self.credits += income
         if income < 0:
             alerts.append(f"Budget deficit: {income} CR/turn after maintenance and specialist salaries")
@@ -1964,7 +1979,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=56):
+    def from_dict(cls, data, *, version=57):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2097,6 +2112,10 @@ class GameState:
                 raise ValueError("Only one outpost is allowed per system")
             if any(p.outpost_owner is not None and p.outpost_owner not in game.owners for s in systems for p in s.worlds):
                 raise ValueError("Unknown empire owns an outpost")
+            for system in systems:
+                for planet in system.worlds:
+                    if planet.orbital_station:
+                        gas_giants.OrbitalStation.from_dict(asdict(planet.orbital_station), game.owners, game.turn)
             if version >= 23:
                 raid_rules.load_state(game, data)
             if version >= 18:

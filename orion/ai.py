@@ -354,7 +354,7 @@ def military_orders(game, reserved=(), owner=RIVAL):
     targets = [s for s in game.systems if game.system_visible(s.id, owner)
                and any(ship.owner in hostile for ship in game.foreign_fleet(s.id, owner))] if hostile else []
     targets += [s for s in game.systems if (known := game.known_system(s.id, owner)) is not None
-                and any(p.outpost_owner in hostile for p in known.worlds)]
+                and any(p.outpost_owner in hostile or (p.orbital_station and p.orbital_station.owner in hostile) for p in known.worlds)]
     worlds = [(s, p) for s, p in known_enemy_colonies(game, owner)
               if p.owner in hostile]
     def target_forces(system, planet):
@@ -482,6 +482,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
     from .diplomacy import ai_treaty_orders
     ai_treaty_orders(game, owner)
     invasions = diplomatic_orders(game, owner)
+    from . import gas_giants
+    invasions.extend(gas_giants.ai_orders(game, owner))
     invasions.extend(outposts.ai_orders(game, owner, enemies(game, owner)))
     from . import boarding
     invasions.extend(boarding.ai_orders(game, owner, ground_reports))

@@ -20,7 +20,7 @@ METRICS = {
     "food": Metric("Food production", "food / turn", "Gross food produced across colonies, before consumption."),
     "mining": Metric("Mining production", "resources / turn", "Gross extraction from colonies and asteroid networks, before fuel or construction spending."),
     "energy": Metric("Energy", "energy / turn", "Actual energy supplied across colony grids. A completed Dyson Sphere provides unlimited capacity; the graph records finite supply."),
-    "credits": Metric("Credits per turn", "credits / turn", "Net income after building and ship maintenance and specialist salaries, including agreements and Trade Goods."),
+    "credits": Metric("Credits per turn", "credits / turn", "Net income after facility, orbital station and ship upkeep and salaries, including station exports, agreements and Trade Goods."),
 }
 
 

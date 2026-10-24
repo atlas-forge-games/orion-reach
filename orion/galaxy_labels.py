@@ -20,7 +20,7 @@ def system_label(game, system):
 
 def known_owners(game, system):
     survey = game.known_system(system.id)
-    owners = {owner for p in survey.worlds for owner in (p.owner, p.outpost_owner) if owner} if survey else set()
+    owners = {owner for p in survey.worlds for owner in (p.owner, p.outpost_owner, p.orbital_station.owner if p.orbital_station else None) if owner} if survey else set()
     owners.update(s.owner for s in motherships.visible_at(game, system.id))
     return tuple(owner for owner in EMPIRE_IDS if owner in owners)
 

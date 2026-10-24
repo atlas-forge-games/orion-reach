@@ -108,8 +108,9 @@ def draw_system_panel(app, star):
         panel(surface, row, (23, 43, 53) if active else (16, 32, 42) if selected else (9, 22, 31),
               GOLD if active else (58, 90, 103) if selected else LINE)
         draw_planet(surface, world, (row.x+23, row.centery), 35, visual_seed(game, known, world))
-        color = app.empire_color(world.owner or world.outpost_owner) if world.owner or world.outpost_owner else MUTED
-        if world.colonized or world.outpost_owner:
+        visible_owner = world.owner or world.outpost_owner or (world.orbital_station.owner if world.orbital_station else None)
+        color = app.empire_color(visible_owner) if visible_owner else MUTED
+        if world.colonized or world.outpost_owner or world.orbital_station:
             pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
         left = row.x+48
         text(surface, shorten(world.name, row.w-102, 14), (left, row.y+4), 14, GOLD if active else INK)
@@ -118,7 +119,7 @@ def draw_system_panel(app, star):
         detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
         text(surface, shorten(detail, row.w-58, 10),
              (left, row.y+24), 10, MUTED)
-        owner = (game.empire_name_for(world.owner) if world.colonized else
+        owner = ("Orbital station · "+game.empire_name_for(world.orbital_station.owner) if world.orbital_station else game.empire_name_for(world.owner) if world.colonized else
                  "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Not colonizable" if world.is_gas_giant else "Uncolonized")
         if world.id in prizes:
             owner += " · Ancient ruins" if guardian.kind == "ancient_sentinel" else " · Prize world"

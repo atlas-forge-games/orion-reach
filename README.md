@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.80
+# Age of the Stars — Python prototype 0.81
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -8,6 +8,23 @@ existing names. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.81: gas giant orbital stations
+
+Gas giants now support one orbital installation: a gas refinery, energy platform
+or research station. Atmospheric properties modify costs and output. Stations
+need two turns to assemble, charge upkeep, and can be blockaded, bombarded,
+captured or dismantled. Gas giants remain uncolonizable.
+
+Open the giant's planet overview to commission a station from a local colony or
+consume an idle outpost ship. Energy is shared once among owned colonies in the
+same system; Credits and research enter the empire's normal budget. AI empires,
+station ownership markers, stored surveys, construction forecasts and saves use
+the same rules. See [orbital station rules and costs](docs/gas-giant-stations.md)
+and [validation](docs/gas-station-validation.md).
+
+Install over v0.80. Existing campaigns load without adding planets or stations.
+New saves use format 57; the balance profile stays at version 20.
 
 ## New in v0.80: Age of the Stars title screen
 

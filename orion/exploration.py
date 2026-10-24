@@ -108,6 +108,9 @@ class ExplorationState:
                     raise ValueError
                 if parsed.outpost_owner is not None and parsed.outpost_owner not in game.owners:
                     raise ValueError("Unknown outpost owner in survey")
+                if parsed.orbital_station:
+                    from .gas_giants import OrbitalStation
+                    OrbitalStation.from_dict(asdict(parsed.orbital_station), game.owners, row['last_seen'])
                 normalized_worlds.append(asdict(parsed))
             if sum(p["outpost_owner"] is not None for p in normalized_worlds) > 1:
                 raise ValueError("Multiple outposts in a system survey")
@@ -145,8 +148,10 @@ class ExplorationState:
 
 
 def observed_systems(game, owner="player"):
-    """Live intelligence comes from colonies, outposts or ships in orbit."""
-    return {s.id for s in game.supply_systems(owner)} | {
+    """Colonies, outposts, orbital installations and ships observe their system."""
+    stations = {s.id for s in game.systems
+                if any(p.orbital_station and p.orbital_station.owner == owner for p in s.worlds)}
+    return stations | {s.id for s in game.supply_systems(owner)} | {
         s.system_id for s in game.ships if s.owner == owner and not s.in_transit}
 
 
@@ -162,7 +167,8 @@ def is_visible(game, system_id, owner="player"):
         return True
     # Query this location directly instead of scanning every world's supply on
     # every lookup. Anchored motherships count as ships; travelling homes do not.
-    return (any(p.owner == owner or p.outpost_owner == owner for p in system.worlds)
+    return (any(p.owner == owner or p.outpost_owner == owner
+                or (p.orbital_station and p.orbital_station.owner == owner) for p in system.worlds)
             or any(s.owner == owner and s.system_id == system_id and not s.in_transit for s in game.ships))
 
 

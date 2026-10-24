@@ -176,7 +176,7 @@ def draw_colony(app):
         power = game.planet_energy(planet)
         panel(surface, (751, 705, 625, 101))
         text(surface, "LOCAL POWER DISPATCH", (769, 718), 10, GOLD, "mono", 1)
-        text(surface, f"{power.base_generated} steady + {power.backup_generated} backup / {power.demand} demand", (769, 738), 16, INK)
+        text(surface, f"{power.base_generated} steady ({power.orbital_generated} orbital) + {power.backup_generated} backup / {power.demand} demand", (769, 738), 16, INK)
         text(surface, f"Backup fuel: {power.fuel_used} RES/turn · {game.resources_for(planet.owner):,} stored empire-wide", (769, 763), 11, CYAN)
         text(surface, "Steady sources first. Backup uses stored Resources; no fuel while on standby.", (769, 785), 10, MUTED)
 

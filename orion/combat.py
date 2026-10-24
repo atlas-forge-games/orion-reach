@@ -254,7 +254,7 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=56):
+    def from_dict(cls, data, game, *, version=57):
         from .model import _integer, _name
         if version < 53 and isinstance(data, dict):
             data = {**data, "board_rows": 0}

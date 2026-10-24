@@ -154,7 +154,7 @@ def draw_system(app):
         text(surface, shorten(world.name, hit.w-4, label_size), (hit.x+2, y+diameter/2+22), label_size,
              GOLD if active else INK)
         text(surface, world.biome.upper(), (hit.x+2, y+diameter/2+45), 9, MUTED, "mono")
-        if world.is_gas_giant:
+        if world.is_gas_giant and not world.orbital_station:
             text(surface, "NO SURFACE", (hit.x+2, y+diameter/2+60), 9, GOLD, "mono")
         if guardian and world.id in monsters.prize_ids(system, guardian):
             text(surface, "ANCIENT RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE WORLD",
@@ -165,6 +165,10 @@ def draw_system(app):
         if world.colonized:
             pg.draw.circle(surface, app.empire_color(world.owner),
                            (int(x+diameter/2+9), int(y-diameter/2-2)), 3)
+        elif world.orbital_station:
+            color = app.empire_color(world.orbital_station.owner)
+            pg.draw.ellipse(surface, color, (round(x+diameter/2+4), round(y-diameter/2-5), 11, 7), 1)
+            text(surface, "ORBITAL STATION", (hit.x+2, y+diameter/2+60), 9, color, "mono")
         elif world.outpost_owner:
             color = app.empire_color(world.outpost_owner)
             pg.draw.rect(surface, color, (round(x+diameter/2+5), round(y-diameter/2-5), 9, 7), 1)

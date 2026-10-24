@@ -1,0 +1,29 @@
+AGE OF THE STARS / ORION REACH — v0.81 GAS GIANT ORBITAL STATIONS
+
+Install this incremental update over v0.80:
+1. Close the game.
+2. Extract this ZIP into the repository folder containing main.py and orion/.
+3. Replace the included files. Keep existing assets, saves and other files.
+4. Launch normally: python main.py
+
+Open a gas giant's planet overview. Choose Gas refinery, Energy platform or
+Research station. A local colony or anchored mothership provides crews;
+otherwise an idle outpost ship is consumed. Listed costs are additional.
+Assembly takes two turns. Upkeep starts immediately.
+
+One station fits each gas giant. Planets have deterministic atmospheric
+properties that modify costs or output. Energy is shared locally across owned
+colonies; refinery Credits and station research feed the empire budget.
+Stations can be blockaded, bombarded, captured with a troop transport after
+being damaged, or dismantled. AI empires use the same rules.
+
+Gas giants are still not colonizable. Aetheri atmospheric habitats are deferred.
+Stations do not extend ship range and do not count as colonies.
+
+Existing campaigns load without changing their planets. Save format is now 57;
+balance profiles remain version 20. Repository and launch filenames are unchanged.
+
+Detailed rules: docs/gas-giant-stations.md
+Validation: docs/gas-station-validation.md
+
+No commit or push has been performed.

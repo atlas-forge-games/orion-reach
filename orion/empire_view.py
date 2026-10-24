@@ -164,6 +164,8 @@ def draw_empire(app):
     fleet, pay = game.fleet_maintenance(), salaries(game)
     from .accession import upkeep
     outreach = upkeep(game)
-    text(surface, f"Upkeep: {summary.maintenance-fleet-pay-outreach} facilities · {fleet} ships · {pay} salaries · {outreach} outreach (CR/turn)",
+    from .gas_giants import income as station_income
+    orbital = station_income(game, 'player')[2]
+    text(surface, f"Upkeep: {summary.maintenance-fleet-pay-outreach-orbital} facilities · {orbital} orbital · {fleet} ships · {pay} salaries · {outreach} outreach (CR/turn)",
          (400, 857), 11, FAINT)
     app.button("empire_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
