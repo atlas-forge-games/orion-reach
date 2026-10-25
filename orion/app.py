@@ -149,6 +149,10 @@ class App:
         self.info_scroll=0
         self.colony_slot=None
         self.colony_build_page=0
+        self.surface_build_request=None
+        self.surface_build_preview=None
+        self.surface_ground_down=None
+        self.surface_scene_rect=None
         self.clear_worker_selection()
         self.production_page=0
         self.catalog_page=0
@@ -177,6 +181,9 @@ class App:
 
     def go(self,screen, *, idle_prompt=False):
         clear_gesture(self)
+        self.surface_build_request=None
+        self.surface_build_preview=None
+        self.surface_ground_down=None
         if screen in GAME_SCREENS and self.game is None:
             screen="menu"
         if self.game and self.game.is_observer:
@@ -2078,6 +2085,10 @@ class App:
         self.production_page=max(0,min(max(0,(len(planet.construction_queue)-1)//6),self.production_page+delta))
 
     def choose_production(self,item_id):
+        from .surface_construction import begin_preview
+        if begin_preview(self,item_id):
+            return
+        self.surface_build_request=None
         try:
             self.game.queue_project(self.game.selected_system,self.game.selected_planet,item_id)
             planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
@@ -2277,6 +2288,9 @@ class App:
         if combat_camera.handle_input(self,event):
             return
         if handle_map_input(self,event,MAP):
+            return
+        from .surface_construction import handle_input as handle_surface_construction
+        if handle_surface_construction(self,event):
             return
         if event.type==pg.MOUSEBUTTONUP and event.button==3:
             self.mouse=self.logical_pos(event.pos)

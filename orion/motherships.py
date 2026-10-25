@@ -51,6 +51,7 @@ def create(game, system_id, owner, source=None):
         from .buildings import BUILDINGS
         habitat = replace(source, id=-identifier, name=f"{source.name[:30]} Ark", biome="Terran", size="Huge",
                           richness="Average", gravity="Normal", habitat=True,
+                          surface_layout={},
                           buildings=source.buildings.copy(), construction_queue=source.construction_queue.copy(),
                           disabled_buildings=source.disabled_buildings.copy())
         habitat.population = min(CAPACITY, source.population+source.slaves)

@@ -436,6 +436,8 @@ def draw_planet_overview(app):
         suitability = 'Growth varies by species' if game.is_observer else f'Your species: {factor}% growth efficiency'
         text(surface, f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
     hint = "E: End turn · R: Research · I: Empire · P: Menu · F5: Save"
+    if live and planet.owner == PLAYER and not game.is_observer:
+        hint = "Click open ground to build here · E: End turn · F5: Save"
     text(surface, hint if planet.is_gas_giant else "Click buildings to manage · Right-click for info · "+hint, (24, 877), 11, MUTED)
     if planet.colonized:
         from .accession_view import open_panel
@@ -443,6 +445,8 @@ def draw_planet_overview(app):
                    lambda: open_panel(app, system.id, planet.id), "ghost")
     app.button("planet_return", "Galaxy map" if app.planet_return=="galaxy" else "System view",
                (1210, 851, 206, 42), app.close_planet, "primary")
+    from .surface_construction import draw_preview
+    draw_preview(app, scene_rect)
 
 
 def production_catalog(app, identifiers, *, x, width, page_field, key, title):
@@ -488,7 +492,7 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
             elif item_id == "colony_ship":
                 detail = f"Found a colony with {game.starting_colonists()} B population · Unarmed"
             text(surface, shorten(detail, width-100, 11), (x+85, y+64), 11, CYAN)
-        app.button("production_build_"+item_id, "Queue", (x+width-116, y+85, 100, 26),
+        app.button("production_build_"+item_id, "Place" if app.surface_build_request and item_id in BUILDINGS else "Queue", (x+width-116, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen))
         text(surface, shorten("Resources reserved when work starts", width-139, 10), (x+13, y+94), 10, MUTED)
     app.button(key+"_previous", "←", (x, 793, 64, 30),
@@ -505,6 +509,9 @@ def draw_production(app):
     text(surface, shorten(f"{planet.name} · Choose production", 604, 35, "title"), (40, 28), 35, INK, "title")
     empire_stockpile(app, (676, 28, 724, 38))
     text(surface, "Available projects only · One of each module per mothership · Click a queued project to build it first." if planet.habitat else "Available projects only · One of each building per planet · Click a queued project to build it first.", (40, 83), 15, MUTED)
+    if app.surface_build_request:
+        pg.draw.rect(surface, PANEL, (40, 78, 1360, 28))
+        text(surface, "Build here: choose a building, then preview and confirm its position on the surface.", (40, 83), 15, GOLD)
     buildings = list(BUILDINGS)
     production_catalog(app, buildings, x=40, width=428, page_field="catalog_page", key="catalog", title="MODULES" if planet.habitat else "BUILDINGS")
     production_catalog(app, [*SHIP_TYPES, *(d.id for d in game.designs)], x=944, width=456,

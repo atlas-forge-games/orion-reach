@@ -56,6 +56,7 @@ def abandon(planet):
     planet.ascension_gate, planet.gate_charge = False, 0
     planet.shield_points = planet.battery_hull = planet.bombarded_turn = 0
     planet.buildings.clear()
+    planet.surface_layout = {}
     planet.disabled_buildings.clear()
     planet.construction_queue.clear()
     planet.trade_goods = False

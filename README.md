@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.81.2
+# Age of the Stars — Python prototype 0.82
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -8,6 +8,22 @@ existing names. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.82: fixed building positions and surface construction
+
+Colony buildings now retain their position and size when you queue, complete,
+cancel or demolish another building. The headquarters and shipyard keep their
+original anchors; the whole city no longer switches to a compact grid.
+
+Click open ground in your colony's planetary overview, choose a building,
+then click to confirm its previewed position. Esc or right-click cancels the
+preview. Buildings are drawn over the landscape, including in front of the
+trees along the edges. Normal construction-menu orders still select a free
+site automatically. Locations are saved and included in observed surveys.
+
+Install over v0.81.2. Existing campaigns load automatically; new saves use
+format 58 to retain building sites. Balance profiles remain at version 20.
+See [surface construction](docs/surface-construction.md).
 
 ## New in v0.81.2: population and growth details
 

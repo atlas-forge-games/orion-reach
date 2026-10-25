@@ -206,7 +206,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=57):
+    def from_dict(cls, data, systems, *, version=58):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -400,6 +400,7 @@ class Planet:
     species: dict[str, int] = field(default_factory=dict)
     loyalty_until: int = 0
     orbital_station: gas_giants.OrbitalStation | None = None
+    surface_layout: dict[str, list[int]] = field(default_factory=dict)
 
     @property
     def production_idle(self):
@@ -512,7 +513,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=57):
+    def from_dict(cls, data, expected_id, *, version=58):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -663,6 +664,8 @@ class Planet:
         if not data["colonized"] and (buildings or projects):
             raise ValueError
         record["construction_queue"] = projects
+        from .colony_layout import validate as validate_surface_layout
+        validate_surface_layout(record, version)
         return cls(**record)
 
 
@@ -1455,12 +1458,21 @@ class GameState:
             return f"All {planet.building_capacity} {'module bays' if planet.habitat else 'building slots'} are occupied or reserved."
         return None
 
-    def queue_building(self, system_id, planet_id, building_id, *, owner=PLAYER):
+    def queue_building(self, system_id, planet_id, building_id, *, owner=PLAYER, surface_site=None):
         error = self.build_error(system_id, planet_id, building_id, owner=owner)
         if error:
             raise RuleError(error)
         planet = self.planet_at(system_id, planet_id)
         price = self.project_price(building_id, owner)
+        if not planet.habitat:
+            from .colony_layout import reserve
+            try:
+                sites = reserve(self, system_id, planet, building_id, surface_site)
+            except ValueError as exc:
+                raise RuleError(str(exc)) from exc
+            planet.surface_layout = sites
+        elif surface_site is not None:
+            raise RuleError("Mothership modules do not use surface construction sites.")
         planet.construction_queue.append(ConstructionProject(building_id, resource_cost=price))
         planet.trade_goods = False
 
@@ -1757,6 +1769,8 @@ class GameState:
         self._require_colony(planet, owner)
         if not _integer(queue_index, 0, len(planet.construction_queue)-1):
             raise RuleError("That construction project is no longer in the queue.")
+        from .colony_layout import freeze as freeze_surface_layout
+        freeze_surface_layout(self, system_id, planet)
         project = planet.construction_queue.pop(queue_index)
         self._empire(owner).credits += project.refund
         self._empire(owner).resources += project.resource_refund
@@ -1768,6 +1782,8 @@ class GameState:
         self._require_colony(planet, owner)
         if not _integer(building_index, 0, len(planet.buildings)-1):
             raise RuleError("That building is no longer on this planet.")
+        from .colony_layout import freeze as freeze_surface_layout
+        freeze_surface_layout(self, system_id, planet)
         identifier = economy.remove_building(planet, building_index)
         defense_rules.normalize(planet)
         race_victory.normalize(self)
@@ -1881,6 +1897,8 @@ class GameState:
                 alerts.append(f"Energy shortage on {planet.name}: {affected}")
         completed = []
         for system, planet in self.settlements():
+            from .colony_layout import freeze as freeze_surface_layout
+            freeze_surface_layout(self, system.id, planet)
             for project in planet.advance_construction(self.bonuses_for(planet.owner), projects=True,
                     fund=lambda project: self.fund_project(project, planet.owner),
                     allow_ships=not planet.habitat or not motherships.shipyard_paused(self, planet)):
@@ -1979,7 +1997,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=57):
+    def from_dict(cls, data, *, version=58):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2210,6 +2228,10 @@ class GameState:
             race_victory.load(game, data, version)
             if version >= 9:
                 game.result = victory_rules.validate(game, data["result"])
+            if version < 58:
+                from .colony_layout import freeze as freeze_surface_layout
+                for system, planet in game.settlements():
+                    freeze_surface_layout(game, system.id, planet)
             from .balance import tag_game
             return tag_game(game)
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
@@ -2331,6 +2353,9 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
     from .gas_giants import seed as seed_gas_giants
     seed_gas_giants(game)
     species.normalize(game)
+    from .colony_layout import freeze as freeze_surface_layout
+    for system, planet in game.settlements():
+        freeze_surface_layout(game, system.id, planet)
     exploration_rules.refresh(game)
     from . import statistics as statistics_rules
     statistics_rules.record(game)

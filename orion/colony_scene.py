@@ -7,7 +7,8 @@ import random
 import pygame as pg
 
 from .building_art import draw_building_art
-from .buildings import BUILDINGS, ADVANCED_FACILITIES, facility_family
+from .buildings import BUILDINGS
+from . import colony_layout
 from .economy import building_status
 from .model import PLAYER, RIVAL
 from .planet_surface_art import surface_background
@@ -135,36 +136,6 @@ def fallback_landscape(biome, seed, size, settled):
     return image
 
 
-# Independent positions sit on the open foreground, away from coastlines.
-PLACEMENTS = {
-    "space_hub": (508, 341, 138, 90),
-    "research_lab": (212, 280, 174, 142),
-    "headquarters": (378, 280, 177, 169),
-    "factory": (545, 280, 218, 145),
-    "hydroponic_farm": (711, 280, 157, 144),
-    "mine": (238, 402, 168, 146),
-    "trade_center": (460, 402, 187, 146),
-    "shipyard": (681, 402, 248, 148),
-    "barracks": (348, 341, 140, 58),
-    "fortifications": (565, 341, 124, 58),
-    "missile_base": (160, 333, 84, 86),
-    "planetary_shield": (292, 333, 86, 87),
-    "sensor_array": (444, 334, 88, 90),
-    "jump_gate": (639, 336, 82, 94),
-    "interdictor": (752, 337, 85, 94),
-    "solar_array": (164, 392, 115, 85),
-    "fusion_plant": (768, 402, 105, 111),
-    "geothermal_plant": (375, 406, 105, 100),
-    "thermal_plant": (560, 409, 110, 100),
-    "singularity_plant": (712, 413, 112, 105),
-}
-from .race_victory import PROJECT_RACES
-for _identifier in PROJECT_RACES:
-    PLACEMENTS[_identifier] = (460, 380, 150, 120)
-
-PLACEMENTS.update({identifier: PLACEMENTS[facility_family(identifier)] for identifier in ADVANCED_FACILITIES})
-
-
 def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     surface = app.canvas
     rect = pg.Rect(rect)
@@ -184,43 +155,15 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
                if planet.colonized else "GAS GIANT · NOT COLONIZABLE" if planet.is_gas_giant else f"{planet.biome.upper()} · UNSETTLED")
     if framed:
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
-    items = sorted(scene_buildings(game, system.id, planet), key=lambda item: PLACEMENTS[item.asset_id][1])
-    expanded = any(item.asset_id in ("missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", "geothermal_plant", "thermal_plant", "singularity_plant", *ADVANCED_FACILITIES) for item in items)
-    def target_rect(placement):
-        cx, bottom, width, height = placement
-        scale = min(rect.w/928, rect.h/473)
-        cx, bottom = round(cx*rect.w/928), round(bottom*rect.h/473)
-        width, height = round(width*scale), round(height*scale)
-        return pg.Rect(rect.x+cx-width//2, rect.y+bottom-height, width, height)
-
-    def hit_rect(target):
-        hit = target.inflate(24, 0)
-        hit.h += 38
-        return hit
-
-    targets = [target_rect(PLACEMENTS[item.asset_id]) for item in items]
-    hits = [hit_rect(target) for target in targets]
-    expanded = expanded or any(a.colliderect(b) for i, a in enumerate(hits) for b in hits[i+1:])
-    rows = max(1, (len(items)+4)//5)
-    if rows <= 3:
-        row_height = min(130, 195//max(1, rows-1))
-        first_bottom = 340 if rows == 1 else 420-(rows-1)*row_height
-    else:
-        # Extremely dense/custom colonies retain enough room for click targets.
-        row_height = min(130, 400//rows)
-        first_bottom = row_height+33
-    for index, item in enumerate(items):
-        if expanded:
-            width = 160 if rows <= 2 else 128
-            target = target_rect((160+index%5*152, first_bottom+index//5*row_height, width, min(110, row_height-34)))
-            # Labels and click padding keep their pixel size when the overview
-            # reserves space below the city for its administration breakdown.
-            bottom = target.bottom
-            target.h = min(target.h, max(1, math.floor(row_height*rect.h/473)-42))
-            target.bottom = bottom
-        else:
-            target = targets[index]
-        hit = hit_rect(target)
+    items = scene_buildings(game, system.id, planet)
+    sites = colony_layout.layout([item.asset_id for item in items], planet.surface_layout)
+    for item in sorted(items, key=lambda item: sites[item.asset_id][1]):
+        cx, bottom, width, height = sites[item.asset_id]
+        sx, sy = rect.w/colony_layout.WIDTH, rect.h/colony_layout.HEIGHT
+        target = pg.Rect(rect.x+round((cx-width//2)*sx), rect.y+round((bottom-height)*sy),
+                         round(width*sx), round(height*sy))
+        hx, hy, hw, hh = colony_layout.footprint(sites[item.asset_id])
+        hit = pg.Rect(rect.x+round(hx*sx), rect.y+round(hy*sy), round(hw*sx), round(hh*sy))
         if item.asset_id == "headquarters":
             action = app.open_empire if planet.owner == PLAYER else app.open_rival
             caption = "Empire overview" if planet.owner == PLAYER else "Rival report"

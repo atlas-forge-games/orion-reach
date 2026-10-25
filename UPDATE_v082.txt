@@ -1,0 +1,24 @@
+AGE OF THE STARS / ORION REACH — v0.82 FIXED BUILDING SITES
+
+Extract over v0.81.2 into the repository folder containing main.py and orion/.
+Replace the included files, then launch normally with python main.py.
+
+Existing buildings no longer move or shrink when another building is queued,
+completed, cancelled or demolished. Headquarters and shipyard retain their
+original anchor points. Sites and sprite sizes are stored in saved campaigns.
+
+To choose where to build:
+1. Click open ground in your owned colony's planetary overview.
+2. Choose a building using Place in the construction menu.
+3. Move the preview to the desired spot and click to confirm.
+4. Esc or right-click cancels without creating an order or spending resources.
+
+Occupied spots are rejected. Buildings are drawn in front of the landscape,
+including trees on the left. The normal construction menu still supports
+automatic site selection. Left-click management and right-click building
+information continue to work.
+
+Old campaigns load automatically. New saves use format 58; keep all players'
+installations updated before sharing those saves. Balance profile version 20,
+construction prices, building effects and slot limits are unchanged. This
+package does not replace any building or landscape artwork.
