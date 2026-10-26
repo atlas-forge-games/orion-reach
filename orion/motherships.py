@@ -8,7 +8,9 @@ SPEED_FACTOR = .25
 # Standard 7 LY + Wanderer 3 LY + onboard reserves 15 LY = 25 LY.
 FUEL_RANGE_BONUS = 15
 BASIC_SHIELDS = 12
-STATIONARY_BUILDINGS = frozenset({"missile_base", "planetary_shield", "interdictor", "jump_gate", "fortifications"})
+STATIONARY_BUILDINGS = frozenset({"missile_base", "planetary_shield", "interdictor", "jump_gate", "fortifications",
+                                "advanced_planetary_shield", "advanced_interdictor", "planetary_fortress",
+                                "terraforming_facility", "habitat_dome", "adaptation_centre", "enclosed_biosphere"})
 
 
 def is_wanderer(game, owner="player"):

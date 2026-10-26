@@ -331,20 +331,20 @@ class EditorInterfaceTests(BalanceTestCase):
         e=self.editor
         self.click('tree')
         source=next(b[1] for b in e.buttons if b[0]=='tech_ion_drives').center
-        target=next(r.center for r,b,t,s in e.drop_slots if (b,t,s)==('construction',1,0))
+        target=next(r.center for r,b,t,s in e.drop_slots if (b,t,s)==('power',1,0))
         e.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN,button=1,pos=self.window_pos(source)))
         e.handle_event(pg.event.Event(pg.MOUSEMOTION,pos=self.window_pos(target),rel=(0,0),buttons=(1,0,0)))
         e.handle_event(pg.event.Event(pg.MOUSEBUTTONUP,button=1,pos=self.window_pos(target)))
         e.draw()
-        self.assertEqual(e.document.entry('technologies','ion_drives')['branch'],'construction')
+        self.assertEqual(e.document.entry('technologies','ion_drives')['branch'],'power')
         self.assertFalse(e.errors)
         self.click('data')
         self.assertEqual(e.identifier,'ion_drives')
         self.click('field_branch')
         self.assertEqual(e.modal['kind'],'choices')
-        self.click('choice_power')
-        self.assertEqual(e.document.entry('technologies','ion_drives')['branch'],'power')
-        self.assertTrue(e.errors)  # Three alternatives: save must be blocked.
+        self.click('choice_construction')
+        self.assertEqual(e.document.entry('technologies','ion_drives')['branch'],'construction')
+        self.assertTrue(e.errors)  # Four alternatives / an incomplete tier: save is blocked.
         self.click('undo')
         self.assertFalse(e.errors)
         self.click('save')

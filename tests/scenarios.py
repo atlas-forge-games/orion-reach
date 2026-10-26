@@ -85,11 +85,11 @@ def research_to(game, *identifiers, owner='player'):
         game.choose_research('ascension_theory', owner=owner)
 
 
-def use_research_layout(test_case, *, legacy=False):
+def use_research_layout(test_case, *, legacy=False, classic=False):
     """Research fixtures explicitly choose their era and restore the prior profile."""
     from orion import balance
     previous = balance.active_profile()
-    balance.activate(balance.legacy_profile() if legacy else balance.default_profile())
+    balance.activate(balance.legacy_profile() if legacy else balance.classic_profile() if classic else balance.default_profile())
     test_case.addCleanup(lambda: balance.activate(previous))
 
 

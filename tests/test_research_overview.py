@@ -22,6 +22,8 @@ from scenarios import empty_fleet_game
 
 class ResearchOverviewTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.addCleanup(pg.quit)
@@ -209,7 +211,7 @@ class ResearchOverviewTests(unittest.TestCase):
         self.click("open_research")
         self.click("research_choose_drone_carriers", mouse_button=3)
         bounds = []
-        lines = wrapped_lines(TECHNOLOGIES["drone_carriers"].description, 784, 17)
+        lines = wrapped_lines(TECHNOLOGIES["drone_carriers"].description, 900, 15)
         values = []
         def capture(surface, value, *args, **kwargs):
             rect = text(surface, value, *args, **kwargs)
@@ -217,11 +219,11 @@ class ResearchOverviewTests(unittest.TestCase):
                 bounds.append(rect)
                 values.append(value)
             return rect
-        with patch("orion.ui.text", side_effect=capture):
+        with patch("orion.research_view.text", side_effect=capture):
             self.app.render()
         self.assertTrue(all(line in values for line in lines))
         close = next(b for b in self.app.buttons if b.key == "dialog_close")
-        paragraphs = [r for r in bounds if r.left == 322]
+        paragraphs = [r for r in bounds if r.left == 270 and 225 <= r.top < 708]
         self.assertLess(max(r.bottom for r in paragraphs), close.rect.top)
         self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in self.app.buttons))
         self.click("dialog_close")

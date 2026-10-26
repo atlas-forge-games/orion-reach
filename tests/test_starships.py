@@ -50,7 +50,7 @@ def carrier_battle(*, enemy="frigate", custom=False, two=False):
 class HullResearchTests(unittest.TestCase):
     def setUp(self):
         from scenarios import use_research_layout
-        use_research_layout(self)
+        use_research_layout(self, classic=True)
 
     def test_named_research_gates_custom_and_standard_construction_for_both_empires(self):
         for owner in (PLAYER, RIVAL):
@@ -142,6 +142,10 @@ class HullResearchTests(unittest.TestCase):
 
 
 class CarrierCombatTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
+
     def test_launch_creates_independent_ready_units_and_spends_firing_action(self):
         game = carrier_battle()
         campaign_before = copy.deepcopy(game.ships)

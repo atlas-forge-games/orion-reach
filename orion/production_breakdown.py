@@ -37,6 +37,8 @@ def describe(game, planet, kind):
     def strain(value):
         r = game.strain_report(planet)
         lines.append(f'Strain: empire {r.empire:g}% + integration {r.integration:g}% + distance {r.distance:.2f}%')
+        if r.relief:
+            lines.append(f'Powered administration facilities: −{r.relief:g} percentage points after the cap')
         lines.append(f'Combined {r.total:.2f}% (cap {administration.MAX_STRAIN:g}%) × {administration.sensitivity(kind):g}% sensitivity')
         result = administration.reduced_output(value, b, kind)
         lines.append(f'After strain: floor({value:g} × {1-r.loss(kind)/100:.4f}) = {result:g}')

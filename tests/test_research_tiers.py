@@ -43,7 +43,7 @@ class TierRulesTests(unittest.TestCase):
     def setUp(self):
         from orion import balance
         previous = balance.active_profile()
-        balance.activate(balance.default_profile())
+        balance.activate(balance.classic_profile())
         self.addCleanup(lambda: balance.activate(previous))
 
     def test_every_path_has_two_choices_per_tier_and_no_dead_ends(self):

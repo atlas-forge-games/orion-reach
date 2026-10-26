@@ -205,7 +205,7 @@ class VictoryOptionRulesTests(unittest.TestCase):
 class AdvancedFuelTests(unittest.TestCase):
     def setUp(self):
         from scenarios import use_research_layout
-        use_research_layout(self)
+        use_research_layout(self, classic=True)
 
     def test_tanks_extend_existing_fleets_additively_without_changing_speed(self):
         game = campaign()
@@ -276,7 +276,7 @@ class AdvancedFuelTests(unittest.TestCase):
 class VictorySetupScreenTests(unittest.TestCase):
     def setUp(self):
         from scenarios import use_research_layout
-        use_research_layout(self)
+        use_research_layout(self, classic=True)
         self.directory = tempfile.TemporaryDirectory()
         self.app = App(Path(self.directory.name), capture=True)
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)

@@ -45,6 +45,14 @@ def compact_yields(game, definition, planet):
         parts.append(f"+{amount} RES")
     if definition.energy_output:
         parts.append(f"+{definition.energy_output} ENERGY")
+    for value, label in ((definition.growth_bonus, '% growth'), (definition.capacity_bonus, '% capacity'),
+                         (definition.adaptation, '% environment penalty removed'), (definition.strain_relief, ' points strain relief')):
+        if value:
+            parts.append(f'+{value}{label}')
+    if definition.shield_capacity:
+        parts.append(f'{definition.shield_capacity} shield points')
+    if definition.interdiction_slow:
+        parts.append(f'{definition.interdiction_slow}% hostile slowdown within {definition.interdiction_range} ly')
     return " · ".join(parts)
 
 
@@ -106,7 +114,7 @@ def draw_colony(app):
                                     (2, "colony_power", "Power"),
                                     (3, "colony_advanced", "Advanced")):
         app.button(key, label, (751+page_index*158, 378, 151, 26),
-                   lambda i=page_index: setattr(app, "colony_build_page", i),
+                   lambda i=page_index: (setattr(app, "colony_build_page", i), setattr(app, 'colony_catalog_page', 0)),
                    "primary" if app.colony_build_page == page_index else "normal")
     estimates = game.queue_estimates(planet)
     for index in range(12):
@@ -149,6 +157,10 @@ def draw_colony(app):
 
     page = [BUILDINGS[b] for b in BUILDING_GROUPS[app.colony_build_page]
             if game.build_error(system.id, planet.id, b) is None]
+    per_page = 5 if app.colony_build_page == 2 else 6
+    pages = max(1, (len(page)+per_page-1)//per_page)
+    app.colony_catalog_page = min(app.colony_catalog_page, pages-1)
+    page = page[app.colony_catalog_page*per_page:(app.colony_catalog_page+1)*per_page]
     if not page:
         text(surface, "No available modules in this category." if planet.habitat else "No available buildings in this category.", (769, 427), 15, MUTED)
     for i, definition in enumerate(page):
@@ -172,13 +184,21 @@ def draw_colony(app):
                    lambda b=definition.id: app.queue_building(b), enabled=reason is None)
         text(surface, hint, (x+510, y+36), 9, FAINT, "mono")
 
+    if pages > 1:
+        page_y = 699 if app.colony_build_page == 2 else 767
+        app.button('colony_catalog_previous', '←', (751, page_y, 48, 28),
+                   lambda: setattr(app, 'colony_catalog_page', app.colony_catalog_page-1), enabled=app.colony_catalog_page > 0)
+        text(surface, f'{app.colony_catalog_page+1} / {pages}', (814, page_y+8), 11, MUTED)
+        app.button('colony_catalog_next', '→', (892, page_y, 48, 28),
+                   lambda: setattr(app, 'colony_catalog_page', app.colony_catalog_page+1), enabled=app.colony_catalog_page < pages-1)
+
     if app.colony_build_page == 2:
         power = game.planet_energy(planet)
-        panel(surface, (751, 705, 625, 101))
-        text(surface, "LOCAL POWER DISPATCH", (769, 718), 10, GOLD, "mono", 1)
-        text(surface, f"{power.base_generated} steady ({power.orbital_generated} orbital) + {power.backup_generated} backup / {power.demand} demand", (769, 738), 16, INK)
-        text(surface, f"Backup fuel: {power.fuel_used} RES/turn · {game.resources_for(planet.owner):,} stored empire-wide", (769, 763), 11, CYAN)
-        text(surface, "Steady sources first. Backup uses stored Resources; no fuel while on standby.", (769, 785), 10, MUTED)
+        panel(surface, (951, 705, 425, 101))
+        text(surface, "LOCAL POWER DISPATCH", (967, 718), 10, GOLD, "mono", 1)
+        text(surface, f"{power.base_generated} steady + {power.backup_generated} backup / {power.demand} demand", (967, 738), 14, INK)
+        text(surface, f"Backup fuel: {power.fuel_used} RES/turn · {game.resources_for(planet.owner):,} stored", (967, 763), 11, CYAN)
+        text(surface, "Steady sources first; backup burns fuel only when needed.", (967, 785), 10, MUTED)
 
     # Inspect an existing building or queued project, with reversible queue cancellation.
     panel(surface, (64, 711, 662, 82))

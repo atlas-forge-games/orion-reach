@@ -32,7 +32,8 @@ def unlock(g, kind, owner="player"):
     state = g.research_state(owner)
     for tier in range(1, spec.tier+1):
         if tier not in state.completed_tiers(spec.branch):
-            state.completed.append(choices(spec.branch, tier)[0].id)
+            gate = mega.required_technology(kind) if tier == spec.tier else None
+            state.completed.append(gate or choices(spec.branch, tier)[0].id)
 
 
 def install(g, kind, sid=0, stage=4, owner="player"):
@@ -237,7 +238,7 @@ class MegastructureTests(unittest.TestCase):
 
     def test_array_can_recover_excluded_choice_and_roundtrip(self):
         install(self.g, "research_array")
-        alternative = choices("physics", 1)[1].id
+        alternative = choices(mega.MEGASTRUCTURES['research_array'].branch, 1)[1].id
         self.assertEqual(self.g.technology.status(alternative), "excluded")
         self.g._settle_power()
         with patch("orion.megastructures.random.Random") as rng:

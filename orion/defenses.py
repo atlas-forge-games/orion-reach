@@ -9,6 +9,7 @@ BASE_HULL = 40
 SHIELD_CAPACITY = 100
 SHIELD_RECOVERY = 25
 BASE_RECOVERY = 4
+SHIELD_BUILDINGS = ('planetary_shield', 'advanced_planetary_shield')
 
 
 def base_id(system_id, planet_id):
@@ -30,22 +31,33 @@ def bases(game, system_id, owner=None):
 
 
 def shield_capacity(game, planet):
-    return max(SHIELD_CAPACITY, game.bonuses_for(planet.owner).get("shield_capacity", 0)) if "planetary_shield" in planet.buildings and planet.owner else 0
+    from .buildings import BUILDINGS
+    if not planet.owner:
+        return 0
+    basic = max(SHIELD_CAPACITY, game.bonuses_for(planet.owner).get("shield_capacity", 0)) if 'planetary_shield' in planet.buildings else 0
+    return max(basic, *(BUILDINGS[b].shield_capacity for b in planet.buildings if b in SHIELD_BUILDINGS), 0)
+
+
+def operational_shield_capacity(game, planet):
+    from .buildings import BUILDINGS
+    return max((max(SHIELD_CAPACITY, game.bonuses_for(planet.owner).get('shield_capacity', 0))
+                    if b == 'planetary_shield' else BUILDINGS[b].shield_capacity
+                    for b in SHIELD_BUILDINGS if game.building_operational(planet, b)), default=0)
 
 
 def effective_shield(game, planet):
-    return planet.shield_points if game.building_operational(planet, "planetary_shield") else 0
+    return min(planet.shield_points, operational_shield_capacity(game, planet))
 
 
 def commissioned(game, planet, identifier):
-    if identifier == "planetary_shield":
+    if identifier in SHIELD_BUILDINGS:
         planet.shield_points = shield_capacity(game, planet)
     if identifier == "missile_base":
         planet.battery_hull = BASE_HULL
 
 
 def normalize(planet):
-    if "planetary_shield" not in planet.buildings:
+    if not any(b in planet.buildings for b in SHIELD_BUILDINGS):
         planet.shield_points = 0
     if "missile_base" not in planet.buildings:
         planet.battery_hull = 0
@@ -60,8 +72,9 @@ def advance(game):
             blocked = any(hostile(game, s.owner, planet.owner) and (s.damage or s.drone_bays) and not s.in_transit and s.system_id == system.id
                           for s in game.ships)
             if not blocked and planet.bombarded_turn < game.turn-1:
-                if game.building_operational(planet, "planetary_shield"):
-                    planet.shield_points = min(shield_capacity(game, planet), planet.shield_points+SHIELD_RECOVERY)
+                capacity = operational_shield_capacity(game, planet)
+                if capacity:
+                    planet.shield_points = min(capacity, planet.shield_points+SHIELD_RECOVERY)
                 if game.building_operational(planet, "missile_base"):
                     planet.battery_hull = min(BASE_HULL, (planet.battery_hull or BASE_HULL)+BASE_RECOVERY)
 

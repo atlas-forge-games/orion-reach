@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.82
+# Age of the Stars — Python prototype 0.83
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -8,6 +8,29 @@ existing names. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.83: six research fields, three choices per tier
+
+Research now uses six blocks: **Energy technology, Weapons technology,
+Spaceflight, Industry, Biotechnology and Xenoscience**. Every tier has exactly
+three alternatives. Complete one to exclude the other two and open all three
+options in the next tier. There are no connected paths or specific technology
+prerequisites between tiers. Unfinished projects can still be switched without
+losing invested research points.
+
+Economic discoveries unlock separate facilities, including advanced factories,
+laboratories, power plants and population facilities. Build and power each one
+to receive its benefits; research does not upgrade existing buildings for free.
+The update adds 29 facilities, six high-resolution building illustrations,
+paginated construction lists and three-choice balance-editor support.
+
+Install over v0.82. **Start a new campaign for the six-field tree.** Existing
+campaigns retain their original research choices, effects, prices and progress.
+An existing custom `balance.json` also retains its old tree; use **Reset all**
+and save a separate profile in the balance editor to adopt the new defaults.
+Saves use format 59 and balance profiles use version 21. See the
+[complete research catalogue and rules](docs/six-field-research.md).
+Older release notes and legacy rule sections below describe their original versions.
 
 ## New in v0.82: fixed building positions and surface construction
 
@@ -871,8 +894,9 @@ are editable. **Undo**, **Redo**, **Reset item** and **Reset all** support exper
 In **Research tree**, drag a technology between branches and tiers. Dropping
 onto another technology swaps their positions. Double-click to edit its cost,
 effects, name or description. Research branches can also be reordered. The
-current game supports nine branches, eight possible tiers, and up to two
-alternatives per tier; validation catches gaps and overfilled tiers.
+current default supports six branches, eight possible tiers, and exactly three
+alternatives per tier; validation catches gaps, incomplete and overfilled tiers.
+Older profiles retain their nine branches and paired choices.
 
 **Save** writes `balance.json` beside `main.py`, with the previous file retained
 as `balance.json.bak`. **Save as** and **Open** manage alternate profiles. Start
@@ -2394,9 +2418,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Diplomacy · D** opens race portraits and profiles, signed relations, trade,
   non-aggression, friendship, war and research agreements, plus recent responses. Treaty income is
   included in Empire Overview and Rival report.
-- **Research · R** opens nine branches, each with sequential tiers and two mutually
-  exclusive choices per tier. Discover technologies that improve production,
-  science, commerce, construction prices, travel and colonization. The rival researches too.
+- **Research · R** opens six branches, each with sequential tiers and three mutually
+  exclusive choices per tier. Choose one to unlock buildings, hulls, equipment
+  or empire improvements. Any choice opens the next tier. Rivals use the same rules.
 - Back buttons and Escape follow **Colony → Planet → Galaxy**, or return through
   **System** when the planet was opened from the full orbital diagram. Pause, settings
   and Continue preserve the active overview. Use the planet list to switch
@@ -2668,10 +2692,12 @@ Open **Research · R** from any gameplay screen, or press **R**. Build a researc
 lab in a colony to start producing points. Research agreements and discovered
 technologies can also provide research income.
 
-- Choose a branch, then one of the two technologies in its first tier.
-  Tiers **I–VIII** cost **40 / 100 / 120 / 220 / 360 / 540 / 760 / 1,040 RP**.
-  All nine branches are available from the start and contain two to eight tiers.
-  Completing a tier unlocks both choices at the next tier in that branch.
+- Choose a branch, then one of the three technologies in its first tier.
+  Each card shows its actual RP cost under the campaign's saved balance profile.
+  All six branches are available from the start and contain four to eight tiers.
+  Completing a tier unlocks all three choices at the next tier in that branch.
+  Building research unlocks construction; its output requires a completed,
+  operating facility. See [the current catalogue](docs/six-field-research.md).
 - Left-click starts research immediately. You can switch unfinished projects,
   transferring all invested RP to the new choice. The alternative is excluded
   only after discovery. One empire-wide project runs at a time.
@@ -3290,7 +3316,7 @@ travels using the normal rules, and invades exposed colonies on End Turn. It
 favours enemy gate colonies. A decisive AI invasion stops the turn before income
 or production; its result and consumed transports are saved immediately by the UI.
 
-### Science
+### Science (retired Ascension rules for historical saves)
 
 1. Complete **every tier in all nine branches**: 30 discoveries in a new campaign. Older campaigns retain their eight-branch goal. Every
    combination of exclusive technology choices can reach this victory path.

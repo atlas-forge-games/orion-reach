@@ -313,8 +313,9 @@ class BalanceEditor:
         data=self.document.profile['data']
         self.tree_page=min(self.tree_page,(len(branches)-1)//3)
         self.button('tree_previous','←',(1140,127,45,32),lambda:setattr(self,'tree_page',max(0,self.tree_page-1)),enabled=self.tree_page>0)
-        text(self.canvas,f'{self.tree_page+1} / 3',(1200,137),12,MUTED)
-        self.button('tree_next','→',(1254,127,45,32),lambda:setattr(self,'tree_page',self.tree_page+1),enabled=self.tree_page<2)
+        pages = (len(branches)+2)//3
+        text(self.canvas,f'{self.tree_page+1} / {pages}',(1200,137),12,MUTED)
+        self.button('tree_next','→',(1254,127,45,32),lambda:setattr(self,'tree_page',self.tree_page+1),enabled=self.tree_page<pages-1)
         self.button('edit_technology','Edit selected',(1260,164,138,30),self.edit_technology)
         for column,branch in enumerate(branches[self.tree_page*3:self.tree_page*3+3]):
             x=324+column*364
@@ -323,8 +324,10 @@ class BalanceEditor:
                 y=248+(tier-1)*69
                 panel(self.canvas,(x,y,352,65),(10,22,32))
                 ids=self.document.choices(branch,tier)
-                for slot in range(2):
-                    rect=pg.Rect(x+7,y+5+slot*28,338,25)
+                from .research_fields import is_modern
+                count = 3 if is_modern(branches) else 2
+                for slot in range(count):
+                    rect=pg.Rect(x+7,y+3+slot*(20 if count == 3 else 28),338,19 if count == 3 else 25)
                     self.drop_slots.append((rect,branch,tier,slot))
                     if slot<len(ids):
                         key=ids[slot]

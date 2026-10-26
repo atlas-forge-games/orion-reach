@@ -25,12 +25,16 @@ from scenarios import empty_fleet_game
 
 class TradeGoodsTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
         self.game = empty_fleet_game(seed=2408, with_ai=False)
         self.planet = self.game.planet_at(0, 2)
 
     def test_every_building_blocks_completed_queued_and_paused_duplicates(self):
         self.game.technology.completed = list(TECHNOLOGIES)
         for item in BUILDINGS:
+            if not BUILDINGS[item].enabled:
+                continue
             with self.subTest(building=item):
                 from orion.race_victory import PROJECT_RACES
                 self.game.race_id = PROJECT_RACES.get(item, "terran")
@@ -215,6 +219,8 @@ class TradeGoodsTests(unittest.TestCase):
 
 class ProductionInterfaceTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.addCleanup(pg.quit)

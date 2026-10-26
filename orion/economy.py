@@ -158,7 +158,24 @@ def mining_output(planet, bonuses=None):
 
 
 def local_bonuses(planet, bonuses):
-    return bonuses.at(planet) if isinstance(bonuses, PowerBonuses) else (bonuses or {})
+    if getattr(bonuses, 'facility_planet', None) == id(planet):
+        return bonuses
+    source = getattr(bonuses, 'facility_source', bonuses)
+    values = source.at(planet) if isinstance(source, PowerBonuses) else (source or {})
+    result = PowerBonuses(values, values.power) if isinstance(values, PowerBonuses) else FacilityBonuses(values)
+    result.facility_source, result.facility_planet = source, id(planet)
+    facilities = [BUILDINGS[key] for key in active_buildings(planet, values)]
+    result['facility_growth'] = sum(b.growth_bonus for b in facilities)
+    result['facility_capacity'] = sum(b.capacity_bonus for b in facilities)
+    result['facility_adaptation'] = min(80, sum(b.adaptation for b in facilities))
+    relief = sum(b.strain_relief for b in facilities)
+    result['administrative_strain'] = max(0, result.get('administrative_strain', 0)-relief)
+    result['facility_strain_relief'] = relief
+    return result
+
+
+class FacilityBonuses(dict):
+    """Runtime-only marker prevents nested yield calculations adding facilities twice."""
 
 
 def building_status(planet, index, bonuses=None):

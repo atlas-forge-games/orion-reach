@@ -177,8 +177,8 @@ class ShipScalingTests(unittest.TestCase):
 
     def test_v16_profiles_keep_old_ship_and_queue_values(self):
         old = balance.legacy_profile()
-        # Keep the modern research tree, but use the prior ship economy.
-        old['data']['technologies'] = balance.default_profile()['data']['technologies']
+        # Keep the pre-v0.83 research tree, but use the prior ship economy.
+        old['data']['technologies'] = balance.classic_profile()['data']['technologies']
         balance.activate(old)
         game = self.campaign()
         game.resources = 1000

@@ -35,6 +35,8 @@ for _identifier in PROJECT_RACES:
     PLACEMENTS[_identifier] = (460, 380, 150, 120)
 
 PLACEMENTS.update({identifier: PLACEMENTS[facility_family(identifier)] for identifier in ADVANCED_FACILITIES})
+from .advanced_buildings import ART_FAMILIES
+PLACEMENTS.update({identifier: PLACEMENTS[family] for identifier, family in ART_FAMILIES.items()})
 
 
 def preferred(identifier):

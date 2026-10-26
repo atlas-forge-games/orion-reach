@@ -6,7 +6,7 @@ import pygame as pg
 from . import megastructures as rules, motherships
 from .model import RuleError
 from .planet_art import draw_star
-from .research import BRANCHES
+from .research import BRANCHES, TECHNOLOGIES
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
 ART = Path(__file__).resolve().parents[1]/"assets"/"megastructures"
@@ -107,7 +107,9 @@ def draw_megastructure(app):
             text(surface, shorten(spec.name, 278, size, "title"), (x+16, 489), size, INK, "title")
             paragraph(surface, spec.description, (x+17, 528), 276, 13, MUTED, 20)
             text(surface, f"{spec.resource_cost*10:,} RES · {spec.work_cost*10:,} work total", (x+17, 644), 13, GOLD)
-            text(surface, f"{BRANCHES[spec.branch].name} · tier {spec.tier}", (x+17, 672), 11, CYAN)
+            requirement = rules.required_technology(spec.id)
+            label = TECHNOLOGIES[requirement].name if requirement else f"{BRANCHES[spec.branch].name} · tier {spec.tier}"
+            text(surface, label, (x+17, 672), 11, CYAN)
             reason = rules.start_error(game, system.id, spec.id) if live else "Survey must be refreshed first."
             if game.is_observer:
                 reason = "Observer view"

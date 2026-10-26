@@ -11,6 +11,14 @@ REPAIR_WORK = 2
 REPAIR_RESOURCES = 3
 
 
+def required_technology(kind):
+    from .research import BRANCHES
+    from .research_fields import is_modern
+    if is_modern(BRANCHES):
+        return {'stellar_forge': 'stellar_forge_engineering', 'asteroid_network': 'asteroid_engineering'}.get(kind)
+    return None
+
+
 @dataclass(frozen=True)
 class MegastructureSpec:
     id: str
@@ -114,9 +122,12 @@ def start_error(game, system_id, kind, owner="player"):
     if reason:
         return reason
     spec = MEGASTRUCTURES[kind]
+    required = required_technology(kind)
+    if required and not game.research_state(owner).has_unlock(required):
+        return 'Requires '+TECHNOLOGIES[required].name+'.'
     if not any(t >= spec.tier for t in game.research_state(owner).completed_tiers(spec.branch)):
         from .research import BRANCHES
-        return f"Requires tier {spec.tier} in {BRANCHES[spec.branch].name} (either choice)."
+        return f"Requires tier {spec.tier} in {BRANCHES[spec.branch].name}."
     return None
 
 
@@ -342,6 +353,7 @@ def discover(game):
                 continue
             state = game.research_state(owner)
             unknown = [t for t in TECHNOLOGIES if t not in state.completed
+                       and TECHNOLOGIES[t].enabled
                        and (t != "ascension_theory" or "science" in game.victory_conditions)]
             if not unknown:
                 continue

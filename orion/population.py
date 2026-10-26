@@ -27,7 +27,9 @@ def population_capacity(planet, bonuses=None):
     if planet.is_gas_giant:
         return 0
     base = POPULATION_LIMITS[planet.size] + (GAIA_CAPACITY if planet.biome == "Gaia" else 0)
-    return base*(100+(bonuses or {}).get("capacity_percent", 0))//100
+    from .economy import local_bonuses
+    bonuses = local_bonuses(planet, bonuses)
+    return min(100, base*(100+bonuses.get("capacity_percent", 0)+bonuses.get('facility_capacity', 0))//100)
 
 
 def food_required(population, bonuses=None):
@@ -95,6 +97,8 @@ class PopulationReport:
     passive_growth: int = 0
     swarm: bool = False
     environment_percent: int = 100
+    facility_growth: int = 0
+    adaptation: int = 0
 
     @property
     def consumed(self):
@@ -118,6 +122,8 @@ class PopulationReport:
     @property
     def growth_rate(self):
         base = self.base_growth_rate
+        if base:
+            base = max(1, base*(100+self.facility_growth)//100)
         return max(1, base*self.environment_percent//100) if base else 0
 
     @property
@@ -178,11 +184,16 @@ def report(planet, bonuses=None):
     if bonuses.get("assembly_percent") and planet.colonized:
         from .research import gross_colony_yields
         reserved = assembly_work(planet, gross_colony_yields(planet, bonuses)[0], bonuses)
+    environment = environments.growth_factor(planet)
+    adaptation = bonuses.get('facility_adaptation', 0)
+    if 0 < environment < 100:
+        environment += (100-environment)*adaptation//100
     return PopulationReport(planet.population, population_capacity(planet, bonuses), produced,
                             planet.growth_progress, planet.colonized, GAIA_GROWTH_LIMIT if planet.biome == "Gaia" else GROWTH_LIMIT,
                             food_required(planet.workforce, bonuses), growth,
                             bool(bonuses.get("assembly_percent")), reserved, bonuses.get("passive_growth", 0),
-                            bool(bonuses.get("swarm_growth")), environments.growth_factor(planet))
+                            bool(bonuses.get("swarm_growth")), environment,
+                            bonuses.get('facility_growth', 0), adaptation)
 
 
 def advance(planet, start):

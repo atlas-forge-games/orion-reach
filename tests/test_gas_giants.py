@@ -143,7 +143,7 @@ class GasGiantTests(unittest.TestCase):
         self.assertEqual(loaded.systems, game.systems)
         self.assertFalse(any(p.is_gas_giant for s in loaded.systems for p in s.worlds))
         upgraded = balance.profile_for(loaded)
-        self.assertEqual(upgraded['version'], 20)
+        self.assertEqual(upgraded['version'], balance.VERSION)
         self.assertEqual(upgraded['data']['environments']['terran']['Ice'], 65)
         self.assertEqual(upgraded['data']['biomes']['Gas Giant']['habitability'], 0)
 

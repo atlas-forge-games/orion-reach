@@ -13,13 +13,17 @@ def modifier_limits():
     """Upper bounds for saved orders, including earlier discoveries in a profile."""
     from .research import TECHNOLOGIES
     from .races import RACES
+    from .buildings import BUILDINGS
     tech = [dict(t.effects) for t in TECHNOLOGIES.values()]
     races = [dict(r.effects) for r in RACES.values()]
+    facilities = [b for b in BUILDINGS.values() if b.enabled]
     def racial(key):
         return max((r.get(key, 0) for r in races), default=0)
     return (max(GATE_SPEED_BONUS, sum(t.get("colony_speed", 0) for t in tech)+racial("colony_speed")),
-            max(INTERDICTION_RANGE, max((t.get("interdiction_range", 0) for t in tech), default=0)+racial("interdiction_range")),
-            max(INTERDICTION_SLOW, max((t.get("interdiction_slow", 0) for t in tech), default=0)+racial("interdiction_slow")))
+            max(INTERDICTION_RANGE, max((t.get("interdiction_range", 0) for t in tech), default=0)+racial("interdiction_range"),
+                max((b.interdiction_range for b in facilities), default=0)),
+            max(INTERDICTION_SLOW, max((t.get("interdiction_slow", 0) for t in tech), default=0)+racial("interdiction_slow"),
+                max((b.interdiction_slow for b in facilities), default=0)))
 
 
 def hostile(game, first, second):
@@ -39,10 +43,15 @@ def route_modifiers(game, origin, destination, owner):
             bonus = GATE_SPEED_BONUS
     fields = []
     for p in destination.worlds:
-        if not game.building_operational(p, "interdictor") or not hostile(game, owner, p.owner):
+        if not hostile(game, owner, p.owner):
             continue
         benefits = game.bonuses_for(p.owner)
-        fields.append((max(INTERDICTION_SLOW, benefits.get("interdiction_slow", 0)), max(INTERDICTION_RANGE, benefits.get("interdiction_range", 0))))
+        if game.building_operational(p, 'interdictor'):
+            fields.append((max(INTERDICTION_SLOW, benefits.get("interdiction_slow", 0)), max(INTERDICTION_RANGE, benefits.get("interdiction_range", 0))))
+        if game.building_operational(p, 'advanced_interdictor'):
+            from .buildings import BUILDINGS
+            spec = BUILDINGS['advanced_interdictor']
+            fields.append((spec.interdiction_slow, spec.interdiction_range))
     slow, radius = max(fields, default=(0, 0))
     if game.bonuses_for(owner).get("field_stabilization"):
         slow /= 2

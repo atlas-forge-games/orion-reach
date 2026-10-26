@@ -58,6 +58,10 @@ def foreign_colony(game):
 
 
 class ExpansionResearchTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
+
     def test_advanced_tiers_require_previous_tiers_and_allow_switching_specialization(self):
         game = game_at_start()
         for technology in TECHNOLOGIES.values():
@@ -78,7 +82,7 @@ class ExpansionResearchTests(unittest.TestCase):
         from orion.legacy_research import LEGACY_TECHNOLOGIES
         self.assertLessEqual(set(LEGACY_TECHNOLOGIES), set(TECHNOLOGIES))
         for technology in TECHNOLOGIES.values():
-            if technology.branch in BRANCHES:
+            if technology.enabled and technology.branch in BRANCHES:
                 with self.subTest(technology=technology.id):
                     game = game_at_start()
                     discover(game, technology.id)
@@ -135,6 +139,8 @@ class ExpansionResearchTests(unittest.TestCase):
 
 class SiegeTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
         self.game = game_at_start()
         self.system, self.planet = foreign_colony(self.game)
         self.ship = add_ship(self.game, sid=self.system.id)
@@ -252,6 +258,8 @@ class SiegeTests(unittest.TestCase):
 
 class NavigationTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
         self.game = game_at_start()
         self.origin = self.game.systems[0]
         self.target, self.planet = foreign_colony(self.game)
@@ -323,6 +331,8 @@ class NavigationTests(unittest.TestCase):
 
 class SensorTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
         self.game = game_at_start()
         self.remote = next(s for s in self.game.systems[1:] if s.id != self.game.opponent.home_system)
         place_near(self.game, self.remote.id, distance=4)
@@ -412,6 +422,10 @@ class SensorTests(unittest.TestCase):
 
 
 class ExpansionAITests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
+
     def test_defeat_mid_turn_keeps_earlier_ai_reports_saveable(self):
         game = game_at_start(rival_count=2)
         planet = game.planet_at(0, 2)
@@ -467,6 +481,10 @@ class ExpansionAITests(unittest.TestCase):
 
 
 class AccuracyTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
+
     def battle(self, design=None):
         game = game_at_start(fog_of_war=False)
         own = add_ship(game, design=design)
@@ -547,6 +565,8 @@ class AccuracyTests(unittest.TestCase):
 
 class ExpansionInterfaceTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
         from orion.app import App
         self.folder = tempfile.TemporaryDirectory()
         self.app = App(data_dir=self.folder.name, capture=True)

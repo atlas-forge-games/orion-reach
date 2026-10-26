@@ -1,0 +1,36 @@
+AGE OF THE STARS / ORION REACH — v0.83 SIX RESEARCH FIELDS
+
+Extract over v0.82 into the repository folder containing main.py and orion/.
+Replace the included files, then launch normally with python main.py.
+Repository, package, launcher and save-directory names are unchanged.
+
+Start a NEW CAMPAIGN to use the new default research catalogue:
+  Energy technology, Weapons technology, Spaceflight,
+  Industry, Biotechnology, Xenoscience.
+
+Every tier has THREE alternatives. Research ONE to permanently exclude the
+other two and open the next tier. Any earlier choice works; there are no
+connected research paths. Unfinished projects retain the existing free switch
+and RP-transfer rules. Research Arrays retain their rare recovery exception.
+
+Economic research now unlocks separately constructed facilities. Existing
+factories, labs and other buildings do not automatically improve. New facilities
+consume resources, construction work, a colony slot, power and upkeep. Population
+facilities support biological growth, assembly and passive growth. Environmental
+adaptation preserves racial preferences and the actual planet type. Gas giants
+remain uncolonizable. Six new high-resolution illustrations accompany the update.
+
+Right-click technologies for both alternatives and full unlock details. The
+colony catalogue has page controls; the balance editor supports three slots.
+AI empires use the same rules and pursue range technology when expansion stalls.
+
+COMPATIBILITY
+Existing campaigns keep their original tree, completed choices, bonuses, costs
+and active project. Custom balance.json files also retain their old tree. To
+adopt the six-field defaults, use Reset all in the balance editor, save a separate
+profile, and start a new campaign with that profile. Keep your original profile
+if you want to continue using its custom values.
+
+New saves use format 59; balance profiles use version 21. Update all installations
+before sharing these saves. See docs/six-field-research.md for all 33 tiers,
+facilities and validation results.

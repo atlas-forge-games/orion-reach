@@ -1,7 +1,7 @@
 {
-  "version": 2,
+  "version": 3,
   "format": "RGBA PNG",
-  "integration_status": "all colony building lists, planet surface, shipyard and Ascension Gate screens in prototype 0.38.1",
+  "integration_status": "Colony, research and construction screens; v0.83 adds six shared research facility illustrations.",
   "bounds_format": "[left, top, right_exclusive, bottom_exclusive]",
   "assets": [
     {
@@ -340,6 +340,102 @@
       ],
       "alpha_threshold_for_bounds": 32,
       "sha256": "dc92b032ec75e21f30232427ecf8deb02780713fb67213561c5bdc51a636c929"
+    },
+    {
+      "id": "advanced_factory",
+      "name": "Advanced factory",
+      "file": "advanced_factory-v1.png",
+      "model_building_id": "advanced_factory",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        10,
+        108,
+        1244,
+        1143
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "027e109d9859a136a60dc1a6e4ad3d31c9e72525dacbd978b5851cbed5718973"
+    },
+    {
+      "id": "medical_centre",
+      "name": "Population care centre",
+      "file": "medical_centre-v1.png",
+      "model_building_id": "medical_centre",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        19,
+        49,
+        1235,
+        1179
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "4a4f52e7e3620718794d88c66e4fde83779254f05dc0701fcc53fe5be2b9a9b7"
+    },
+    {
+      "id": "enclosed_biosphere",
+      "name": "Enclosed biosphere",
+      "file": "enclosed_biosphere-v1.png",
+      "model_building_id": "enclosed_biosphere",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        16,
+        61,
+        1240,
+        1138
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "0121d2e8e948f8d2c0b22a34cf453b7f4ee8336d02435a98a96090fca0112920"
+    },
+    {
+      "id": "administration_centre",
+      "name": "Administration centre",
+      "file": "administration_centre-v1.png",
+      "model_building_id": "administration_centre",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        99,
+        7,
+        1175,
+        1244
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "e316dc5b9346b109aeb83981b365205fb3a35461f2913595c53e5cb8ce3bbdba"
+    },
+    {
+      "id": "antimatter_plant",
+      "name": "Antimatter plant",
+      "file": "antimatter_plant-v1.png",
+      "model_building_id": "antimatter_plant",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        14,
+        9,
+        1239,
+        1236
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "c7479d590a23212b156ab614e08934f7916e3de28e2465bdffadccbd0ecece22"
+    },
+    {
+      "id": "relic_research_centre",
+      "name": "Relic research centre",
+      "file": "relic_research_centre-v1.png",
+      "model_building_id": "relic_research_centre",
+      "width": 1254,
+      "height": 1254,
+      "substantial_alpha_bounds": [
+        16,
+        43,
+        1240,
+        1168
+      ],
+      "alpha_threshold_for_bounds": 32,
+      "sha256": "8023b48d59b674cd79fbe3a2e7383fd8fc4cf838e229344607af63744bc5ff6b"
     }
   ]
 }

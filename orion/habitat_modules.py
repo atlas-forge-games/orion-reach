@@ -1,6 +1,6 @@
 """Mothership presentation for existing facilities; IDs and rules stay shared."""
 
-from .buildings import facility_family
+from .buildings import BUILDINGS, facility_family
 
 
 MODULE_NAMES = {
@@ -44,8 +44,9 @@ MODULE_ART = {
 
 def display_name(spec, habitat=False):
     """Also accepts ship/project specifications, whose names remain unchanged."""
-    return MODULE_NAMES.get(spec.id, spec.name) if habitat else spec.name
+    return MODULE_NAMES.get(spec.id, spec.name + ' module') if habitat and spec.id in BUILDINGS else spec.name
 
 
 def art_id(building_id):
-    return MODULE_ART.get(facility_family(building_id))
+    from .advanced_buildings import ART_FAMILIES
+    return MODULE_ART.get(ART_FAMILIES.get(building_id, facility_family(building_id)))

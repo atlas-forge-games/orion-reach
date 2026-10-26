@@ -6,6 +6,7 @@ import pygame as pg
 from .ui import ASSETS
 from .buildings import BUILDINGS, FACILITY_FAMILIES, facility_family
 from .habitat_modules import art_id
+from .advanced_buildings import ART_FAMILIES, SHARED_ART
 
 BUILDING_ART_IDS = ("headquarters", "shipyard", *BUILDINGS, "ascension_gate")
 
@@ -22,13 +23,13 @@ def load_building_art(building_id):
             return None
         return image.subsurface(bounds).copy()
     except (OSError, pg.error):
-        family = facility_family(building_id)
+        family = SHARED_ART.get(building_id, ART_FAMILIES.get(building_id, facility_family(building_id)))
         return load_building_art(family) if family != building_id else None
 
 
 def fallback_building(building_id):
     """Keep buildings recognizable and selectable when an asset is unavailable."""
-    building_id = facility_family(building_id)
+    building_id = ART_FAMILIES.get(building_id, facility_family(building_id))
     image = pg.Surface((120, 110), pg.SRCALPHA)
     if building_id == "space_hub":
         pg.draw.polygon(image, (51, 75, 88), [(4, 80), (59, 56), (116, 80), (61, 108)])

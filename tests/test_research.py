@@ -32,8 +32,12 @@ def discover(game, identifier, owner=PLAYER):
 
 
 class ResearchRulesTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
+
     def test_two_exclusive_choices_and_sequential_unlocks_in_nine_branches(self):
-        self.assertEqual((len(BRANCHES), len(TECHNOLOGIES)), (9, 89))  # Two new paired Computers tiers.
+        self.assertEqual((len(BRANCHES), sum(t.enabled for t in TECHNOLOGIES.values())), (9, 89))
         for branch in BRANCHES:
             game = new_game(seed=2408, with_ai=False)
             state = game.technology
@@ -209,6 +213,10 @@ class ResearchRulesTests(unittest.TestCase):
 
 
 class ResearchSaveTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
+
     def test_v6_migration_preserves_banks_orders_and_routes_and_spends_old_points(self):
         from scenarios import migrated_statistics
         game = new_game(seed=2408)
@@ -300,6 +308,8 @@ class ResearchSaveTests(unittest.TestCase):
 
 class ResearchScreenTests(unittest.TestCase):
     def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, classic=True)
         from orion.app import App
         self.folder = tempfile.TemporaryDirectory()
         self.app = App(self.folder.name, capture=True)

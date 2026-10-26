@@ -113,11 +113,11 @@ class ArsenalResearchTests(unittest.TestCase):
                 self.assertEqual(game.ships[-1].design, design)
                 self.assertEqual(round_trip(game), game)
 
-    def test_new_campaign_needs_all_new_tiers_but_every_tier_has_two_choices(self):
+    def test_new_campaign_needs_all_new_tiers_but_every_tier_has_three_choices(self):
         game = campaign()
         for branch in BRANCHES:
             for tier in branch_tiers(branch):
-                self.assertEqual(len(choices(branch, tier)), 2)
+                self.assertEqual(len(choices(branch, tier)), 3)
         for branch in BRANCHES:
             discover(game, [choices(branch, branch_tiers(branch)[-1])[0].id])
         self.assertEqual(len(game.technology.completed), sum(len(branch_tiers(b)) for b in BRANCHES))
@@ -139,6 +139,10 @@ class ArsenalResearchTests(unittest.TestCase):
 
 
 class ArsenalCombatTests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
+
     def test_weapon_damage_ranges_and_independent_pulse_and_mirv_rolls(self):
         for weapon, expected, shots in (("pulse", 8, 2), ("plasma", 24, 1), ("particle", 20, 1),
                                         ("heavy_beam", 30, 1), ("fusion_torpedo", 18, 1),
@@ -353,6 +357,10 @@ class ArsenalDroneTests(unittest.TestCase):
 
 
 class ArsenalSaveAndAITests(unittest.TestCase):
+    def setUp(self):
+        from scenarios import use_research_layout
+        use_research_layout(self, legacy=True)
+
     def test_authentic_v30_campaigns_keep_projects_battles_and_science_goals(self):
         from orion import balance
         previous = balance.active_profile()

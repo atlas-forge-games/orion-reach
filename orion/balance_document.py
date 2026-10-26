@@ -75,11 +75,15 @@ class BalanceDocument:
 
     def choices(self, branch, tier):
         entries = self.profile['data']['technologies']
-        return sorted((key for key,v in entries.items() if v['branch']==branch and v['tier']==tier), key=lambda key: entries[key]['order'])
+        return sorted((key for key,v in entries.items() if v['enabled'] and v['branch']==branch and v['tier']==tier), key=lambda key: entries[key]['order'])
 
     def move_technology(self, identifier, branch, tier, slot=0):
-        if identifier == 'ascension_theory' or branch not in self.profile['branch_order'] or type(tier) is not int or not 1 <= tier <= 8 or slot not in (0,1):
-            raise balance.BalanceError('Choose a normal research branch, tier 1–8 and one of its two slots.')
+        from .research_fields import is_modern
+        count = 3 if is_modern(self.profile['branch_order']) else 2
+        if (identifier == 'ascension_theory' or not self.entry('technologies', identifier)['enabled']
+                or branch not in self.profile['branch_order'] or type(tier) is not int or not 1 <= tier <= 8
+                or type(slot) is not int or slot not in range(count)):
+            raise balance.BalanceError(f'Choose a research branch, tier 1–8 and one of its {count} slots.')
         item = self.entry('technologies', identifier)
         source = (item['branch'], item['tier'], self.choices(item['branch'],item['tier']).index(identifier))
         targets = self.choices(branch, tier)

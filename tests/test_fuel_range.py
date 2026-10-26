@@ -30,7 +30,7 @@ from scenarios import place_near, use_nearby_system
 class FuelRulesTests(unittest.TestCase):
     def setUp(self):
         from scenarios import use_research_layout
-        use_research_layout(self)
+        use_research_layout(self, classic=True)
 
     def test_ten_light_years_take_five_turns_and_propulsion_only_changes_speed(self):
         origin = SimpleNamespace(id=0, x=.2, y=.4)

@@ -52,6 +52,7 @@ class Technology:
     effects: tuple[tuple[str, int], ...]
     cost_override: int = 0  # Zero uses the tier's shared cost.
     order: int = 0
+    enabled: bool = True
 
     @property
     def cost(self):
@@ -163,6 +164,11 @@ TECHNOLOGIES = {t.id: t for t in (
     tech("ascension_theory", "ascension", 3, "Ascension Theory", "Unlock the Ascension Gate and a scientific victory."),
 )}
 
+CLASSIC_BRANCHES = BRANCHES.copy()
+CLASSIC_TECHNOLOGIES = TECHNOLOGIES.copy()
+from .research_fields import install as _install_fields, is_modern
+_install_fields(Branch, Technology, BRANCHES, TECHNOLOGIES)
+
 FUEL_TANK_TECHNOLOGIES = ("lightweight_alloys", "composite_structures", "cryogenic_fuel_tanks",
                           "antimatter_fuel_tanks", "spatial_compression_tanks")
 FUEL_EXPANSION_TECHNOLOGIES = frozenset(("cryogenic_fuel_tanks", "automated_refineries", "antimatter_fuel_tanks",
@@ -172,11 +178,11 @@ BLACK_HOLE_TECHNOLOGIES = frozenset(("gravitic_mapping", "planetary_data_vaults"
 
 
 def branch_tiers(branch):
-    return tuple(sorted({t.tier for t in TECHNOLOGIES.values() if t.branch == branch}))
+    return tuple(sorted({t.tier for t in TECHNOLOGIES.values() if t.enabled and t.branch == branch}))
 
 
 def choices(branch, tier):
-    return tuple(sorted((t for t in TECHNOLOGIES.values() if t.branch == branch and t.tier == tier), key=lambda t: t.order))
+    return tuple(sorted((t for t in TECHNOLOGIES.values() if t.enabled and t.branch == branch and t.tier == tier), key=lambda t: t.order))
 
 
 @lru_cache(maxsize=512)
@@ -222,12 +228,16 @@ class ResearchState:
         return LEGACY_TECHNOLOGIES[self.active][2] if self.legacy_active else TECHNOLOGIES[self.active].cost
 
     def has_unlock(self, identifier):
+        if not TECHNOLOGIES[identifier].enabled:
+            return False
         upgrades = {
             "planetary_shielding": ("barrier_fields",),
             "gravity_wells": ("subspace_interdiction",),
             "deep_space_radar": ("long_range_sensors", "subspace_scanners"),
             "gravitic_mapping": ("event_horizon_navigation",),
         }
+        if is_modern(BRANCHES) and identifier in ('planetary_shielding', 'gravity_wells'):
+            return identifier in self.completed
         return any(t in self.completed for t in (identifier, *upgrades.get(identifier, ())))
 
     def hull_unlocked(self, kind):
@@ -257,6 +267,8 @@ class ResearchState:
 
     def status(self, identifier):
         technology = TECHNOLOGIES[identifier]
+        if not technology.enabled:
+            return 'locked'
         if identifier in self.completed:
             return "discovered"
         if identifier == self.active:
@@ -283,8 +295,10 @@ class ResearchState:
         if status == "discovered":
             return "This technology has already been discovered."
         if status == "excluded":
-            return "You chose the other technology in this tier."
+            return "You already chose a different technology in this tier."
         if status == "locked":
+            if not TECHNOLOGIES[identifier].enabled:
+                return "This discovery is not part of this campaign's research tree."
             if identifier == "ascension_theory":
                 return f"Complete every tier in all {len(self.required_branches)} required research branches first."
             return "Complete the earlier tiers in this branch first."
@@ -362,7 +376,8 @@ class ResearchState:
         if any(t in completed[:count] for t in recovered):
             raise ValueError("Array discovery in legacy prefix")
         for identifier in completed[count:]:
-            if not isinstance(identifier, str) or identifier not in TECHNOLOGIES or identifier in state.completed or (identifier not in recovered and state.choice_error(identifier)):
+            if (not isinstance(identifier, str) or identifier not in TECHNOLOGIES or not TECHNOLOGIES[identifier].enabled
+                    or identifier in state.completed or (identifier not in recovered and state.choice_error(identifier))):
                 raise ValueError("Invalid technology sequence")
             state.completed.append(identifier)
         if type(progress) is not int or progress < 0:

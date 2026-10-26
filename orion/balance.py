@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 20
+VERSION = 21
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -84,6 +84,8 @@ LABELS = {
 }
 _configured_path = None
 _active = None
+_classic_priorities = {}
+_classic_megastructures = {}
 
 
 class BalanceError(ValueError):
@@ -126,6 +128,16 @@ def _defaults():
     data['research_costs']['ascension'] = {'cost': r.ASCENSION_COST}
     data['drones'] = {name: dict(zip(('name', 'weapon', 'movement'), values)) for name, values in module('weapons').DRONE_ROLES.items()}
     data['ship_sizes'] = {kind: {'size': size} for kind, size in module('ship_scaling').SIZES.items()}
+    from .research_fields import BRANCH_MERGES
+    for key, entry in data['races'].items():
+        _classic_priorities[key] = entry['research_priority'][:]
+        entry['research_priority'] = list(dict.fromkeys(BRANCH_MERGES.get(b, b) for b in entry['research_priority']))
+    _classic_megastructures.update(deepcopy(data['megastructures']))
+    data['buildings']['planetary_shield']['description'] = 'A separately constructed planetary shield blocks hostile landings. Advanced generators require their own construction.'
+    data['buildings']['interdictor']['description'] = 'Slows hostile approaches within 5 ly by 25%. Advanced generators require their own construction.'
+    for key, branch, tier in (('dyson_sphere', 'power', 4), ('stellar_forge', 'construction', 6),
+                              ('asteroid_network', 'construction', 6), ('research_array', 'computers', 4)):
+        data['megastructures'][key].update(branch=branch, tier=tier)
     module('ship_scaling').derive(data)
     return {'format': FORMAT, 'version': VERSION, 'name': 'Standard balance',
             'branch_order': list(r.BRANCHES), 'data': data}
@@ -135,10 +147,38 @@ def default_profile():
     return deepcopy(_defaults())
 
 
+def classic_profile():
+    """The pre-six-field catalogue, including disabled new item templates."""
+    profile = default_profile()
+    r, b = module('research'), module('buildings')
+    def records(specs):
+        result = {}
+        for key, spec in specs.items():
+            value = json_value(asdict(spec))
+            value.pop('id')
+            if 'effects' in value:
+                value['effects'] = dict(value['effects'])
+            result[key] = value
+        return result
+    data = profile['data']
+    data['branches'] = records(r.CLASSIC_BRANCHES)
+    profile['branch_order'] = list(r.CLASSIC_BRANCHES)
+    for entry in data['technologies'].values():
+        entry.update(branch='power', enabled=False)
+    data['technologies'].update(records(r.CLASSIC_TECHNOLOGIES))
+    for entry in data['buildings'].values():
+        entry['enabled'] = False
+    data['buildings'].update(records(b.CLASSIC_BUILDINGS))
+    for key, priorities in _classic_priorities.items():
+        data['races'][key]['research_priority'] = priorities[:]
+    data['megastructures'] = deepcopy(_classic_megastructures)
+    return profile
+
+
 def legacy_profile():
     """Preserve research and ship values of campaigns without a saved profile."""
     from .legacy_research import PRE_REBALANCE_TIERS
-    profile = default_profile()
+    profile = classic_profile()
     profile['data']['rules']['ship_scaling']['ENABLED'] = False
     for kind, spec in module('production').LEGACY_SHIP_TYPES.items():
         entry = json_value(asdict(spec))
@@ -160,10 +200,14 @@ def active_profile():
 
 def effect_keys():
     data = _defaults()['data']
-    return sorted({key for section in ('races', 'technologies') for entry in data[section].values() for key in entry['effects']})
+    return sorted({key for section in ('races', 'technologies') for entry in data[section].values() for key in entry['effects']}
+                  | {key for t in module('research').CLASSIC_TECHNOLOGIES.values() for key, _ in t.effects})
 
 
 def numeric_bounds(section, field):
+    if field in ('adaptation', 'strain_relief'): return 0, 80
+    if field == 'capacity_bonus': return 0, 100
+    if field == 'growth_bonus': return 0, 200
     if section == 'environments': return (0, 30) if field == 'toxic_food' else (10, 200)
     if section == 'ship_sizes' and field == 'size': return 1, 100
     if field in ('HULL_PER_SIZE', 'FRAME_RES_PER_SIZE'): return 1, 100
@@ -211,6 +255,11 @@ def numeric_bounds(section, field):
     if field == 'BASE_FUEL_RANGE': return 1, 200
     if field == 'INTERDICTION_SLOW': return 0, 95
     if field == 'INTERDICTION_RANGE': return 1, 200
+    if field == 'interdiction_slow': return 0, 95
+    if field == 'interdiction_range': return 0, 200
+    if field == 'adaptation': return 0, 80
+    if field in ('capacity_bonus', 'strain_relief'): return 0, 100
+    if field == 'growth_bonus': return 0, 1000
     if field in ('GROWTH_THRESHOLD', 'ELECTION_INTERVAL', 'MORTALITY_CHANCE', 'TOMB_CHANCE', 'AWAKENING_CHANCE', 'GATE_CHARGE_TURNS'): return 1, 10000
     if field in ('STARTING_COLONISTS', 'AWAKENED_POPULATION', 'SLAVE_CAPACITY'): return 1, 100
     if field in ('capacity', 'weapon', 'defense', 'support') and section == 'hulls': return 1 if field in ('capacity','weapon') else 0, 24
@@ -233,6 +282,9 @@ def _number(value, template, section, field, path, errors):
 def validate(profile):
     errors = []
     base = _defaults()
+    if isinstance(profile, dict) and isinstance(profile.get('branch_order'), list):
+        if set(v for v in profile['branch_order'] if isinstance(v, str)) == set(module('research').CLASSIC_BRANCHES):
+            base = classic_profile()
     if not isinstance(profile, dict) or set(profile) != set(base):
         return ['Not a complete Orion Reach balance profile.']
     if profile['format'] != FORMAT or type(profile['version']) is not int or profile['version'] != VERSION:
@@ -298,7 +350,7 @@ def validate(profile):
                     if not isinstance(value, str) or len(value) > maximum or (value and not value.isprintable()) or (required and (not value.strip() or value != value.strip())):
                         errors.append(path+f': use printable text (up to {maximum} characters).')
                 elif type(template) is list:
-                    if not isinstance(value,list) or len(value) != len(template):
+                    if not isinstance(value,list) or (key != 'research_priority' and len(value) != len(template)):
                         errors.append(path+': keep the existing number of entries.')
                     elif key == 'color':
                         if any(type(v) is not int or not 0 <= v <= 255 for v in value): errors.append(path+': RGB values must be 0–255.')
@@ -316,13 +368,17 @@ def validate(profile):
         if (key == 'ascension_theory') != (entry['branch'] == 'ascension'):
             errors.append('Ascension Theory must remain the separate finale; other technologies belong to a branch.')
     for branch in base['branch_order']:
-        items = [v for v in data['technologies'].values() if v['branch'] == branch]
+        items = [v for v in data['technologies'].values() if v['enabled'] and v['branch'] == branch]
         tiers = sorted({v['tier'] for v in items})
         if not tiers or tiers != list(range(1, max(tiers)+1)):
             errors.append(f'{branch}: tiers must start at 1 with no empty tiers between them.')
         for tier in tiers:
-            if sum(v['tier'] == tier for v in items) > 2:
-                errors.append(f'{branch}, tier {tier}: at most two alternatives fit the current game. Swap a technology instead.')
+            count = sum(v['tier'] == tier for v in items)
+            if module('research_fields').is_modern(profile['branch_order']):
+                if count != 3:
+                    errors.append(f'{branch}, tier {tier}: keep exactly three alternatives. Swap a technology instead.')
+            elif count > 2:
+                errors.append(f'{branch}, tier {tier}: classic campaigns support at most two alternatives.')
     for identifier, hull in data['hulls'].items():
         if any(hull[k] > hull['capacity'] for k in ('weapon','defense','support')):
             errors.append(f'hulls.{identifier}: category capacity cannot exceed total capacity.')
@@ -569,6 +625,27 @@ def upgrade_profile(profile):
                     race['abilities'] = [line.replace('Settle every biome;', 'Settle every solid-surface biome;')
                                          if isinstance(line, str) else line for line in race['abilities']]
         profile['version'] = 20
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 20:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        if isinstance(data, dict):
+            classic = classic_profile()['data']
+            from .research_fields import NEW_TECHNOLOGIES
+            from .advanced_buildings import NEW_BUILDINGS
+            additions = {'technologies': set(NEW_TECHNOLOGIES), 'buildings': set(NEW_BUILDINGS)}
+            fields = {'technologies': ('enabled',), 'buildings': (
+                'enabled', 'growth_bonus', 'capacity_bonus', 'adaptation', 'strain_relief',
+                'shield_capacity', 'interdiction_slow', 'interdiction_range')}
+            for section in ('technologies', 'buildings'):
+                table = data.get(section)
+                if isinstance(table, dict):
+                    for key, template in classic[section].items():
+                        if key not in table and key in additions[section]:
+                            table[key] = deepcopy(template)
+                        elif isinstance(table.get(key), dict):
+                            for field in fields[section]:
+                                table[key].setdefault(field, deepcopy(template[field]))
+        profile['version'] = 21
     return profile
 
 
@@ -643,7 +720,10 @@ def activate(profile):
             for key, value in values.items():
                 if key == 'effects': values[key] = tuple(value.items())
                 elif isinstance(value, list): values[key] = tuple(value)
-            specs[identifier] = replace(catalogue[identifier], **values)
+            template = catalogue.get(identifier, next(iter(catalogue.values())))
+            if 'id' in template.__dataclass_fields__:
+                values['id'] = identifier
+            specs[identifier] = replace(template, **values)
         catalogue.clear()
         catalogue.update(specs)
     r, p, b, pop = module('research'), module('production'), module('buildings'), module('population')
@@ -713,6 +793,8 @@ def configure(path=DEFAULT_PATH):
 def prepare_new_game():
     if _configured_path is not None:
         activate(read_profile(_configured_path, missing_ok=True))
+    elif _active is None:
+        activate(default_profile())
 
 
 def tag_game(game, profile=None):

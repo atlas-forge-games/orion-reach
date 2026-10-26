@@ -90,6 +90,10 @@ def describe(game, planet, *, live):
             lines.append("Without a food surplus, food-based growth pauses; existing inhabitants and progress are retained.")
 
     lines.append(f"Before environment (after capacity check): {millions(report.base_growth_rate):g} million / turn.")
+    if report.facility_growth:
+        lines.append(f"Powered population facilities: +{report.facility_growth}% growth; applies to biological, assembly and passive growth before environment.")
+    if report.adaptation:
+        lines.append(f"Powered habitat facilities remove {report.adaptation}% of the environmental penalty (combined cap 80%).")
     if planet.habitat:
         lines.append("Habitat environment: 100%; the planet below does not affect growth.")
     else:
@@ -101,7 +105,7 @@ def describe(game, planet, *, live):
     else:
         base_capacity = population.POPULATION_LIMITS[planet.size]
         gaia = population.GAIA_CAPACITY if planet.biome == 'Gaia' else 0
-        lines.append(f"Capacity: {planet.size} {base_capacity} billion + {gaia} Gaia bonus; {b.get('capacity_percent', 0):+g}% traits → {report.capacity} billion.")
+        lines.append(f"Capacity: {planet.size} {base_capacity} billion + {gaia} Gaia bonus; {b.get('capacity_percent', 0):+g}% traits and {b.get('facility_capacity', 0):+g}% powered facilities → {report.capacity} billion.")
     lines.append(f"Growth rounds down in {millions(1):g}-million steps after each multiplier; positive growth has a one-step minimum.")
     if b.get('food_use_percent', 0) <= -100:
         lines.append("Food is not required by this population.")

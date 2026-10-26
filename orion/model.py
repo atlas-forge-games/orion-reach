@@ -206,7 +206,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=58):
+    def from_dict(cls, data, systems, *, version=59):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -513,7 +513,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=58):
+    def from_dict(cls, data, expected_id, *, version=59):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -560,7 +560,7 @@ class Planet:
                 record[key] = 0
             if not _integer(record[key], 0, maximum):
                 raise ValueError("Invalid planetary defenses")
-        if ((record["shield_points"] and "planetary_shield" not in record.get("buildings", []))
+        if ((record["shield_points"] and not any(b in record.get("buildings", []) for b in defense_rules.SHIELD_BUILDINGS))
                 or (record["battery_hull"] and "missile_base" not in record.get("buildings", []))):
             raise ValueError("Defense health without a building")
         if version < 23:
@@ -1437,6 +1437,8 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(building_id, str) or building_id not in BUILDINGS:
             return "Unknown building."
+        if not BUILDINGS[building_id].enabled:
+            return "This facility is not part of this campaign's building catalogue."
         if not planet.colonized:
             return "Establish a colony before constructing buildings."
         if planet.owner != owner:
@@ -1997,7 +1999,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=58):
+    def from_dict(cls, data, *, version=59):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

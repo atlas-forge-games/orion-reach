@@ -149,6 +149,7 @@ class App:
         self.info_scroll=0
         self.colony_slot=None
         self.colony_build_page=0
+        self.colony_catalog_page=0
         self.surface_build_request=None
         self.surface_build_preview=None
         self.surface_ground_down=None

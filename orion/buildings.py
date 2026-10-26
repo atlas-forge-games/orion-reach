@@ -35,6 +35,14 @@ class BuildingSpec:
     maintenance: int = 0
     technology: str | None = None
     special_effect: str = ""
+    enabled: bool = True
+    growth_bonus: int = 0
+    capacity_bonus: int = 0
+    adaptation: int = 0
+    strain_relief: int = 0
+    shield_capacity: int = 0
+    interdiction_slow: int = 0
+    interdiction_range: int = 0
 
     def worker_bonus(self, richness):
         return self.industry_per_worker*(MINERAL_FACTORS[richness] if self.mineral_scaled else 1)
@@ -78,7 +86,20 @@ class BuildingSpec:
             parts.append(f"+{self.resources*MINERAL_FACTORS[richness]:g} resources")
         if self.energy_output:
             parts.append(f"up to {self.energy_output} backup energy · 1 RES/{self.energy_per_resource} energy" if self.energy_per_resource else f"+{self.energy_output} energy")
-        return " · ".join(parts) + " / turn"
+        parts = [" · ".join(parts) + " / turn"] if parts else []
+        if self.growth_bonus:
+            parts.append(f"+{self.growth_bonus}% local growth (all population types)")
+        if self.capacity_bonus:
+            parts.append(f"+{self.capacity_bonus}% local population capacity")
+        if self.adaptation:
+            parts.append(f"remove {self.adaptation}% of environmental growth penalty")
+        if self.strain_relief:
+            parts.append(f"-{self.strain_relief} percentage points of local strain")
+        if self.shield_capacity:
+            parts.append(f"{self.shield_capacity} planetary shield points")
+        if self.interdiction_slow:
+            parts.append(f"{self.interdiction_slow}% hostile slowdown within {self.interdiction_range} ly")
+        return " · ".join(parts)
 
 
 BUILDINGS = {
@@ -139,21 +160,37 @@ for _spec in LEGACIES.values():
         _spec.description, 300, 180, unique=True, energy_use=6, maintenance=4,
         special_effect="Civilization legacy · view Objectives for requirements")
 
+CLASSIC_BUILDINGS = BUILDINGS.copy()
+from .advanced_buildings import install as _install_facilities, NEW_BUILDINGS
+_install_facilities(BuildingSpec, BUILDINGS)
+
 BUILDING_GROUPS = (
     ("factory", "mine", "trade_center", "research_lab", "hydroponic_farm", "barracks", "fortifications"),
     ("space_hub", "missile_base", "planetary_shield", "sensor_array", "jump_gate", "interdictor", *PROJECT_RACES),
     ("solar_array", "geothermal_plant", "fusion_plant", "thermal_plant", "singularity_plant"),
     ("robotic_factory", "nanofactory", "deep_core_mine", "automated_refinery", "advanced_research_lab", "quantum_research_lab"),
 )
+_groups = [list(group) for group in BUILDING_GROUPS]
+for _key in NEW_BUILDINGS:
+    if BUILDINGS[_key].energy_output:
+        _group = 2
+    elif _key in ('advanced_planetary_shield', 'advanced_interdictor', 'planetary_fortress', 'administration_centre'):
+        _group = 1
+    else:
+        _group = 3
+    _groups[_group].append(_key)
+BUILDING_GROUPS = tuple(tuple(group) for group in _groups)
 
 # Facility families share research bonuses, power priority and AI preferences.
 # Each distinct facility still occupies a slot and can be built once per colony.
 FACILITY_FAMILIES = {
-    "factory": ("factory", "robotic_factory", "nanofactory"),
-    "mine": ("mine", "deep_core_mine", "automated_refinery"),
-    "research_lab": ("research_lab", "advanced_research_lab", "quantum_research_lab"),
+    "factory": ("factory", "advanced_factory", "construction_bureau", "robotic_factory", "superconducting_foundry", "nanofactory"),
+    "mine": ("mine", "deep_core_mine", "mineral_processor", "automated_refinery"),
+    "research_lab": ("research_lab", "field_lab", "analysis_lab", "scientific_institute", "research_network_hub", "advanced_research_lab", "data_centre", "data_archive", "relic_research_centre", "quantum_research_lab"),
+    "hydroponic_farm": ("hydroponic_farm", "symbiotic_farm", "ecology_centre", "biosphere_restorer"),
+    "trade_center": ("trade_center", "commercial_exchange", "commercial_complex"),
 }
-ADVANCED_FACILITIES = tuple(item for family in FACILITY_FAMILIES.values() for item in family[1:])
+ADVANCED_FACILITIES = ("robotic_factory", "nanofactory", "deep_core_mine", "automated_refinery", "advanced_research_lab", "quantum_research_lab")
 
 
 def facility_family(identifier):

@@ -375,7 +375,8 @@ def draw_planet_overview(app):
         panel(surface, (40, 728, 900, 100), (10, 23, 30))
         text(surface, f"ADMINISTRATION · {strain.total:.1f}% STRAIN · {strain.systems} settled systems",
              (52, 740), 12, GOLD, "mono")
-        text(surface, f"Empire {strain.empire:g}% + integration {strain.integration:g}% + local distance {strain.distance:.1f}% · cap {MAX_STRAIN:g}%",
+        reduction = f" · facilities −{strain.relief:g} points" if strain.relief else ''
+        text(surface, f"Empire {strain.empire:g}% + integration {strain.integration:g}% + local distance {strain.distance:.1f}% · cap {MAX_STRAIN:g}%"+reduction,
              (52, 763), 12, INK)
         text(surface, f"Output loss: RP {strain.loss('research'):.1f}% · CR {strain.loss('credits'):.1f}% · IND {strain.loss('industry'):.1f}% · RES {strain.loss('mining'):.1f}% · food {strain.loss('food'):.1f}%",
              (52, 784), 12, MUTED)

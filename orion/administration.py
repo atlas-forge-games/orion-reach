@@ -1,6 +1,6 @@
 """Shared empire administration, local capital distance and integration rules."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
 from .production import distance_ly
@@ -83,6 +83,7 @@ class StrainReport:
     integration: float = 0
     distance: float = 0
     integration_remaining: int = 0
+    relief: float = 0
 
     @property
     def uncapped(self):
@@ -90,7 +91,7 @@ class StrainReport:
 
     @property
     def total(self):
-        return min(MAX_STRAIN, self.uncapped)
+        return max(0, min(MAX_STRAIN, self.uncapped)-self.relief)
 
     def loss(self, kind):
         return self.total*sensitivity(kind)/100
@@ -140,7 +141,10 @@ def report(game, planet):
         return StrainReport()
     context = Context(game, planet.owner)
     sid = context.locations.get((planet.id, planet.name))
-    return context.report(sid, position=context.mobile_positions.get((planet.id, planet.name))) if sid is not None else StrainReport()
+    result = context.report(sid, position=context.mobile_positions.get((planet.id, planet.name))) if sid is not None else StrainReport()
+    from .economy import local_bonuses
+    relief = local_bonuses(planet, game.bonuses_for(planet.owner)).get('facility_strain_relief', 0)
+    return replace(result, relief=relief)
 
 
 def settlement_preview(game, system_id, owner="player"):

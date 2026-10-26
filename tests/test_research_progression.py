@@ -39,7 +39,7 @@ class ProgressionTests(unittest.TestCase):
     def setUp(self):
         previous, configured = balance.active_profile(), balance._configured_path
         balance._configured_path = None
-        balance.activate(balance.default_profile())
+        balance.activate(balance.classic_profile())
         self.addCleanup(lambda: balance.activate(previous))
         self.addCleanup(lambda: setattr(balance, '_configured_path', configured))
         self.tmp = tempfile.TemporaryDirectory()
@@ -59,7 +59,8 @@ class ProgressionTests(unittest.TestCase):
         self.assertEqual(TECHNOLOGIES['deep_space_radar'].tier, 2)
         self.assertEqual(TECHNOLOGIES['fusion_torpedoes'].tier, 2)
         self.assertEqual(TECHNOLOGIES['antimatter_torpedoes'].tier, 6)
-        for family in FACILITY_FAMILIES.values():
+        for base in ('factory', 'mine', 'research_lab'):
+            family = tuple(b for b in FACILITY_FAMILIES[base] if BUILDINGS[b].enabled)
             self.assertIsNone(BUILDINGS[family[0]].technology)
             first, last = (TECHNOLOGIES[BUILDINGS[b].technology].tier for b in family[1:])
             self.assertGreaterEqual(first, 3)
@@ -91,6 +92,8 @@ class ProgressionTests(unittest.TestCase):
         for family, output, base in (('factory', 0, planet.workers), ('research_lab', 2, 2*planet.scientists)):
             values = []
             for identifier in FACILITY_FAMILIES[family]:
+                if not BUILDINGS[identifier].enabled:
+                    continue
                 planet.buildings = [identifier]
                 bonuses = {'factory_industry': 3, 'lab_research': 3, 'colony_energy': 100}
                 spec = BUILDINGS[identifier]
@@ -105,7 +108,7 @@ class ProgressionTests(unittest.TestCase):
     def test_mine_families_scale_with_richness_and_keep_flat_research_bonuses(self):
         planet = self.game().planet_at(0, 2)
         planet.miners = 2
-        planet.buildings = list(FACILITY_FAMILIES['mine'])
+        planet.buildings = [b for b in FACILITY_FAMILIES['mine'] if BUILDINGS[b].enabled]
         bonuses = {'mine_resources': 3, 'colony_energy': 100}
         # (2+4+7) base extraction and (2+1+2+3)*2 miners, scaled together.
         for richness, factor in (('Poor', .5), ('Average', 1), ('Rich', 1.5), ('Ultra-rich', 3)):

@@ -54,6 +54,13 @@ def building_research(identifier):
                        if ResearchState(completed=[spec.id]).has_unlock(identifier))
 
 
+def megastructure_research(kind):
+    from .megastructures import MEGASTRUCTURES, required_technology
+    spec, identifier = MEGASTRUCTURES[kind], required_technology(kind)
+    return (TECHNOLOGIES[identifier].name if identifier else
+            f'{BRANCHES[spec.branch].name} tier {spec.tier} (any choice)')
+
+
 def guides():
     return (
         Article("gas_stations", "economy", "Gas giant orbital stations", "Atmospheric industry without colonies", (
@@ -70,10 +77,10 @@ def guides():
         )),
         Article("megastructures", "economy", "Megastructures", "Four staged system projects", (
             ("CONSTRUCTION", "Open Megastructures from a surveyed solar system. Each civilization may commission each type once per campaign, even if it is later destroyed. Only one structure may occupy a solar system. You must be its only settled civilization to start, repair or advance construction; other civilizations' outposts do not count. Shared settlements or hostile armed ships pause work without losing progress. Choose 0–100% of local industry; materials are paid progressively and unused industry returns to colony queues. Four stages cost one, two, three and four times the listed stage-one budget."),
-            ("DYSON SPHERE", "Power & Propulsion tier 4 (either choice). Early sections add steady energy across the empire. The completed sphere supplies unlimited energy to all owned colonies: all enabled buildings and gates can operate and backup power plants consume no fuel. Statistics show finite actual supply, while energy screens show infinity."),
-            ("STELLAR FORGE", "Construction tier 3 (either choice). Ship-only acceleration for every colony queue in its system: 4x, 7x, 10x, then 13x ship work at the standard balance. Material prices are unchanged. Buildings, Trade Goods, population assembly and megastructure construction receive no extra industry."),
-            ("RESEARCH ARRAY", "Physics tier 7 (either choice). Each completed section adds a 1% discovery chance per turn, up to 4%. A success grants one unknown technology, including skipped tiers and previously omitted choices. No ordinary research points are generated. Discovering the active project or its alternative refunds its progress; research can then be selected again."),
-            ("ASTEROID MINING NETWORK", "Materials & Chemistry tier 6 (either choice). Each section delivers 150 resources per turn directly to the imperial reserve, up to 600. Orbital extraction is separate from planetary mining and is unaffected by planetary mineral richness or administrative strain."),
+            ("DYSON SPHERE", f"{megastructure_research('dyson_sphere')}. Early sections add steady energy across the empire. The completed sphere supplies unlimited energy to all owned colonies: all enabled buildings and gates can operate and backup power plants consume no fuel. Statistics show finite actual supply, while energy screens show infinity."),
+            ("STELLAR FORGE", f"{megastructure_research('stellar_forge')}. Ship-only acceleration for every colony queue in its system: 4x, 7x, 10x, then 13x ship work at the standard balance. Material prices are unchanged. Buildings, Trade Goods, population assembly and megastructure construction receive no extra industry."),
+            ("RESEARCH ARRAY", f"{megastructure_research('research_array')}. Each completed section adds a 1% discovery chance per turn, up to 4%. A success grants one unknown technology, including skipped tiers and previously omitted choices. No ordinary research points are generated. Discovering the active project or its alternative refunds its progress; research can then be selected again."),
+            ("ASTEROID MINING NETWORK", f"{megastructure_research('asteroid_network')}. Each section delivers 150 resources per turn directly to the imperial reserve, up to 600. Orbital extraction is separate from planetary mining and is unaffected by planetary mineral richness or administrative strain."),
             ("CONTROL AND DAMAGE", "Completed sections function while their owner retains a settlement and the system is not blockaded, including when new shared settlements pause construction. Lose all settlements and a sole new settler inherits the structure with work paused. Captured duplicates do not stack. Clear orbital defenders to attack using the normal once-per-turn bombardment allowance. Damage is repaired before construction resumes, spending industry and resources. Construction settings do not turn off completed sections."),
         )),
         Article("administration", "economy", "Administrative strain", "Empire size, integration and capital distance", (
@@ -81,7 +88,7 @@ def guides():
             ("INTEGRATION", f"Each newly settled or conquered system adds another {administration_rules.INTEGRATION_STRAIN}% empire-wide strain for {administration_rules.INTEGRATION_TURNS} production turns. Another planet in an already owned system does not restart integration. The founding capital and existing colonies in older saves begin integrated."),
             ("LOCAL DISTANCE", f"Only planets in the distant system receive its distance penalty: {administration_rules.DISTANCE_STRAIN}% per {administration_rules.DISTANCE_UNIT_LY:g} light-years beyond the first {administration_rules.DISTANCE_UNIT_LY:g} ly from the capital. Distances are continuous, using the same physical scale as fleet travel. Outposts provide fuel, not administration. The capital is the system containing the headquarters palace; if lost, headquarters falls back to the first remaining colony in system/planet order, and returns to the original homeworld when recovered."),
             ("PRODUCTION", f"Add size, integration and local distance, then cap the total at {administration_rules.MAX_STRAIN}%. Output sensitivities: research {administration_rules.RESEARCH_SENSITIVITY}%, credits {administration_rules.CREDITS_SENSITIVITY}%, industry {administration_rules.INDUSTRY_SENSITIVITY}%, mining {administration_rules.MINING_SENSITIVITY}% and food {administration_rules.FOOD_SENSITIVITY}%. Apply to positive colony production after bonuses, before upkeep, fuel use or food consumption. Whole-unit outputs round down; construction retains its existing minimum of one industry. Energy and maintenance are unchanged."),
-            ("TRADE AND INFORMATION", "Trade Goods convert reduced industry, then pay local credit strain; all production screens display the final payout. Diplomatic agreements, raid loot and one-time exploration rewards are not colony output and are unaffected. The planet overview displays the breakdown; the settlement confirmation previews expansion costs. Queue estimates include integration expiry. All civilizations follow the same initial rules; separate racial administration modifiers and reduction technologies are not part of this version."),
+            ("TRADE AND INFORMATION", "Trade Goods convert reduced industry, then pay local credit strain; all production screens display the final payout. Diplomatic agreements, raid loot and one-time exploration rewards are not colony output and are unaffected. The planet overview displays the breakdown; the settlement confirmation previews expansion costs. Queue estimates include integration expiry. Powered administration centres reduce local strain by 15 percentage points, to a minimum of zero. Other colonies are unaffected."),
         )),
         Article("specialists", "colonies", "Space Hubs and specialists", "Unique leaders and explorers", (
             ("RECRUIT", f"Build a Space Hub, then open Specialists from the Empire overview, your planet or the Hub building. An operational first Hub welcomes a leader and an explorer when available. Later arrivals are checked every {specialist_rules.VISIT_INTERVAL} turns per empire. Terran and Dominion attract more visitors; Remnant, Nexus and Varkesh attract fewer. Additional Hubs do not multiply the arrival rate. Visitors depart after {specialist_rules.VISIT_DURATION} turns."),
@@ -97,7 +104,7 @@ def guides():
             ("ADVANCE THE GALAXY", "End turn applies production, movement and the other empires' actions. Check Turn news for discoveries, completed projects and important events."),
         )),
         Article("black_holes", "basics", "Black-hole expeditions", "Hidden sites and legendary relics", (
-            ("FIND THE SINGULARITIES", "New campaigns contain two black holes in a Compact galaxy, or three in Standard and Expansive galaxies. Gravitic Mapping, Computers tier VI, reveals their names and locations. They stay hidden even with fog of war disabled. The Observer can see them from the start. Earlier campaigns keep their original worlds and gain no black holes."),
+            ("FIND THE SINGULARITIES", "New campaigns contain two black holes in a Compact galaxy, or three in Standard and Expansive galaxies. Gravitic Mapping reveals their names and locations. They stay hidden even with fog of war disabled. The Observer can see them from the start. Earlier campaigns keep their original worlds and gain no black holes."),
             ("APPROACH SAFELY", "Event Horizon Navigation, Computers tier VII, allows a safe approach and also includes detection if you chose the other tier VI technology. Without it, every ship that arrives at a black hole is lost. Unsafe orders require confirmation; pending departures can be cancelled before End Turn. Normal routes crossing the area are safe. Ordinary colony-based fuel range still applies."),
             ("DEFEAT THE GUARDIAN", "A prepared fleet approaches an ancient site outside the event horizon and fights its legendary guardian using normal tactical combat. Damage persists between expeditions. Retreat or defeat earns no relic. The first empire to defeat the guardian recovers the site's unique relic; revisiting cannot award another."),
             ("YOUR COLLECTION", "Recovery is saved with the campaign and announced in Turn news. Info → Legendary artifacts marks your recovered relics. Flagship/capital placement, bonuses and special powers remain proposed; collection does not activate them yet."),
@@ -155,7 +162,7 @@ def guides():
             ("REFERENCE VALUES", "Catalog entries show base values. Racial traits, research, mineral richness and current operating conditions can change the results shown on a colony or in a shipyard."),
         )),
         Article("research_guide", "research", "How research works", "Sequential tiers and exclusive choices", (
-            ("FIELDS AND TIERS", f"The research overview has {len(BRANCHES)} branches plus Ascension. Finish tiers in order within a branch. Ordinary tiers offer two exclusive technologies; completing one closes its alternative."),
+            ("FIELDS AND TIERS", f"The research overview has {len(BRANCHES)} fields. Civilization legacies are tracked in Objectives. Finish tiers in order within a branch. New campaigns offer three exclusive technologies per tier; completing one closes both alternatives. Older campaigns retain their original choices."),
             ("CHANGING YOUR MIND", "Click a technology to select it immediately. Until it is completed, you can switch projects and transfer invested RP. Completed choices remain fixed."),
             ("INSPECT", "Right-click a technology in the research screen to read its details. If you finish a turn without an active project and research choices remain, the research screen opens."),
             ("REFERENCE CATALOG", "The encyclopedia lists the complete public technology catalog, including technologies you have not researched. Reading an entry never selects or unlocks it."),
@@ -232,7 +239,7 @@ def articles():
             (("GOAL", spec.description), ("METHOD", spec.method),
              ("INSTALLATION", f"{spec.name}: unlocked after eight technologies. Construct through ordinary colony production. View exact targets and status in Objectives."),
              ("FINALE", "Satisfy all requirements for five consecutive turns. Blockade, bombardment, starvation and power loss can interrupt operation. Capture destroys a legacy installation. Targets scale with galaxy size and available content."))))
-    for spec in sorted(BUILDINGS.values(), key=lambda s: s.name):
+    for spec in sorted((b for b in BUILDINGS.values() if b.enabled), key=lambda s: s.name):
         sections = [("PURPOSE", spec.description),
                     ("BASE COST", f"{spec.resource_cost} Resources · {spec.work_cost} construction work"),
                     ("PER TURN", f"Maintenance: {spec.maintenance} CR · Energy demand: {spec.energy_use}"),
@@ -243,17 +250,17 @@ def articles():
                      ("NOTES", "One per colony, including queued orders. Values use Average mineral richness, before empire bonuses. Benefits require the building to operate.")]
         result.append(Article("building_"+spec.id, "buildings", spec.name, "Building · base values", tuple(sections)))
     for spec in sorted(TECHNOLOGIES.values(), key=lambda s: (s.branch, s.tier, s.name)):
-        if spec.id == "ascension_theory":
+        if spec.id == "ascension_theory" or not spec.enabled:
             continue
         finale = False
         branch = "Ascension" if finale else BRANCHES[spec.branch].name
         tier = "Finale" if finale else "Tier "+TIER_NAMES[spec.tier-1]
-        alternative = next((t.name for t in TECHNOLOGIES.values() if t.branch == spec.branch and t.tier == spec.tier and t.id != spec.id), None)
+        alternatives = [t.name for t in TECHNOLOGIES.values() if t.enabled and t.branch == spec.branch and t.tier == spec.tier and t.id != spec.id]
         sections = [("FIELD", branch+" · "+tier), ("RESEARCH COST", f"{spec.cost:,} RP"), ("EFFECT", spec.description),
                     ("PREREQUISITE", "Complete all research required for your campaign; science victory must be enabled." if finale else
                      "Complete the preceding tiers in this branch." if spec.tier > 1 else "The first tier in this branch.")]
-        if alternative:
-            sections.append(("EXCLUSIVE ALTERNATIVE", alternative+". Completing either technology closes the other choice in this tier."))
+        if alternatives:
+            sections.append(("EXCLUSIVE ALTERNATIVES", "; ".join(alternatives)+". Completing one technology closes the other choices in this tier. Any completed choice opens the next tier."))
         result.append(Article("technology_"+spec.id, "research", spec.name, f"{tier} · {spec.cost:,} RP", tuple(sections)))
     roles = {"colony_ship": "Establish a new colony on a suitable, unclaimed world. Consumed on settlement.",
              "outpost_ship": "Establish an unarmed refuelling outpost on any uncolonized solid-surface planet, regardless of habitability. Surface outposts exclude gas giants; an outpost ship can instead supply an orbital station foundation there for an additional construction payment. Consumes the ship. Only one outpost may exist per solar system, across all empires. Outposts extend fuel range and observe the local system, but have no population, production or upkeep. An owned outpost can be replaced by a colony using a colony ship. Enemy armed ships can attack it from the planet overview after defeating orbital defenders; destruction removes its fuel coverage.",

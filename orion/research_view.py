@@ -1,4 +1,4 @@
-"""Ten research fields at a glance, with browsable paired technology tiers."""
+"""Six research fields with three choices per tier; classic campaign support."""
 
 import math
 import pygame as pg
@@ -6,6 +6,9 @@ import pygame as pg
 from .fleet_art import ship_icon
 from .production import HULL_TECHNOLOGIES
 from .research import BRANCHES, TECHNOLOGIES, TIER_NAMES, branch_tiers, choices
+from .research_fields import is_modern
+from .buildings import BUILDINGS
+from .building_art import draw_building_art
 from . import hyperlanes, race_victory
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, paragraph, shorten, text, wrapped_lines
 
@@ -98,6 +101,8 @@ def draw_choice_row(app, technology, rect):
 
 
 def draw_field_overview(app):
+    if is_modern(BRANCHES):
+        return draw_six_fields(app)
     surface, game = app.canvas, app.game
     state = game.technology
     app.chrome("RESEARCH DIRECTORATE")
@@ -147,6 +152,49 @@ def draw_field_overview(app):
     app.button("research_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
 
+def technology_kind(identifier):
+    if any(b.enabled and b.technology == identifier for b in BUILDINGS.values()):
+        return 'BUILDING'
+    if identifier in HULL_TECHNOLOGIES.values():
+        return 'HULL'
+    from .megastructures import MEGASTRUCTURES, required_technology
+    if any(required_technology(key) == identifier for key in MEGASTRUCTURES):
+        return 'SYSTEM PROJECT'
+    from .designs import MODULES
+    if any(m.technology == identifier for m in MODULES.values()):
+        return 'SHIP MODULE'
+    return 'EMPIRE IMPROVEMENT'
+
+
+def draw_six_fields(app):
+    surface, game = app.canvas, app.game
+    state = game.technology
+    app.chrome('RESEARCH DIRECTORATE')
+    app.button('research_back', '← Back · R', (64, 124, 195, 46), app.close_research, 'ghost')
+    text(surface, 'Six fields of discovery', (290, 128), 32, INK, 'title')
+    draw_project_summary(app, research_rate(game))
+    for index, branch in enumerate(BRANCHES.values()):
+        x, y, width, height = 64+(index % 2)*668, 304+(index // 2)*168, 644, 158
+        tier, tiers = state.next_tier(branch.id), branch_tiers(branch.id)
+        options = choices(branch.id, tier)
+        active = state.active in {t.id for t in options}
+        panel(surface, (x, y, width, height), (10, 24, 32), GOLD if active else LINE)
+        pg.draw.rect(surface, (24, 39, 47), (x+1, y+1, width-2, 37))
+        text(surface, branch.name, (x+15, y+9), 21, GOLD if active else INK)
+        text(surface, f'TIER {TIER_NAMES[tier-1]} / {TIER_NAMES[tiers[-1]-1]}', (x+width-15, y+15), 10, CYAN, 'mono', right=True)
+        app.button('research_branch_'+branch.id, '', (x+1, y+1, width-2, 37),
+                   lambda b=branch.id: app.select_research_branch(b), 'hotspot')
+        text(surface, branch.description, (x+15, y+44), 11, MUTED)
+        for row, technology in enumerate(options):
+            draw_choice_row(app, technology, (x+7, y+65+row*28, width-14, 27))
+    app.button('research_save', 'Save · F5', (64, 835, 172, 44), app.save_game)
+    app.button('research_pause', 'Menu', (250, 835, 132, 44), app.pause)
+    text(surface, 'Choose one of three · Completion unlocks the next tier', (409, 831), 12, MUTED)
+    text(surface, 'Field heading: details · Right-click: information · Invested RP transfers', (409, 855), 10, FAINT)
+    text(surface, '3 OPTIONS · CHOOSE 1', (1376, 146), 11, GOLD, 'mono', right=True)
+    app.button('research_end_turn', 'End turn · E', (1081, 824, 295, 55), app.advance_turn, 'primary')
+
+
 def draw_branch_detail(app):
     surface, game = app.canvas, app.game
     state = game.technology
@@ -160,7 +208,7 @@ def draw_branch_detail(app):
     app.button("research_fields", "All fields", (274, 124, 182, 46), app.show_research_overview, "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Research & discovery", (64, 190), 43, INK, "title")
-    text(surface, "Choose one technology at each tier. Complete it to unlock both choices in the next tier.",
+    text(surface, "Choose one technology per tier. Completing it unlocks all choices in the next tier.",
          (66, 251), 14, MUTED)
 
     panel(surface, (64, 284, 1312, 113))
@@ -223,32 +271,44 @@ def draw_branch_detail(app):
             pg.draw.line(surface, LINE, (x+width, 501), (x+round(pitch)-2, 501), 2)
 
     text(surface, f"TIER {TIER_NAMES[selected_tier-1]} / CHOOSE ONE", (409, 539), 10, GOLD, "mono", 1)
-    for index, technology in enumerate(choices(branch.id, selected_tier)):
-        x, y = 408+index*496, 564
+    options = choices(branch.id, selected_tier)
+    card_pitch = 968/len(options)
+    for index, technology in enumerate(options):
+        width = round(card_pitch)-12
+        x, y = round(408+index*card_pitch), 559
         status = state.status(technology.id)
         color = CYAN if status == "discovered" else GOLD if status == "active" else LINE
-        panel(surface, (x, y, 472, 236), (14, 29, 38) if status in ("active", "discovered") else PANEL, color)
-        app.technology_info_region(technology.id, (x, y, 472, 236))
-        text(surface, technology.name, (x+18, y+18), 20, MUTED if status == "excluded" else INK)
+        panel(surface, (x, y, width, 246), (14, 29, 38) if status in ("active", "discovered") else PANEL, color)
+        app.technology_info_region(technology.id, (x, y, width, 246))
+        text(surface, technology_kind(technology.id), (x+15, y+12), 9, GOLD, 'mono')
+        for line, title in enumerate(wrapped_lines(technology.name, width-30, 18)[:2]):
+            text(surface, title, (x+15, y+33+line*21), 18, MUTED if status == 'excluded' else INK)
         hull = next((kind for kind, tech in HULL_TECHNOLOGIES.items() if tech == technology.id), None)
-        detail_width = 318 if hull else 432
-        size = 13 if len(wrapped_lines(technology.description, detail_width, 14)) > 4 else 14
-        paragraph(surface, technology.description, (x+19, y+59), detail_width, size, MUTED, 20)
-        if hull:
-            ship_icon(surface, (x+397, y+101), 1.35, kind=hull)
+        building = next((b for b in BUILDINGS.values() if b.enabled and b.technology == technology.id), None)
+        if building:
+            draw_building_art(surface, building.id, (x+width-96, y+74, 80, 64))
+        elif hull:
+            ship_icon(surface, (x+width-52, y+106), .95, kind=hull)
+        # Art and short effect preview are separate from the complete right-click details.
+        detail_width = width-120 if building or hull else width-30
+        lines = wrapped_lines(technology.description, detail_width, 12)
+        for line, content in enumerate(lines[:6]):
+            if line == 5 and len(lines) > 6:
+                content = shorten(content+' …', detail_width, 12)
+            text(surface, content, (x+15, y+82+line*17), 12, MUTED)
         label = {"discovered": "Discovered", "active": "Researching", "excluded": "Not chosen",
                  "locked": "Earlier tiers required", "available": "Switch technology" if state.active else "Choose technology"}[status]
         reason = game.research_error(technology.id)
-        app.button(f"research_choose_{technology.id}", label, (x+18, y+163, 254, 40),
+        app.button(f"research_choose_{technology.id}", label, (x+15, y+183, width-30, 35),
                    lambda identifier=technology.id: app.research_request(identifier), enabled=reason is None)
         cost = state.project_cost if status == "active" else technology.cost
-        text(surface, f"{cost} RP", (x+453, y+177), 12, CYAN, "mono", right=True)
+        text(surface, f"{cost} RP", (x+width-15, y+12), 10, CYAN, "mono", right=True)
         caption = ("Completed choice is permanent" if status in ("discovered", "excluded") else
-                   "Switch until discovery · All invested RP transfers" if status in ("active", "available") else
-                   "Either choice opens the next tier")
+                   "Switch freely until discovery" if status in ("active", "available") else
+                   "Any choice opens the next tier")
         if selected_tier == tiers[-1] and status == "available":
-            caption = "Either choice completes this branch"
-        text(surface, caption, (x+19, y+216), 10, FAINT)
+            caption = "Any choice completes this field"
+        text(surface, caption, (x+15, y+228), 10, FAINT)
 
     app.button("research_save", "Save · F5", (64, 835, 172, 44), app.save_game)
     app.button("research_pause", "Menu", (250, 835, 132, 44), app.pause)
@@ -258,53 +318,70 @@ def draw_branch_detail(app):
 
 
 def draw_technology_info(app, identifier):
-    """Read-only details for available, active, locked and completed projects."""
+    """Read-only, paginated details for every choice, including both alternatives."""
     surface, game = app.canvas, app.game
     state, technology = game.technology, TECHNOLOGIES[identifier]
     status = state.status(identifier)
-    cost = state.project_cost if status == "active" else technology.cost
-    alternative = next((t for t in choices(technology.branch, technology.tier) if t.id != identifier), None)
-    notes = []
-    from .megastructures import MEGASTRUCTURES
+    cost = state.project_cost if status == 'active' else technology.cost
+    alternatives = [t.name for t in choices(technology.branch, technology.tier) if t.id != identifier]
+    notes = [technology.description]
+    buildings = [b for b in BUILDINGS.values() if b.enabled and b.technology == identifier]
+    for building in buildings:
+        notes.append(f'BUILD: {building.name} · {building.resource_cost} Resources · {building.work_cost} work · one slot.')
+        notes.append(building.effect_text('Average') + f' · {building.energy_use} energy · {building.maintenance} CR upkeep.')
+        if building.workforce_text('Average'):
+            notes.append(building.workforce_text('Average'))
+    if buildings:
+        notes.append('Research unlocks construction. Benefits begin only when the facility is completed and operating. Existing buildings remain unchanged.')
+    from .megastructures import MEGASTRUCTURES, required_technology
     for spec in MEGASTRUCTURES.values():
-        if technology.branch == spec.branch and technology.tier == spec.tier:
-            notes.append(f"Either choice in this tier unlocks the {spec.name} system project.")
-    if identifier == "ascension_theory" and "science" not in game.victory_conditions:
-        notes.append("Ascension Theory is retired and replaced by civilization legacies.")
-    elif status == "available":
+        required = required_technology(spec.id)
+        if required == identifier:
+            notes.append(f'Unlocks the {spec.name} system project.')
+        elif not required and technology.branch == spec.branch and technology.tier == spec.tier:
+            notes.append(f'Any choice in this tier unlocks the {spec.name} system project.')
+    if identifier == 'ascension_theory' and 'science' not in game.victory_conditions:
+        notes.append('Ascension Theory is retired and replaced by civilization legacies.')
+    elif status == 'available':
         available = game.research+state.progress
-        notes.append(f"Selecting this project applies {min(cost, available)} RP: "
-                     f"{state.progress} RP invested in your current project and {game.research} banked RP are available.")
+        notes.append(f'Selecting applies up to {min(cost, available)} RP: {state.progress} invested and {game.research} banked.')
         if available >= cost:
-            notes.append(f"It will be discovered immediately; {available-cost} RP will remain banked.")
+            notes.append(f'Discovered immediately; {available-cost} RP remains banked.')
         else:
-            notes.append("You can change projects until discovery. All invested RP transfers to your new choice.")
-    elif status == "active":
-        notes.append(f"{state.progress} / {cost} RP invested. You can change projects until discovery; all invested RP transfers.")
-    elif status == "discovered":
-        notes.append("Already discovered. Its effects are active and this completed choice cannot be changed.")
+            notes.append('Until discovery, switching transfers all invested RP to the new choice.')
+    elif status == 'active':
+        notes.append(f'{state.progress} / {cost} RP invested. Switching transfers all invested RP.')
+    elif status == 'discovered':
+        notes.append('Already discovered. This completed choice is permanent.')
     else:
         notes.append(state.choice_error(identifier))
-    if alternative and status in ("active", "available", "locked"):
-        notes.append(f"Choosing this technology excludes normal research of {alternative.name}. A Research Array may later recover it.")
-    name = BRANCHES[technology.branch].name if technology.branch in BRANCHES else "Ascension"
-    tier = "FINALE" if technology.branch == "ascension" else f"TIER {TIER_NAMES[technology.tier-1]}"
-    description_height = 26*len(wrapped_lines(technology.description, 784, 17))
-    notes_height = sum(23*len(wrapped_lines(note, 784, 15))+12 for note in notes)
-    height = max(400, 254+description_height+notes_height)
-    x, y = 292, (900-height)//2
-    panel(surface, (x, y, 856, height), PANEL, GOLD)
-    text(surface, f"{name.upper()} · {tier}", (x+30, y+23), 10, GOLD, "mono", 1)
-    text(surface, technology.name, (x+29, y+48), 28, INK, "title")
-    label = {"available": "Available", "active": "Researching", "discovered": "Discovered",
-             "excluded": "Not chosen", "locked": "Locked"}[status]
-    if identifier == "ascension_theory" and "science" not in game.victory_conditions:
-        label = "Disabled in setup"
-    text(surface, f"{cost} RP · {label}", (x+30, y+96), 14, CYAN)
-    bottom = paragraph(surface, technology.description, (x+30, y+132), 784, 17, INK, 26)
-    pg.draw.line(surface, LINE, (x+30, bottom+14), (x+826, bottom+14))
-    bottom += 32
+    if alternatives:
+        notes.append('Other choices in this tier: ' + '; '.join(alternatives) + '.')
+        notes.append('Completing one choice excludes normal research of the others. A Research Array may later recover an omitted discovery.')
+    if technology.branch in BRANCHES:
+        notes.append('Any completed choice opens the next tier. Tier access has no specific prerequisites; equipment still needs a compatible hull.')
+    name = BRANCHES[technology.branch].name if technology.branch in BRANCHES else 'Ascension'
+    tier = 'FINALE' if technology.branch == 'ascension' else f'TIER {TIER_NAMES[technology.tier-1]}'
+    x, y, width, height = 240, 75, 960, 750
+    panel(surface, (x, y, width, height), PANEL, GOLD)
+    text(surface, f'{name.upper()} · {tier} · {technology_kind(identifier)}', (x+30, y+23), 10, GOLD, 'mono')
+    text(surface, shorten(technology.name, 700, 28, 'title'), (x+29, y+48), 28, INK, 'title')
+    label = {'available': 'Available', 'active': 'Researching', 'discovered': 'Discovered', 'excluded': 'Not chosen', 'locked': 'Locked'}[status]
+    text(surface, f'{cost} RP · {label}', (x+30, y+96), 14, CYAN)
+    if buildings:
+        draw_building_art(surface, buildings[0].id, (x+777, y+40, 145, 95))
+    rows = []
     for note in notes:
-        bottom = paragraph(surface, note, (x+30, bottom), 784, 15, MUTED, 23)+12
-    text(surface, "Information only · No research orders are changed", (x+30, y+height-51), 11, FAINT)
-    app.button("dialog_close", "Close · Esc", (x+616, y+height-71, 210, 45), app.cancel_dialog)
+        rows.extend(wrapped_lines(note, width-60, 15))
+        rows.append('')
+    per_page = 21
+    pages = max(1, (len(rows)+per_page-1)//per_page)
+    page = min(pages-1, max(0, app.dialog.get('technology_page', 0)))
+    for row, line in enumerate(rows[page*per_page:(page+1)*per_page]):
+        text(surface, line, (x+30, y+150+row*23), 15, MUTED if not line.startswith('BUILD:') else CYAN)
+    if pages > 1:
+        app.button('technology_info_previous', '←', (x+30, y+653, 52, 35), lambda: app.dialog.update(technology_page=page-1), enabled=page > 0)
+        text(surface, f'{page+1} / {pages}', (x+97, y+664), 12, MUTED)
+        app.button('technology_info_next', '→', (x+155, y+653, 52, 35), lambda: app.dialog.update(technology_page=page+1), enabled=page < pages-1)
+    text(surface, 'Information only · Research orders are unchanged', (x+30, y+710), 11, FAINT)
+    app.button('dialog_close', 'Close · Esc', (x+720, y+690, 210, 40), app.cancel_dialog)

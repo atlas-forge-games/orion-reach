@@ -172,7 +172,9 @@ class SceneInterfaceTests(unittest.TestCase):
         assets = Path(self.tmp.name)/"missing_art"
         (assets/"buildings").mkdir(parents=True)
         (assets/"buildings/factory-v1.png").write_bytes(b"broken PNG")
-        self.app.game.systems[0].worlds[2].buildings = list(BUILDINGS)
+        planet = self.app.game.systems[0].worlds[2]
+        planet.size = 'Huge'
+        planet.buildings = list(BUILDINGS)[:planet.building_capacity]
         try:
             with patch.object(building_art, "ASSETS", assets):
                 building_art.load_building_art.cache_clear()
@@ -180,7 +182,7 @@ class SceneInterfaceTests(unittest.TestCase):
                 self.app.render()
                 for asset_id in building_art.BUILDING_ART_IDS:
                     self.assertIsNone(building_art.load_building_art(asset_id))
-                self.assertEqual(len(self.surface_keys()), len(BUILDINGS)+2)
+                self.assertEqual(len(self.surface_keys()), len(planet.buildings)+2)
                 self.click("surface_factory")
                 self.assertEqual(self.app.colony_slot, 0)
         finally:

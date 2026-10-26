@@ -56,3 +56,16 @@ The original six PNGs are unchanged. This artwork update changes no building
 statistics, research, game rules or save data.
 
 Version 0.60.1 adds `space_hub-v1.png`: a travelers’ glass lounge, terminal wings, landing pad and communications mast. Generated with the built-in image tool, on a transparent background, in the existing colony architectural style. Prompt recorded in `space_hub-prompt.txt`.
+
+## Version 0.83 research facilities
+
+Six transparent 1280 × 1280 PNGs add an advanced factory, population care centre,
+enclosed biosphere, administration centre, antimatter plant and relic research
+centre. `research-v083-prompts.json` records the full prompts. The generated PNGs
+are unchanged; scaling and transparent-margin alignment happen in the renderer.
+
+Related new facilities share these illustrations through `SHARED_ART` in
+`orion/advanced_buildings.py`. Existing building artwork retains priority.
+Placement uses the separate `ART_FAMILIES` mapping and saved surface coordinates,
+so sharing a new sprite does not rearrange established colonies. Missing or
+corrupt images still fall back to the original family illustrations or shapes.
