@@ -1,6 +1,7 @@
 """Clickable galaxy fleets, their ship manifest, and destination previews."""
 
 from functools import lru_cache
+from math import floor, hypot
 import pygame as pg
 
 from .colony_view import turn_label
@@ -23,6 +24,47 @@ FLEET_SHIPS_PER_PAGE = 6
 DOCK_OFFSET = (30, 24)
 DOCK_SPACING = 24
 DOCK_COLUMNS = 3
+
+
+def draw_dashed_route(surface, color, origin, destination):
+    """Screen-sized dashes whose phase stays anchored to the route while panning."""
+    dx, dy = destination[0]-origin[0], destination[1]-origin[1]
+    length = hypot(dx, dy)
+    clipped = surface.get_clip().clipline(origin, destination)
+    if length < 1 or not clipped:
+        return
+    ux, uy = dx/length, dy/length
+    first, last = ((point[0]-origin[0])*ux+(point[1]-origin[1])*uy for point in clipped)
+    # Skip off-screen dashes without restarting the pattern at the viewport edge.
+    offset = max(0, floor(first/11)*11)
+    while offset <= min(length, last+1):
+        end = min(offset+6, length)
+        start_point = (round(origin[0]+ux*offset), round(origin[1]+uy*offset))
+        end_point = (round(origin[0]+ux*end), round(origin[1]+uy*end))
+        pg.draw.line(surface, color, start_point, end_point, 1)
+        offset += 11
+
+
+def draw_clean_fleet_routes(app, map_rect):
+    """Only actual, visible voyages get a quiet route beneath the map markers."""
+    if not clean_map(app):
+        return
+    surface, game = app.canvas, app.game
+    clip = surface.get_clip()
+    surface.set_clip(clip.clip(map_rect))
+    drawn = set()
+    for ship in game.visible_ships():
+        if not ship.in_transit:
+            continue
+        start, end = sorted((ship.system_id, ship.destination))
+        route = (ship.owner, start, end)
+        if route in drawn:
+            continue
+        drawn.add(route)
+        color = tuple(c*3//5 for c in app.empire_color(ship.owner))
+        draw_dashed_route(surface, color, app.star_pos(game.systems[start]),
+                          app.star_pos(game.systems[end]))
+    surface.set_clip(clip)
 
 
 def docking_slots(app, groups):

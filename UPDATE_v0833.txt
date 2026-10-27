@@ -1,0 +1,24 @@
+AGE OF THE STARS / ORION REACH — v0.83.3 DASHED FLIGHT PATHS
+
+INSTALL
+Close the game. Extract this ZIP over v0.83.2 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game.
+
+IN CLEAN MAP MODE
+- Flying fleets have a subtle dashed line from departure to destination.
+- Lines use faction colors and sit beneath stars, labels and ship icons.
+- Docked fleets and queued departures remain line-free.
+- Routes disappear on arrival; ship icons keep their current travel heading.
+- Zooming keeps dash sizes consistent, and panning clips routes correctly.
+- Hidden enemy routes are not revealed by sensor contacts.
+
+Classic remains available in Settings > Interface > Galaxy map style.
+No new dependency, campaign restart or save-format change is needed.
+
+VALIDATION
+All 18 focused route, map-style and fleet-icon tests pass. The active-flight
+Classic capture matches v0.83.2 pixel-for-pixel. See
+docs/galaxy-fleet-routes.md for details and the included actual game captures.
+
+No files were committed or pushed.

@@ -1,5 +1,9 @@
 # Galaxy map styles — v0.83.1
 
+This page records the initial style update. v0.83.2 added
+[illustrated icons and fixed dock positions](galaxy-fleet-icons.md), and v0.83.3
+adds [dashed paths for travelling fleets](galaxy-fleet-routes.md) in Clean mode.
+
 The crowded galaxy map previously combined bold labels, numbered fleet badges,
 label and badge connectors, travel routes and sensor contact annotations.
 Clean replaces those fleet badges with small colored silhouettes, uses 11 px

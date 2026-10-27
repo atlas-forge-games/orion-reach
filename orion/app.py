@@ -71,7 +71,7 @@ from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, han
 from . import production as production_balance
 from .galaxy_labels import draw_system_label
 from .galaxy_style import STYLES as GALAXY_STYLES, clean_map, map_style
-from .galaxy_fleet_view import known_guardian_kinds
+from .galaxy_fleet_view import draw_clean_fleet_routes, known_guardian_kinds
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
 from .exploration import known_rival_colonies
@@ -2749,6 +2749,7 @@ class App:
         draw_coverage(self,MAP)
         draw_fuel_range(self,MAP)
         draw_network(self,MAP)
+        draw_clean_fleet_routes(self,MAP)
         labels=star_label_rects(self,MAP)
         moving=ordered_ships(self)
         preview=self.fleet_route_target() if self.map_order_ids else state.selected_system

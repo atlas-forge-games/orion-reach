@@ -98,7 +98,7 @@ def draw_interface(app):
         app.button("galaxy_style_"+style, label, (x, 385, 472, 48),
                    lambda value=style: app.set_galaxy_style(value),
                    "tab_active" if map_style(app) == style else "tab")
-    description = ("Small icons and labels; no connecting lines or ship counts."
+    description = ("Small icons and labels; dashed flight paths; counts on click."
                    if map_style(app) == "clean" else "Original labels, route lines and numbered fleet badges.")
     text(app.canvas, description, (380, 450), 15, MUTED)
     text(app.canvas, "Click a fleet or sensor contact to inspect its details.", (380, 479), 15, MUTED)
