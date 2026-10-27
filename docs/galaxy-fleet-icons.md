@@ -1,8 +1,9 @@
 # Illustrated fleets and fixed docks — v0.83.2
 
-v0.83.3 adds [subtle dashed flight paths](galaxy-fleet-routes.md) beneath these
-icons while fleets are travelling. The docking positions and headings below
-still apply.
+Later updates add [subtle dashed fleet routes](galaxy-fleet-routes.md).
+Since v0.83.4, hovering previews the route and queued departures immediately
+line up at its start, facing the destination. This supersedes the v0.83.2
+queued-departure placement described below; unordered fleets keep fixed docks.
 
 Clean mode replaces its geometric fleet symbol with a dedicated illustrated
 ship icon. The original transparent master is in `assets/map/fleet-icon-v1.png`.

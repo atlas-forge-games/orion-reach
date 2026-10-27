@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.83.3
+# Age of the Stars — Python prototype 0.83.4
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,22 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.83.4: hover previews and immediate route placement
+
+Select a fleet and hover over a destination to see a dashed route preview in
+Clean mode. Reachable destinations use gold; out-of-range destinations use red.
+Click a destination and the ship icon immediately moves onto the beginning of
+the route and faces its target. Ships left behind keep their dock positions.
+
+The issued route stays visible after closing the fleet panel or reloading.
+Click the origin before End Turn to cancel and return the fleet to its dock.
+Movement still advances with End Turn.
+
+Install this incremental update over v0.83.3. See
+[fleet routes and validation](docs/galaxy-fleet-routes.md).
+
+![Fleet aligned immediately after setting its course](screenshots/galaxy_route_queued_v0834.png)
 
 ## New in v0.83.3: dashed flight paths
 

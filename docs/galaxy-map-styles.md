@@ -3,6 +3,8 @@
 This page records the initial style update. v0.83.2 added
 [illustrated icons and fixed dock positions](galaxy-fleet-icons.md), and v0.83.3
 adds [dashed paths for travelling fleets](galaxy-fleet-routes.md) in Clean mode.
+v0.83.4 extends these paths to hover previews and queued departures, with icons
+lining up on the route as soon as the order is issued.
 
 The crowded galaxy map previously combined bold labels, numbered fleet badges,
 label and badge connectors, travel routes and sensor contact annotations.

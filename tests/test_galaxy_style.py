@@ -115,7 +115,7 @@ class MapStyleUITests(unittest.TestCase):
         self.click("star_1")
         self.assertTrue(all(s.destination == 1 and s.departure_pending for s in self.app.game.ships))
 
-    def test_queued_route_previews_and_counts_disappear_only_in_clean(self):
+    def test_clean_markers_omit_badge_connectors_and_counts(self):
         from orion.app import MAP
         use_nearby_system(self.app.game, 1)
         self.app.game.send_ships([1, 2, 3], 1)

@@ -2752,7 +2752,7 @@ class App:
         draw_clean_fleet_routes(self,MAP)
         labels=star_label_rects(self,MAP)
         moving=ordered_ships(self)
-        preview=self.fleet_route_target() if self.map_order_ids else state.selected_system
+        preview=self.fleet_route_target() if self.map_order_ids or (compact and self.route_ship_id is not None) else state.selected_system
         for star in self.map_systems():
             x,y=self.star_pos(star)
             selected=star.id==preview

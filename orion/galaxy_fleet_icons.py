@@ -5,14 +5,20 @@ import math
 import pygame as pg
 
 from .ui import ASSETS
+from .model import PLAYER
 
 ICON_BOX = 22
 ART_SIZE = 18
 
 
+def visible_course(app, ship):
+    """Keep map lines and icon placement from revealing queued enemy orders."""
+    return ship.has_course and (ship.owner == PLAYER or app.game.is_observer or not app.game.fog_of_war)
+
+
 def flight_heading(app, ship):
     """Clockwise degrees from north, measured in the displayed map coordinates."""
-    if not ship.in_transit or ship.destination is None:
+    if not visible_course(app, ship):
         return 0.0
     start = app.star_pos(app.game.systems[ship.system_id])
     end = app.star_pos(app.game.systems[ship.destination])

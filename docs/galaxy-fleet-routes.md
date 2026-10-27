@@ -1,43 +1,64 @@
-# Galaxy fleet flight paths — v0.83.3
+# Galaxy fleet routes and previews — v0.83.4
 
-In Clean mode, fleets travelling between systems now have a one-pixel dashed
-path from their departure system to their destination. The line uses a muted
-version of the fleet's faction color. It is drawn below stars, labels and ship
-icons, leaving the direction visible through the ship's existing heading.
+Select a fleet in Clean mode and move the pointer over a destination system.
+A gold dashed path previews a reachable course; an out-of-range target uses
+red. Hovering does not issue an order, move the ship icon or change the game.
+The preview uses the same destination targeting as the existing fleet controls.
 
-Paths appear when movement begins and disappear on arrival. Docked fleets and
-queued departures remain line-free. Counts still appear after clicking a fleet.
-Classic retains its existing routes and numbered badges.
+Click the target to issue the order. The icon immediately appears on the route
+near the departure system, facing the destination. The path remains visible
+when the fleet panel is closed and after saving and loading. Hovering a new
+target adds a proposed route while the icon stays on its issued route; clicking
+the new target redirects the queued order.
 
-Dash lengths stay constant on screen as the map zooms, and their pattern stays
-anchored to the route during panning. Routes are clipped to the viewport and
-remain visible when the fleet itself is off-screen. Shared paths belonging to
-the same faction are drawn once, including voyages in opposite directions.
-Only fleets already visible through the game's visibility rules receive paths;
-sensor contacts never expose a hidden destination.
+Ships left behind keep their lower-right dock positions. Clicking the origin
+before End Turn cancels the selected ships' departure and returns their icons
+to the dock. The queued icon position is a display offset only: the turn,
+navigation position and saved travel duration do not advance when clicked.
+End Turn starts movement, and actual travelling icons use the navigation
+model's position. Arrival removes the route and restores a dock position.
+
+Unselected issued routes use a muted faction color. Lines remain one pixel
+wide beneath stars, labels and icons, with constant screen-sized dashes during
+zoom and panning. Shared paths for the same faction draw once. Clipping still
+shows paths crossing the viewport when a fleet is off-screen. Hidden enemy
+routes and sensor-contact destinations are not drawn; queued enemy orders do
+not reveal a route or directional icon under fog of war.
+
+Classic retains its previous badges, connectors and route presentation. Counts
+remain available in the fleet details after clicking a Clean marker.
 
 ## Install
 
-Close the game and extract this incremental ZIP over v0.83.2 in the folder
+Close the game and extract this incremental ZIP over v0.83.3 in the folder
 containing `main.py`, `orion/` and `assets/`. Replace the included files, then
 run `python main.py`. No dependency, settings or save-format change is needed.
 
 ## Validation
 
-All 18 focused route, map-style and fleet-icon tests pass. The new route checks
-cover departure and arrival, unchanged campaign data, sensor-only enemy
-contacts, observer visibility, off-screen crossings, clip restoration, panning,
-shared routes, visible gaps, diagonal paths and zero-length paths.
+All 34 focused checks pass: the route-preview, route, icon and map-style suites,
+eight existing fleet-input scenarios, and three camera-input scenarios.
+The five new UI tests cover hover without orders, out-of-range feedback,
+immediate placement, partial-fleet selection, cancellation, save/reload,
+redirecting, all eight headings at three zoom levels, panning and enemy-route
+visibility. Existing checks cover dashes, clipping, arrival, artwork, settings,
+counts, keyboard navigation and preserving orders across screen changes.
 
-Clean and zoomed Clean captures were inspected in the actual game renderer.
-The same active-flight scenario in Classic matches v0.83.2 pixel-for-pixel.
-This update does not rerun the unrelated gameplay suite; previously documented
-baseline gameplay failures remain outside its scope.
+Actual game captures of hover, immediate placement and a closed fleet panel
+were inspected. The queued-order Classic capture matches v0.83.3 pixel-for-pixel.
+The unrelated full gameplay suite was not rerun; the previously documented
+baseline gameplay failures remain outside this update's scope.
 
-Run the focused checks from the project root:
+Run the four focused suites from the project root:
 
 ```bash
-PYTHONPATH=tests python -m unittest test_galaxy_fleet_routes test_galaxy_style test_galaxy_fleet_icons -q
+PYTHONPATH=tests python -m unittest test_galaxy_route_preview test_galaxy_fleet_routes test_galaxy_fleet_icons test_galaxy_style -q
 ```
 
-Recreate the captures with `python tools/preview_galaxy_routes.py`.
+These suites contain 23 of the 34 checks. The additional checks are the existing
+fleet UI cases for subset sending, hover/close, origin cancellation, reload,
+selection across pages, unissued orders across navigation/End Turn, arrival,
+and origin/empty-space clicks; plus camera cases for zoomed destination clicks,
+dragging without orders and keyboard panning.
+
+Recreate the captures with `python tools/preview_galaxy_route_orders.py`.

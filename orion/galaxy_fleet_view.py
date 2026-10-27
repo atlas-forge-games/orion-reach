@@ -11,7 +11,7 @@ from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .galaxy_labels import label_font, system_label
 from .galaxy_style import clean_map, map_style
-from .galaxy_fleet_icons import ICON_BOX, draw_map_ship, flight_heading
+from .galaxy_fleet_icons import ICON_BOX, draw_map_ship, flight_heading, visible_course
 from . import monsters, navigation, black_holes, hyperlanes
 from .hyperlane_art import LANE_COLOR
 from .black_hole_view import hit_rect
@@ -46,22 +46,28 @@ def draw_dashed_route(surface, color, origin, destination):
 
 
 def draw_clean_fleet_routes(app, map_rect):
-    """Only actual, visible voyages get a quiet route beneath the map markers."""
+    """Show issued courses immediately and preview the selected fleet's target."""
     if not clean_map(app):
         return
     surface, game = app.canvas, app.game
     clip = surface.get_clip()
     surface.set_clip(clip.clip(map_rect))
-    drawn = set()
+    routes = {}
     for ship in game.visible_ships():
-        if not ship.in_transit:
+        if not visible_course(app, ship):
             continue
         start, end = sorted((ship.system_id, ship.destination))
-        route = (ship.owner, start, end)
-        if route in drawn:
-            continue
-        drawn.add(route)
-        color = tuple(c*3//5 for c in app.empire_color(ship.owner))
+        routes[(ship.owner, start, end)] = tuple(c*3//5 for c in app.empire_color(ship.owner))
+    ships = [s for s in ordered_ships(app) if s.owner == PLAYER and not s.in_transit]
+    if ships and not game.strategy_error():
+        ship = ships[0]
+        target = app.fleet_route_target()
+        if target != ship.system_id:
+            keeping = all(s.departure_pending and s.destination == target for s in ships)
+            blocked = not keeping and not game.can_reach(target, ships=ships)
+            start, end = sorted((ship.system_id, target))
+            routes[(ship.owner, start, end)] = RED if blocked else GOLD
+    for (_, start, end), color in routes.items():
         draw_dashed_route(surface, color, app.star_pos(game.systems[start]),
                           app.star_pos(game.systems[end]))
     surface.set_clip(clip)
@@ -76,7 +82,7 @@ def docking_slots(app, groups):
     previous_game, previous = getattr(app, "_fleet_docking_slots", (None, {}))
     if previous_game is not app.game:
         previous = {}
-    docked = [ships for ships in groups if not ships[0].in_transit]
+    docked = [ships for ships in groups if not ships[0].in_transit and not visible_course(app, ships[0])]
     # Reserve established groups before placing newly arrived groups.
     docked.sort(key=lambda ships: (not any((ships[0].system_id, s.id) in previous for s in ships), ships[0].id))
     occupied, result, retained = {}, {}, {}
@@ -97,7 +103,7 @@ def docking_slots(app, groups):
 
 
 def compact_fleet_markers(app, map_rect):
-    """Docked icons have fixed offsets; travelling icons use actual positions."""
+    """Docked icons keep fixed slots; queued icons line up at their route's start."""
     groups = group_fleets(app.game.visible_ships())
     slots = docking_slots(app, groups)
     result = []
@@ -107,7 +113,17 @@ def compact_fleet_markers(app, map_rect):
         if not map_rect.collidepoint(anchor):
             continue
         x, y = anchor
-        if not ship.in_transit:
+        if ship.departure_pending and visible_course(app, ship):
+            end = app.star_pos(app.game.systems[ship.destination])
+            dx, dy = end[0]-x, end[1]-y
+            length = hypot(dx, dy)
+            if length:
+                # Presentation only: keep the icon clear of the star where possible,
+                # without advancing the voyage or changing its saved duration.
+                distance = min(32, length/2)
+                x += dx/length*distance
+                y += dy/length*distance
+        elif not ship.in_transit:
             slot = slots[ship.id]
             x += DOCK_OFFSET[0] + (slot % DOCK_COLUMNS)*DOCK_SPACING
             y += DOCK_OFFSET[1] + (slot // DOCK_COLUMNS)*DOCK_SPACING

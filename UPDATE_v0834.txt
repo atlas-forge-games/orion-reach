@@ -1,0 +1,27 @@
+AGE OF THE STARS / ORION REACH — v0.83.4 ROUTE PREVIEWS AND QUEUED FLEETS
+
+INSTALL
+Close the game. Extract this ZIP over v0.83.3 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game.
+
+IN CLEAN MAP MODE
+- Select a fleet and hover over a star to preview a dashed route.
+- Gold means reachable; red indicates an out-of-range destination.
+- Click the destination and the icon immediately lines up on the route,
+  facing its target. There is no need to wait until the next turn to see this.
+- Ships left behind remain docked in their existing positions.
+- Issued routes stay visible after closing the fleet panel and saving/loading.
+- Hovering another target previews a redirect; clicking it changes the order.
+- Click the origin before End Turn to cancel and return to the dock.
+
+The visual placement does not advance time or spend movement. Travel still
+advances with End Turn. Classic, campaign rules, settings and save format are
+unchanged. No new dependency or campaign restart is needed.
+
+VALIDATION
+All 34 focused route, icon, style, fleet-input and camera-input checks pass.
+The queued-order Classic capture matches v0.83.3 pixel-for-pixel. See
+docs/galaxy-fleet-routes.md and the included actual game captures.
+
+No files were committed or pushed.

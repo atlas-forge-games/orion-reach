@@ -54,7 +54,7 @@ class FleetIconTests(unittest.TestCase):
             self.assertGreater(pg.mask.from_surface(icon_sprite((250, 168, 111), False, 90)).count(), 20)
         icon_sprite.cache_clear()
 
-    def test_dock_offset_survives_labels_zoom_pan_and_queued_departure(self):
+    def test_dock_offset_survives_labels_zoom_and_pan(self):
         home = self.game.systems[0]
         for zoom in (1, 1.25, 2, 4):
             self.app.map_camera.zoom = zoom
@@ -66,10 +66,6 @@ class FleetIconTests(unittest.TestCase):
             labels = star_label_rects(self.app, self.map)
             self.assertEqual(self.markers()[10][0], before)
             self.assertEqual(before.collidelist(list(labels.values())), -1)
-            for ship in self.game.ships:
-                ship.destination, ship.departure_pending = 1, True
-                ship.travel_total = ship.turns_remaining = 4
-            self.assertEqual(self.markers()[10][0], before)
             self.assertEqual(flight_heading(self.app, self.game.ships[0]), 0)
 
     def test_existing_slots_stay_put_when_other_fleets_arrive_split_or_depart(self):

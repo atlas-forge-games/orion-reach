@@ -31,6 +31,7 @@ class FleetRouteTests(unittest.TestCase):
         self.app = SimpleNamespace(
             game=self.game, canvas=pg.Surface((360, 240), pg.SRCALPHA),
             settings={"galaxy_style": "clean"},
+            map_order_ids=(), route_ship_id=None,
             star_pos=lambda star: self.camera.position(star.x, star.y, self.map),
             empire_color=lambda owner: (50, 180, 250) if owner == "player" else (250, 160, 50),
         )
@@ -45,11 +46,13 @@ class FleetRouteTests(unittest.TestCase):
         draw_clean_fleet_routes(self.app, self.map)
         return pg.mask.from_surface(self.app.canvas).count()
 
-    def test_only_active_travel_has_a_route_and_rendering_preserves_campaign(self):
+    def test_issued_courses_show_immediately_and_rendering_preserves_campaign(self):
         self.assertEqual(self.draw(), 0)
         self.fly()
         self.ship.departure_pending = True
-        self.assertEqual(self.draw(), 0)
+        before = self.game.to_dict()
+        self.assertGreater(self.draw(), 0)
+        self.assertEqual(self.game.to_dict(), before)
         self.ship.departure_pending = False
         before = self.game.to_dict()
         self.assertGreater(self.draw(), 0)
