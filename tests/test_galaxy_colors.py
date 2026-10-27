@@ -47,6 +47,8 @@ class ColorPreferenceUITests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.addCleanup(pg.quit)
         self.app = App(Path(self.directory.name), capture=True)
+        # These pixel checks cover the original numbered-badge presentation.
+        self.app.settings["galaxy_style"] = "classic"
         self.addCleanup(self.app.audio.close)
         self.app.game = new_game(seed=804, with_guardians=False, with_tombs=False, fog_of_war=True)
         self.app.go("galaxy")

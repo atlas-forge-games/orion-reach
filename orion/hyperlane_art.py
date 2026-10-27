@@ -6,6 +6,7 @@ import math
 import pygame as pg
 
 from . import hyperlanes
+from .galaxy_style import clean_map
 
 LANE_COLOR = (160, 172, 255)
 ART = Path(__file__).resolve().parents[1]/"assets"/"hyperlanes"/"forgotten_hyperlane-v1.png"
@@ -42,8 +43,11 @@ def draw_network(app, map_rect):
         return
     layer = pg.Surface(map_rect.size, pg.SRCALPHA)
     endpoints = set()
+    compact = clean_map(app)
     for route in routes:
         endpoints.update((route.system_id, route.destination))
+        if compact:
+            continue
         first, last = (app.star_pos(app.game.systems[sid]) for sid in (route.system_id, route.destination))
         x1, y1 = first[0]-map_rect.x, first[1]-map_rect.y
         x2, y2 = last[0]-map_rect.x, last[1]-map_rect.y
@@ -63,4 +67,4 @@ def draw_network(app, map_rect):
     for sid in endpoints:
         point = app.star_pos(app.game.systems[sid])
         if map_rect.collidepoint(point):
-            draw_portal(app.canvas, point, 16)
+            draw_portal(app.canvas, point, 11 if compact else 16)

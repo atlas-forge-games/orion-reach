@@ -1,114 +1,25 @@
-# Age of the Stars — Python prototype 0.83
+# Age of the Stars — Python prototype 0.83.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
-**Age of the Stars is the current working title.** The repository remains
-`orion-reach`; the `orion` package, launch commands and save locations keep their
-existing names. The artwork, interface and code
+The repository and Python package retain the name **Orion Reach**. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
 
-## New in v0.83: six research fields, three choices per tier
+## New in v0.83.1: Clean and Classic galaxy maps
 
-Research now uses six blocks: **Energy technology, Weapons technology,
-Spaceflight, Industry, Biotechnology and Xenoscience**. Every tier has exactly
-three alternatives. Complete one to exclude the other two and open all three
-options in the next tier. There are no connected paths or specific technology
-prerequisites between tiers. Unfinished projects can still be switched without
-losing invested research points.
+Choose **Settings → Interface → Galaxy map style**. Clean is the new default:
+small faction-colored fleet silhouettes, smaller regular-weight system names,
+and no connecting lines, route lines or numbered fleet badges. Click a fleet
+or sensor contact for its ship count and details. The small symbols retain
+larger invisible click targets. Classic preserves the previous presentation.
 
-Economic discoveries unlock separate facilities, including advanced factories,
-laboratories, power plants and population facilities. Build and power each one
-to receive its benefits; research does not upgrade existing buildings for free.
-The update adds 29 facilities, six high-resolution building illustrations,
-paginated construction lists and three-choice balance-editor support.
+The choice applies immediately and is saved between sessions. Existing games
+work without starting a new campaign or changing the save format.
+See [map styles and validation](docs/galaxy-map-styles.md).
 
-Install over v0.82. **Start a new campaign for the six-field tree.** Existing
-campaigns retain their original research choices, effects, prices and progress.
-An existing custom `balance.json` also retains its old tree; use **Reset all**
-and save a separate profile in the balance editor to adopt the new defaults.
-Saves use format 59 and balance profiles use version 21. See the
-[complete research catalogue and rules](docs/six-field-research.md).
-Older release notes and legacy rule sections below describe their original versions.
-
-## New in v0.82: fixed building positions and surface construction
-
-Colony buildings now retain their position and size when you queue, complete,
-cancel or demolish another building. The headquarters and shipyard keep their
-original anchors; the whole city no longer switches to a compact grid.
-
-Click open ground in your colony's planetary overview, choose a building,
-then click to confirm its previewed position. Esc or right-click cancels the
-preview. Buildings are drawn over the landscape, including in front of the
-trees along the edges. Normal construction-menu orders still select a free
-site automatically. Locations are saved and included in observed surveys.
-
-Install over v0.81.2. Existing campaigns load automatically; new saves use
-format 58 to retain building sites. Balance profiles remain at version 20.
-See [surface construction](docs/surface-construction.md).
-
-## New in v0.81.2: population and growth details
-
-The planet overview now shows population prominently as **8 billion (+100 mil /
-turn) / 16 billion max**. Right-click the population line to inspect the current
-growth rate, food supply, species traits, environmental suitability, capacity
-and progress toward the next billion. Synthetic assembly, passive growth,
-starvation and mothership habitats use their actual simulation rules. Old
-surveys show only the observed population, with current growth and limits
-marked unknown. See [population display](docs/population-display.md).
-
-Install over v0.81.1. This update changes presentation only; population balance,
-save format 57 and balance profile version 20 are unchanged.
-
-## New in v0.81.1: building descriptions on right-click
-
-Right-click a building in the planetary overview to see its purpose, base
-effects, workforce bonuses, upkeep, energy demand and operating status. Queued
-buildings, headquarters, shipyards and mothership modules are supported.
-Close with Esc, another right-click or the Close button. Left-click keeps its
-existing management action. Stored surveys show only last-observed information.
-See [building information](docs/building-information.md).
-
-## New in v0.81: gas giant orbital stations
-
-Gas giants now support one orbital installation: a gas refinery, energy platform
-or research station. Atmospheric properties modify costs and output. Stations
-need two turns to assemble, charge upkeep, and can be blockaded, bombarded,
-captured or dismantled. Gas giants remain uncolonizable.
-
-Open the giant's planet overview to commission a station from a local colony or
-consume an idle outpost ship. Energy is shared once among owned colonies in the
-same system; Credits and research enter the empire's normal budget. AI empires,
-station ownership markers, stored surveys, construction forecasts and saves use
-the same rules. See [orbital station rules and costs](docs/gas-giant-stations.md)
-and [validation](docs/gas-station-validation.md).
-
-Install over v0.80. Existing campaigns load without adding planets or stations.
-New saves use format 57; the balance profile stays at version 20.
-
-## New in v0.80: Age of the Stars title screen
-
-The start screen now uses the approved celestial logo, a detailed planetary
-backdrop and a separate drifting exploration fleet. Its gold-accented menu has
-real mouse and keyboard controls, including Continue when a campaign is loaded.
-The existing animation setting freezes the artwork when switched off. Artwork
-is cached, keeps its aspect ratio and falls back gracefully if a layer is absent.
-
-The visible title is updated in the game, encyclopedia, combat simulator and
-balance editor. Existing filenames, repository/package names, save identifiers,
-save locations and balance formats are unchanged. Install over v0.79.1 and
-continue your existing campaign. See [title-screen integration](docs/title-screen.md).
-
-## New in v0.79.1: scout range
-
-Scouts have **twice the normal fuel range**, including research and civilization
-bonuses: initially 14 ly instead of 7 ly for Terrans. This applies to a single
-scout or a fleet made entirely of scouts. Mixed fleets retain their normal
-range, including any existing mothership reserve bonus. AI scouts, map range
-boundaries and route previews use the same rule. Travel speed and supply points
-are unchanged. Existing campaigns receive the bonus when loaded; saved voyages
-keep their current course and arrival time. No save or balance migration is needed.
+![Clean galaxy map](screenshots/galaxy_clean_v0831.png)
 
 ## New in v0.79: gas giants
 
@@ -894,9 +805,8 @@ are editable. **Undo**, **Redo**, **Reset item** and **Reset all** support exper
 In **Research tree**, drag a technology between branches and tiers. Dropping
 onto another technology swaps their positions. Double-click to edit its cost,
 effects, name or description. Research branches can also be reordered. The
-current default supports six branches, eight possible tiers, and exactly three
-alternatives per tier; validation catches gaps, incomplete and overfilled tiers.
-Older profiles retain their nine branches and paired choices.
+current game supports nine branches, eight possible tiers, and up to two
+alternatives per tier; validation catches gaps and overfilled tiers.
 
 **Save** writes `balance.json` beside `main.py`, with the previous file retained
 as `balance.json.bak`. **Save as** and **Open** manage alternate profiles. Start
@@ -2418,9 +2328,9 @@ package installed. Official documentation: <https://pyga.me/docs/>.
 - **Diplomacy · D** opens race portraits and profiles, signed relations, trade,
   non-aggression, friendship, war and research agreements, plus recent responses. Treaty income is
   included in Empire Overview and Rival report.
-- **Research · R** opens six branches, each with sequential tiers and three mutually
-  exclusive choices per tier. Choose one to unlock buildings, hulls, equipment
-  or empire improvements. Any choice opens the next tier. Rivals use the same rules.
+- **Research · R** opens nine branches, each with sequential tiers and two mutually
+  exclusive choices per tier. Discover technologies that improve production,
+  science, commerce, construction prices, travel and colonization. The rival researches too.
 - Back buttons and Escape follow **Colony → Planet → Galaxy**, or return through
   **System** when the planet was opened from the full orbital diagram. Pause, settings
   and Continue preserve the active overview. Use the planet list to switch
@@ -2692,12 +2602,10 @@ Open **Research · R** from any gameplay screen, or press **R**. Build a researc
 lab in a colony to start producing points. Research agreements and discovered
 technologies can also provide research income.
 
-- Choose a branch, then one of the three technologies in its first tier.
-  Each card shows its actual RP cost under the campaign's saved balance profile.
-  All six branches are available from the start and contain four to eight tiers.
-  Completing a tier unlocks all three choices at the next tier in that branch.
-  Building research unlocks construction; its output requires a completed,
-  operating facility. See [the current catalogue](docs/six-field-research.md).
+- Choose a branch, then one of the two technologies in its first tier.
+  Tiers **I–VIII** cost **40 / 100 / 120 / 220 / 360 / 540 / 760 / 1,040 RP**.
+  All nine branches are available from the start and contain two to eight tiers.
+  Completing a tier unlocks both choices at the next tier in that branch.
 - Left-click starts research immediately. You can switch unfinished projects,
   transferring all invested RP to the new choice. The alternative is excluded
   only after discovery. One empire-wide project runs at a time.
@@ -3316,7 +3224,7 @@ travels using the normal rules, and invades exposed colonies on End Turn. It
 favours enemy gate colonies. A decisive AI invasion stops the turn before income
 or production; its result and consumed transports are saved immediately by the UI.
 
-### Science (retired Ascension rules for historical saves)
+### Science
 
 1. Complete **every tier in all nine branches**: 30 discoveries in a new campaign. Older campaigns retain their eight-branch goal. Every
    combination of exclusive technology choices can reach this victory path.

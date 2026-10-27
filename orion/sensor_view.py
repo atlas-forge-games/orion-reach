@@ -4,7 +4,8 @@ import math
 import pygame as pg
 
 from . import sensors
-from .galaxy_fleet_view import fleet_markers, guardian_markers, guardian_legend_rect, marker_layout, star_obstacles
+from .galaxy_fleet_view import fleet_markers, guardian_markers, guardian_legend_rect, marker_layout, pirate_markers, star_obstacles
+from .galaxy_style import clean_map
 from .galaxy_system_view import SYSTEM_PANEL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
@@ -18,7 +19,8 @@ def draw_coverage(app, rect):
         rx, ry = app.map_camera.radii(radius, rect)
         area = pg.Rect(round(x-rect.x-rx), round(y-rect.y-ry), round(2*rx), round(2*ry))
         pg.draw.ellipse(layer, (115, 191, 164, 25), area)
-        pg.draw.ellipse(layer, (137, 217, 181, 110), area, 1)
+        if not clean_map(app):
+            pg.draw.ellipse(layer, (137, 217, 181, 110), area, 1)
     app.canvas.blit(layer, rect.topleft)
 
 
@@ -33,7 +35,11 @@ def contact_markers(app, rect):
     obstacles = star_obstacles(app, rect)+[guardian_legend_rect(rect), pg.Rect(rect.x, rect.y, rect.w, 37)]
     obstacles += [r.inflate(4, 4) for _, r, _ in fleet_markers(app, rect)+guardian_markers(app, rect)]
     anchors = [app.map_pos(c.x, c.y) for c in contacts]
-    preferred = [(round(x)+12, round(y)-12, 52, 23) for x, y in anchors]
+    if clean_map(app):
+        obstacles += [r.inflate(4, 4) for _, r, _ in pirate_markers(app, rect)]
+        preferred = [(round(x)-11, round(y)-11, 22, 22) for x, y in anchors]
+    else:
+        preferred = [(round(x)+12, round(y)-12, 52, 23) for x, y in anchors]
     layout = marker_layout(tuple(rect.inflate(-8, -8)), tuple(tuple(r) for r in obstacles), tuple(preferred))
     return [(c, pg.Rect(r), anchor) for c, r, anchor in zip(contacts, layout, anchors)]
 
@@ -41,6 +47,17 @@ def contact_markers(app, rect):
 def draw_contacts(app, rect):
     for contact, badge, anchor in contact_markers(app, rect):
         color = app.empire_color(contact.owner) if contact.active else FAINT
+        if clean_map(app):
+            cx, cy = badge.center
+            pg.draw.polygon(app.canvas, color,
+                            [(cx, cy-6), (cx+5, cy), (cx, cy+6), (cx-5, cy)], 1)
+            if contact.active:
+                pg.draw.circle(app.canvas, color, badge.center, 2)
+            if contact.anchor == app.sensor_contact_id:
+                pg.draw.circle(app.canvas, GOLD, badge.center, 10, 1)
+            app.map_button(f"sensor_contact_{contact.anchor}", badge,
+                           lambda identifier=contact.anchor: app.open_sensor_contact(identifier))
+            continue
         pg.draw.line(app.canvas, color, anchor, badge.center, 1)
         pg.draw.circle(app.canvas, color, (round(anchor[0]), round(anchor[1])), 4, 1)
         if contact.heading is not None and contact.active:

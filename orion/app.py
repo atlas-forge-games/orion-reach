@@ -70,6 +70,7 @@ from .galaxy_background import draw_galaxy_background
 from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
 from . import production as production_balance
 from .galaxy_labels import draw_system_label
+from .galaxy_style import STYLES as GALAXY_STYLES, clean_map, map_style
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
 from .exploration import known_rival_colonies
@@ -149,7 +150,6 @@ class App:
         self.info_scroll=0
         self.colony_slot=None
         self.colony_build_page=0
-        self.colony_catalog_page=0
         self.surface_build_request=None
         self.surface_build_preview=None
         self.surface_ground_down=None
@@ -1411,6 +1411,12 @@ class App:
         if palette not in PLAYER_PALETTES:
             return
         self.settings["galaxy_palette"]=palette
+        self.save_preferences()
+
+    def set_galaxy_style(self,style):
+        if style not in GALAXY_STYLES:
+            return
+        self.settings["galaxy_style"]=style
         self.save_preferences()
 
     def save_preferences(self):
@@ -2733,6 +2739,8 @@ class App:
         if state is None:
             self.go("menu")
             return
+        style=map_style(self)
+        compact=clean_map(self)
         (draw_observer_header if state.is_observer else draw_galaxy_header)(self)
         draw_galaxy_background(self.canvas,MAP,self.settings["galaxy_background"],self.map_camera)
         old_clip=self.canvas.get_clip()
@@ -2749,10 +2757,10 @@ class App:
             if star.kind==black_holes.KIND:
                 black_hole_view.draw_marker(self,star,selected)
                 if label:=labels.get(star.id):
-                    if abs(label.x-(x+34))+abs(label.y-(y-9))>12:
+                    if not compact and abs(label.x-(x+34))+abs(label.y-(y-9))>12:
                         tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
                         pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
-                    draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
+                    draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"],style)
                 continue
             known=state.known_system(star.id)
             color=STAR_COLORS[star.kind] if known else tuple(c//3 for c in STAR_COLORS[star.kind])
@@ -2777,10 +2785,10 @@ class App:
             for index,owner in enumerate(o for o in state.opponents if o in owners):
                 pg.draw.circle(self.canvas,self.empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,2)
             if label:=labels.get(star.id):
-                if abs(label.x-(x+17))+abs(label.y-(y-9))>12:
+                if not compact and abs(label.x-(x+17))+abs(label.y-(y-9))>12:
                     tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
                     pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
-                draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"])
+                draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"],style)
             self.map_button(f"star_{star.id}",(int(x)-18,int(y)-18,36,36),lambda s=star.id:self.select_star(s))
         draw_map_fleets(self,MAP)
         draw_map_guardians(self,MAP)

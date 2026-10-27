@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .empires import PLAYER_PALETTES
+from .galaxy_style import map_style
 from .ui import CYAN, GOLD, INK, LINE, MUTED, arrow, font, panel, paragraph, text
 
 
@@ -10,7 +11,7 @@ SECTIONS = {
     "graphics": ("Graphics", "Display mode and animated backgrounds.", "fullscreen"),
     "sound": ("Sound", "Music, volume and sound effects.", "music"),
     "gameplay": ("Gameplay", "Autosaving and campaign preferences.", "autosave"),
-    "interface": ("Interface", "Galaxy colors and navigation.", "galaxy_palette_blue"),
+    "interface": ("Interface", "Galaxy map style, colors and navigation.", "galaxy_style_clean"),
 }
 
 
@@ -31,7 +32,7 @@ def draw_overview(app):
         "sound": (f"Music on · {settings['music_volume']}%" if settings["music"] and
                   settings["music_volume"] else "Music muted"),
         "gameplay": "Autosave on" if settings["autosave"] else "Autosave off · Save manually",
-        "interface": "Saturated blue" if settings["galaxy_palette"] == "blue" else "Saturated turquoise",
+        "interface": map_style(app).title()+" map · "+("Saturated blue" if settings["galaxy_palette"] == "blue" else "Saturated turquoise"),
     }
     for index, (key, (label, description, _)) in enumerate(SECTIONS.items()):
         x, y = 64+(index % 2)*668, 320+(index // 2)*190
@@ -90,20 +91,29 @@ def draw_gameplay(app):
 
 
 def draw_interface(app):
-    panel(app.canvas, (352, 320, 1024, 250))
-    text(app.canvas, "Galaxy colors", (380, 340), 21, INK)
-    text(app.canvas, "Your empire's color. Neutral systems stay gray.", (380, 380), 17, MUTED)
+    panel(app.canvas, (352, 320, 1024, 196))
+    text(app.canvas, "Galaxy map style", (380, 340), 21, INK)
+    for index, (style, label) in enumerate((("clean", "Clean"), ("classic", "Classic"))):
+        x = 380+index*496
+        app.button("galaxy_style_"+style, label, (x, 385, 472, 48),
+                   lambda value=style: app.set_galaxy_style(value),
+                   "tab_active" if map_style(app) == style else "tab")
+    description = ("Small icons and labels; no connecting lines or ship counts."
+                   if map_style(app) == "clean" else "Original labels, route lines and numbered fleet badges.")
+    text(app.canvas, description, (380, 450), 15, MUTED)
+    text(app.canvas, "Click a fleet or sensor contact to inspect its details.", (380, 479), 15, MUTED)
+    panel(app.canvas, (352, 532, 1024, 196))
+    text(app.canvas, "Galaxy colors", (380, 552), 21, INK)
+    text(app.canvas, "Your empire's color. Neutral systems stay gray.", (380, 590), 15, MUTED)
     for index, (palette, label) in enumerate((("blue", "Saturated blue"), ("turquoise", "Saturated turquoise"))):
         x = 380+index*496
-        app.button("galaxy_palette_"+palette, label, (x, 432, 472, 56),
+        app.button("galaxy_palette_"+palette, label, (x, 626, 472, 48),
                    lambda value=palette: app.set_galaxy_palette(value),
                    "tab_active" if app.settings["galaxy_palette"] == palette else "tab")
-        pg.draw.line(app.canvas, PLAYER_PALETTES[palette], (x+12, 500), (x+460, 500), 3)
-    text(app.canvas, "Used for your system labels, colony markers and fleets.", (380, 532), 15, MUTED)
-    panel(app.canvas, (352, 600, 1024, 144))
-    text(app.canvas, "NAVIGATION", (380, 624), 11, GOLD, "mono", 1)
-    text(app.canvas, "Mouse or Tab / ↑ ↓ + Enter to select a control.", (380, 656), 17, INK)
-    text(app.canvas, "Esc goes back one level. F11 toggles fullscreen.", (380, 694), 15, MUTED)
+        pg.draw.line(app.canvas, PLAYER_PALETTES[palette], (x+12, 684), (x+460, 684), 3)
+    text(app.canvas, "Used for your system labels, colony markers and fleets.", (380, 700), 13, MUTED)
+    text(app.canvas, "Mouse or Tab / ↑ ↓ + Enter · Esc goes back · F11 toggles fullscreen",
+         (380, 756), 14, MUTED)
 
 
 def draw_settings(app):

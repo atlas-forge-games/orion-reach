@@ -8,7 +8,8 @@ from .fleet_art import ship_icon
 from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
-from .galaxy_labels import LABEL_FAMILY, LABEL_SIZE, system_label
+from .galaxy_labels import label_font, system_label
+from .galaxy_style import clean_map, map_style
 from . import monsters, navigation, black_holes, hyperlanes
 from .hyperlane_art import LANE_COLOR
 from .black_hole_view import hit_rect
@@ -96,7 +97,8 @@ def marker_layout(bounds, star_obstacles, preferred_rects, padding=4):
 def star_label_rects(app, map_rect):
     """Keep names inside the rectangular map and clear of nearby stars and names."""
     systems = app.map_systems()
-    named_systems = [s for s in systems if system_label(app.game, s)]
+    style = map_style(app)
+    named_systems = [s for s in systems if system_label(app.game, s, style)]
     obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
                  pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
                  for s in systems]
@@ -104,8 +106,9 @@ def star_label_rects(app, map_rect):
     preferred = []
     for system in named_systems:
         x, y = app.star_pos(system)
-        width, height = font(LABEL_SIZE, LABEL_FAMILY).size(system_label(app.game, system))
-        preferred.append((round(x)+(34 if system.kind == black_holes.KIND else 17), round(y)-9, width, height))
+        width, height = font(*label_font(style)).size(system_label(app.game, system, style))
+        top = round(y)-height//2 if style == "clean" else round(y)-9
+        preferred.append((round(x)+(34 if system.kind == black_holes.KIND else 17), top, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))
     return {s.id: pg.Rect(rect) for s, rect in zip(named_systems, rectangles)}
@@ -145,11 +148,13 @@ def guardian_markers(app, map_rect):
 def draw_map_guardians(app, map_rect):
     old_clip = app.canvas.get_clip()
     app.canvas.set_clip(map_rect)
+    compact = clean_map(app)
     for guardian, rect, anchor in guardian_markers(app, map_rect):
         color = guardian.spec.color
-        pg.draw.line(app.canvas, tuple(c//3 for c in color), anchor, rect.center, 1)
-        panel(app.canvas, rect, (9, 17, 28), color)
-        draw_guardian_symbol(app.canvas, rect.center, guardian.kind, 18)
+        if not compact:
+            pg.draw.line(app.canvas, tuple(c//3 for c in color), anchor, rect.center, 1)
+            panel(app.canvas, rect, (9, 17, 28), color)
+        draw_guardian_symbol(app.canvas, rect.center, guardian.kind, 13 if compact else 18)
         app.map_button(f"guardian_{guardian.system_id}", rect,
                        lambda sid=guardian.system_id: app.select_star(sid))
     kinds = known_guardian_kinds(app.game)
@@ -189,10 +194,12 @@ def draw_map_pirates(app, map_rect):
     from .encounters import COLOR
     clip = app.canvas.get_clip()
     app.canvas.set_clip(map_rect)
+    compact = clean_map(app)
     for sid, rect, anchor in pirate_markers(app, map_rect):
-        pg.draw.line(app.canvas, tuple(c//3 for c in COLOR), anchor, rect.center, 1)
-        panel(app.canvas, rect, (9, 17, 28), COLOR)
-        draw_pirate_badge(app.canvas, rect.center, 18)
+        if not compact:
+            pg.draw.line(app.canvas, tuple(c//3 for c in COLOR), anchor, rect.center, 1)
+            panel(app.canvas, rect, (9, 17, 28), COLOR)
+        draw_pirate_badge(app.canvas, rect.center, 13 if compact else 18)
         app.map_button(f"pirates_{sid}", rect, lambda system_id=sid: app.open_encounters(system_id))
     app.canvas.set_clip(clip)
 
@@ -210,6 +217,7 @@ def fleet_markers(app, map_rect):
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
     groups = []
+    compact = clean_map(app)
     for ships in sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id)):
         ship = ships[0]
         nx, ny = navigation.position(app.game, ship)
@@ -217,9 +225,14 @@ def fleet_markers(app, map_rect):
         if not map_rect.collidepoint((x, y)):
             continue
         groups.append(ships)
+        anchors.append((x, y))
+        if compact:
+            # The visible glyph is only 10-15 px; reserve a larger click target.
+            preferred = (x-11, y-11) if ship.has_course else (x+12, y+14)
+            preferred_rects.append(tuple(pg.Rect(*preferred, 22, 22)))
+            continue
         preferred = (x+12, y+12) if ship.has_course else (x+18, y+23)
         width = max(44, 32+font(11, "mono_bold").size(str(len(ships)))[0])
-        anchors.append((x, y))
         habitat = any(s.habitat is not None for s in ships)
         preferred_rects.append(tuple(pg.Rect(*preferred, max(72, width) if habitat else width, 42 if habitat else 23)))
     rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), tuple(preferred_rects), padding=2)
@@ -231,10 +244,21 @@ def fleet_markers(app, map_rect):
         badge = pg.Rect(rectangle)
         crowded |= badge.collidelist(occupied) != -1
         occupied.append(badge)
-    if crowded:
-        compact = tuple((x, y, max(40, width-4), height if height > 23 else 20) for x, y, width, height in preferred_rects)
-        rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), compact, padding=0)
+    if crowded and not compact:
+        smaller = tuple((x, y, max(40, width-4), height if height > 23 else 20) for x, y, width, height in preferred_rects)
+        rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), smaller, padding=0)
     return [(ships, pg.Rect(rect), anchor) for ships, rect, anchor in zip(groups, rectangles, anchors)]
+
+
+def draw_compact_fleet_symbol(surface, center, color, habitat=False):
+    """A readable faction silhouette instead of a miniature textured ship."""
+    x, y = center
+    points = ([(-7, 3), (-5, -3), (-2, -3), (0, -7), (2, -3), (5, -3),
+               (7, 3), (3, 6), (0, 4), (-3, 6)] if habitat else
+              [(0, -7), (2, -1), (2, 1), (5, 5), (2, 4), (2, 7),
+               (-2, 7), (-2, 4), (-5, 5), (-2, 1), (-2, -1)])
+    pg.draw.polygon(surface, color, [(x+dx, y+dy) for dx, dy in points])
+    pg.draw.polygon(surface, (9, 20, 29), [(x, y-2), (x+1, y+3), (x-1, y+3)])
 
 
 def draw_map_fleets(app, map_rect):
@@ -242,16 +266,17 @@ def draw_map_fleets(app, map_rect):
     clip = surface.get_clip()
     surface.set_clip(map_rect)
     markers = fleet_markers(app, map_rect)
+    compact = clean_map(app)
     # A visible route can cross the viewport while its fleet is off screen.
     for ships in group_fleets(game.visible_ships()):
         ship = ships[0]
-        if ship.has_course:
+        if ship.has_course and not compact:
             color = LANE_COLOR if ship.hyperlane and ship.owner == PLAYER else app.empire_color(ship.owner)
             origin = app.star_pos(game.systems[ship.system_id])
             end = app.star_pos(game.systems[ship.destination])
             pg.draw.line(surface, tuple(c//3 for c in color), origin, end, 1)
     order_ids = app.map_order_ids or ((app.route_ship_id,) if app.route_ship_id is not None else ())
-    if order_ids:
+    if order_ids and not compact:
         ship = next((s for s in game.ships if s.id == order_ids[0]), None)
         if ship:
             origin = app.star_pos(game.systems[ship.system_id])
@@ -265,6 +290,14 @@ def draw_map_fleets(app, map_rect):
         selected = any(s.id in order_ids for s in ships)
         if selected:
             color = GOLD
+        if compact:
+            if selected:
+                pg.draw.circle(surface, color, rect.center, 10, 1)
+            habitat = any(s.habitat is not None for s in ships)
+            draw_compact_fleet_symbol(surface, rect.center, color, habitat)
+            app.map_button(f"map_fleet_{ships[0].id}", rect,
+                           lambda sid=ships[0].id: app.open_map_fleet(sid))
+            continue
         pg.draw.line(surface, tuple(c//2 for c in color), anchor, rect.center, 1)
         pg.draw.circle(surface, color, (int(anchor[0]), int(anchor[1])), 2)
         panel(surface, rect, (11, 27, 36), color)

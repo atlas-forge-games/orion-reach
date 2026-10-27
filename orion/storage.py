@@ -11,12 +11,14 @@ import tempfile
 
 from .model import GameState, SaveError
 from .empires import DEFAULT_PALETTE, PLAYER_PALETTES
+from .galaxy_style import DEFAULT_STYLE, STYLES
 from . import balance
 
 SAVE_VERSION = 59
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE,
-                    "galaxy_background": True, "autosave": True}
+                    "galaxy_background": True, "autosave": True,
+                    "galaxy_style": DEFAULT_STYLE}
 
 
 def default_data_dir():
@@ -71,6 +73,9 @@ class Storage:
                 palette = data.get("galaxy_palette")
                 if type(palette) is str and palette in PLAYER_PALETTES:
                     result["galaxy_palette"] = palette
+                style = data.get("galaxy_style")
+                if type(style) is str and style in STYLES:
+                    result["galaxy_style"] = style
         except (OSError, ValueError, RecursionError):
             pass
         return result

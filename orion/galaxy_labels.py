@@ -10,12 +10,17 @@ LABEL_SIZE = 13
 LABEL_FAMILY = "mono_bold"
 
 
-def system_label(game, system):
+def label_font(style="classic"):
+    return (11, "sans") if style == "clean" else (LABEL_SIZE, LABEL_FAMILY)
+
+
+def system_label(game, system, style="classic"):
     """Only discovered names belong on the map; unknown stars stay clickable."""
     if not (game.system_explored(system.id)
             or system.kind == black_holes.KIND and black_holes.charted(game, system)):
         return ""
-    return game.system_name(system.id).upper()
+    name = game.system_name(system.id)
+    return name if style == "clean" else name.upper()
 
 
 def known_owners(game, system):
@@ -25,17 +30,17 @@ def known_owners(game, system):
     return tuple(owner for owner in EMPIRE_IDS if owner in owners)
 
 
-def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE):
+def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE, style="classic"):
     """Return text and (pixel start, pixel end, colour) runs in stable empire order.
 
     Share whole letters as evenly as possible. When a very short name has more
     owners than letters, share its pixels so every known owner still appears.
     """
-    label = system_label(game, system)
+    label = system_label(game, system, style)
     if not label:
         return "", ()
     owners = known_owners(game, system)
-    face = font(LABEL_SIZE, LABEL_FAMILY)
+    face = font(*label_font(style))
     width = face.size(label)[0]
     if site := black_holes.at(game, system.id):
         return label, ((0, width, black_holes.SITES[site.kind][2]),)
@@ -52,9 +57,10 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE):
     return label, tuple((edges[i], edges[i+1], empire_color(owner, palette)) for i, owner in enumerate(owners))
 
 
-def draw_system_label(surface, game, system, pos, selected=False, palette=DEFAULT_PALETTE):
-    label, bands = label_bands(game, system, selected, palette)
+def draw_system_label(surface, game, system, pos, selected=False, palette=DEFAULT_PALETTE, style="classic"):
+    label, bands = label_bands(game, system, selected, palette, style)
+    size, family = label_font(style)
     x, y = pos
     for left, right, color in bands:
-        rendered = text_image(label, LABEL_SIZE, color, LABEL_FAMILY)
+        rendered = text_image(label, size, color, family)
         surface.blit(rendered, (x+left, y), pg.Rect(left, 0, right-left, rendered.get_height()))
