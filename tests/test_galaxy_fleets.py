@@ -274,6 +274,9 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.game.ship_at(1).destination, 0)
 
     def test_dense_map_badges_remain_inside_map_and_clear_of_stars_and_other_badges(self):
+        # Collision-driven badge placement belongs to Classic. Clean's fixed
+        # dock slots and true travel positions have their own regression tests.
+        self.app.settings["galaxy_style"] = "classic"
         from orion.app import MAP
         from orion.galaxy_fleet_view import fleet_markers, star_label_rects
         for seed in (0, 2408, 100):

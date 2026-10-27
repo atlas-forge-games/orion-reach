@@ -1,0 +1,31 @@
+AGE OF THE STARS / ORION REACH — v0.83.2 FLEET ICONS AND DOCKING
+
+INSTALL
+Close the game. Extract this ZIP over v0.83.1 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game.
+
+IN CLEAN MAP MODE
+- A high-quality illustrated ship icon replaces the small geometric symbol.
+- A faction-colored rim keeps ownership visible at the compact map size.
+- Docked fleets stay at the lower-right of their star/system marker.
+- Additional fleets have adjacent slots. Existing docked fleets do not jump
+  around when labels change or another fleet arrives or leaves.
+- Queued departures remain docked until movement starts.
+- Moving fleets appear at their true route position and point toward their
+  destination, including diagonals. Arrival returns them to a dock slot.
+- Labels and guardian markers make room for the fixed fleet positions.
+- The guardian legend is below the map to avoid covering docked icons.
+
+Settings > Interface > Galaxy map style still offers Clean and Classic.
+Ship counts and composition remain available by clicking a fleet. Classic's
+appearance remains unchanged. No campaign restart, new dependency or save
+format change is needed.
+
+VALIDATION
+74 checks: 71 passed, with the same three existing gameplay-test failures
+documented for v0.83.1. The new artwork, docking and heading checks all pass.
+The Classic comparison screenshot is pixel-identical to the original map.
+See docs/galaxy-fleet-icons.md for details and the included actual game captures.
+
+No files were committed or pushed.

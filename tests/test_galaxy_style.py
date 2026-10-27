@@ -135,7 +135,7 @@ class MapStyleUITests(unittest.TestCase):
                 self.assertTrue(lines.called)
                 self.assertIn("3", [str(call.args[1]) for call in written.call_args_list])
 
-    def test_dense_map_keeps_all_fleet_targets_separate_at_multiple_zooms(self):
+    def test_dense_map_labels_avoid_fixed_fleet_slots_at_multiple_zooms(self):
         from orion.app import MAP
         self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5,
                                  fog_of_war=False, with_guardians=True, with_ai=False)
@@ -151,14 +151,17 @@ class MapStyleUITests(unittest.TestCase):
             markers = fleet_markers(self.app, MAP)
             visible = {s.id for s in game.visible_ships()
                        if MAP.collidepoint(self.app.star_pos(game.systems[s.system_id]))}
-            self.assertEqual({s.id for ships, _, _ in markers for s in ships}, visible)
+            shown = {s.id for ships, _, _ in markers for s in ships}
+            self.assertTrue(shown)
+            self.assertLessEqual(shown, visible)
             labels = list(star_label_rects(self.app, MAP).values())
-            stars = [b.rect for b in self.app.buttons if b.key.startswith("star_")]
-            occupied = stars+labels
-            for _, rect, _ in markers:
-                self.assertTrue(MAP.contains(rect))
-                self.assertEqual(rect.collidelist(occupied), -1)
-                occupied.append(rect)
+            per_system = {}
+            for ships, rect, _ in markers:
+                self.assertTrue(MAP.colliderect(rect))
+                self.assertEqual(rect.collidelist(labels), -1)
+                siblings = per_system.setdefault(ships[0].system_id, [])
+                self.assertEqual(rect.collidelist(siblings), -1)
+                siblings.append(rect)
 
     def test_clean_labels_keep_fog_and_multicolor_ownership(self):
         game = self.app.game = new_game(seed=804, fog_of_war=True, with_guardians=False, with_ai=False)

@@ -71,6 +71,7 @@ from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, han
 from . import production as production_balance
 from .galaxy_labels import draw_system_label
 from .galaxy_style import STYLES as GALAXY_STYLES, clean_map, map_style
+from .galaxy_fleet_view import known_guardian_kinds
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
 from .exploration import known_rival_colonies
@@ -2841,7 +2842,8 @@ class App:
             if lane:
                 hint=f"{ship.name}: Forgotten hyperlane · 1 turn · No fuel limit. "+detail
         ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
-        text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,775),13,MUTED)
+        hint_y=785 if compact and not ordering and known_guardian_kinds(state) else 775
+        text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,hint_y),13,MUTED)
         text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
         if self.fleet_popup or self.map_order_ids:
             self.button("cancel_fleet_course","Close",(848,763,178,32),self.cancel_map_order,"command",icon="close",shortcut="Esc")

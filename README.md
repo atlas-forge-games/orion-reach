@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.83.1
+# Age of the Stars — Python prototype 0.83.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,19 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.83.2: illustrated fleets and fixed docking positions
+
+Clean mode now uses a detailed transparent ship icon with a small faction-color
+rim. Docked fleets stay at the lower-right of their system; additional fleets
+retain adjacent slots. Labels make room for these positions. Travelling ships
+appear at their actual route position and point toward their destination.
+The guardian legend sits below the map so it cannot cover docked icons.
+
+Install this incremental update over v0.83.1. Existing campaigns work without
+conversion. See [fleet icons and placement](docs/galaxy-fleet-icons.md).
+
+![Illustrated fleet icons](screenshots/galaxy_flights_v0832.png)
 
 ## New in v0.83.1: Clean and Classic galaxy maps
 

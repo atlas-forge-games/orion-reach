@@ -32,7 +32,9 @@ def map_contacts(app):
 
 def contact_markers(app, rect):
     contacts = [c for c in map_contacts(app) if rect.collidepoint(app.map_pos(c.x, c.y))]
-    obstacles = star_obstacles(app, rect)+[guardian_legend_rect(rect), pg.Rect(rect.x, rect.y, rect.w, 37)]
+    obstacles = star_obstacles(app, rect)+[pg.Rect(rect.x, rect.y, rect.w, 37)]
+    if not clean_map(app):
+        obstacles.append(guardian_legend_rect(rect))
     obstacles += [r.inflate(4, 4) for _, r, _ in fleet_markers(app, rect)+guardian_markers(app, rect)]
     anchors = [app.map_pos(c.x, c.y) for c in contacts]
     if clean_map(app):

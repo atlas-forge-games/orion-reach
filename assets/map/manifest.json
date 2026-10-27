@@ -1,0 +1,20 @@
+[
+  {
+    "id": "galaxy_fleet_icon",
+    "file": "fleet-icon-v1.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "alpha_bounds_xywh_32": [
+      202,
+      60,
+      850,
+      1134
+    ],
+    "sha256": "16de2b1ee693491d9ce20772175ae96250a5210a2e4a0c2f31ab3d2d9542164d",
+    "generation": "built-in image-generation tool",
+    "transparent_background": true,
+    "reference": "assets/ships/frigate-v1.png"
+  }
+]

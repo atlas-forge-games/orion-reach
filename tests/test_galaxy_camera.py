@@ -143,6 +143,9 @@ class CameraInterfaceTests(unittest.TestCase):
 
     def test_offscreen_systems_and_fleets_have_no_labels_or_click_targets(self):
         app, game = self.app, self.app.game
+        # Classic clamps badges into the viewport; fixed Clean anchors are
+        # tested separately, including partial clipping without repositioning.
+        app.settings["galaxy_style"] = "classic"
         game.ships = [Ship(i+1, "scout", system.id) for i, system in enumerate(game.systems)]
         game.next_ship_id = len(game.ships)+1
         app.zoom_map(20)

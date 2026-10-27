@@ -538,7 +538,7 @@ class GuardianUITests(unittest.TestCase):
             self.assertTrue(MAP.contains(rect))
             self.assertEqual(rect.collidelist(symbols[:index]), -1)
         for _, rect, _ in fleet_markers(app, MAP):
-            self.assertEqual(rect.collidelist(symbols+[guardian_legend_rect(MAP)]), -1)
+            self.assertEqual(rect.collidelist(symbols+[guardian_legend_rect(MAP, outside=app.settings["galaxy_style"] == "clean")]), -1)
 
     def test_symbols_and_legend_respect_fog_and_stale_guardian_knowledge(self):
         from orion.galaxy_fleet_view import known_guardian_kinds

@@ -10,6 +10,7 @@ from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .galaxy_labels import label_font, system_label
 from .galaxy_style import clean_map, map_style
+from .galaxy_fleet_icons import ICON_BOX, draw_map_ship, flight_heading
 from . import monsters, navigation, black_holes, hyperlanes
 from .hyperlane_art import LANE_COLOR
 from .black_hole_view import hit_rect
@@ -19,6 +20,60 @@ from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
 FLEET_SHIPS_PER_PAGE = 6
+DOCK_OFFSET = (30, 24)
+DOCK_SPACING = 24
+DOCK_COLUMNS = 3
+
+
+def docking_slots(app, groups):
+    """Retain occupied dock slots across arrivals, splits, panning and renaming.
+
+    This is disposable view state only. A campaign's ship records never change.
+    Existing ship membership keeps its slot; new groups fill the first free one.
+    """
+    previous_game, previous = getattr(app, "_fleet_docking_slots", (None, {}))
+    if previous_game is not app.game:
+        previous = {}
+    docked = [ships for ships in groups if not ships[0].in_transit]
+    # Reserve established groups before placing newly arrived groups.
+    docked.sort(key=lambda ships: (not any((ships[0].system_id, s.id) in previous for s in ships), ships[0].id))
+    occupied, result, retained = {}, {}, {}
+    for ships in docked:
+        sid = ships[0].system_id
+        used = occupied.setdefault(sid, set())
+        old_slots = sorted({previous[(sid, s.id)] for s in ships if (sid, s.id) in previous})
+        slot = next((slot for slot in old_slots if slot not in used), None)
+        if slot is None:
+            slot = 0
+            while slot in used:
+                slot += 1
+        used.add(slot)
+        result[ships[0].id] = slot
+        retained.update({(sid, s.id): slot for s in ships})
+    app._fleet_docking_slots = (app.game, retained)
+    return result
+
+
+def compact_fleet_markers(app, map_rect):
+    """Docked icons have fixed offsets; travelling icons use actual positions."""
+    groups = group_fleets(app.game.visible_ships())
+    slots = docking_slots(app, groups)
+    result = []
+    for ships in groups:
+        ship = ships[0]
+        anchor = app.map_pos(*navigation.position(app.game, ship))
+        if not map_rect.collidepoint(anchor):
+            continue
+        x, y = anchor
+        if not ship.in_transit:
+            slot = slots[ship.id]
+            x += DOCK_OFFSET[0] + (slot % DOCK_COLUMNS)*DOCK_SPACING
+            y += DOCK_OFFSET[1] + (slot // DOCK_COLUMNS)*DOCK_SPACING
+        rect = pg.Rect(0, 0, ICON_BOX, ICON_BOX)
+        rect.center = round(x), round(y)
+        if rect.colliderect(map_rect):
+            result.append((ships, rect, anchor))
+    return result
 
 
 def ordered_ships(app):
@@ -102,7 +157,11 @@ def star_label_rects(app, map_rect):
     obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
                  pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
                  for s in systems]
-    obstacles += [pg.Rect(map_rect.x, map_rect.y, map_rect.w, 34), guardian_legend_rect(map_rect)]
+    obstacles += [pg.Rect(map_rect.x, map_rect.y, map_rect.w, 34)]
+    if style != "clean":
+        obstacles.append(guardian_legend_rect(map_rect))
+    if style == "clean":
+        obstacles.extend(rect.inflate(4, 4) for _, rect, _ in compact_fleet_markers(app, map_rect))
     preferred = []
     for system in named_systems:
         x, y = app.star_pos(system)
@@ -122,6 +181,8 @@ def star_obstacles(app, map_rect, radius=21):
                          pg.Rect(int(x)-radius, int(y)-radius, radius*2, radius*2))
     # Label bounds include the bold glyphs; keep a one-pixel gap on each side.
     obstacles.extend(rect.inflate(2, 2) for rect in star_label_rects(app, map_rect).values())
+    if clean_map(app):
+        obstacles.extend(rect.inflate(4, 4) for _, rect, _ in compact_fleet_markers(app, map_rect))
     return obstacles
 
 
@@ -130,15 +191,18 @@ def known_guardian_kinds(game):
     return [kind for kind in monsters.MONSTERS if kind in seen]
 
 
-def guardian_legend_rect(map_rect):
-    return pg.Rect(map_rect.x+12, map_rect.bottom-34, map_rect.w-24, 24)
+def guardian_legend_rect(map_rect, outside=False):
+    return pg.Rect(map_rect.x+12, map_rect.bottom+4 if outside else map_rect.bottom-34,
+                   map_rect.w-24, 20 if outside else 24)
 
 
 def guardian_markers(app, map_rect):
     """Known threats have their own symbol and hit target; hidden deaths stay private."""
     guardians = [g for g in app.game.guardians if monsters.known_status(app.game, g.system_id) == "alive"
                  and map_rect.collidepoint(app.star_pos(app.game.systems[g.system_id]))]
-    obstacles = star_obstacles(app, map_rect)+[guardian_legend_rect(map_rect).inflate(4, 4)]
+    obstacles = star_obstacles(app, map_rect)
+    if not clean_map(app):
+        obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     anchors = [app.star_pos(app.game.systems[g.system_id]) for g in guardians]
     preferred = [(round(x)-34, round(y)-33, 24, 24) for x, y in anchors]
     rectangles = marker_layout(tuple(map_rect.inflate(-8, -8)), tuple(tuple(r) for r in obstacles), tuple(preferred))
@@ -158,8 +222,12 @@ def draw_map_guardians(app, map_rect):
         app.map_button(f"guardian_{guardian.system_id}", rect,
                        lambda sid=guardian.system_id: app.select_star(sid))
     kinds = known_guardian_kinds(app.game)
-    if kinds:
-        rect = guardian_legend_rect(map_rect)
+    ordering = app.fleet_popup or app.map_order_ids or app.route_ship_id is not None
+    if kinds and not (compact and ordering):
+        rect = guardian_legend_rect(map_rect, outside=compact)
+        if compact:
+            # Fixed dock icons must not disappear underneath an in-map legend.
+            app.canvas.set_clip(pg.Rect(map_rect.x, map_rect.bottom, map_rect.w, 28))
         panel(app.canvas, rect, (9, 17, 28))
         text(app.canvas, "GUARDIANS", (rect.x+10, rect.y+7), 9, MUTED, "mono")
         entries = [(kind, monsters.MONSTERS[kind].name) for kind in kinds if kind in monsters.PRIZE_WORLDS]
@@ -180,7 +248,9 @@ def pirate_markers(app, map_rect):
                       and map_rect.collidepoint(app.star_pos(app.game.systems[e.system_id]))})
     if not systems:
         return []
-    obstacles = star_obstacles(app, map_rect)+[guardian_legend_rect(map_rect).inflate(4, 4)]
+    obstacles = star_obstacles(app, map_rect)
+    if not clean_map(app):
+        obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     obstacles.append(pg.Rect(map_rect.x, map_rect.y, map_rect.w, 38))
     obstacles.extend(rect.inflate(3, 3) for _, rect, _ in guardian_markers(app, map_rect))
     anchors = [app.star_pos(app.game.systems[sid]) for sid in systems]
@@ -205,7 +275,9 @@ def draw_map_pirates(app, map_rect):
 
 
 def fleet_markers(app, map_rect):
-    """Visible fleet badges avoid stars, guardian symbols and their legend."""
+    """Clean has fixed anchors; Classic retains its collision-avoiding badges."""
+    if clean_map(app):
+        return compact_fleet_markers(app, map_rect)
     # Reserve each star's full click target; extra halo padding can consume the
     # last free badge positions on a 72-system map with multiple fleets per star.
     obstacles = star_obstacles(app, map_rect, radius=18)
@@ -217,7 +289,6 @@ def fleet_markers(app, map_rect):
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
     groups = []
-    compact = clean_map(app)
     for ships in sorted(group_fleets(app.game.visible_ships()), key=lambda ships: (ships[0].has_course, ships[0].id)):
         ship = ships[0]
         nx, ny = navigation.position(app.game, ship)
@@ -226,11 +297,6 @@ def fleet_markers(app, map_rect):
             continue
         groups.append(ships)
         anchors.append((x, y))
-        if compact:
-            # The visible glyph is only 10-15 px; reserve a larger click target.
-            preferred = (x-11, y-11) if ship.has_course else (x+12, y+14)
-            preferred_rects.append(tuple(pg.Rect(*preferred, 22, 22)))
-            continue
         preferred = (x+12, y+12) if ship.has_course else (x+18, y+23)
         width = max(44, 32+font(11, "mono_bold").size(str(len(ships)))[0])
         habitat = any(s.habitat is not None for s in ships)
@@ -244,21 +310,10 @@ def fleet_markers(app, map_rect):
         badge = pg.Rect(rectangle)
         crowded |= badge.collidelist(occupied) != -1
         occupied.append(badge)
-    if crowded and not compact:
+    if crowded:
         smaller = tuple((x, y, max(40, width-4), height if height > 23 else 20) for x, y, width, height in preferred_rects)
         rectangles = marker_layout(tuple(bounds), tuple(tuple(r) for r in obstacles), smaller, padding=0)
     return [(ships, pg.Rect(rect), anchor) for ships, rect, anchor in zip(groups, rectangles, anchors)]
-
-
-def draw_compact_fleet_symbol(surface, center, color, habitat=False):
-    """A readable faction silhouette instead of a miniature textured ship."""
-    x, y = center
-    points = ([(-7, 3), (-5, -3), (-2, -3), (0, -7), (2, -3), (5, -3),
-               (7, 3), (3, 6), (0, 4), (-3, 6)] if habitat else
-              [(0, -7), (2, -1), (2, 1), (5, 5), (2, 4), (2, 7),
-               (-2, 7), (-2, 4), (-5, 5), (-2, 1), (-2, -1)])
-    pg.draw.polygon(surface, color, [(x+dx, y+dy) for dx, dy in points])
-    pg.draw.polygon(surface, (9, 20, 29), [(x, y-2), (x+1, y+3), (x-1, y+3)])
 
 
 def draw_map_fleets(app, map_rect):
@@ -294,7 +349,7 @@ def draw_map_fleets(app, map_rect):
             if selected:
                 pg.draw.circle(surface, color, rect.center, 10, 1)
             habitat = any(s.habitat is not None for s in ships)
-            draw_compact_fleet_symbol(surface, rect.center, color, habitat)
+            draw_map_ship(surface, rect.center, color, habitat, flight_heading(app, ships[0]))
             app.map_button(f"map_fleet_{ships[0].id}", rect,
                            lambda sid=ships[0].id: app.open_map_fleet(sid))
             continue
