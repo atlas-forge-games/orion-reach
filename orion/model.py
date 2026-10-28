@@ -30,6 +30,7 @@ from . import navigation
 from . import sensors
 from . import first_contact
 from . import economy
+from . import treasury
 from . import administration
 from . import megastructures, gas_giants
 from . import coalitions, tribute
@@ -206,7 +207,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=59):
+    def from_dict(cls, data, systems, *, version=58):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -513,7 +514,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=59):
+    def from_dict(cls, data, expected_id, *, version=58):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -560,7 +561,7 @@ class Planet:
                 record[key] = 0
             if not _integer(record[key], 0, maximum):
                 raise ValueError("Invalid planetary defenses")
-        if ((record["shield_points"] and not any(b in record.get("buildings", []) for b in defense_rules.SHIELD_BUILDINGS))
+        if ((record["shield_points"] and "planetary_shield" not in record.get("buildings", []))
                 or (record["battery_hull"] and "missile_base" not in record.get("buildings", []))):
             raise ValueError("Defense health without a building")
         if version < 23:
@@ -903,6 +904,7 @@ class GameState:
 
     def check_victory(self, *, convene=True):
         if self.result is None and self.combat is None:
+            treasury.eliminate_bankrupt_opponents(self)
             self.result = victory_rules.current_result(self)
             if self.result is None and convene:
                 council_rules.convene_due(self)
@@ -1437,8 +1439,6 @@ class GameState:
         planet = self.planet_at(system_id, planet_id)
         if not isinstance(building_id, str) or building_id not in BUILDINGS:
             return "Unknown building."
-        if not BUILDINGS[building_id].enabled:
-            return "This facility is not part of this campaign's building catalogue."
         if not planet.colonized:
             return "Establish a colony before constructing buildings."
         if planet.owner != owner:
@@ -1807,7 +1807,17 @@ class GameState:
             income += credits
             research += points
         research -= sum(hyperlanes.allocations(self, owner).values())
+        income -= self.debt_interest(owner)
         return income, research
+
+    def debt_interest(self, owner=PLAYER):
+        """Quote the next debt charge, or the frozen charge during a turn."""
+        frozen = getattr(self, "_turn_interest", {})
+        if owner in frozen:
+            return frozen[owner]
+        if treasury.bankrupt(self, owner):
+            return 0  # A collapsed empire's final debt no longer compounds.
+        return treasury.interest(self.treasury_for(owner))
 
     def fleet_maintenance(self, owner=PLAYER):
         """Charge each commissioned hull once, including travelling/disabled homes.
@@ -1821,6 +1831,7 @@ class GameState:
         try:
             return self._advance_turn()
         finally:
+            self.__dict__.pop("_turn_interest", None)
             self.__dict__.pop("_turn_power", None)
             self.__dict__.pop("_turn_megastructures", None)
             self.__dict__.pop("_turn_hyperlanes", None)
@@ -1828,6 +1839,8 @@ class GameState:
 
     def _advance_turn(self):
         """AI orders, starting yields, travel and local production, then bank income."""
+        if self.result is None and self.combat is None and any(treasury.bankrupt(self, o) for o in self.owners):
+            self.check_victory(convene=False)
         self._require_strategy()
         tribute.normalize(self)
         if self.tribute_demands:
@@ -1846,6 +1859,7 @@ class GameState:
         megastructures.normalize(self)
         from . import statistics as statistics_rules
         statistics_rules.record(self)
+        self._turn_interest = {owner: self.debt_interest(owner) for owner in self.owners}
         # End Turn commits existing orders before the AI plans against current positions.
         for ship in self.ships:
             ship.departure_pending = False
@@ -1934,9 +1948,11 @@ class GameState:
         gas_giants.advance(self)
         self.credits += income
         if income < 0:
-            alerts.append(f"Budget deficit: {income} CR/turn after maintenance and specialist salaries")
+            alerts.append(f"Budget deficit: {income} CR/turn after upkeep, salaries and debt interest")
+        if self.debt_interest():
+            alerts.append(f"Debt interest: {self.debt_interest():,} CR charged (10% of opening debt, rounded up)")
         if self.credits < 0:
-            alerts.append(f"Treasury debt: {-self.credits} CR; future income repays it")
+            alerts.append(f"Treasury debt: {-self.credits:,} CR; bankruptcy at {treasury.BANKRUPTCY_LIMIT:,} CR")
         self.research += research
         population = []
         for planet, start in population_start:
@@ -1956,6 +1972,9 @@ class GameState:
         for owner, empire in self.opponents.items():
             empire.credits += rival_rates[owner][0]
             empire.research += rival_rates[owner][1]
+            if self.debt_interest(owner):
+                self.rival_event(f"Debt interest: {self.debt_interest(owner):,} CR charged at 10% per turn.",
+                                 turn=self.turn, owner=owner)
         alerts.extend(megastructures.discover(self))
         for ship in self.ships:
             if ship.id in repairable and self.can_repair(ship):
@@ -1972,6 +1991,7 @@ class GameState:
         self.__dict__.pop("_turn_megastructures", None)
         self.__dict__.pop("_turn_hyperlanes", None)
         self.__dict__.pop("_array_chances", None)
+        self.__dict__.pop("_turn_interest", None)
         tomb_rules.advance(self, alerts, ground_battles)
         species.advance_swarm(self, alerts)
         accession.advance(self, alerts)
@@ -1982,13 +2002,17 @@ class GameState:
             self.advance_research(owner)
         specialist_rules.advance_visitors(self)
         encounter_rules.finish_turn(self, searches_ready)
+        alerts.extend(treasury.eliminate_bankrupt_opponents(self))
         exploration_rules.refresh(self)
-        monster_rules.intercept(self)
-        encounter_rules.intercept(self)
-        self.check_victory(convene=False)
-        combat_rules.intercept(self)
-        council_rules.schedule(self)
-        self.check_victory()
+        if treasury.bankrupt(self):
+            self.check_victory(convene=False)
+        if self.result is None:
+            monster_rules.intercept(self)
+            encounter_rules.intercept(self)
+            self.check_victory(convene=False)
+            combat_rules.intercept(self)
+            council_rules.schedule(self)
+            self.check_victory()
         statistics_rules.record(self)
         return TurnReport(income, research, completed, arrivals,
                           [discovered.name] if discovered else [], alerts, exploration, population, ground_battles, resource_rates.get(PLAYER, 0))
@@ -1999,7 +2023,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=59):
+    def from_dict(cls, data, *, version=60):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2226,10 +2250,14 @@ class GameState:
             if not black_holes.charted(game, game.systems[game.selected_system]):
                 game.selected_system, game.selected_planet = 0, None
             if 9 <= version < 51:
-                victory_rules.validate(game, data["result"])
+                victory_rules.validate(game, data["result"], check_bankruptcy=False)
             race_victory.load(game, data, version)
             if version >= 9:
-                game.result = victory_rules.validate(game, data["result"])
+                game.result = victory_rules.validate(game, data["result"], check_bankruptcy=version >= 60)
+            if version < 60 and game.result is None and game.combat is None:
+                if any(treasury.bankrupt(game, owner) for owner in game.owners):
+                    game.check_victory(convene=False)
+                    exploration_rules.refresh(game)
             if version < 58:
                 from .colony_layout import freeze as freeze_surface_layout
                 for system, planet in game.settlements():

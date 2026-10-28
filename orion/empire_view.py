@@ -8,6 +8,7 @@ from .colony_view import turn_label
 from .empire import COLONIES_PER_PAGE, FILTERS, colony_rows, summarize_empire
 from .planet_art import draw_planet
 from .races import RACES
+from .treasury import BANKRUPTCY_LIMIT
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, arrow, panel, shorten, text
 
 
@@ -57,6 +58,10 @@ def draw_empire(app):
         text(surface, value, (x+10, 316), 18, color)
         text(surface, shorten(caption, 134, 9), (x+10, 352), 9, MUTED)
 
+    debt_note = (f"Debt interest: {summary.interest:,} CR/turn (10%) · Bankruptcy at {BANKRUPTCY_LIMIT:,} CR · "
+                 f"Projected treasury: {game.credits+summary.income:,} CR" if game.credits < 0 else
+                 f"Negative credits cost 10% interest per turn. Bankruptcy at {BANKRUPTCY_LIMIT:,} CR.")
+    text(surface, debt_note, (66, 380), 11, RED if game.credits+summary.income <= BANKRUPTCY_LIMIT else MUTED)
     text(surface, "COLONY DIRECTORY", (64, 402), 11, GOLD, "mono", 2)
     text(surface, f"{len(rows)} of {summary.colonies} {'colonies' if summary.colonies != 1 else 'colony'}", (338, 402), 12, MUTED)
     for i, key in enumerate(FILTERS):
@@ -159,7 +164,8 @@ def draw_empire(app):
     app.button("empire_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("empire_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     from .specialists import salaries
-    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep = {summary.income:+} CR/turn"
+    interest_note = f" − {summary.interest} interest" if summary.interest else ""
+    caption = f"Budget: {summary.gross_income} gross − {summary.maintenance} upkeep{interest_note} = {summary.income:+} CR/turn"
     text(surface, shorten(caption, 650, 12), (400, 835), 12, MUTED)
     fleet, pay = game.fleet_maintenance(), salaries(game)
     from .accession import upkeep

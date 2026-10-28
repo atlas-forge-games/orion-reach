@@ -8,7 +8,7 @@ from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, SHIP_TYPES
 from . import production as production_balance
 from .races import RACES
-from .research import BRANCHES, TECHNOLOGIES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
+from .research import BRANCHES, TIERS, FUEL_TANK_TECHNOLOGIES, choices
 from .combat import HOSTILE_BELOW
 from .exploration import gate_location
 from .population import farmers_needed, food_required
@@ -116,19 +116,14 @@ def scouting_orders(game, owner=RIVAL):
 
 def research_choice(game, owner=RIVAL):
     """A stable preference order, using ordinary points and exclusive choices."""
-    from . import motherships
     state = game.research_state(owner)
     if state.active or game._empire(owner).research == 0:
         return
     # Extend an exhausted frontier using the same exclusive tank upgrades as the player.
     unknown = [s for s in game.systems if s.kind != black_holes.KIND and not game.system_explored(s.id, owner)]
     raid_targets = known_enemy_colonies(game, owner) if raiding.is_varkesh(game, owner) else []
-    settlement_targets = ([] if raiding.is_varkesh(game, owner) or motherships.is_wanderer(game, owner) else
-                          [s for s in game.systems if available_worlds(game, s, owner)])
-    needs_range = ((unknown and not any(game.within_fuel_range(s.id, owner) for s in unknown))
-                  or (raid_targets and not any(game.within_fuel_range(s.id, owner) for s, _ in raid_targets))
-                  or (settlement_targets and not any(game.within_fuel_range(s.id, owner) for s in settlement_targets)))
-    if needs_range:
+    if ((unknown and not any(game.within_fuel_range(s.id, owner) for s in unknown))
+            or (raid_targets and not any(game.within_fuel_range(s.id, owner) for s, _ in raid_targets))):
         for identifier in FUEL_TANK_TECHNOLOGIES:
             if game.research_error(identifier, owner=owner) is None:
                 game.choose_research(identifier, owner=owner)
@@ -163,31 +158,13 @@ def research_choice(game, owner=RIVAL):
         *( ("targeting_computers", "predictive_fire_control", "quantum_targeting") if military
            else ("deep_space_radar", "long_range_sensors", "subspace_scanners") ),
     }
-    if needs_range:
-        # A tank several tiers away still needs investment in its branch. This
-        # also matters in fully surveyed galaxies, where no unknown stars remain.
-        range_branches = dict.fromkeys(TECHNOLOGIES[t].branch for t in FUEL_TANK_TECHNOLOGIES
-                                      if state.status(t) == 'locked')
-        for branch in range_branches:
-            for technology in sorted(choices(branch, state.next_tier(branch)), key=lambda t: t.id not in preferred):
-                if game.research_error(technology.id, owner=owner) is None:
-                    game.choose_research(technology.id, owner=owner)
-                    return
     for tier in TIERS:
         for branch in branches:
             options = choices(branch, tier)
-            if not options:
-                continue
             if ("science" in game.victory_conditions and "ascension_theory" not in state.completed
                     and tier not in state.required_tiers(branch)):
                 continue
-            if len(options) == 3:
-                # All three options participate. Races break equal priorities differently.
-                offset = (sum(map(ord, race))+tier+tuple(BRANCHES).index(branch)) % 3
-                options = options[offset:]+options[:offset]
-                options = sorted(options, key=lambda t: (t.id not in preferred,
-                    not any(b.enabled and b.technology == t.id for b in BUILDINGS.values())))
-            elif tier <= 2 and branch != "starships":
+            if tier <= 2 and branch != "starships":
                 index = tuple(BRANCHES).index(branch)
                 options = sorted(options, key=lambda t: t != options[preferences[tier-1][index]])
             else:
@@ -242,13 +219,6 @@ def development_choice(planet, race_id="kharuun", available=None):
         for candidate in candidates:
             if candidate not in existing and (available is None or candidate in available):
                 return candidate
-    if available is not None:
-        from .environments import growth_factor
-        local = ['administration_centre']
-        if growth_factor(planet, race_id) < 100:
-            local += ['terraforming_facility', 'adaptation_centre', 'habitat_dome']
-        local += ['population_engineering_centre', 'population_centre', 'medical_centre', 'enclosed_biosphere']
-        return next((b for b in local if b in available and b not in existing), None)
     return None
 
 
@@ -262,10 +232,10 @@ def projected_colony(planet, extra=None):
 
 
 def projected_income(game, owner, extra=None):
-    """Budget for queued buildings and ships, current fleets and salaries."""
+    """Budget for queued buildings and ships, current fleets, salaries and debt."""
     income = game.diplomatic_yields(owner)[0]-game.fleet_maintenance(owner)-specialists.salaries(game, owner)
     from .accession import upkeep
-    income -= upkeep(game, owner)
+    income -= upkeep(game, owner)+game.debt_interest(owner)
     for system, planet in empire_colonies(game, owner):
         item = extra[2] if extra and extra[:2] == (system.id, planet.id) else None
         income += game.planet_yields(projected_colony(planet, item))[1]
@@ -280,7 +250,7 @@ def can_maintain_ship(game, owner, kind):
 def steady_power_plant(game, planet, owner):
     """Choose the largest unlocked steady source the colony can maintain."""
     existing = set(planet.buildings) | {q.item_id for q in planet.construction_queue}
-    candidates = [b for b in BUILDINGS.values() if b.enabled and b.energy_output and not b.energy_per_resource
+    candidates = [b for b in BUILDINGS.values() if b.energy_output and not b.energy_per_resource
                   and b.id not in existing
                   and (not b.technology or game.research_state(owner).has_unlock(b.technology))]
     income = game.planet_yields(projected_colony(planet))[1]

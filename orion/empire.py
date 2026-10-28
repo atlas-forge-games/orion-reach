@@ -17,6 +17,7 @@ class EmpireSummary:
     income: int = 0
     gross_income: int = 0
     maintenance: int = 0
+    interest: int = 0
     research: int = 0
     used_slots: int = 0
     capacity: int = 0
@@ -77,6 +78,7 @@ def summarize_empire(game, *, owner=PLAYER):
         income=game.empire_rates_for(owner)[0],
         gross_income=sum(output[1]+game.planet_maintenance(p) for output, p in zip(outputs, colonies))+trade+station_credits,
         maintenance=sum(game.planet_maintenance(p) for p in colonies)+salaries(game, owner)+game.fleet_maintenance(owner)+upkeep(game, owner)+station_upkeep,
+        interest=game.debt_interest(owner),
         research=game.empire_rates_for(owner)[1],
         used_slots=sum(p.used_slots for p in colonies),
         capacity=sum(p.building_capacity for p in colonies),

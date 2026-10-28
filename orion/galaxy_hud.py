@@ -9,6 +9,7 @@ from .empire import summarize_empire
 from . import news
 from .research import TECHNOLOGIES
 from . import hyperlanes
+from .treasury import BANKRUPTCY_LIMIT
 from .ui import ASSETS, CYAN, GOLD, INK, LINE, MUTED, RED, emblem, font, panel, shorten, text
 
 RESOURCE_RECTS = tuple((270+i*223, 22, 213, 100) for i in range(5))
@@ -63,9 +64,12 @@ def draw_galaxy_header(app):
     text(surface, "AGE OF THE", (65, 39), 12, INK, spacing=2)
     text(surface, "STARS", (65, 62), 26, INK, spacing=4)
     text(surface, "GALAXY COMMAND", (66, 106), 9, MUTED, "mono", 1)
+    credit_note = ("Bankruptcy next turn!" if game.credits+report.income <= BANKRUPTCY_LIMIT else
+                   f"Interest {report.interest:,}/turn · 10%" if game.credits < 0 else
+                   f"Upkeep {report.maintenance:,} · Ships {game.fleet_maintenance():,} CR/turn")
     resource_card(surface, RESOURCE_RECTS[0], "credits", "CREDITS", f"{game.credits:,} CR",
-                  f"{report.income:+,} CR net / turn", f"Upkeep {report.maintenance:,} · Ships {game.fleet_maintenance():,} CR/turn",
-                  GOLD, detail_color=RED if report.income < 0 else MUTED)
+                  f"{report.income:+,} CR net / turn", credit_note,
+                  RED if game.credits < 0 else GOLD, detail_color=RED if report.income < 0 else MUTED)
     active = game.research_state().active
     diverted = sum(hyperlanes.allocations(game, "player").values())
     resource_card(surface, RESOURCE_RECTS[1], "research", "RESEARCH · R", f"{game.research:,} RP",

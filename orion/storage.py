@@ -14,7 +14,7 @@ from .empires import DEFAULT_PALETTE, PLAYER_PALETTES
 from .galaxy_style import DEFAULT_STYLE, STYLES
 from . import balance
 
-SAVE_VERSION = 59
+SAVE_VERSION = 60
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE,
                     "galaxy_background": True, "autosave": True,

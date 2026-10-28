@@ -1,0 +1,28 @@
+AGE OF THE STARS / ORION REACH — v0.84.0 DEBT INTEREST AND BANKRUPTCY
+
+INSTALL
+Close the game. Extract this ZIP over v0.83.4 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game.
+
+DEBT RULES
+- Negative credits incur 10% interest each completed turn, rounded up.
+- Interest uses the opening negative balance and is charged once.
+- Net income in the interface already includes interest.
+- At -10,000 CR or lower you lose through bankruptcy, even with all optional
+  victory conditions disabled. A projected warning appears before this happens.
+- AI empires pay the same interest and are eliminated if they go bankrupt.
+- The Observer has no economy and cannot personally go bankrupt.
+
+SAVES
+Save format 60 supports bankruptcy. Older saves load without being rewritten.
+An ongoing save already at or below -10,000 CR becomes bankrupt on load when
+no combat is pending, or after the pending battle resolves. Completed old
+campaign outcomes are preserved. No campaign restart or new dependency is needed.
+
+VALIDATION
+All 15 new debt and bankruptcy tests pass. Of 39 additional economy and victory
+checks, 33 pass and six fail identically on untouched v0.83.4. Details are in
+docs/treasury.md. The budget, warning and defeat captures were inspected.
+
+No files were committed or pushed.

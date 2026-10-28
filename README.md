@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.83.4
+# Age of the Stars — Python prototype 0.84.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,24 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.84.0: debt interest and bankruptcy
+
+Negative credits now cost **10% interest per completed turn**, calculated from
+the opening debt and rounded up to whole credits. The displayed net income
+includes interest. At **−10,000 CR or below**, your campaign ends in bankruptcy,
+including campaigns with all optional victory conditions disabled.
+
+AI empires pay the same interest and collapse on bankruptcy. The galaxy header
+and Empire overview show debt costs and the bankruptcy limit, with a warning
+when the projected next-turn balance would cross the limit.
+
+Install this incremental update over v0.83.4. Existing saves are upgraded in
+memory to save format 60. An ongoing campaign already at the bankruptcy limit
+loses on loading once any pending combat has been resolved; completed outcomes
+remain unchanged. See [debt rules and validation](docs/treasury.md).
+
+![Bankruptcy defeat](screenshots/treasury_bankruptcy_v0840.png)
 
 ## New in v0.83.4: hover previews and immediate route placement
 

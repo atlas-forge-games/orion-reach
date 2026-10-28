@@ -267,7 +267,10 @@ def advance_gates(game, eligible):
             planet.gate_charge = min(production_balance.GATE_CHARGE_TURNS, planet.gate_charge+1)
 
 
-def current_result(game):
+def current_result(game, *, check_bankruptcy=True):
+    from . import treasury
+    if check_bankruptcy and not game.is_observer and treasury.bankrupt(game):
+        return CampaignResult(None, "bankruptcy", game.turn)
     if game.opponents:
         alive = [owner for owner in game.owners if colonies(game, owner)]
         if "conquest" in game.victory_conditions and len(alive) < 2:
@@ -290,7 +293,7 @@ def current_result(game):
     return None
 
 
-def validate(game, data):
+def validate(game, data, *, check_bankruptcy=True):
     """Validate terminal outcomes and projects against actual campaign state."""
     from .model import _integer
     for owner in game.owners:
@@ -307,14 +310,17 @@ def validate(game, data):
         if (len(sites) > 1 or (sites and ("science" not in game.victory_conditions
                                        or "ascension_theory" not in game.research_state(owner).completed))):
             raise ValueError("Gate does not match research or empire limit")
-    expected = current_result(game) if game.combat is None else None
+    # Completed pre-interest campaigns keep their recorded outcome on resave.
+    # A stored non-financial result must still match all of its original goals.
+    financial = check_bankruptcy and (data is None or isinstance(data, dict) and data.get("condition") == "bankruptcy")
+    expected = current_result(game, check_bankruptcy=financial) if game.combat is None else None
     if data is None:
         if expected is not None:
             raise ValueError("Missing campaign result")
         return None
     if (not isinstance(data, dict) or set(data) != {"winner", "condition", "turn"}
             or data["winner"] not in (*game.owners, None)
-            or data["condition"] not in (*CONDITIONS, "science", "elimination")
+            or data["condition"] not in (*CONDITIONS, "science", "elimination", "bankruptcy")
             or not _integer(data["turn"], game.turn, game.turn)):
         raise ValueError("Invalid campaign result")
     result = CampaignResult(**data)

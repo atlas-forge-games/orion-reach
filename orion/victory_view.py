@@ -122,7 +122,7 @@ def draw_objectives(app):
             app.button("objectives_council", "Open council →", (x+23, 630, 374, 46), app.open_council, enabled=condition in enabled)
         elif condition == "race":
             app.button("objectives_details", "View your legacy →", (x+23, 630, 374, 46), lambda: setattr(app, "objectives_tab", "race"), "primary")
-    text(surface, "Victory conditions are chosen in galaxy setup. Ascension Gate victory has been replaced by civilization legacies.", (66, 753), 13, MUTED)
+    text(surface, "Negative credits cost 10% interest per turn. Bankruptcy at -10,000 CR always ends your campaign.", (66, 753), 13, MUTED)
     app.button("objectives_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("objectives_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
@@ -131,7 +131,7 @@ def draw_objectives(app):
 def draw_result(app):
     surface, game = app.canvas, app.game
     result = game.result
-    won, draw = result.winner == "player", result.winner is None and result.condition != "elimination"
+    won, draw = result.winner == "player", result.winner is None and result.condition not in ("elimination", "bankruptcy")
     color = GOLD if won else CYAN if draw else RIVAL_COLOR
     if game.is_observer:
         color = GOLD
@@ -140,10 +140,13 @@ def draw_result(app):
     if game.is_observer:
         title = "A shared ascension" if draw and result.condition == "science" else "Campaign complete"
     text(surface, title, (92, 187), 66, color, "title")
-    subtitle = "Race-specific victory" if result.condition == "race" else "Council victory" if result.condition == "council" else "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
+    subtitle = "Bankruptcy" if result.condition == "bankruptcy" else "Race-specific victory" if result.condition == "race" else "Council victory" if result.condition == "council" else "Scientific victory" if result.condition == "science" else "Empire eliminated" if result.condition == "elimination" else "Conquest victory"
     text(surface, f"{subtitle.upper()}  /  YEAR {game.year}  /  TURN {result.turn}", (96, 280), 12, MUTED, "mono", 2)
     panel(surface, (92, 331, 1256, 225))
-    if result.condition == "elimination":
+    if result.condition == "bankruptcy":
+        message = (f"Your treasury has fallen to {game.credits:,} CR. At -10,000 CR or below, your empire "
+                   "can no longer finance its obligations. The campaign ends in bankruptcy.")
+    elif result.condition == "elimination":
         message = "Your final colony has fallen. Your empire has been eliminated; other civilizations still remain in the galaxy."
     elif draw:
         message = "Multiple empires completed the victory conditions together. The campaign ends in a draw."
