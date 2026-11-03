@@ -16,7 +16,9 @@ def draw_overview(app, ship):
     system = game.systems[ship.system_id]
     own = ship.owner == PLAYER and not game.is_observer
     color = app.empire_color(ship.owner)
-    text(surface, shorten(home.name, 560, 28, "title"), (24, 12), 28, INK, "title")
+    text(surface, shorten(home.name, 400 if app.planet_return == 'system' else 560, 28, "title"), (24, 12), 28, INK, "title")
+    if app.planet_return == 'system':
+        app.button('planet_return', '← System', (440, 9, 136, 34), app.close_planet)
     empire_stockpile(app, (676, 8, 740, 38))
     panel(surface, (24, 54, 248, 244))
     text(surface, "WANDERER MOTHERSHIP", (38, 69), 11, GOLD, "mono")
@@ -82,22 +84,20 @@ def draw_overview(app, ship):
     strain = game.strain_report(home)
     text(surface, f"Administration: {strain.total:.1f}% strain · {strain.systems} home systems", (780, 752), 12, MUTED)
     if own or game.is_observer:
-        app.button("mothership_facilities", "Manage modules", (780, 785, 284, 37), lambda: app.go("colony"))
-        app.button("mothership_course", "Repairing" if ship.disabled_turns else "In transit" if ship.in_transit else "Set course", (1077, 785, 314, 37),
+        app.button("mothership_facilities", "Manage modules", (780, 778, 284, 37), lambda: app.go("colony"))
+        app.button("mothership_course", "Repairing" if ship.disabled_turns else "In transit" if ship.in_transit else "Set course", (1077, 778, 314, 37),
                    lambda: app.plot_course(ship.id), enabled=own and not ship.in_transit and not ship.disabled_turns)
     elif not ship.disabled_turns:
-        app.button("mothership_engage", "Engage space defenses", (780, 785, 611, 37),
+        app.button("mothership_engage", "Engage space defenses", (780, 778, 611, 37),
                    lambda: app.engage_request(ship.system_id, target=ship.owner),
                    enabled=not ship.in_transit and game.engagement_error(ship.system_id, target=ship.owner) is None)
     else:
         from . import boarding
         for index, (mode, title) in enumerate((("capture", "Board and capture"), ("raid", "Raid stores"), ("destroy", "Destroy for salvage"))):
-            app.button("mothership_"+mode, title, (780+index*206, 785, 199, 37),
+            app.button("mothership_"+mode, title, (780+index*206, 778, 199, 37),
                        lambda mode=mode: app.mothership_action_request(ship.id, mode),
                        enabled=boarding.error(game, ship.id, mode) is None)
         problem = boarding.error(game, ship.id, "capture") or boarding.error(game, ship.id, "raid")
         if problem:
             text(surface, shorten(problem, 610, 11), (780, 769), 11, GOLD)
-    text(surface, "E: End turn · R: Research · I: Empire · F5: Save", (24, 866), 12, MUTED)
-    app.button("planet_return", "System view" if app.planet_return == "system" else "Galaxy map",
-               (1210, 851, 206, 42), app.close_planet, "primary")
+    text(surface, shorten("E: End turn · R: Research · I: Empire · F5: Save", 789, 12, "sans"), (24, 866), 12, MUTED)

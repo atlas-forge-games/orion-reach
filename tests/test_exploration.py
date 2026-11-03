@@ -347,7 +347,7 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.key(pg.K_e)
         self.click("research_back")
         self.assertEqual(self.app.screen, "planet")
-        self.click("planet_return")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "galaxy")
         self.click("map_fleet_1")
         target = discovery_system(self.app.game)

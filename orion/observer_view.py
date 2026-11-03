@@ -123,7 +123,6 @@ def draw_observer(app):
     text(surface, "OBSERVER · READ-ONLY REPORTS", (142, 69), 11, MUTED, "mono", 1)
     text(surface, "EVERY EMPIRE. EVERY DECISION.", (1376, 56), 11, OBSERVER.color, "mono", right=True)
     pg.draw.line(surface, LINE, (64, 107), (1376, 107))
-    app.button("observer_back", "← Galaxy map · Esc", (64, 124, 270, 46), lambda: app.go("galaxy"), "ghost")
     app.button("open_research", "Research · R", (354, 124, 190, 46), app.open_research, "ghost")
     app.button("observer_statistics", "Statistics", (564, 124, 185, 46), app.open_statistics)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
@@ -157,4 +156,4 @@ def draw_observer(app):
             "The Observer has no diplomatic relationships and cannot affect negotiations." if app.observer_tab == "diplomacy" else
             "Click an empire to inspect its economy, colonies and recent activity.")
     text(surface, note, (66, 766), 13, CYAN)
-    draw_galaxy_commands(app)
+    draw_galaxy_commands(app, compact=True)

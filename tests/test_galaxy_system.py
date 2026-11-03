@@ -64,7 +64,7 @@ class GalaxySystemInterfaceTests(unittest.TestCase):
         self.click("surface_shipyard")
         self.key(pg.K_ESCAPE)
         self.assertEqual(self.app.screen, "planet")
-        self.click("planet_return")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "galaxy")
         self.assertEqual(self.app.focus, "galaxy_world_2")
         self.key(pg.K_RETURN)
@@ -76,13 +76,13 @@ class GalaxySystemInterfaceTests(unittest.TestCase):
 
     def test_full_orbital_view_remains_optional_with_its_own_return_path(self):
         self.click("galaxy_world_2")
-        self.click("planet_return")
+        self.click("galaxy_map")
         self.click("open_system")
         self.assertEqual(self.app.screen, "system")
         self.click("world_3")
         self.click("planet_return")
         self.assertEqual(self.app.screen, "system")
-        self.click("system_back")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "galaxy")
 
     def test_eight_worlds_page_without_overlap_and_restore_selected_planet(self):

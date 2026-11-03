@@ -109,5 +109,4 @@ def draw_encounters(app):
     paragraph(surface, reports[-1].message if reports else "No encounter reports for this system yet. Discoveries and warnings also appear in Turn News.",
               (284, 765), 1060, 14, MUTED, 22)
     app.button("encounters_news", "Turn News", (64, 850, 205, 42), app.open_news)
-    text(surface, "Pirates are independent. Fighting them does not declare war on an empire.", (294, 864), 12, MUTED)
-    app.button("encounters_end_turn", "End turn · E", (1100, 850, 276, 42), app.advance_turn, enabled=game.strategy_error() is None)
+    text(surface, shorten("Pirates are independent. Fighting them does not declare war on an empire.", 519, 12, "sans"), (294, 864), 12, MUTED)

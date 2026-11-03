@@ -451,7 +451,7 @@ def draw_combat(app):
         app.button("combat_next", "Next ship · N", (x, 646, 149, 32), app.next_combat_ship, enabled=player_turn and bool(battle.ready(PLAYER)))
         app.button("combat_hold", "Done ship", (1239, 646, 149, 32), lambda: app.combat_action("hold"),
                    enabled=bool(player_turn and ship and (battle.can_move(ship) or battle.can_fire(ship) or battle.can_launch(ship))))
-        app.button("combat_end_turn", "End turn · E", (x, 688, 308, 35), lambda: app.combat_action("end_turn"),
+        app.button("combat_end_turn", "End combat turn · E", (x, 688, 308, 35), lambda: app.combat_action("end_turn"),
                    "primary" if player_turn else "normal", enabled=player_turn)
         app.button("combat_retreat", "Retreat fleet", (x, 730, 308, 23), app.retreat_request,
                    enabled=player_turn and retreat_destination(game) is not None)
@@ -502,16 +502,16 @@ def draw_combat(app):
         app.button("combat_continue", "Edit fleets" if simulator else "Return to system", (x, 641, 308, 51), app.finish_combat, "primary")
 
     text(surface, f"ORDNANCE IN FLIGHT: {len(battle.projectiles)}  ·  {combat_projectiles.SPEED} cells / round  ·  ~N r = estimated arrival", (34, 741), 10, GOLD, "mono")
-    panel(surface, (32, 763, 1376, 77))
-    text(surface, "COMBAT LOG", (48, 778), 10, GOLD, "mono", 1)
-    for i, message in enumerate(battle.log[-3:]):
-        text(surface, shorten(message, 1120, 12), (233, 773+i*21), 12, INK if i == len(battle.log[-3:])-1 else MUTED)
+    panel(surface, (32, 763 if simulator else 761, 1376, 77 if simulator else 47))
+    text(surface, "COMBAT LOG", (48, 778 if simulator else 775), 10, GOLD, "mono", 1)
+    for i, message in enumerate(battle.log[-3:] if simulator else battle.log[-2:]):
+        text(surface, shorten(message, 1120 if simulator else 850, 12), (233, 773+i*21 if simulator else 767+i*18), 12, INK if i == len(battle.log[-3:] if simulator else battle.log[-2:])-1 else MUTED)
     app.button("combat_pause", ("Resume · Esc" if app.sim_paused else "Pause · Esc") if simulator else "Menu · Esc",
-               (32, 851, 153, 38), app.pause, enabled=not simulator or battle.status == "active")
-    app.button("combat_save", "Rematch · R" if simulator else "Save · F5", (198, 851, 153, 38),
+               (32, 851 if simulator else 836, 153, 38), app.pause, enabled=not simulator or battle.status == "active")
+    app.button("combat_save", "Rematch · R" if simulator else "Save · F5", (198, 851 if simulator else 836, 153, 38),
                app.rematch if simulator else app.save_game)
     if active:
-        app.button("combat_auto", "Take control · A" if automatic else "Auto combat · A", (364, 851, 218, 38),
+        app.button("combat_auto", "Take control · A" if automatic else "Auto combat · A", (364, 851 if simulator else 836, 218, 38),
                    app.toggle_combat_auto, "primary" if automatic else "normal", enabled=battle.status == "active")
     status = ("Firing…" if busy and app.combat_animation.kind == "fire" else "Ordnance advancing…" if busy and app.combat_animation.kind == "ordnance" else "Launching…" if busy and app.combat_animation.kind == "launch_projectile" else "Maneuvering…" if busy
               else "Computer is giving your fleet orders…" if automatic and battle.active_owner == PLAYER
@@ -520,7 +520,7 @@ def draw_combat(app):
               else "One move + one shot per ship · Strategic time paused")
     if simulator and app.sim_paused:
         status = "Paused · P resumes · R starts a fresh battle"
-    text(surface, shorten(status, 454, 12), (600 if active else 372, 863), 12, CYAN if automatic else MUTED)
+    text(surface, shorten(status, 454 if simulator else 780, 12), (600 if active else 372, 863) if simulator else (32, 814), 12, CYAN if automatic else MUTED)
     camera = combat_camera.view(app)
     horizontal = camera.width < BOARD_COLUMNS
     vertical = camera.height < battle.rows
@@ -533,5 +533,5 @@ def draw_combat(app):
                 ("right", "→", 1185, 3, 0, camera.x+camera.width < BOARD_COLUMNS),
                 ("up", "↑", 1260, 0, -3, camera.y > 0),
                 ("down", "↓", 1335, 0, 3, camera.y+camera.height < battle.rows)):
-            app.button("combat_map_"+key, label, (left, 851, 73, 38),
+            app.button("combat_map_"+key, label, (left, 851 if simulator else 766, 73, 38),
                        lambda a=dx, b=dy: app.pan_combat(b, dx=a), enabled=enabled)

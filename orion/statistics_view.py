@@ -57,7 +57,6 @@ def draw_statistics(app):
     app.chrome("DIPLOMACY · STATISTICS")
     back = "← Observer reports · Esc" if game.is_observer else "← Diplomacy · Esc"
     app.button("statistics_back", back, (64, 124, 283, 46), app.close_statistics, "ghost")
-    app.button("statistics_galaxy", "Galaxy map", (364, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     for index, (span, label) in enumerate(((0, "All turns"), (25, "Last 25"), (100, "Last 100"))):
         app.button(f"statistics_range_{span}", label, (946+index*145, 124, 140, 46),
                    lambda n=span: app.set_statistics_range(n), "tab_active" if app.statistics_range == span else "tab")
@@ -145,9 +144,8 @@ def draw_statistics(app):
     first = min((rows[0][0] for rows in series.values() if rows), default=game.turn)
     hint = (f"Records begin at turn {first}; earlier values were not stored." if first > 1 else
             "Hover over the graph to inspect a turn. New civilizations have no history before they exist.")
-    text(surface, hint, (65, 820), 11, MUTED)
+    text(surface, shorten(hint, 748, 11, "sans"), (65, 820), 11, MUTED)
     app.button("statistics_pause", "Menu", (64, 850, 126, 36), app.pause)
     app.button("statistics_save", "Save · F5", (204, 850, 172, 36), app.save_game)
-    text(surface, f"{len(series)} civilizations · "+("All recorded turns" if not app.statistics_range else f"Last {app.statistics_range} turns"),
+    text(surface, shorten(f"{len(series)} civilizations · "+("All recorded turns" if not app.statistics_range else f"Last {app.statistics_range} turns"), 413, 12, "sans"),
          (400, 861), 12, MUTED)
-    app.button("statistics_end_turn", "End turn · E", (1081, 843, 295, 43), app.advance_turn, "primary")

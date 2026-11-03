@@ -172,14 +172,14 @@ def draw_ground(app):
     text(surface, footer, (929, 766), 12, MUTED)
     if report:
         app.button("ground_continue", "Next report →" if len(app.ground_reports) > 1 else "Continue →",
-                   (1056, 828, 320, 50), app.close_ground, "primary")
-        text(surface, "The battle is resolved. Continue to return to the campaign.", (65, 845), 13, MUTED)
+                   (64, 828, 280, 50), app.close_ground, "primary")
+        paragraph(surface, "The battle is resolved. Continue to return to the campaign.", (364, 834), 440, 13, MUTED, 21)
     else:
         app.button("ground_cancel", "←  Back to mothership" if mobile else "←  Back to colony", (64, 828, 249, 50), app.close_ground)
-        app.button("ground_launch", "Launch raid" if raid else "Board mothership" if mobile else "Launch invasion", (1056, 828, 320, 50), app.launch_ground_assault, "primary",
+        app.button("ground_launch", "Launch raid" if raid else "Board mothership" if mobile else "Launch invasion", (329, 828, 280, 50), app.launch_ground_assault, "primary",
                    enabled=(boarding.error(game, ship.id, app.ground_mode) if mobile else game.invasion_error(sid, pid)) is None)
         warning = ("Raids end treaties and set relations to −100.\nHomeworld slave limit: 100; 5% mortality per unit each turn." if raid else
                    "Invasion ends treaties and sets relations to −100.\nCapture destroys any Ascension Gate.")
         if mobile:
             warning = "Boarding starts war and sets relations to −100.\nCapture preserves the home; raids leave it with its current owner."
-        paragraph(surface, warning, (342, 832), 670, 12, MUTED, 21)
+        text(surface, shorten(warning.replace('\n', ' '), 1310, 12), (66, 798), 12, MUTED)

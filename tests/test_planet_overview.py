@@ -334,8 +334,8 @@ class PlanetOverviewInterfaceTests(unittest.TestCase):
         self.click("surface_factory")
         self.assertEqual(self.app.screen, "colony")
         self.click("tab_overview")
-        bottom = [b.key for b in self.app.buttons if b.rect.top >= 840]
-        self.assertEqual(bottom, ["planet_populations", "planet_return"])
+        bottom = [b.key for b in self.app.buttons if b.rect.top >= 820]
+        self.assertEqual(bottom, ["galaxy_map", "end_turn"])
         self.click("planet_world_3")
         self.assertEqual(self.app.game.selected_planet, 3)
         self.click("planet_return")

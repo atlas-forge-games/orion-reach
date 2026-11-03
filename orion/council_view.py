@@ -83,9 +83,7 @@ def draw_council(app):
     app.button("council_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("council_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     if election and election.status == "voting":
-        app.button("council_abstain", "Abstain", (1081, 834, 295, 45), lambda: app.cast_council_vote(None), "ghost")
+        app.button("council_abstain", "Abstain", (400, 834, 210, 45), lambda: app.cast_council_vote(None), "ghost")
     elif election and election.status == "decision":
-        app.button("council_accept", "Accept the ruling", (760, 834, 295, 45), lambda: app.decide_council(True), "primary")
-        app.button("council_defy", "Defy the emperor", (1081, 834, 295, 45), lambda: app.decide_council(False))
-    else:
-        app.button("council_back", "Return to galaxy", (1081, 834, 295, 45), lambda: app.go("galaxy"), "primary")
+        app.button("council_accept", "Accept ruling", (400, 834, 194, 45), lambda: app.decide_council(True), "primary")
+        app.button("council_defy", "Defy emperor", (606, 834, 205, 45), lambda: app.decide_council(False))

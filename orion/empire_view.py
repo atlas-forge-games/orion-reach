@@ -19,7 +19,7 @@ GAP = 12
 SORTS = (('name', 'Colony'), ('population', 'Population'), ('food', 'Food'),
          ('industry', 'Industry'), ('income', 'Net CR'), ('research', 'Research'),
          ('slots', 'Slots'))
-NAV = (('empire_back', '← Galaxy map', 176), ('open_research', 'Research', 132),
+NAV = (('open_research', 'Research', 132),
        ('open_diplomacy', 'Diplomacy', 146), ('open_fleets', 'Fleets', 106),
        ('open_objectives', 'Objectives', 146), ('empire_rival', 'Rival report', 156),
        ('empire_specialists', 'Specialists', 146))
@@ -56,7 +56,8 @@ class EmpireLayout:
 
 def layout_for(app, viewport):
     width, available_height = viewport
-    nav, nav_bottom = flow(NAV, width, 96)
+    items = NAV if app.empire_return == 'galaxy' else (('empire_back', '← Back · I', 176),)+NAV
+    nav, nav_bottom = flow(items, width, 96)
     cards_top = nav_bottom+20
     columns = min(4, max(2, (width-2*MARGIN+GAP)//312))
     debt_top = cards_top+math.ceil(8/columns)*120
@@ -75,13 +76,13 @@ def layout_for(app, viewport):
         rows_top = sorts_top+34
         row_height = 82
     # Fewer rows at larger text sizes; an overflowing page remains scrollable.
-    page_size = max(1, min(10, (available_height-rows_top-164)//row_height))
+    page_size = max(1, min(10, (available_height-rows_top-198)//row_height))
     pagination_top = rows_top+page_size*row_height+12
     footer_top = pagination_top+54
-    height = max(available_height, footer_top+104)
+    height = max(available_height, footer_top+132)
     return EmpireLayout(width, height, columns, tuple(nav), cards_top, debt_top,
                         filters_top, sorts_top, rows_top, row_height, page_size,
-                        pagination_top, height-104, compact)
+                        pagination_top, height-132, compact)
 
 
 def debt_note(game, summary):
@@ -288,7 +289,7 @@ def draw_footer(app, layout, summary):
     from .gas_giants import income as station_income
     surface, game = app.canvas, app.game
     top = layout.footer_top
-    panel(surface, (MARGIN, top, layout.width-2*MARGIN, 96))
+    panel(surface, (MARGIN, top, layout.width-2*MARGIN, 124))
     interest = f' − {summary.interest} interest' if summary.interest else ''
     caption = f'Budget: {summary.gross_income} gross − {summary.maintenance} upkeep{interest} = {summary.income:+} CR/turn'
     text(surface, caption, (MARGIN+12, top+8), TEXT_SMALL, GOLD if game.credits >= 0 else RED)
@@ -296,6 +297,5 @@ def draw_footer(app, layout, summary):
     orbital = station_income(game, 'player')[2]
     detail = f'Upkeep: {summary.maintenance-fleet-pay-outreach-orbital} facilities · {orbital} orbital · {fleet} ships · {pay} salaries · {outreach} outreach'
     text(surface, detail, (MARGIN+12, top+31), TEXT_SMALL, MUTED)
-    app.button('empire_pause', 'Menu', (MARGIN+12, top+55, 112, 34), app.pause)
-    app.button('empire_save', 'Save · F5', (MARGIN+136, top+55, 146, 34), app.save_game)
-    app.button('empire_end_turn', 'End turn · E', (layout.width-MARGIN-226, top+55, 214, 34), app.advance_turn)
+    app.button('empire_pause', 'Menu', (MARGIN+12, layout.height-80, 112, 54), app.pause)
+    app.button('empire_save', 'Save · F5', (MARGIN+136, layout.height-80, 146, 54), app.save_game)

@@ -88,14 +88,12 @@ def draw_race_objectives(app):
     text(surface, "Only known empires are shown. Hidden colony locations remain private.", (66, 806), 11, MUTED)
     app.button("objectives_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("objectives_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
 
 def draw_objectives(app):
     surface, game = app.canvas, app.game
     app.chrome("CAMPAIGN OBJECTIVES")
     app.button("objectives_back", "← Back · V", (64, 124, 195, 46), app.close_objectives, "ghost")
-    app.button("objectives_galaxy", "Galaxy map", (274, 124, 182, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     enabled = game.victory_conditions
     racial = app.objectives_tab == "race"
@@ -125,7 +123,6 @@ def draw_objectives(app):
     text(surface, "Negative credits cost 10% interest per turn. Bankruptcy at -10,000 CR always ends your campaign.", (66, 753), 13, MUTED)
     app.button("objectives_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("objectives_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    app.button("objectives_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
 
 
 def draw_result(app):
@@ -190,7 +187,7 @@ def draw_result(app):
         text(surface, f"{count} {'colony' if count == 1 else 'colonies'} · {population} B inhabitants · {len(game.ships_owned_by(owner))} ships", (x+23, 634), 14, MUTED)
         text(surface, f"{len(game.research_state(owner).completed)} technologies discovered", (x+23, 667), 12, CYAN)
     text(surface, "This campaign is complete. Save a final snapshot or start a new campaign.", (95, 739), 15, MUTED)
-    app.button("result_save", "Save final snapshot", (92, 802, 291, 57), app.save_game)
-    app.button("result_menu", "Main menu", (404, 802, 249, 57), app.to_menu)
-    app.button("result_news", "Turn news · N", (674, 802, 291, 57), app.open_news)
-    app.button("result_new", "New campaign →", (1016, 802, 332, 57), lambda: app.go("race_select"), "primary")
+    app.button("result_save", "Save snapshot", (64, 820, 175, 54), app.save_game)
+    app.button("result_menu", "Main menu", (251, 820, 150, 54), app.to_menu)
+    app.button("result_news", "Turn news · N", (413, 820, 180, 54), app.open_news)
+    app.button("result_new", "New campaign", (605, 820, 206, 54), lambda: app.go("race_select"), "primary")

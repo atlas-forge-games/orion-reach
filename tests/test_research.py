@@ -334,7 +334,7 @@ class ResearchScreenTests(unittest.TestCase):
         self.assertTrue(button.enabled, key)
         x, y = button.rect.center
         viewport = self.app.viewport
-        position = (round(viewport.x+x*viewport.w/1440), round(viewport.y+y*viewport.h/900))
+        position = (round(viewport.x+x*self.app.canvas.scale), round(viewport.y+y*self.app.canvas.scale))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, pos=position, button=1))
             self.app.render()
@@ -381,7 +381,7 @@ class ResearchScreenTests(unittest.TestCase):
         self.assertEqual(game.technology.progress, progress)
         self.click("research_choose_civil_engineering")
         self.assertEqual(game.technology.progress, progress)
-        self.click("research_end_turn")
+        self.click("end_turn")
         self.assertIn("civil_engineering", self.app.game.technology.completed)
         self.assertNotIn("Autosaved", self.app.notice)
         self.assertTrue(next(b for b in self.app.buttons if b.key == "research_choose_orbital_assembly").enabled)

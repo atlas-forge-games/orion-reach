@@ -537,7 +537,6 @@ def draw_fleet(app):
     surface, game = app.canvas, app.game
     ships = app.sync_fleet_selection()
     app.chrome("FLEET OVERVIEW")
-    app.button("fleet_back", "←  Galaxy map · Esc", (64, 124, 246, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     if not ships:
         text(surface, "This fleet is no longer here.", (64, 206), 36, INK, "title")
@@ -611,8 +610,7 @@ def draw_fleet(app):
                    (990, 720, 362, 58), lambda sid=destination: app.open_system(sid))
     app.button("fleet_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("fleet_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Ships sharing an orbit form a fleet. Send a selection to split it.", (400, 845), 12, MUTED)
-    app.button("fleet_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
+    text(surface, shorten("Ships sharing an orbit form a fleet. Send a selection to split it.", 413, 12, "sans"), (400, 845), 12, MUTED)
 
 
 def draw_order_panel(app, target):

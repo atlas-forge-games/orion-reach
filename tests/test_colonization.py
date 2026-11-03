@@ -292,7 +292,7 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.click("planet_buy")
         self.click("dialog_ok")
         self.assertEqual(self.app.screen, "planet")
-        self.click("planet_return")
+        self.click("galaxy_map")
         self.key(pg.K_f)
         self.assertEqual(len(self.app.game.ships), 1)
         target, planet = remote_world(self.app.game)

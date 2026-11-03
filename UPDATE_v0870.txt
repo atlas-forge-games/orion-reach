@@ -1,0 +1,26 @@
+AGE OF THE STARS / ORION REACH — v0.87.0 CONSISTENT NAVIGATION
+
+INSTALL
+Close the game. Extract this ZIP over v0.86.0 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game. No new dependency is needed.
+
+CHANGES
+- Galaxy keeps its existing End turn button.
+- Every other campaign screen has Galaxy map and End turn together at the
+  bottom right, in that order, using one shared navigation component.
+- G opens the galaxy map; E advances the turn. Escape keeps its local return.
+- System and Colony links remain close to their own content.
+- Footer actions, pagination and planet details make room for the shared pair.
+- Required battles, transmissions, votes and reports still block campaign
+  navigation. Hover over a dimmed button to see the reason.
+- The selected system and planet, colony production housekeeping and normal
+  turn prompts are preserved. Combat retains its separate End combat turn.
+
+VALIDATION
+All 27 campaign screens checked; 68 screen/dialog states rendered at three
+window/zoom combinations. Ten focused navigation tests pass. Broader checks and
+existing baseline failures are recorded in docs/ui-navigation.md.
+Save format remains 60; simulation and balance rules are unchanged.
+
+No files were committed or pushed by this update.

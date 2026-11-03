@@ -303,7 +303,7 @@ class InterfaceTests(unittest.TestCase):
         self.click("open_system")
         self.click("world_1")
         self.click("planet_return")
-        self.click("system_back")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen,"galaxy")
 
     def test_navigation_works_at_actual_globe_positions_with_letterboxing(self):
@@ -371,7 +371,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertIsNone(self.app.game.selected_planet)
         self.assertFalse(any(b.key.startswith("world_") for b in self.app.buttons))
         self.key(pg.K_RIGHT)
-        self.click("system_back")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen,"galaxy")
 
     def test_eight_world_layout_has_separate_click_targets(self):
@@ -408,7 +408,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(earth.used_slots,1)
         saved,_=self.app.storage.load(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(saved,self.app.game)
-        self.click("colony_end_turn")
+        self.click("end_turn")
         self.click("research_back")
         self.assertEqual(earth.construction_queue[0].progress,6)
         self.click("cancel_construction")

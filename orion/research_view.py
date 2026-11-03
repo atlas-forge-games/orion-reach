@@ -148,9 +148,8 @@ def draw_field_overview(app):
 
     app.button("research_save", "Save · F5", (64, 835, 172, 44), app.save_game)
     app.button("research_pause", "Menu", (250, 835, 132, 44), app.pause)
-    text(surface, "Left-click to choose or switch · Right-click a technology for information", (409, 830), 12, MUTED)
-    text(surface, "Invested RP transfers · Only completed choices are permanent", (409, 853), 11, FAINT)
-    app.button("research_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
+    text(surface, shorten("Left-click to choose or switch · Right-click a technology for information", 404, 12, "sans"), (409, 830), 12, MUTED)
+    text(surface, shorten("Invested RP transfers · Only completed choices are permanent", 404, 11, "sans"), (409, 853), 11, FAINT)
 
 
 def technology_kind(identifier):
@@ -190,10 +189,9 @@ def draw_six_fields(app):
             draw_choice_row(app, technology, (x+7, y+65+row*28, width-14, 27))
     app.button('research_save', 'Save · F5', (64, 835, 172, 44), app.save_game)
     app.button('research_pause', 'Menu', (250, 835, 132, 44), app.pause)
-    text(surface, 'Choose one of three · Completion unlocks the next tier', (409, 831), 12, MUTED)
-    text(surface, 'Field heading: details · Right-click: information · Invested RP transfers', (409, 855), 10, FAINT)
+    text(surface, shorten('Choose one of three · Completion unlocks the next tier', 404, 12, "sans"), (409, 831), 12, MUTED)
+    text(surface, shorten('Field heading: details · Right-click: information · Invested RP transfers', 404, 10, "sans"), (409, 855), 10, FAINT)
     text(surface, '3 OPTIONS · CHOOSE 1', (1376, 146), 11, GOLD, 'mono', right=True)
-    app.button('research_end_turn', 'End turn · E', (1081, 824, 295, 55), app.advance_turn, 'primary')
 
 
 def draw_branch_detail(app):
@@ -313,9 +311,8 @@ def draw_branch_detail(app):
 
     app.button("research_save", "Save · F5", (64, 835, 172, 44), app.save_game)
     app.button("research_pause", "Menu", (250, 835, 132, 44), app.pause)
-    text(surface, "Your civilization legacy is tracked in Objectives.", (409, 828), 12, MUTED)
-    text(surface, "PgUp / PgDn: browse tiers · Right-click a technology for information", (409, 851), 10, FAINT)
-    app.button("research_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
+    text(surface, shorten("Your civilization legacy is tracked in Objectives.", 404, 12, "sans"), (409, 828), 12, MUTED)
+    text(surface, shorten("PgUp / PgDn: browse tiers · Right-click a technology for information", 404, 10, "sans"), (409, 851), 10, FAINT)
 
 
 def draw_technology_info(app, identifier):

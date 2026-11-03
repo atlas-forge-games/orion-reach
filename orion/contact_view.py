@@ -50,10 +50,10 @@ def draw_contact(app):
     text(surface, f"RELATIONS  {state.attitude.upper()}  {state.relations:+}", (759, 731), 11, accent, "mono", 1)
     remaining = len(first_contact.pending(game))
     if app.contact_replay:
-        app.button("contact_continue", "Return to diplomacy", (1014, 820, 360, 54), app.finish_contact, "primary")
+        app.button("contact_continue", "Return to diplomacy", (1014, 773, 360, 34), app.finish_contact, "primary")
         text(surface, "ARCHIVED GREETING · ESC TO RETURN", (68, 844), 11, FAINT, "mono", 1)
     else:
         text(surface, f"{remaining} TRANSMISSION{'S' if remaining != 1 else ''} AWAITING ACKNOWLEDGEMENT", (68, 840), 10, MUTED, "mono", 1)
         if remaining > 1:
-            app.button("contact_skip", "Skip remaining introductions", (692, 820, 306, 54), app.skip_contacts, "ghost")
-        app.button("contact_continue", "Acknowledge · Enter", (1014, 820, 360, 54), app.finish_contact, "primary")
+            app.button("contact_skip", "Skip remaining introductions", (728, 773, 274, 34), app.skip_contacts, "ghost")
+        app.button("contact_continue", "Acknowledge · Enter", (1014, 773, 360, 34), app.finish_contact, "primary")

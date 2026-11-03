@@ -112,10 +112,10 @@ def guides():
             ("SENSORS", "Sensor research detects enemy fleets within range of your colonies. Operational sensor arrays extend that local range. Press S on the galaxy map to show sensor coverage."),
         )),
         Article("controls", "basics", "Controls and saving", "Keyboard reference", (
-            ("GALAXY SHORTCUTS", "I: Empire\nD: Diplomacy\nR: Research\nF: Fleets\nV: Objectives\nN: Turn news\nS: Sensor coverage\nE: End turn\nP: Menu\nF1: Encyclopedia"),
+            ("GALAXY SHORTCUTS", "G: Galaxy map\nI: Empire\nD: Diplomacy\nR: Research\nF: Fleets\nV: Objectives\nN: Turn news\nS: Sensor coverage\nE: End turn\nP: Menu\nF1: Encyclopedia"),
             ("COMBAT SHORTCUTS", "A: Auto combat / Take control\nE: End tactical turn\nN: Next ship\nWheel or + / minus: Zoom battlefield\nMiddle-drag or Shift + arrows: Pan\n0 or Home: Reset zoom\nPage Up / Page Down: Scroll the battlefield\nEscape: Pause\nF5: Save"),
             ("SAVING", "Choose Menu → Save game, or press F5 in a campaign view. Saving and returning to the main menu are separate actions."),
-            ("NAVIGATION", "Tab or Up/Down moves between controls; Enter activates one. Escape returns or closes the current selection. F11 toggles fullscreen."),
+            ("NAVIGATION", "Campaign views keep Galaxy map (G) and End turn (E) together at the bottom right. The galaxy map has End turn in the same corner. Resolve required battles, transmissions and votes before continuing the campaign. Tab or Up/Down moves between controls; Enter activates one. Escape returns to the previous view or closes the current selection. F11 toggles fullscreen."),
             ("READING THIS GUIDE", "Choose a category and an article. Previous/Next, Left/Right, or the mouse wheel over the article list changes its page. Scroll the text with the wheel, Page Up/Page Down, or its arrow buttons. Back, Escape or F1 returns to your previous screen."),
         )),
         Article("settlement", "colonies", "Settling new worlds", "Colony ships and habitability", (

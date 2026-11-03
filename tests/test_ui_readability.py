@@ -110,7 +110,7 @@ class ReadabilityInterfaceTests(unittest.TestCase):
                         self.assertTrue(self.app.canvas.get_rect().contains(button.rect), button.key)
                         self.assertEqual(button.rect.collidelist([b.rect for b in controls[i+1:]]), -1, button.key)
                     self.assertLessEqual(self.app.canvas.pixel_size[0], size[0]+1)
-                    self.assertTrue(any(b.key == 'empire_end_turn' for b in controls))
+                    self.assertTrue(any(b.key == 'end_turn' for b in controls))
                     self.assertEqual(self.app.game.to_dict(), before)
 
     def test_every_colony_is_reachable_once_after_resizing_and_sorting(self):
@@ -145,7 +145,7 @@ class ReadabilityInterfaceTests(unittest.TestCase):
 
     def test_keyboard_focus_reveals_footer_and_zoom_reset_works(self):
         self.app.settings['ui_scale'] = 175
-        self.app.focus = 'empire_end_turn'
+        self.app.focus = 'end_turn'
         self.app.keyboard_mode = True
         self.frame()
         self.assertGreater(self.app.display_view.offset[1], 0)

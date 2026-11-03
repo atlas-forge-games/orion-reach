@@ -20,7 +20,6 @@ def draw_rival(app):
     app.chrome("OBSERVER · EMPIRE PROFILE" if game.is_observer else "RIVAL INTELLIGENCE")
     back_name = {"diplomacy": "Diplomacy", "planet": "Planet overview", "observer": "Observer reports"}.get(app.rival_return, "Empire overview")
     app.button("rival_back", f"←  {back_name}", (64, 124, 269, 46), lambda: app.go(app.rival_return), "ghost")
-    app.button("rival_galaxy", "Galaxy map", (349, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("rival_diplomacy", "Diplomacy · D", (537, 124, 226, 46), app.open_diplomacy)
     draw_rival_selector(app)
     rival = game.opponents.get(owner)
@@ -34,7 +33,6 @@ def draw_rival(app):
             paragraph(surface, "Explore with your ships or research sensors to identify other civilizations. "
                       "Their identities and diplomatic channels will appear after first contact.",
                       (96, 407), 1112, 19, MUTED, 32)
-            app.button("rival_explore", "Return to galaxy", (95, 663, 283, 52), lambda: app.go("galaxy"), "primary")
             return
         text(surface, "This campaign has no rival yet.", (94, 343), 29, INK, "title")
         paragraph(surface, "Add the Helios Directorate to an unclaimed habitable world far from your colonies. "
@@ -99,11 +97,10 @@ def draw_rival(app):
         state = rival.technology
         project = TECHNOLOGIES[state.active] if state.active else None
         caption = f"Research: {project.name} · {state.progress}/{project.cost} RP" if project else "Research points are being banked."
-        text(surface, shorten(caption, 650, 12), (400, 835), 12, MUTED)
-        text(surface, f"{len(state.completed)} technologies discovered · "+("Controlled by the computer" if game.is_observer else "Same research rules as your empire"), (400, 857), 11, FAINT)
+        text(surface, shorten(caption, 413, 12), (400, 835), 12, MUTED)
+        text(surface, shorten(f"{len(state.completed)} technologies discovered · "+("Controlled by the computer" if game.is_observer else "Same research rules as your empire"), 413, 11, "sans"), (400, 857), 11, FAINT)
     else:
-        text(surface, "Income includes agreements · Open Diplomacy to negotiate", (400, 848), 12, MUTED)
-    app.button("rival_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary")
+        text(surface, shorten("Income includes agreements · Open Diplomacy to negotiate", 413, 12, "sans"), (400, 848), 12, MUTED)
 
 
 def draw_surveyed_rival(app):
@@ -113,7 +110,6 @@ def draw_surveyed_rival(app):
     color = app.empire_color(owner)
     app.chrome("RIVAL INTELLIGENCE")
     app.button("rival_back", "←  Back", (64, 124, 225, 46), lambda: app.go(app.rival_return), "ghost")
-    app.button("rival_galaxy", "Galaxy map", (307, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
     app.button("rival_diplomacy", "Diplomacy · D", (498, 124, 226, 46), app.open_diplomacy)
     draw_rival_selector(app)
     text(surface, rival.name, (64, 190), 43, INK, "title")
@@ -150,5 +146,4 @@ def draw_surveyed_rival(app):
     app.button("rival_next", "Next →", (1218, 746, 134, 34), lambda: app.change_rival_page(1), enabled=app.rival_page<last)
     app.button("rival_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Send a ship to refresh old surveys. Enemy voyages are hidden by fog.", (400, 845), 12, MUTED)
-    app.button("rival_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
+    text(surface, shorten("Send a ship to refresh old surveys. Enemy voyages are hidden by fog.", 413, 12, "sans"), (400, 845), 12, MUTED)

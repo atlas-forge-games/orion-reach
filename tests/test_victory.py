@@ -361,7 +361,7 @@ class VictoryScreenTests(unittest.TestCase):
         self.app.show_research_overview()
         self.click("research_legacy_objectives")
         self.assertEqual(self.app.screen, "objectives")
-        self.click("objectives_galaxy")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "galaxy")
 
     def test_build_transport_then_capture_through_controls_and_preserve_final_result(self):

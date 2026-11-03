@@ -176,12 +176,12 @@ def draw_designer(app):
     text(surface, "Updating a design changes both test fleets on their next launch. Save scenario to keep your blueprints." if simulator else
          "Legacy blueprint: saving refits it to slots. Existing ships and orders keep their equipment."
          if saved and saved.fit_version == 1 else "Existing ships and queued orders keep their equipment.", (66, 815), 12, MUTED)
-    app.button("designer_back", "← Return", (64, 847, 177, 36), lambda: app.go(app.designer_return), "ghost")
-    app.button("design_copy", "Save as new", (746, 838, 216, 45), lambda: app.save_ship_design(copy=True), enabled=saved is not None and not error and bool(design.name))
-    app.button("design_save", "Update" if saved else "Save design", (984, 838, 184, 45), app.save_ship_design, "primary", enabled=not error and bool(design.name) and not unchanged)
+    app.button("designer_back", "← Return", (64, 838, 120, 45), lambda: app.go(app.designer_return), "ghost")
+    app.button("design_copy", "Save as new", (196, 838, 184, 45), lambda: app.save_ship_design(copy=True), enabled=saved is not None and not error and bool(design.name))
+    app.button("design_save", "Update" if saved else "Save design", (392, 838, 174, 45), app.save_ship_design, "primary", enabled=not error and bool(design.name) and not unchanged)
     build_error = None if simulator else game.ship_build_error(colony[0].id, colony[1].id, saved.id) if colony and saved else "Save a blueprint first."
-    app.button("design_build", "Fleet setup" if simulator else "Queue ship", (1180, 838, 196, 45),
+    app.button("design_build", "Fleet setup" if simulator else "Queue ship", (578, 838, 224, 45),
                (lambda: app.go("sim_setup")) if simulator else app.build_ship_design,
                enabled=simulator or unchanged and build_error is None)
     if not simulator and unchanged and build_error:
-        text(surface, shorten(build_error, 380, 11), (1376, 813), 11, GOLD, right=True)
+        text(surface, shorten(build_error, 780, 11), (1376, 195), 11, GOLD, right=True)

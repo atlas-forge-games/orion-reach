@@ -125,12 +125,13 @@ class SurfacePlacementUITests(SurfaceFixture):
         self.addCleanup(self.app.audio.close)
         self.app.game = self.game
         self.app.open_planet(2)
+        self.app.window = pg.display.set_mode((1080, 720))
         self.app.render()
-        self.app.viewport = pg.Rect(71, 39, 960, 600)
+        self.app.present()
 
     def click(self, pos, button=1):
         view = self.app.viewport
-        screen_pos = (round(view.x+pos[0]*view.w/1440), round(view.y+pos[1]*view.h/900))
+        screen_pos = (round(view.x+pos[0]*self.app.canvas.scale), round(view.y+pos[1]*self.app.canvas.scale))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=button, pos=screen_pos))
         self.app.render()
@@ -141,13 +142,17 @@ class SurfacePlacementUITests(SurfaceFixture):
     def test_build_here_previews_then_confirms_at_selected_site_without_moving_landmarks(self):
         initial = {b.key: b.rect.copy() for b in self.app.buttons if b.key.startswith('surface_')}
         before = self.game.to_dict()
-        self.click((169, 654))  # 145, 340 on the landscape, in front of the left trees.
+        scene = self.app.surface_scene_rect
+        # Choose the same canonical site at the current landscape size.
+        point = (scene.x+145*scene.w/colony_layout.WIDTH,
+                 scene.y+340*scene.h/colony_layout.HEIGHT)
+        self.click(point)
         self.assertEqual(self.app.screen, 'production')
         self.click_key('production_build_factory')
         self.assertEqual(self.app.screen, 'planet')
         self.assertEqual(self.app.surface_build_preview['identifier'], 'factory')
         self.assertEqual(self.game.to_dict(), before)
-        self.click((169, 654))
+        self.click(point)
         self.assertIsNone(self.app.surface_build_preview)
         self.assertEqual([p.item_id for p in self.world.construction_queue], ['factory'])
         x, y = self.world.surface_layout['factory'][:2]

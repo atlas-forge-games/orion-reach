@@ -26,7 +26,7 @@ SCIENCE = (165, 172, 232)
 ROLE_COLORS = {"farmers": GREEN, "workers": GOLD, "scientists": SCIENCE, "miners": (204, 163, 122)}
 ROLE_LABELS = {"farmers": "FARMING", "workers": "INDUSTRY", "scientists": "RESEARCH", "miners": "MINING"}
 MAX_WORKER_ICONS = 24
-SURFACE_RECT = (24, 314, 1392, 526)
+SURFACE_RECT = (24, 314, 1392, 492)
 
 
 def worker_row_rect(role):
@@ -352,8 +352,10 @@ def draw_planet_overview(app):
     system = game.known_system(game.selected_system)
     planet = system.worlds[game.selected_planet]
     live = game.system_visible(system.id)
-    text(surface, shorten(f"Colony of {planet.name}" if planet.colonized else planet.name, 780 if game.is_observer else 460, 28, "title"),
+    text(surface, shorten(f"Colony of {planet.name}" if planet.colonized else planet.name, 400 if app.planet_return == 'system' else 780 if game.is_observer else 460, 28, "title"),
          (24, 12), 28, INK, "title")
+    if app.planet_return == 'system':
+        app.button('planet_return', '← System', (440, 9, 136, 34), app.close_planet)
     if game.is_observer:
         text(surface, f"TURN {game.turn} · YEAR {game.year}     OBSERVER · READ ONLY",
              (1416, 22), 12, GOLD, "mono", right=True)
@@ -365,7 +367,7 @@ def draw_planet_overview(app):
     workforce_panel(app, game, planet, live)
     construction_panel(app, game, system, planet, live)
     show_administration = live and planet.colonized and (planet.owner == PLAYER or game.is_observer)
-    scene_rect = (24, 314, 1392, 406) if show_administration else SURFACE_RECT
+    scene_rect = (24, 314, 1392, 384) if show_administration else SURFACE_RECT
     draw_colony_scene(app, scene_rect, game, system, planet, framed=False)
     if planet.is_gas_giant:
         from .gas_giant_view import draw_stations
@@ -373,29 +375,29 @@ def draw_planet_overview(app):
     if show_administration:
         from .administration import MAX_STRAIN
         strain = game.strain_report(planet)
-        panel(surface, (40, 728, 900, 100), (10, 23, 30))
+        panel(surface, (40, 706, 900, 100), (10, 23, 30))
         text(surface, f"ADMINISTRATION · {strain.total:.1f}% STRAIN · {strain.systems} settled systems",
-             (52, 740), 12, GOLD, "mono")
+             (52, 718), 12, GOLD, "mono")
         reduction = f" · facilities −{strain.relief:g} points" if strain.relief else ''
         text(surface, f"Empire {strain.empire:g}% + integration {strain.integration:g}% + local distance {strain.distance:.1f}% · cap {MAX_STRAIN:g}%"+reduction,
-             (52, 763), 12, INK)
+             (52, 741), 12, INK)
         text(surface, f"Output loss: RP {strain.loss('research'):.1f}% · CR {strain.loss('credits'):.1f}% · IND {strain.loss('industry'):.1f}% · RES {strain.loss('mining'):.1f}% · food {strain.loss('food'):.1f}%",
-             (52, 784), 12, MUTED)
+             (52, 762), 12, MUTED)
         location = f"Capital: {strain.capital} · {strain.distance_ly:.1f} ly away"
         location += f" · This system integrates in {strain.integration_remaining} turns" if strain.integration_remaining else " · This system integrated"
-        text(surface, shorten(location, 876, 11), (52, 806), 11, CYAN)
+        text(surface, shorten(location, 876, 11), (52, 784), 11, CYAN)
     if planet.owner == PLAYER and live:
         from . import specialists
         leader = next((p for p in specialists.employed(game) if p.spec.role == "leader"
                        and (p.system_id, p.planet_id) == (system.id, planet.id)), None)
-        panel(surface, (954, 728, 444, 50), (10, 23, 30))
+        panel(surface, (954, 706, 444, 50), (10, 23, 30))
         caption = f"Leader: {leader.spec.name} · Level {leader.level}" if leader else "Leader: none assigned"
         if leader:
             from .specialist_art import draw_portrait
-            draw_portrait(surface, leader.spec, (960, 733, 40, 40))
-        text(surface, shorten(caption, 374 if leader else 420, 13), (1012 if leader else 966, 748), 13, CYAN if leader else MUTED)
+            draw_portrait(surface, leader.spec, (960, 711, 40, 40))
+        text(surface, shorten(caption, 374 if leader else 420, 13), (1012 if leader else 966, 726), 13, CYAN if leader else MUTED)
         count = len(specialists.visitors(game))
-        app.button("planet_specialists", f"Specialists · {count} visitors", (1104, 788, 294, 39), app.open_specialists)
+        app.button("planet_specialists", f"Specialists · {count} visitors", (1170, 766, 228, 39), app.open_specialists)
     # Planet facts sit over the landscape, leaving the city as the principal view.
     facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {planet.richness} minerals"
     from .environments import growth_factor
@@ -431,22 +433,20 @@ def draw_planet_overview(app):
             caption += " · Last observed"
         elif training_limit(planet, game.bonuses_for(planet.owner) if live else {}):
             caption += f" · Barracks +1/turn, limit {training_limit(planet, game.bonuses_for(planet.owner) if live else {})}"
-        text(surface, shorten(caption, 1162, 12), (24, 854), 12, CYAN)
+        text(surface, shorten(caption, 780, 12), (24, 832), 12, CYAN)
     elif planet.is_gas_giant:
-        text(surface, f"Atmospheric world · No population or building slots · Orbit {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
+        text(surface, shorten(f"Atmospheric world · No population or building slots · Orbit {planet.orbit_au:.2f} AU", 789, 12, "sans"), (24, 832), 12, MUTED)
     else:
         suitability = 'Growth varies by species' if game.is_observer else f'Your species: {factor}% growth efficiency'
-        text(surface, f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", (24, 854), 12, MUTED)
+        text(surface, shorten(f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", 789, 12, "sans"), (24, 832), 12, MUTED)
     hint = "E: End turn · R: Research · I: Empire · P: Menu · F5: Save"
     if live and planet.owner == PLAYER and not game.is_observer:
         hint = "Click open ground to build here · E: End turn · F5: Save"
-    text(surface, hint if planet.is_gas_giant else "Click buildings to manage · Right-click for info · "+hint, (24, 877), 11, MUTED)
+    text(surface, shorten(hint if planet.is_gas_giant else "Click buildings to manage · Right-click for info · "+hint, 780, 11), (24, 857), 11, MUTED)
     if planet.colonized:
         from .accession_view import open_panel
-        app.button("planet_populations", "Populations & accession", (875, 870, 315, 24),
-                   lambda: open_panel(app, system.id, planet.id), "ghost")
-    app.button("planet_return", "Galaxy map" if app.planet_return=="galaxy" else "System view",
-               (1210, 851, 206, 42), app.close_planet, "primary")
+        app.button("planet_populations", "Populations", (954, 766, 204, 39),
+                   lambda: open_panel(app, system.id, planet.id))
     from .surface_construction import draw_preview
     draw_preview(app, scene_rect)
 
@@ -497,10 +497,10 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
         app.button("production_build_"+item_id, "Place" if app.surface_build_request and item_id in BUILDINGS else "Queue", (x+width-116, y+85, 100, 26),
                    lambda chosen=item_id: app.choose_production(chosen))
         text(surface, shorten("Resources reserved when work starts", width-139, 10), (x+13, y+94), 10, MUTED)
-    app.button(key+"_previous", "←", (x, 793, 64, 30),
+    app.button(key+"_previous", "←", (x, 785, 64, 30),
                lambda: setattr(app, page_field, page-1), enabled=page > 0)
-    text(surface, f"Page {page+1} / {pages}", (x+width//2-33, 801), 12, MUTED)
-    app.button(key+"_next", "→", (x+width-64, 793, 64, 30),
+    text(surface, f"Page {page+1} / {pages}", (x+width//2-33, 793), 12, MUTED)
+    app.button(key+"_next", "→", (x+width-64, 785, 64, 30),
                lambda: setattr(app, page_field, page+1), enabled=page < pages-1)
 
 
@@ -557,10 +557,10 @@ def draw_production(app):
     app.button("production_next", "→", (834, 701, 64, 30), lambda: app.change_production_page(1), enabled=app.production_page < pages-1)
     text(surface, f"Page {app.production_page+1} / {pages}", (667, 709), 12, MUTED)
     text(surface, "× refunds unused construction payments.", (502, 748), 11, MUTED)
-    panel(surface, (40, 836, 876, 54))
+    panel(surface, (40, 836, 768, 54))
     rate = game.trade_goods_income(planet)
-    text(surface, f"Trade Goods · +{rate} CR / turn", (56, 844), 17, GOLD)
-    text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, then local credit strain · Rounded down · Queued projects keep their progress", (56, 871), 11, MUTED)
-    app.button("production_build_trade_goods", "Active" if planet.trade_goods else "Trade Goods", (718, 844, 182, 38),
+    text(surface, shorten(f"Trade Goods · +{rate} CR / turn", 757, 17, "sans"), (56, 844), 17, GOLD)
+    text(surface, shorten(f"{production_balance.TRADE_GOODS_PERCENT}% of industry, then local credit strain · Rounded down · Queued projects keep their progress", 736, 11), (56, 871), 11, MUTED)
+    app.button("production_build_trade_goods", "Active" if planet.trade_goods else "Trade Goods", (614, 840, 182, 30),
                lambda: app.choose_production(TRADE_GOODS.id), enabled=not planet.trade_goods and game.project_error(sid, pid, TRADE_GOODS.id) is None)
-    app.button("production_return", "Return to mothership" if planet.habitat else "Return to colony", (1122, 833, 278, 48), lambda: app.go("planet"), "primary")
+    app.button("production_return", "← Mothership" if planet.habitat else "← Colony", (288, 108, 180, 30), lambda: app.go("planet"))

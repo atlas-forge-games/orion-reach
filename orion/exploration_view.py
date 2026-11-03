@@ -62,7 +62,6 @@ def draw_system_intelligence(app, star):
 def draw_unsurveyed_system(app, system):
     surface = app.canvas
     app.chrome("UNSURVEYED SYSTEM")
-    app.button("system_back", "←  Galaxy map", (64, 124, 205, 48), lambda: app.go("galaxy"), "ghost")
     text(surface, app.game.system_name(system.id), (64, 191), 52, INK, "title")
     text(surface, f"{system.kind} · Planetary data unknown", (67, 260), 16, MUTED)
     panel(surface, (64, 308, 1312, 439))
@@ -77,15 +76,14 @@ def draw_unsurveyed_system(app, system):
                enabled=app.game.headquarters() is not None)
     app.button("system_pause", "Menu", (64, 832, 127, 46), app.pause)
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
-    app.button("system_previous", "← Previous system", (846, 832, 249, 46), lambda: app.cycle_system(-1))
-    app.button("system_next", "Next system →", (1109, 832, 267, 46), lambda: app.cycle_system(1))
+    app.button("system_previous", "← Previous system", (64, 124, 220, 46), lambda: app.cycle_system(-1))
+    app.button("system_next", "Next system →", (298, 124, 220, 46), lambda: app.cycle_system(1))
 
 
 def draw_exploration(app):
     surface, game = app.canvas, app.game
     app.chrome("EXPLORATION LOG")
     app.button("exploration_back", "←  Back · X", (64, 124, 215, 46), app.close_exploration, "ghost")
-    app.button("exploration_galaxy", "Galaxy map", (296, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "The unexplored frontier", (64, 190), 42, INK, "title")
     text(surface, "Chart new systems. Recover forgotten knowledge. Find your next home.", (66, 251), 15, MUTED)
@@ -130,5 +128,4 @@ def draw_exploration(app):
     app.button("exploration_next", "Next →", (792, 781, 136, 37), lambda: app.change_exploration_page(1), enabled=app.exploration_page<last)
     app.button("exploration_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("exploration_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Discoveries are recovered automatically and saved with the campaign.", (400, 845), 12, MUTED)
-    app.button("exploration_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
+    text(surface, shorten("Discoveries are recovered automatically and saved with the campaign.", 413, 12, "sans"), (400, 845), 12, MUTED)

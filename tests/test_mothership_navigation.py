@@ -112,12 +112,12 @@ class MothershipSystemTests(unittest.TestCase):
 
     def test_sidebar_pages_include_homes_and_preserve_planet_return(self):
         self.click(f'galaxy_mothership_{self.home.id}')
-        self.click('planet_return')
+        self.click('galaxy_map')
         self.assertEqual(self.app.screen, 'galaxy')
         self.assertEqual(self.app.focus, f'galaxy_mothership_{self.home.id}')
         self.click('galaxy_planets_next')
         self.click('galaxy_world_3')
-        self.click('planet_return')
+        self.click('galaxy_map')
         self.assertEqual(self.app.galaxy_planet_page, 1)
         self.assertEqual(self.app.focus, 'galaxy_world_3')
 

@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.86.0
+# Age of the Stars — Python prototype 0.87.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,24 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.87.0: consistent campaign navigation
+
+Every campaign view now puts **Galaxy map · G** and **End turn · E** together
+at the bottom right, in that order. The galaxy map keeps its existing End turn
+button. Local return links, such as System and Colony, remain beside the relevant
+content; Escape still follows the local return path.
+
+The shared controls preserve the selected system and planet, normal production
+prompts, and the existing turn guards. During a required battle, transmission,
+council vote, ground report or completed campaign, unavailable actions are dimmed;
+hover over them for the reason. Tactical combat keeps its separate End combat turn
+action. Other footer actions and pagination have been moved to make room.
+
+Install this incremental update over **v0.86.0**. Save format 60 and game rules
+are unchanged. See [navigation implementation and validation](docs/ui-navigation.md).
+
+![Consistent Empire navigation](screenshots/empire_navigation_v0870.png)
 
 ## New in v0.86.0: readability across every screen
 

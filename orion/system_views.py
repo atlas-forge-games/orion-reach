@@ -87,8 +87,6 @@ def draw_system(app):
     live = game.system_visible(system.id)
     homes = motherships.visible_at(game, system.id)
     app.chrome("SYSTEM OVERVIEW")
-    app.button("system_back", "←  Galaxy map", (64, 124, 205, 48), lambda: app.go("galaxy"), "ghost")
-    text(surface, shorten(f"GALAXY / {system.name.upper()}", 240, 11, "mono"), (300, 143), 11, MUTED, "mono", 1)
     text(surface, f"YEAR {game.year}   ·   {game.credits:,} CR   ·   {game.research:,} RP", (1376, 140), 13, GOLD, "mono", right=True)
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
@@ -212,5 +210,5 @@ def draw_system(app):
     app.button("system_save", "Save game · F5", (206, 832, 222, 46), app.save_game)
     if game.encounters.enabled:
         app.button("system_encounters", "Encounters & search", (444, 832, 300, 46), lambda: app.open_encounters(system.id))
-    app.button("system_previous", "← Previous system", (846, 832, 249, 46), lambda: app.cycle_system(-1))
-    app.button("system_next", "Next system →", (1109, 832, 267, 46), lambda: app.cycle_system(1))
+    app.button("system_previous", "← Previous system", (64, 124, 220, 46), lambda: app.cycle_system(-1))
+    app.button("system_next", "Next system →", (298, 124, 220, 46), lambda: app.cycle_system(1))

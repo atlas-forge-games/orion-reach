@@ -102,8 +102,7 @@ def draw_shipyard(app):
     app.button("queue_next", "Next →", (1220, 739, 133, 39), lambda: app.change_shipyard_page(1), enabled=app.shipyard_page<last)
     app.button("shipyard_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("shipyard_save", "Save · F5", (204, 834, 172, 45), app.save_game)
-    text(surface, "Fleets · F: travel and fight. Planet overview: settle or invade.", (400, 840), 12, MUTED)
-    app.button("shipyard_end_turn", "End turn · E", (1081, 824, 295, 55), app.advance_turn, "primary")
+    text(surface, shorten("Fleets · F: travel and fight. Planet overview: settle or invade.", 413, 12, "sans"), (400, 840), 12, MUTED)
 
 
 def draw_fleets(app):
@@ -111,7 +110,6 @@ def draw_fleets(app):
     ships = game.ships_owned_by()
     app.chrome("FLEET OPERATIONS")
     app.button("fleets_back", "←  Back · F", (64, 124, 190, 46), app.close_fleets, "ghost")
-    app.button("fleets_galaxy", "Galaxy map", (269, 124, 174, 46), lambda: app.go("galaxy"), "ghost")
     app.button("fleets_designer", "Ship designer", (459, 124, 212, 46), app.open_designer)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Fleet operations", (64, 190), 43, INK, "title")
@@ -174,10 +172,9 @@ def draw_fleets(app):
                        lambda sid=s.id, pid=p.id: app.open_shipyard(sid, pid))
     text(surface, "Research new warships and drone carriers. Engage commits both selected empires' fleets.", (64, 798), 12, MUTED)
     text(surface, f"PAGE {app.fleet_page+1} / {last+1}", (1069, 798), 10, FAINT, "mono", right=True)
-    app.button("fleets_previous", "← Prev", (1100, 785, 129, 37), lambda: app.change_fleet_page(-1), enabled=app.fleet_page>0)
-    app.button("fleets_next", "Next →", (1243, 785, 133, 37), lambda: app.change_fleet_page(1), enabled=app.fleet_page<last)
+    app.button("fleets_previous", "← Prev", (1100, 778, 129, 37), lambda: app.change_fleet_page(-1), enabled=app.fleet_page>0)
+    app.button("fleets_next", "Next →", (1243, 778, 133, 37), lambda: app.change_fleet_page(1), enabled=app.fleet_page<last)
     app.button("fleets_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("fleets_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     repair = f"{ship_scaling.REPAIR_PERCENT}% of maximum hull (minimum {production_balance.REPAIR_PER_TURN})" if ship_scaling.ENABLED else str(production_balance.REPAIR_PER_TURN)
-    text(surface, f"Repairs: +{repair} / turn at peaceful friendly colonies.", (400, 845), 12, MUTED)
-    app.button("fleets_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn)
+    text(surface, shorten(f"Repairs: +{repair} / turn at peaceful friendly colonies.", 413, 12, "sans"), (400, 845), 12, MUTED)

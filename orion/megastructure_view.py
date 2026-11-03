@@ -116,7 +116,7 @@ def draw_megastructure(app):
             app.button(f"mega_start_{spec.id}", "Commission", (x+16, 715, 278, 43),
                        lambda kind=spec.id: commission(app, kind), enabled=reason is None)
             if reason:
-                paragraph(surface, reason, (x+8, 791), 298, 11, MUTED, 16)
+                text(surface, shorten(reason, 298, 14), (x+8, 791), 14, MUTED)
         return
 
     own = live and m.owner == "player" and not game.is_observer
@@ -156,11 +156,11 @@ def draw_megastructure(app):
                        "primary" if m.allocation == value else "normal")
         app.button("mega_pause", "Resume work" if m.paused else "Pause work", (614, 792, 172, 46),
                    lambda: perform(app, lambda: rules.configure(game, system.id, paused=not m.paused)))
-        text(surface, "Fuel is funded first. Unspent industry stays with colony queues. Materials are paid progressively.", (66, 862), 12, MUTED)
+        text(surface, shorten("Fuel is funded first. Unspent industry stays with colony queues. Materials are paid progressively.", 747, 12, "sans"), (66, 862), 12, MUTED)
     elif live and m.owner != "player" and not game.is_observer:
         reason = rules.attack_error(game, system.id)
-        app.button("mega_attack", "Attack megastructure", (810, 785, 290, 46),
+        app.button("mega_attack", "Attack megastructure", (810, 753, 290, 46),
                    lambda: app.confirm("Attack megastructure?", "Your armed ships will use their bombardment action for this turn. This can start a war.",
                        "Attack", lambda: perform(app, lambda: rules.attack(game, system.id))), enabled=reason is None)
         if reason:
-            paragraph(surface, reason, (812, 847), 545, 12, MUTED, 17)
+            text(surface, shorten(reason, 730, 12), (66, 858), 12, MUTED)

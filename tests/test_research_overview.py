@@ -127,7 +127,7 @@ class ResearchOverviewTests(unittest.TestCase):
 
     def test_ending_turn_from_old_news_still_prompts_when_there_are_no_new_reports(self):
         self.app.open_news()
-        self.click("news_end_turn")
+        self.click("end_turn")
         self.assertEqual(self.app.screen, "research")
         self.click("research_back")
         self.assertEqual(self.app.screen, "news")
@@ -139,7 +139,7 @@ class ResearchOverviewTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "contact")
         self.app.skip_contacts()
         self.assertEqual(self.app.screen, "news")
-        self.click("news_back")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "research")
         self.click("research_back")
         self.assertEqual(self.app.screen, "galaxy")
@@ -154,7 +154,7 @@ class ResearchOverviewTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "ground")
         self.click("ground_continue")
         self.assertEqual(self.app.screen, "news")
-        self.click("news_back")
+        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "research")
 
     def test_space_battle_precedes_research_reminder(self):
@@ -180,7 +180,7 @@ class ResearchOverviewTests(unittest.TestCase):
         self.assertNotIn("research_choose_ascension_theory", {b.key for b in self.app.buttons})
         self.click("research_legacy_objectives")
         self.assertEqual(self.app.screen, "objectives")
-        self.click("objectives_galaxy")
+        self.click("galaxy_map")
         self.click("end_turn")
         self.assertEqual(self.app.screen, "galaxy")
 

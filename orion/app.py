@@ -79,11 +79,11 @@ from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_inte
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image, wrapped_lines)
 from .display import Canvas, DisplayView, UI_SCALES
+from .campaign_navigation import GAME_SCREENS
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
 MAP=pg.Rect(64,180,962,573)
-GAME_SCREENS=("galaxy", "system", "megastructure", "hyperlane", "encounters", "planet", "production", "colony", "empire", "shipyard", "fleets", "fleet", "rival", "diplomacy", "statistics", "specialists", "research", "combat", "ground", "objectives", "result", "exploration", "designer", "news", "contact", "observer", "council")
 TURN_INPUT_EVENTS=(pg.KEYDOWN,pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP,pg.MOUSEWHEEL,pg.TEXTINPUT)
 
 
@@ -274,7 +274,7 @@ class App:
             self.focus="exploration_back"
         if screen=="news":
             news_rules.mark_read(self.game)
-            self.focus="news_back"
+            self.focus="news_back" if self.game.result else "galaxy_map"
         if screen=="empire":
             self.focus_empire_row()
         if screen=="rival":
@@ -293,7 +293,7 @@ class App:
             self.focus="result_menu"
         if screen=="council":
             election=self.game.council.election
-            self.focus="council_abstain" if election and election.status=="voting" else "council_accept" if self.game.council.pending else "council_back"
+            self.focus="council_abstain" if election and election.status=="voting" else "council_accept" if self.game.council.pending else "galaxy_map"
         if screen=="ground":
             self.focus="ground_continue" if self.ground_reports else "ground_launch"
         if screen=="combat":
@@ -304,7 +304,7 @@ class App:
         if screen=="system":
             known=self.game.known_system(self.game.selected_system)
             worlds=known.worlds if known else []
-            self.focus="system_back"
+            self.focus="galaxy_map"
             if worlds:
                 first=next((p.id for p in worlds if p.colonized),0)
                 chosen=self.game.selected_planet if self.game.selected_planet is not None else first
@@ -409,6 +409,9 @@ class App:
 
     def close_planet(self):
         self.go(self.planet_return)
+        self.focus_galaxy_planet()
+
+    def focus_galaxy_planet(self):
         if self.screen=="galaxy" and self.game.selected_planet is not None:
             known=self.game.known_system(self.game.selected_system)
             entries=system_entries(self.game,known) if known else []
@@ -570,7 +573,7 @@ class App:
         last=max(0,(len(ships)-1)//FLEET_SHIPS_PER_PAGE)
         self.manifest_page=min(max(0,self.manifest_page+delta),last)
         visible=ships[self.manifest_page*FLEET_SHIPS_PER_PAGE:]
-        self.focus=f"fleet_select_{visible[0].id}" if visible and visible[0].owner==PLAYER and not visible[0].in_transit else "fleet_popup_close" if self.fleet_popup else "fleet_back"
+        self.focus=f"fleet_select_{visible[0].id}" if visible and visible[0].owner==PLAYER and not visible[0].in_transit else "fleet_popup_close" if self.fleet_popup else "galaxy_map"
 
     def plot_fleet_course(self):
         ships=self.sync_fleet_selection()
@@ -2507,6 +2510,10 @@ class App:
             selected=next((b for b in enabled if b.key==self.focus),enabled[0] if enabled else None)
             if selected and not (selected.key=="end_turn" and getattr(event,"repeat",False)):
                 self.activate(selected)
+        elif event.key==pg.K_g and self.screen in GAME_SCREENS and not self.dialog:
+            from .campaign_navigation import return_to_galaxy
+            if not getattr(self, 'combat_simulator', False):
+                return_to_galaxy(self)
         elif self.screen=="info" and not self.dialog:
             if event.key in (pg.K_LEFT,pg.K_RIGHT):
                 self.change_info_page(1 if event.key==pg.K_RIGHT else -1)
@@ -3080,6 +3087,8 @@ class App:
             if self.screen not in ("menu",*GAME_SCREENS,"pause"):
                 self.backdrop.dim(self.canvas)
         getattr(self,"draw_"+self.screen)()
+        from .campaign_navigation import draw as draw_campaign_navigation
+        draw_campaign_navigation(self)
         if self.dialog:
             self.draw_dialog()
         if self.notice and self.time<self.notice_until:

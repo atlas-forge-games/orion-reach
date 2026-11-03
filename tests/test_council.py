@@ -379,7 +379,7 @@ class CouncilScreenTests(unittest.TestCase):
         self.assertEqual(self.app.screen, 'council')
         self.click('council_abstain')
         self.assertEqual(self.app.game.council.election.status, 'failed')
-        self.click('council_back')
+        self.click('galaxy_map')
         self.assertEqual(self.app.screen, 'galaxy')
 
     def test_foreign_election_can_be_defied_with_letterboxed_clicks(self):

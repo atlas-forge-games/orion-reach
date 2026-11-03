@@ -354,7 +354,7 @@ class DiplomacyInterfaceTests(unittest.TestCase):
         self.click("dialog_cancel")
         self.assertEqual(self.app.game.to_dict(), before)
         expected_credits = self.app.game.credits+self.app.game.empire_rates[0]
-        self.click("diplomacy_end_turn")
+        self.click("end_turn")
         self.click("research_back")
         self.assertEqual(self.app.game.credits, expected_credits)
         self.click("diplomacy_end_trade")

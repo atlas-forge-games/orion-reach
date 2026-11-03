@@ -9,8 +9,8 @@ NEWS_PER_PAGE = 3
 def draw_news(app):
     game, surface = app.game, app.canvas
     app.chrome("TURN NEWS")
-    app.button("news_back", "←  Campaign result · N" if game.result else "←  Galaxy map · N",
-               (64, 124, 280, 46), lambda: app.go("galaxy"), "ghost")
+    if game.result:
+        app.button("news_back", "← Campaign result · N", (64, 124, 280, 46), lambda: app.go("result"), "ghost")
     if game.tribute_demands and not game.is_observer:
         app.button('news_tribute', 'Answer tribute demand', (370, 124, 302, 46),
                    lambda: app.show_diplomatic_affairs('tribute', game.tribute_demands[0].sender),
@@ -51,5 +51,4 @@ def draw_news(app):
     app.button("news_previous", "← Prev", (1081, 783, 139, 36), lambda: app.change_news_page(-1), enabled=app.news_page>0)
     app.button("news_next", "Next →", (1233, 783, 143, 36), lambda: app.change_news_page(1), enabled=app.news_page<last)
     app.button("news_save", "Save game · F5", (64, 834, 242, 45), app.save_game)
-    text(surface, "Reports describe events at the time; revisit a world for current intelligence.", (331, 848), 12, MUTED)
-    app.button("news_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary", enabled=game.result is None)
+    text(surface, shorten("Reports describe events at the time; revisit a world for current intelligence.", 482, 12, "sans"), (331, 848), 12, MUTED)

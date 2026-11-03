@@ -274,7 +274,7 @@ class StatisticsUITests(unittest.TestCase):
         self.app.game.set_trade_goods(0, 2)
         self.app.game.choose_research("civil_engineering")
         self.app.open_statistics()
-        self.click("statistics_end_turn")
+        self.click("end_turn")
         self.assertEqual((self.app.screen, self.app.game.turn), ("statistics", 2))
         self.assertEqual([r[0] for r in self.app.game.statistics["player"]], [1, 2])
         self.click("statistics_pause")

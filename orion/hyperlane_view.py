@@ -127,13 +127,12 @@ def draw_hyperlane(app):
     start = app.hyperlane_page*CONNECTIONS_PER_PAGE
     for i, sid in enumerate(destinations[start:start+CONNECTIONS_PER_PAGE]):
         x = 64+i*445
-        panel(surface, (x, 737, 422, 103), border=LANE_COLOR)
-        draw_portal(surface, (x+25, 763), 15)
-        text(surface, shorten(game.system_name(sid), 335, 21), (x+53, 752), 21, INK)
-        app.button(f"hyperlane_view_{sid}", "View endpoint", (x+15, 798, 177, 34), lambda target=sid: app.open_system(target))
-        app.button(f"hyperlane_plot_{sid}", "Plot course · 1 turn", (x+207, 798, 199, 34), lambda target=sid: plot(app, target),
+        panel(surface, (x, 729, 422, 79), border=LANE_COLOR)
+        draw_portal(surface, (x+25, 751), 15)
+        text(surface, shorten(game.system_name(sid), 335, 21), (x+53, 738), 21, INK)
+        app.button(f"hyperlane_view_{sid}", "View endpoint", (x+15, 774, 177, 30), lambda target=sid: app.open_system(target))
+        app.button(f"hyperlane_plot_{sid}", "Plot course · 1 turn", (x+207, 774, 199, 30), lambda target=sid: plot(app, target),
                    enabled=editable and bool(game.fleet_at(system.id)))
     if not destinations:
         text(surface, "No recovered connections here yet.", (66, 759), 16, MUTED)
-    text(surface, "Research one route at a time · Incoming routes work in reverse · Travel costs no RP", (66, 871), 12, MUTED)
-    app.button("hyperlane_end_turn", "End turn · E", (1100, 851, 276, 40), app.advance_turn, enabled=editable)
+    text(surface, shorten("Research one route at a time · Incoming routes work in reverse · Travel costs no RP", 747, 12, "sans"), (66, 871), 12, MUTED)

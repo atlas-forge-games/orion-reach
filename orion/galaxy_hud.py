@@ -100,7 +100,8 @@ def draw_galaxy_header(app):
          (1376, 151), 10, MUTED, "mono", right=True)
 
 
-def draw_galaxy_commands(app):
+def draw_galaxy_commands(app, *, compact=False):
+    compact = compact or app.screen != "galaxy"
     game = app.game
     pg.draw.line(app.canvas, LINE, (64, 801), (1376, 801))
     unread = news.unread_count(game)
@@ -110,7 +111,9 @@ def draw_galaxy_commands(app):
         badge = (str(min(unread, 99))+("+" if unread > 99 else "")) if key == "open_news" and unread else ""
         if key == "pause" and (app.fleet_popup or app.map_order_ids or app.route_ship_id is not None or app.sensor_contact_id is not None):
             shortcut = "P"  # Escape closes the active map selection first.
-        app.button(key, label, COMMAND_RECTS[index], getattr(app, method),
+        rect = (64+index*104, 813, 100, 61) if compact else COMMAND_RECTS[index]
+        app.button(key, label, rect, getattr(app, method),
                    "command_dock", icon=icon, shortcut=shortcut, badge=badge)
-    app.button("end_turn", "End turn", (1081, 813, 295, 61), app.advance_turn, "command_primary",
-               subtitle=f"Turn {game.turn+1} · Year {game.year+1}", icon="turn", shortcut="E")
+    if not compact:
+        app.button("end_turn", "End turn", (1081, 813, 295, 61), app.advance_turn, "command_primary",
+                   subtitle=f"Turn {game.turn+1} · Year {game.year+1}", icon="turn", shortcut="E")

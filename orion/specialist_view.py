@@ -90,8 +90,8 @@ def draw_specialists(app):
         draw_site(app, next(s for s in items if str(s.system_id) == selected))
     else:
         draw_person(app, rules.person(game, selected))
-    text(surface, f"{rules.XP_PER_TURN} XP per hired turn, including reserve · Each level: +1 to every starting skill · Maximum level {rules.MAX_LEVEL}", (66, 843), 13, CYAN)
-    text(surface, "Salaries are charged every turn while hired. Dismissal ends salary immediately and preserves experience.", (66, 870), 12, MUTED)
+    text(surface, shorten(f"{rules.XP_PER_TURN} XP per hired turn, including reserve · Each level: +1 to every starting skill · Maximum level {rules.MAX_LEVEL}", 747, 13, "sans"), (66, 843), 13, CYAN)
+    text(surface, shorten("Salaries are charged every turn while hired. Dismissal ends salary immediately and preserves experience.", 747, 12, "sans"), (66, 870), 12, MUTED)
 
 
 def draw_empty(app):

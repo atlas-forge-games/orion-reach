@@ -95,7 +95,6 @@ def draw_diplomacy(app):
     selected = game.opponents.get(owner)
     app.chrome("DIPLOMATIC CHANNEL")
     app.button("diplomacy_back", "← Back · D", (64, 124, 205, 46), app.close_diplomacy, "ghost")
-    app.button("diplomacy_galaxy", "Galaxy map", (284, 124, 172, 46), lambda: app.go("galaxy"), "ghost")
     app.button("diplomacy_intelligence", "Rival report", (472, 124, 184, 46), app.open_rival)
     app.button("diplomacy_statistics", "Statistics", (672, 124, 130, 46), app.open_statistics)
     app.button("diplomacy_alignment_matrix", "Race alignment matrix", (818, 124, 270, 46), app.show_alignment)
@@ -148,4 +147,3 @@ def draw_diplomacy(app):
     app.button("diplomacy_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     from .accession_view import open_panel
     app.button("diplomacy_accession", "Populations & accession", (400, 834, 315, 45), lambda: open_panel(app))
-    app.button("diplomacy_end_turn", "End turn · E", (1081, 834, 295, 45), app.advance_turn, "primary")
