@@ -115,7 +115,7 @@ def draw_colony(app):
                                     (3, "colony_advanced", "Advanced")):
         app.button(key, label, (751+page_index*158, 378, 151, 26),
                    lambda i=page_index: (setattr(app, "colony_build_page", i), setattr(app, 'colony_catalog_page', 0)),
-                   "primary" if app.colony_build_page == page_index else "normal")
+                   "tab_active" if app.colony_build_page == page_index else "tab")
     estimates = game.queue_estimates(planet)
     for index in range(12):
         x, y = 64+(index%4)*168, 414+(index//4)*94
@@ -135,7 +135,7 @@ def draw_colony(app):
             definition = BUILDINGS[building_id]
             draw_building_art(surface, building_id, (x+6, y+5, 44, 34), habitat=planet.habitat)
             status = economy.building_status(planet, index, game.bonuses_for(planet.owner))
-            text(surface, status, (x+52, y+20), 8, MUTED if status == "STANDBY" else RED if status in ("NO FUEL", "NO POWER", "DISABLED") else CYAN, "mono")
+            text(surface, shorten(status, 94, 14, "mono"), (x+52, y+24), 14, MUTED if status == "STANDBY" else RED if status in ("NO FUEL", "NO POWER", "DISABLED") else CYAN, "mono")
             text(surface, shorten(display_name(definition, planet.habitat), 134, 13), (x+12, y+42), 13, INK)
             text(surface, shorten(compact_yields(game, definition, planet), 136, 9), (x+12, y+63), 9, MUTED)
         elif index < planet.used_slots:
@@ -164,11 +164,11 @@ def draw_colony(app):
     if not page:
         text(surface, "No available modules in this category." if planet.habitat else "No available buildings in this category.", (769, 427), 15, MUTED)
     for i, definition in enumerate(page):
-        x, y = 751, 410+i*57
-        panel(surface, (x, y, 625, 53))
+        x, y = 751, 410+i*59
+        panel(surface, (x, y, 625, 56))
         draw_building_art(surface, definition.id, (x+7, y+4, 54, 45), habitat=planet.habitat)
-        text(surface, display_name(definition, planet.habitat), (x+70, y+3), 15, INK)
-        text(surface, shorten(building_effect(game, definition, planet), 410, 10), (x+70, y+23), 10, CYAN)
+        text(surface, shorten(display_name(definition, planet.habitat), 410, 15), (x+70, y+1), 15, INK)
+        text(surface, shorten(building_effect(game, definition, planet), 410, 14), (x+70, y+20), 14, CYAN)
         estimate = game.queue_estimates(planet, additional=definition.id)
         eta = turn_label(estimate[-1]) if estimate else "Requires colony"
         price = game.project_price(definition.id, planet.owner or PLAYER)
@@ -177,7 +177,7 @@ def draw_colony(app):
         if definition.energy_output:
             unlock = TECHNOLOGIES[definition.technology].name if definition.technology else "Basic technology"
             cost_line = f"{price} RES · {definition.work_cost} work · {upkeep} CR/turn · {unlock}"
-        text(surface, shorten(cost_line, 410, 10), (x+70, y+38), 10, MUTED)
+        text(surface, shorten(cost_line, 410, 14), (x+70, y+39), 14, MUTED)
         reason = game.build_error(system.id, planet.id, definition.id)
         label, hint = ("Queue", "Await resources") if game.resources < price else ("Build", "1 per home" if planet.habitat else "1 per colony")
         app.button(f"build_{definition.id}", label, (x+492, y+3, 117, 28),
@@ -185,7 +185,7 @@ def draw_colony(app):
         text(surface, hint, (x+510, y+36), 9, FAINT, "mono")
 
     if pages > 1:
-        page_y = 699 if app.colony_build_page == 2 else 767
+        page_y = 711 if app.colony_build_page == 2 else 767
         app.button('colony_catalog_previous', '←', (751, page_y, 48, 28),
                    lambda: setattr(app, 'colony_catalog_page', app.colony_catalog_page-1), enabled=app.colony_catalog_page > 0)
         text(surface, f'{app.colony_catalog_page+1} / {pages}', (814, page_y+8), 11, MUTED)

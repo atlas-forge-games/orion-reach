@@ -123,6 +123,7 @@ def draw_interface(app):
         pg.draw.line(app.canvas, PLAYER_PALETTES[palette], (x+12, 720), (x+460, 720), 3)
     text(app.canvas, "Your system labels, colony markers and fleets; neutral systems stay gray.", (380, 729), 16, MUTED)
     text(app.canvas, "Tab / ↑ ↓ + Enter · Esc goes back · F11 toggles fullscreen", (380, 772), 16, MUTED)
+    text(app.canvas, "Hover over an abbreviated label to read its full text.", (380, 796), 14, MUTED)
 
 
 def draw_settings(app):

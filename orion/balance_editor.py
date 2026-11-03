@@ -6,7 +6,8 @@ import pygame as pg
 from . import balance
 from . import GAME_TITLE
 from .balance_document import BalanceDocument
-from .ui import text, shorten, font, panel, INK, MUTED, GOLD, CYAN, LINE, RED
+from .display import Canvas, install_draw_adapter
+from .ui import text, text_image, draw_text_tooltip, shorten, font, panel, INK, MUTED, GOLD, CYAN, LINE, RED
 
 SIZE = (1440, 900)
 BG = (7, 14, 22)
@@ -18,8 +19,10 @@ class BalanceEditor:
         pg.display.init()
         pg.font.init()
         font.cache_clear()
+        text_image.cache_clear()
+        install_draw_adapter()
         self.window = pg.display.set_mode((1280,800), pg.RESIZABLE)
-        self.canvas = pg.Surface(SIZE)
+        self.canvas = Canvas(SIZE)
         self.viewport = pg.Rect(0,0,1280,800)
         self.document = BalanceDocument(path)
         self.defaults = balance.default_profile()
@@ -235,7 +238,9 @@ class BalanceEditor:
             self.mode='data'
 
     def draw(self):
+        self.prepare_canvas()
         self.canvas.fill(BG)
+        self.canvas.text_regions=[]
         self.buttons=[]
         self.drop_slots=[]
         text(self.canvas,GAME_TITLE.upper(), (24,16),11,CYAN,'mono',1)
@@ -260,6 +265,9 @@ class BalanceEditor:
         status=f'{len(self.errors)} validation issue(s): {self.errors[0]}' if self.errors else 'Valid profile · Restart or start a new game to apply · Existing campaigns retain their saved balance'
         text(self.canvas,shorten(status,1376,11),(24,864),11,RED if self.errors else GREEN)
         if self.modal: self.draw_modal()
+        self.time=pg.time.get_ticks()/1000
+        self.keyboard_mode=False
+        draw_text_tooltip(self)
 
     def draw_data(self):
         entries=self.document.profile['data'][self.section]
@@ -360,6 +368,7 @@ class BalanceEditor:
         fade.fill((0,0,0,175))
         self.canvas.blit(fade,(0,0))
         self.buttons=[]
+        self.canvas.text_regions=[]
         modal=self.modal
         if modal['kind']=='choices':
             panel(self.canvas,(318,140,804,612),(12,24,35),GOLD)
@@ -391,6 +400,7 @@ class BalanceEditor:
             self.button('modal_cancel','Cancel',(994,496,148,40),self.close_modal)
 
     def coordinates(self,pos):
+        self.prepare_canvas()
         return ((pos[0]-self.viewport.x)*1440/self.viewport.w,(pos[1]-self.viewport.y)*900/self.viewport.h)
 
     def handle_event(self,event):
@@ -480,13 +490,20 @@ class BalanceEditor:
         elif ctrl and event.key==pg.K_z: self.history()
         elif ctrl and event.key==pg.K_y: self.history(True)
 
-    def present(self):
+    def prepare_canvas(self):
         w,h=self.window.get_size()
         scale=min(w/1440,h/900)
+        if self.canvas.scale != scale:
+            self.canvas=Canvas(SIZE,scale)
         self.viewport=pg.Rect(0,0,max(1,round(1440*scale)),max(1,round(900*scale)))
         self.viewport.center=(w//2,h//2)
+
+    def present(self):
+        scale=min(self.window.get_width()/1440,self.window.get_height()/900)
+        if self.canvas.scale != scale:
+            self.draw()
         self.window.fill((0,0,0))
-        self.window.blit(pg.transform.smoothscale(self.canvas,self.viewport.size),self.viewport)
+        self.window.blit(self.canvas,self.viewport)
         pg.display.flip()
 
     def run(self):

@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .art import SIZE
+from .display import Canvas
 from .ui import ASSETS, GOLD, INK, MUTED, text, text_image
 
 STUDIO_NAME = "Atlas Forge Games"
@@ -12,7 +13,8 @@ FADE_SECONDS = .25
 
 def centered(surface, value, y, size, color=INK, family="sans", spacing=0):
     label = text_image(value, size, color, family, spacing)
-    surface.blit(label, label.get_rect(midtop=(surface.get_width()//2, y)))
+    text(surface, value, label.get_rect(midtop=(surface.get_width()//2, y)).topleft,
+         size, color, family, spacing)
 
 
 class StudioBrand:
@@ -22,7 +24,10 @@ class StudioBrand:
         except (OSError, pg.error):
             self.logo = None
         self.scaled = {}
-        self.splash = pg.Surface(SIZE).convert()
+        self.make_splash(1)
+
+    def make_splash(self, scale):
+        self.splash = Canvas(SIZE, scale)
         self.splash.fill((0, 0, 0))
         centered(self.splash, "A GAME BY", 55, 12, GOLD, "mono", 3)
         logo = self.fitted_logo((660, 660))
@@ -46,6 +51,8 @@ class StudioBrand:
         return self.scaled[size]
 
     def draw_splash(self, surface, elapsed, animated=True):
+        if self.splash.scale != getattr(surface, 'scale', 1):
+            self.make_splash(getattr(surface, 'scale', 1))
         surface.fill((0, 0, 0))
         opacity = min(1, max(0, elapsed/FADE_SECONDS), max(0, (SPLASH_SECONDS-elapsed)/FADE_SECONDS))
         self.splash.set_alpha(round(255*opacity) if animated else 255)

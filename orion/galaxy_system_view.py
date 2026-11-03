@@ -81,26 +81,26 @@ def draw_system_panel(app, star):
     owners = known_owners(game, known)
     owner_color = app.empire_color(next(iter(owners))) if len(owners) == 1 else MUTED
     text(surface, shorten(allegiance(game, known), width, 11), (x, 290), 11, owner_color)
-    summaries = [("WORLDS", len(worlds)), ("HABITABLE", sum(p.habitability >= 35 for p in worlds)),
-                 ("HOMES" if has_homes else "COLONIES", sum(p.colonized for p in entries)),
-                 ("POPULATION", f"{sum(p.workforce for p in entries)} B")]
-    strip = pg.Rect(x-6, 313, width+12, 43)
+    summaries = [("Worlds", len(worlds)), ("Habitable", sum(p.habitability >= 35 for p in worlds)),
+                 ("Homes" if has_homes else "Colonies", sum(p.colonized for p in entries)),
+                 ("Population", f"{sum(p.workforce for p in entries)} B")]
+    strip = pg.Rect(x-6, 313, width+12, 68)
     panel(surface, strip, (13, 27, 36))
-    cell = strip.w/4
+    cell = strip.w/2
     for i, (label, value) in enumerate(summaries):
-        left = round(strip.x+i*cell)+7
-        text(surface, label, (left, 319), 8, MUTED, "mono")
-        text(surface, str(value), (left, 332), 17, CYAN if i == 2 else INK)
-        if i:
-            pg.draw.line(surface, LINE, (left-8, 322), (left-8, 348))
+        left = round(strip.x+(i%2)*cell)+8
+        top = 321+(i//2)*29
+        text(surface, label, (left, top), 14, MUTED)
+        text(surface, shorten(str(value), 39, 14), (left+cell-16, top), 14,
+             CYAN if i == 2 else INK, right=True)
 
     guardian_status = monsters.known_status(game, star.id)
     guardian = monsters.at(game, star.id) if guardian_status else None
     prizes = monsters.prize_ids(known, guardian) if guardian else ()
     start = app.galaxy_planet_page*PLANETS_PER_PAGE
-    text(surface, "MOTHERSHIPS & PLANETS" if has_homes else "PLANETS · INNER TO OUTER", (x, 370), 9, GOLD, "mono")
+    text(surface, "MOTHERSHIPS & PLANETS" if has_homes else "PLANETS · INNER TO OUTER", (x, 389), 14, GOLD, "mono")
     for index, world in enumerate(entries[start:start+PLANETS_PER_PAGE]):
-        row = pg.Rect(x-4, 389+index*60, width+8, 55)
+        row = pg.Rect(x-4, 411+index*56, width+8, 53)
         action = (lambda sid=-world.id: app.open_mothership(sid)) if world.habitat else (lambda pid=world.id: app.open_planet(pid))
         button = app.button(entry_key(world), "", row, action, "hotspot")
         active = app.is_active(button)
@@ -113,17 +113,17 @@ def draw_system_panel(app, star):
         if world.colonized or world.outpost_owner or world.orbital_station:
             pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
         left = row.x+48
-        text(surface, shorten(world.name, row.w-102, 14), (left, row.y+4), 14, GOLD if active else INK)
+        text(surface, shorten(world.name, row.w-102, 14), (left, row.y+1), 14, GOLD if active else INK)
         value = "HOME" if world.habitat else "GAS" if world.is_gas_giant else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else f"{world.habitability}%"
-        text(surface, value, (row.right-9, row.y+6), 10, color, right=True)
+        text(surface, value, (row.right-9, row.y+1), 14, color, right=True)
         detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
         text(surface, shorten(detail, row.w-58, 10),
-             (left, row.y+24), 10, MUTED)
+             (left, row.y+18), 14, MUTED)
         owner = ("Orbital station · "+game.empire_name_for(world.orbital_station.owner) if world.orbital_station else game.empire_name_for(world.owner) if world.colonized else
                  "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Not colonizable" if world.is_gas_giant else "Uncolonized")
         if world.id in prizes:
             owner += " · Ancient ruins" if guardian.kind == "ancient_sentinel" else " · Prize world"
-        text(surface, shorten(owner, row.w-58, 9), (left, row.y+40), 9, color)
+        text(surface, shorten(owner, row.w-58, 14), (left, row.y+36), 14, color)
 
     if not entries:
         draw_star(surface, (r.centerx, 441), 30, STAR_COLORS[star.kind])

@@ -1,0 +1,31 @@
+AGE OF THE STARS / ORION REACH — v0.86.0 READABILITY ON EVERY SCREEN
+
+INSTALL
+Close the game. Extract this ZIP over v0.85.0 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game. No new dependency is needed.
+
+CHANGES
+- A shared 14-pixel logical minimum for small text throughout the interface.
+- Matching font measurements, line spacing, wrapping and label fitting.
+- Native text rendering also covers map names, menus, chart labels, building
+  captions, the intro and the balance editor.
+- Roomier galaxy resources and system summaries; improved construction lists,
+  dense planet sidebars, research choices and combat details.
+- Small buttons retain readable labels, including arrows and plus/minus signs.
+- Hover over shortened labels for the complete text, including combat chances.
+- Fix the missing colony catalogue state that prevented that screen opening.
+
+CONTROLS
+Settings > Interface > Interface size: 100%, 125%, 150%, 175%.
+Ctrl + / Ctrl - changes size; Ctrl 0 resets to 100%.
+Drag scrollbars or use Shift + wheel on enlarged screens. Tab reveals focused
+controls. Empire reflows; other screens retain their layout with scrolling.
+
+VALIDATION
+68 game screen/dialog states checked at three window/zoom combinations.
+Eight new global-readability tests pass. Broader checks and existing baseline
+failures are documented in docs/ui-readability.md. Save format remains 60.
+Run python tools/preview_all_screens.py to reproduce the screen captures.
+
+No files were committed or pushed by this update.

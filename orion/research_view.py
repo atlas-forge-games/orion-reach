@@ -10,7 +10,7 @@ from .research_fields import is_modern
 from .buildings import BUILDINGS
 from .building_art import draw_building_art
 from . import hyperlanes, race_victory
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, panel, paragraph, shorten, text, wrapped_lines
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, font, panel, paragraph, shorten, text, wrapped_lines
 
 
 def draw_research(app):
@@ -96,8 +96,9 @@ def draw_choice_row(app, technology, rect):
     app.technology_info_region(technology.id, r)
     if app.is_active(button) and button.enabled:
         pg.draw.rect(surface, (25, 46, 55), r.inflate(-2, -2), border_radius=2)
-    text(surface, technology.name, (r.x+10, r.y+3), 16, color)
-    text(surface, label, (r.right-10, r.y+6), 10, color, right=True)
+    name_width = r.w-36-font(14).size(label)[0]
+    text(surface, shorten(technology.name, name_width, 16), (r.x+10, r.y+3), 16, color)
+    text(surface, label, (r.right-10, r.y+5), 14, color, right=True)
 
 
 def draw_field_overview(app):

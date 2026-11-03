@@ -45,16 +45,12 @@ def resource_art(kind):
 def resource_card(surface, rect, kind, title, value, detail, footnote, accent, *, detail_color=MUTED):
     r = pg.Rect(rect)
     panel(surface, r, (9, 20, 29))
-    surface.blit(resource_art(kind), (r.x+5, r.y+28))
-    pg.draw.line(surface, LINE, (r.x+66, r.y+13), (r.x+66, r.bottom-13))
-    x, width = r.x+75, r.w-82
-    text(surface, title, (x, r.y+8), 9, accent, "mono", 1)
-    size = 20
-    while size > 13 and font(size, "mono").size(value)[0] > width:
-        size -= 1
-    text(surface, shorten(value, width, size, "mono"), (x, r.y+27), size, accent, "mono")
-    text(surface, shorten(detail, width, 10), (x, r.y+61), 10, detail_color)
-    text(surface, shorten(footnote, width, 9), (x, r.y+80), 9, MUTED)
+    x, width = r.x+12, r.w-24
+    surface.blit(pg.transform.smoothscale(resource_art(kind), (30, 30)), (r.right-42, r.y+24))
+    text(surface, title, (x, r.y+7), 14, accent, "mono")
+    text(surface, shorten(value, width-36, 20, "mono"), (x, r.y+27), 20, accent, "mono")
+    text(surface, shorten(detail, width, 14), (x, r.y+58), 14, detail_color)
+    text(surface, shorten(footnote, width, 14), (x, r.y+79), 14, MUTED)
 
 
 def draw_galaxy_header(app):

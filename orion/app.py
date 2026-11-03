@@ -155,6 +155,7 @@ class App:
         self.info_scroll=0
         self.colony_slot=None
         self.colony_build_page=0
+        self.colony_catalog_page=0
         self.surface_build_request=None
         self.surface_build_preview=None
         self.surface_ground_down=None
@@ -2874,6 +2875,7 @@ class App:
         getattr(self,"draw_"+self.pause_return)()
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        self.canvas.text_regions=[]
         panel(self.canvas,(459,218,522,487))
         text(self.canvas,"EXPEDITION PAUSED",(505,257),11,GOLD,"mono",2)
         text(self.canvas,"The stars can wait.",(502,290),34,INK,"title")
@@ -2988,6 +2990,7 @@ class App:
     def draw_dialog(self):
         self.backdrop.dim(self.canvas)
         self.buttons=[]
+        self.canvas.text_regions=[]
         if "accession" in self.dialog:
             from .accession_view import draw
             draw(self)
@@ -3070,6 +3073,7 @@ class App:
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
+        self.canvas.text_regions=[]
         if self.screen not in ("splash", "menu"):
             full=self.screen not in (*GAME_SCREENS,"pause")
             self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)
@@ -3084,6 +3088,8 @@ class App:
             r=pg.Rect((self.canvas.get_width()-width)//2,16,width,47)
             panel(self.canvas,r,(24,33,39),RED if self.notice_error else CYAN)
             text(self.canvas,message,(r.x+27,r.y+13),16,RED if self.notice_error else INK)
+        from .ui import draw_text_tooltip
+        draw_text_tooltip(self)
 
     def present(self):
         if getattr(self,'_rendered_window_size',None)!=self.window.get_size():

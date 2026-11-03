@@ -118,7 +118,7 @@ def draw_diplomacy(app):
         reason = game.diplomacy_error("declare_war", owner)
         app.button("diplomacy_declare_war", "At war" if state.at_war else "Declare war", (87, 699, 292, 39),
                    lambda: app.diplomatic_action("declare_war"), enabled=reason is None)
-        text(surface, "War ends all pacts and sets relations to -100.", (87, 751), 11, RED)
+        text(surface, shorten("War ends all pacts and sets relations to -100.", 294, 14), (87, 751), 14, RED)
         panel(surface, (427, 330, 949, 78))
         color = relation_color(state.relations)
         app.button("diplomacy_alignment", "Values & history", (1144, 337, 208, 24), lambda: app.show_alignment(owner), "ghost")

@@ -188,12 +188,13 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
         name_image = text_image(label, 12, INK)
         caption_image = text_image(caption, 10, color)
         label_width = max(name_image.get_width(), caption_image.get_width())+18
-        label_box = pg.Rect(0, 0, label_width, 34)
+        label_box = pg.Rect(0, 0, label_width, 42)
         label_box.midtop = target.centerx, target.bottom+3
+        label_box.clamp_ip(rect)
         if framed or active or item.queued:
             panel(surface, label_box, (11, 24, 31), color if active else (48, 64, 69))
-            surface.blit(name_image, name_image.get_rect(midtop=(target.centerx, label_box.y+3)))
-            surface.blit(caption_image, caption_image.get_rect(midtop=(target.centerx, label_box.y+19)))
+            text(surface, label, name_image.get_rect(midtop=(label_box.centerx, label_box.y+2)).topleft, 14, INK)
+            text(surface, caption, caption_image.get_rect(midtop=(label_box.centerx, label_box.y+22)).topleft, 14, color)
         elif item.completed > 1:
             text(surface, f"×{item.completed}", (target.centerx-10, target.bottom+5), 16, INK)
     if planet.is_gas_giant:

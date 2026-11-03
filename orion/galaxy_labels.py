@@ -3,7 +3,7 @@
 import pygame as pg
 
 from .empires import DEFAULT_PALETTE, EMPIRE_IDS, empire_color
-from .ui import FAINT, INK, MUTED, font, text_image
+from .ui import FAINT, INK, MUTED, font, text
 from . import black_holes, motherships
 
 LABEL_SIZE = 13
@@ -61,6 +61,8 @@ def draw_system_label(surface, game, system, pos, selected=False, palette=DEFAUL
     label, bands = label_bands(game, system, selected, palette, style)
     size, family = label_font(style)
     x, y = pos
+    clip = surface.get_clip()
     for left, right, color in bands:
-        rendered = text_image(label, size, color, family)
-        surface.blit(rendered, (x+left, y), pg.Rect(left, 0, right-left, rendered.get_height()))
+        surface.set_clip(clip.clip(pg.Rect(x+left, y, right-left, font(size, family).get_height())))
+        text(surface, label, (x, y), size, color, family)
+    surface.set_clip(clip)

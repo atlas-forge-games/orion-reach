@@ -176,10 +176,10 @@ def draw_command_button(button, surface, active=False, pressed=False):
                  GOLD if active else MUTED if enabled else FAINT, "mono", right=True)
         if button.badge:
             width = max(20, font(9, "mono").size(button.badge)[0]+9)
-            badge = pg.Rect(r.x+8, r.y+7+offset, width, 19)
+            badge = pg.Rect(r.x+8, r.y+7+offset, width, 22)
             pg.draw.rect(surface, GOLD if enabled else FAINT, badge, border_radius=5)
             text(surface, button.badge, (badge.centerx-font(9, "mono").size(button.badge)[0]//2,
-                                         badge.y+3), 9, (28, 29, 28), "mono")
+                                         badge.centery-font(14, "mono").get_height()//2), 14, (28, 29, 28), "mono")
         return
     dark_ink = (28, 29, 28)
     label_color = dark_ink if primary and enabled else INK if enabled else FAINT
@@ -202,7 +202,7 @@ def draw_command_button(button, surface, active=False, pressed=False):
         key = pg.Rect(right-key_width, r.centery-11+offset, key_width, 22)
         pg.draw.rect(surface, (235, 204, 153) if primary and enabled else (9, 20, 28), key, border_radius=3)
         pg.draw.rect(surface, (108, 81, 49) if primary and enabled else (72, 92, 103) if active else (45, 67, 80), key, 1, border_radius=3)
-        text(surface, button.shortcut, (key.x+(key.w-font(10, "mono").size(button.shortcut)[0])//2, key.y+4),
+        text(surface, button.shortcut, (key.x+(key.w-font(10, "mono").size(button.shortcut)[0])//2, key.centery-font(14, "mono").get_height()//2),
              10, dark_ink if primary and enabled else GOLD if active else MUTED if enabled else FAINT, "mono")
         right = key.left-10
     if button.badge:
@@ -210,7 +210,7 @@ def draw_command_button(button, surface, active=False, pressed=False):
         badge_width = max(22, font(10, "mono").size(value)[0]+12)
         badge = pg.Rect(right-badge_width, r.centery-11+offset, badge_width, 22)
         pg.draw.rect(surface, GOLD if enabled else FAINT, badge, border_radius=6)
-        text(surface, value, (badge.x+(badge.w-font(10, "mono").size(value)[0])//2, badge.y+4), 10, dark_ink, "mono")
+        text(surface, value, (badge.x+(badge.w-font(10, "mono").size(value)[0])//2, badge.centery-font(14, "mono").get_height()//2), 14, dark_ink, "mono")
         right = badge.left-8
     size = 21 if primary else 15 if r.h >= 50 else 14
     top = r.y+10 if button.subtitle else r.centery-font(size).get_height()//2

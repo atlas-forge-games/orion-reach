@@ -137,13 +137,14 @@ def system_panel(app, game, system, planet, live):
         draw_planet(app.canvas, world, (46, y+(14 if row_height>=30 else 8)), 23 if row_height>=30 else 17, f"{game.seed}:{system.id}:{world.id}")
         visible_owner = world.owner or world.outpost_owner or (world.orbital_station.owner if world.orbital_station else None)
         color = app.empire_color(visible_owner) if visible_owner else MUTED
-        label = world.name if row_height>=30 else f"{world.name} · {world.biome}"
-        text(app.canvas, shorten(label, 155, 12 if row_height>=30 else 10), (64, y), 12 if row_height>=30 else 10, GOLD if selected else color)
-        if row_height>=30:
+        label = world.name if row_height>=38 else f"{world.name} · {world.biome}"
+        label_y = y if row_height>=38 else y+max(0, (row_height-19)//2)
+        text(app.canvas, shorten(label, 140, 14), (64, label_y), 14, GOLD if selected else color)
+        if row_height>=38:
             detail = "Gas Giant · No solid surface" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
-            text(app.canvas, detail, (64, y+18), 9, MUTED)
+            text(app.canvas, shorten(detail, 198, 14), (64, y+18), 14, MUTED)
         basic = "ORB" if world.orbital_station else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
-        text(app.canvas, basic, (255, y+1), 10, color, right=True)
+        text(app.canvas, basic, (255, label_y+1), 14, color, right=True)
     if len(system.worlds) <= 4:
         text(app.canvas, "COLORS IDENTIFY EACH EMPIRE", (38, 272), 9, MUTED, "mono")
 
@@ -178,7 +179,7 @@ def workforce_panel(app, game, planet, live):
                  ("Dyson grid · no fuel" if energy.unlimited else f"{energy.orbital_generated} orbital · {energy.fuel_used} fuel" if energy.orbital_generated else f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*124
-        panel(surface, (x, 86, 120, 57), (15, 28, 37))
+        panel(surface, (x, 86, 120, 61), (15, 28, 37))
         resource_icon(surface, kind, (x+14, 114), color, .6)
         text(surface, label, (x+7, 91), 8, MUTED, "mono")
         text(surface, value, (x+32, 105), 19, color)
@@ -470,17 +471,17 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
         y = 146+i*128
         panel(surface, (x, y, width, 119))
         project_art(surface, item_id, (x+10, y+14, 65, 72), design, habitat=planet.habitat)
-        text(surface, shorten(display_name(spec, planet.habitat), width-100, 18), (x+85, y+12), 18, INK)
+        text(surface, shorten(display_name(spec, planet.habitat), width-100, 18), (x+85, y+6), 18, INK)
         price = game.project_price(item_id)
         upkeep = building_maintenance(item_id, game.bonuses_for()) if item_id in BUILDINGS else getattr(spec, "maintenance", 0)
         cost = f"{price} RES · {spec.work_cost} work"+(f" · {upkeep} CR/turn" if upkeep else "")
-        text(surface, shorten(cost, width-100, 10), (x+85, y+42), 10, GOLD)
+        text(surface, shorten(cost, width-100, 14), (x+85, y+33), 14, GOLD)
         if item_id in BUILDINGS:
-            text(surface, shorten(compact_yields(game, spec, planet), width-100, 10), (x+85, y+62), 10, CYAN)
+            text(surface, shorten(compact_yields(game, spec, planet), width-100, 14), (x+85, y+53), 14, CYAN)
             details = [spec.workforce_text(planet.richness)]
             if spec.energy_use:
                 details.append(f"Uses {spec.energy_use} energy")
-            text(surface, shorten(" · ".join(part for part in details if part), width-100, 10), (x+85, y+78), 10, CYAN)
+            text(surface, shorten(" · ".join(part for part in details if part), width-100, 14), (x+85, y+73), 14, CYAN)
         else:
             detail = ("50 B capacity · Defensive lasers · 12 shields" if item_id == "mothership" else
                       f"{design.hull} hull · {design.damage} volley · {design.shields} shields" if design

@@ -1,6 +1,75 @@
-# Readable interface — v0.85.0
+# Readable interface — v0.86.0
 
-## Player-visible changes
+## Global typography and layout
+
+The readable type system now covers every game screen, all dialogs, the combat
+simulator and the balance editor. The shared logical minimum is 14 pixels;
+normal information and primary values retain their larger role sizes. Both
+measurement and rendering apply the same floor. Letter spacing on formerly tiny
+labels is limited to one logical pixel, and paragraphs reserve enough line height.
+Long unbroken names wrap instead of running outside the available width.
+
+Logical font sizing is separate from native pixel rasterization: a logical 14px
+label in a small window must not have the minimum applied a second time to its
+physical font. The map's colored label bands now clip native text, and menu text,
+chart labels, building captions and the intro no longer stretch rendered glyphs.
+The standalone balance editor also draws directly at its window scale.
+
+Galaxy resource cards use their full width for captions. The system summary uses
+two columns, and planet lists use a compact single line when there is insufficient
+height for two readable lines. Construction lists have more line spacing; research
+choices reserve separate space for their status. Combat chance rows use readable
+spacing and a full-text summary when a volley has many weapon types. Small controls
+fit their labels without dropping below the minimum size.
+
+An ellipsis retains the original text. Hover for 0.4 seconds to display it in an
+opaque panel inside the visible, scrolled viewport. Tooltips do not add controls or
+change game state. Background labels are excluded while a modal or pause menu is
+open. The missing initial colony catalogue page is also restored, fixing the
+legacy colony screen's opening error.
+
+The existing 100–175% interface setting, native canvas, scrollbars, coordinate
+mapping and responsive Empire layout remain in use. Other screens preserve their
+layout with the targeted spacing changes above and scrolling at larger UI sizes.
+The balance editor follows its window size; it has no separate zoom preference.
+Game rules, balance data and save format 60 are unchanged.
+
+## v0.86.0 validation
+
+Base: v0.85.0, repository commit `516525b` (the previous readability release).
+
+- Eight new tests pass. They cover readable font metrics, native glyphs at four
+  fractional scales, small control labels, long-word wrapping, preserved full
+  labels and clipped hover regions, delayed tooltips in a scrolled enlarged view,
+  all game screens/dialog fixtures, and native editor resizing/input coordinates.
+- The preview fixtures render 68 states, including all 27 game screens, menus,
+  five settings pages, populated construction and specialist panels, research and
+  economy dialogs, first contact, council voting, gas giants, black holes, mobile
+  habitats and combat. Each is exercised at 1440×900 / 100%, 1280×800 / 175% and
+  1920×1080 / 125%. Turn counters and treasury, resources and banked research do
+  not change during rendering. The simulator and editor were captured separately.
+- Core regression selection: 146 tests, 145 passed. The remaining tactical save
+  migration assertion expects version 53 while the game uses version 60; it is
+  unchanged from the baseline.
+- Wider screen selection: 189 tests, 176 passed. All 13 remaining failures/errors
+  also reproduce with the same selection on v0.85.0 (which has 16). They concern
+  older balance/save fixtures, a statistics hover assertion and an AI movement
+  assertion. Three colony-opening errors in this selection and four in the core
+  selection are fixed by initializing the catalogue page. No new failures remain.
+- Real captures were inspected; measurements checked expanded text against panel
+  bounds and compared new text collisions with the baseline. Compile checks and
+  `git diff --check` pass.
+
+```sh
+python -m unittest discover -s tests -p test_global_readability.py
+python -m unittest discover -s tests -p test_ui_readability.py
+python tools/preview_all_screens.py --output /tmp/orion-screens
+python tools/preview_all_screens.py --width 1280 --height 800 --scale 175 --output /tmp/orion-large-text
+```
+
+## Previous release: v0.85.0
+
+### Player-visible changes
 
 - Empire labels use 16–18 logical pixels and key values use 28. Text is drawn at
   its actual display size, including non-integer window scales.
@@ -18,7 +87,7 @@
   a wheel over an overflowing Empire page scrolls vertically. Page Up / Page Down
   continue to change colony pages. Keyboard focus scrolls its control into view.
 
-## Rendering and input
+### Rendering and input
 
 `orion.display.Canvas` stores pixels at the viewport's native resolution while
 exposing logical coordinates to the existing scene code. The shared `text()`
@@ -35,7 +104,7 @@ within the visible region of a scrolled interface.
 This is an interface change. Game rules, save format 60, campaign contents and
 research/economy calculations are unchanged. Old settings files default to 100%.
 
-## Validation
+### Validation
 
 Base: repository commit `d545cc3689f426bc498321a733f3ce1ae8415682` (v0.84.0).
 

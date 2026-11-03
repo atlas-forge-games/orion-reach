@@ -69,7 +69,8 @@ class TitleArt:
             emblem(surface, LOGO_RECT.centerx, 160, 2.5)
             for label, y, size, spacing in (("AGE OF THE", 269, 25, 6), ("STARS", 312, 64, 7)):
                 title = text_image(label, size, INK, "title", spacing)
-                surface.blit(title, title.get_rect(midtop=(LOGO_RECT.centerx, y)))
+                text(surface, label, title.get_rect(midtop=(LOGO_RECT.centerx, y)).topleft,
+                     size, INK, "title", spacing)
 
 
 @lru_cache(maxsize=12)
@@ -99,7 +100,7 @@ def draw_title_button(button, surface, active=False, pressed=False):
     color = GOLD if active else INK if button.enabled else MUTED
     label = text_image(button.label, 27, color, "title")
     offset = 1 if pressed else 0
-    surface.blit(label, (r.x+30, r.centery-label.get_height()//2+offset))
+    text(surface, button.label, (r.x+30, r.centery-label.get_height()//2+offset), 27, color, "title")
     arrow(surface, (r.right-29, r.centery+offset), color if primary or active else MUTED)
     if active:
         pg.draw.rect(surface, GOLD, r.inflate(6, 6), 1, border_radius=3)

@@ -392,7 +392,7 @@ def draw_combat(app):
             elif ship.design and (ship.design.repair_rate or ship.design.shield_regeneration):
                 text(surface, f"Repair reserve {ship.repair_remaining} · Shield regen +{ship.design.shield_regeneration}", (x, 420), 11, CYAN)
             elif ship.design:
-                text(surface, "Only weapons in range fire; one volley per turn.", (x, 420), 11, MUTED)
+                text(surface, shorten("Only weapons in range fire; one volley per turn.", 308, 14), (x, 420), 14, MUTED)
             support_text = (f"Fleet aura: +{flagships.ACCURACY} aim / +{flagships.EVASION} evade (other ships)"
                             if leader and battle.accuracy else
                             fleet_support.receiving_text(battle, ship, accuracy=battle.accuracy))
@@ -401,38 +401,40 @@ def draw_combat(app):
             paragraph(surface, "The computer is managing your fleet's orders and turns." if automatic else "Your ships have finished their orders. End your turn to let the opponent act.", (x, 239), 308, 16, MUTED, 26)
         pg.draw.line(surface, LINE, (x, 454), (1388, 454))
         target_planet = combat_planets.planet_for(game, target)
-        text(surface, "PLANETARY TARGET" if target_planet else "ENEMY FLAGSHIP" if flagships.is_flagship(battle, target) else "ENEMY TARGET", (x, 464), 9, RIVAL_COLOR, "mono", 1)
-        text(surface, shorten(combat_planets.unit_name(game, target), 308, 17) if target else "Click an enemy ship or base", (x, 482), 17, INK)
+        text(surface, "PLANETARY TARGET" if target_planet else "ENEMY FLAGSHIP" if flagships.is_flagship(battle, target) else "ENEMY TARGET", (x, 458), 14, RIVAL_COLOR, "mono")
+        text(surface, shorten(combat_planets.unit_name(game, target), 308, 17) if target else "Click an enemy ship or base", (x, 478), 17, INK)
         if target and target.owner == MONSTER:
             ship_icon(surface, (1356, 481), .45, kind=target.kind)
         caption = (f"{target.hull}/{target.max_hull} base hull" if target_planet else f"{target.hull}/{target.max_hull} hull · {target.shields} shields") if target else "Targets must be within weapon range."
         if target and ship:
             caption += f"  ·  Distance {geometry.distance(ship, target):.1f}"
-        text(surface, caption, (x, 507), 10, MUTED)
+        text(surface, shorten(caption, 308, 14), (x, 502), 14, MUTED)
         if target:
             jam = fleet_support.strongest(battle, target, "jamming") if battle.accuracy else 0
             evasion = flagships.evasion(battle, target) if battle.accuracy else 0
-            text(surface, f"PD {interception(battle, target)}% · ECM −{jam} aim · Fleet evade +{evasion}", (x, 522), 9, MUTED)
+            text(surface, shorten(f"PD {interception(battle, target)}% · ECM −{jam} aim · Fleet evade +{evasion}", 308, 14), (x, 520), 14, MUTED)
         can_fire = bool(player_turn and ship and target and action_error(game, PLAYER, ship.id, target.id) is None)
         label = "Fire at target" if can_fire else "Weapons recharging" if ship and ship.damage and not ship.ready_damage else "Line of fire blocked" if ship and target and in_range(ship, target) and not in_range(ship, target, battle) else "Target out of range" if ship and target and ship.damage and not in_range(ship, target) else "Weapon spent" if ship and ship.id in battle.acted else "Unarmed" if ship and not ship.damage else "Select a target"
         blocked_beams = bool(ship and target and geometry.blocker(battle, ship, target)
                              and any(not BEAMS[w].projectile for w, _, _ in ship.ready_weapons))
-        text(surface, "BEAMS BLOCKED · guided ordnance can launch" if blocked_beams and can_fire
+        text(surface, shorten("BEAMS BLOCKED · guided ordnance can launch" if blocked_beams and can_fire
              else "HIT CHANCE · fleet support / ECM / tracking" if battle.accuracy
-             else "GUARANTEED HITS · aim / evasion / ECM off", (x, 538), 9, GOLD)
+             else "GUARANTEED HITS · aim / evasion / ECM off", 308, 14), (x, 538), 14, GOLD)
         if ship and target and in_range(ship, target, battle):
             groups = list(Counter(w for w, _ in ship.volley(target, battle)).items())
-            limit = 2 if ship.drone_bays else 4
-            for index, (weapon, count) in enumerate(groups[:limit]):
-                if index == limit-1 and len(groups) > limit:
-                    text(surface, f"+ {len(groups)-index} other weapon types in this volley", (x, 553+index*11), 10, MUTED)
-                    break
+            rows = []
+            for weapon, count in groups:
                 chance = accuracy_breakdown(game, ship, target, weapon)
-                shot_label = (f"{count*BEAMS[weapon].shots}× {BEAMS[weapon].name}: {chance['chance']}%  "
-                         f"(track −{chance['tracking']})")
-                text(surface, shot_label, (x, 553+index*11), 10, CYAN)
+                rows.append(f"{count*BEAMS[weapon].shots}× {BEAMS[weapon].name}: {chance['chance']}% "
+                            f"(track −{chance['tracking']})")
+            limit = 1 if ship.drone_bays else 2
+            for index, shot_label in enumerate(rows[:limit]):
+                if index == limit-1 and len(rows) > limit:
+                    from .ui import ShortenedText
+                    shot_label = ShortenedText(f"{len(rows)-index} weapon types · hover for chances", "; ".join(rows[index:]))
+                text(surface, shorten(shot_label, 308, 14), (x, 558+index*20), 14, CYAN)
         else:
-            text(surface, "Move to a clear firing lane." if label == "Line of fire blocked" else "Choose an enemy within weapon range.", (x, 554), 10, MUTED)
+            text(surface, shorten("Move to a clear firing lane." if label == "Line of fire blocked" else "Choose an enemy within weapon range.", 308, 14), (x, 558), 14, MUTED)
         if ship and ship.drone_bays:
             roles = battle.available_drone_roles(ship)
             if getattr(app, "combat_drone_role", None) not in roles:

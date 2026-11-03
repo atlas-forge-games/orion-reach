@@ -12,7 +12,7 @@ PLOT = pg.Rect(144, 396, 844, 316)
 
 def centered(surface, value, pos, size, color, family="sans"):
     image = text_image(value, size, color, family)
-    surface.blit(image, (pos[0]-image.get_width()/2, pos[1]))
+    text(surface, value, (pos[0]-image.get_width()/2, pos[1]), size, color, family)
 
 
 def axis_ticks(values):
