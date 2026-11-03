@@ -78,6 +78,7 @@ from .exploration import known_rival_colonies
 from .exploration_view import FINDS_PER_PAGE, draw_exploration, draw_system_intelligence
 from .ui import (Button, CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR,
                  arrow, emblem, font, panel, paragraph, shorten, text, text_image, wrapped_lines)
+from .display import Canvas, DisplayView, UI_SCALES
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
@@ -99,7 +100,10 @@ class App:
         self.windowed_size=(1280,800)
         self.window=pg.display.set_mode(self.windowed_size,pg.RESIZABLE)
         pg.display.set_caption(f"{GAME_TITLE} | Space Strategy Prototype")
-        self.canvas=pg.Surface(SIZE).convert()
+        self.display_view=DisplayView()
+        self.canvas=Canvas(SIZE)
+        self.empire_layout=None
+        self.empire_page_capacity=3
         self.viewport=pg.Rect(0,0,*self.windowed_size)
         self.backdrop=Backdrop()
         self.brand=StudioBrand()
@@ -1069,9 +1073,10 @@ class App:
 
     def focus_empire_row(self):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
-        self.empire_page=min(max(0,self.empire_page),max(0,(len(rows)-1)//COLONIES_PER_PAGE))
+        capacity=self.empire_page_capacity
+        self.empire_page=min(max(0,self.empire_page),max(0,(len(rows)-1)//capacity))
         if rows:
-            system,planet=rows[self.empire_page*COLONIES_PER_PAGE]
+            system,planet=rows[self.empire_page*capacity]
             self.focus=f"empire_colony_{system.id}_{planet.id}"
         else:
             self.focus="empire_filter_all"
@@ -1425,6 +1430,15 @@ class App:
             self.storage.save_settings(self.settings)
         except SaveError as exc:
             self.toast(exc,True)
+
+    def set_ui_scale(self,value):
+        if type(value) is not int or value not in UI_SCALES:
+            return
+        self.settings['ui_scale']=value
+        self.display_view.offset=[0,0]
+        self.display_view.focus=None
+        self.pressed=None
+        self.save_preferences()
 
     def show_settings(self,return_to="menu"):
         self.settings_return=return_to
@@ -2264,8 +2278,8 @@ class App:
     def logical_pos(self,pos):
         if not self.viewport.collidepoint(pos):
             return (-1,-1)
-        return ((pos[0]-self.viewport.x)*SIZE[0]/self.viewport.w,
-                (pos[1]-self.viewport.y)*SIZE[1]/self.viewport.h)
+        return ((pos[0]-self.viewport.x)/self.canvas.scale,
+                (pos[1]-self.viewport.y)/self.canvas.scale)
 
     def activate(self,button):
         if not button.enabled:
@@ -2275,6 +2289,8 @@ class App:
 
     def handle_event(self,event):
         if self.turn_busy and event.type in TURN_INPUT_EVENTS:
+            return
+        if self.display_view.handle_event(event,self):
             return
         if event.type==pg.QUIT:
             self.quit_request()
@@ -3003,12 +3019,14 @@ class App:
             draw_technology_info(self,self.dialog["technology"])
             return
         height=max(312,199+27*len(wrapped_lines(self.dialog["body"],526,16)))
-        top=(SIZE[1]-height)//2
-        panel(self.canvas,(422,top,596,height),PANEL,GOLD)
-        text(self.canvas,self.dialog["title"],(454,top+31),29,INK,"title")
-        paragraph(self.canvas,self.dialog["body"],(454,top+84),526,16,MUTED,27)
-        self.button("dialog_cancel","Cancel",(454,top+height-97,180,57),self.cancel_dialog)
-        self.button("dialog_ok",self.dialog["label"],(650,top+height-97,336,57),self.accept_dialog,"primary")
+        visible_w,visible_h=(n/self.canvas.scale for n in self.window.get_size())
+        left=max(0,min(self.canvas.get_width()-596,(visible_w-596)//2+self.display_view.offset[0]/self.canvas.scale))
+        top=max(0,min(self.canvas.get_height()-height,(visible_h-height)//2+self.display_view.offset[1]/self.canvas.scale))
+        panel(self.canvas,(left,top,596,height),PANEL,GOLD)
+        text(self.canvas,self.dialog["title"],(left+32,top+31),29,INK,"title")
+        paragraph(self.canvas,self.dialog["body"],(left+32,top+84),526,16,MUTED,27)
+        self.button("dialog_cancel","Cancel",(left+32,top+height-97,180,57),self.cancel_dialog)
+        self.button("dialog_ok",self.dialog["label"],(left+228,top+height-97,336,57),self.accept_dialog,"primary")
 
     def render(self):
         if self.game and self.game.selected_planet is not None and self.game.selected_planet < 0:
@@ -3031,6 +3049,24 @@ class App:
             self.draw_frame()
 
     def draw_frame(self):
+        width,height=self.window.get_size()
+        self._rendered_window_size=(width,height)
+        scale=min(width/SIZE[0],height/SIZE[1])*self.settings.get('ui_scale',100)/100
+        logical=SIZE
+        if self.screen=='empire':
+            from .empire_view import layout_for
+            self.empire_layout=layout_for(self,(round(width/scale),round(height/scale)))
+            logical=(self.empire_layout.width,self.empire_layout.height)
+            if self.empire_page_capacity!=self.empire_layout.page_size:
+                first=self.empire_page*self.empire_page_capacity
+                self.empire_page_capacity=self.empire_layout.page_size
+                self.empire_page=first//self.empire_page_capacity
+        if self.canvas.get_size()!=logical or self.canvas.scale!=scale:
+            self.canvas=Canvas(logical,scale)
+        self.display_view.configure((width,height),logical,scale,self.screen)
+        self.viewport=self.display_view.viewport.copy()
+        self.canvas.set_clip(None)
+        self.canvas.fill((3,8,14))
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
@@ -3043,20 +3079,16 @@ class App:
         if self.dialog:
             self.draw_dialog()
         if self.notice and self.time<self.notice_until:
-            message=shorten(self.notice,1160,16)
-            width=min(1224,font(16).size(message)[0]+54)
-            r=pg.Rect((1440-width)//2,16,width,47)
+            message=shorten(self.notice,min(1160,self.canvas.get_width()-80),16)
+            width=min(self.canvas.get_width()-24,font(16).size(message)[0]+54)
+            r=pg.Rect((self.canvas.get_width()-width)//2,16,width,47)
             panel(self.canvas,r,(24,33,39),RED if self.notice_error else CYAN)
             text(self.canvas,message,(r.x+27,r.y+13),16,RED if self.notice_error else INK)
 
     def present(self):
-        width,height=self.window.get_size()
-        scale=min(width/SIZE[0],height/SIZE[1])
-        size=(max(1,round(SIZE[0]*scale)),max(1,round(SIZE[1]*scale)))
-        self.viewport=pg.Rect((width-size[0])//2,(height-size[1])//2,*size)
-        self.window.fill((2,5,9))
-        self.window.blit(pg.transform.smoothscale(self.canvas,size),self.viewport.topleft)
-        pg.display.flip()
+        if getattr(self,'_rendered_window_size',None)!=self.window.get_size():
+            self.render()
+        self.display_view.present(self)
 
     def process_events(self,events):
         """Batch routine input; rebuild targets before a later click/key action."""

@@ -67,6 +67,9 @@ class ColorPreferenceUITests(unittest.TestCase):
     def assert_player_markers(self, expected):
         from orion.app import MAP
         app = self.app
+        # Exact color assertions use a 1:1 canvas; antialiasing at other sizes
+        # is covered by the native drawing and scaled input tests.
+        app.window = pg.display.set_mode((1440, 900))
         app.render()
         home = app.game.headquarters()[0]
         x, y = (int(v) for v in app.star_pos(home))

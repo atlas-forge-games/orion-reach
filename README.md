@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.84.0
+# Age of the Stars — Python prototype 0.85.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,27 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.85.0: readable text and interface scaling
+
+The Empire screen now uses larger labels and numbers, solid information panels,
+responsive resource cards and roomier colony rows. Larger text switches the
+colony table to cards; sorting, filtering and pagination remain available.
+
+Text drawn through the shared UI helper is rasterized at the actual display
+resolution. Shared secondary text and blue values have stronger contrast.
+
+Choose **Settings → Interface → Interface size**: 100%, 125%, 150% or 175%.
+Use **Ctrl + / Ctrl −** to change size and **Ctrl 0** to reset it. The Empire
+screen reflows. Other screens retain their layouts and offer scrollbars when
+zoomed: drag a scrollbar or use Shift + mouse wheel. Tab navigation brings the
+focused control into view. On the Empire screen, the wheel scrolls an overflowing
+page; Page Up / Page Down still change colony pages.
+
+Install the incremental update over v0.84.0. Existing saves and game rules are
+unchanged. See [readability implementation and validation](docs/ui-readability.md).
+
+![Readable Empire overview](screenshots/empire_readable_v0850.png)
 
 ## New in v0.84.0: debt interest and bankruptcy
 

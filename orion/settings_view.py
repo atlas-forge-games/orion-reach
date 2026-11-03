@@ -4,6 +4,7 @@ import pygame as pg
 
 from .empires import PLAYER_PALETTES
 from .galaxy_style import map_style
+from .display import UI_SCALES
 from .ui import CYAN, GOLD, INK, LINE, MUTED, arrow, font, panel, paragraph, text
 
 
@@ -11,7 +12,7 @@ SECTIONS = {
     "graphics": ("Graphics", "Display mode and animated backgrounds.", "fullscreen"),
     "sound": ("Sound", "Music, volume and sound effects.", "music"),
     "gameplay": ("Gameplay", "Autosaving and campaign preferences.", "autosave"),
-    "interface": ("Interface", "Galaxy map style, colors and navigation.", "galaxy_style_clean"),
+    "interface": ("Interface", "Text size, galaxy map style and colors.", "ui_scale_100"),
 }
 
 
@@ -91,29 +92,37 @@ def draw_gameplay(app):
 
 
 def draw_interface(app):
-    panel(app.canvas, (352, 320, 1024, 196))
-    text(app.canvas, "Galaxy map style", (380, 340), 21, INK)
+    panel(app.canvas, (352, 320, 1024, 156))
+    text(app.canvas, "Interface size", (380, 335), 21, INK)
+    for index, scale in enumerate(UI_SCALES):
+        x = 380+index*150
+        app.button("ui_scale_"+str(scale), f"{scale}%", (x, 373, 138, 42),
+                   lambda value=scale: app.set_ui_scale(value))
+        if app.settings.get("ui_scale", 100) == scale:
+            pg.draw.line(app.canvas, GOLD, (x, 414), (x+138, 414), 3)
+    text(app.canvas, "Ctrl + / Ctrl − changes size · Ctrl 0 resets to 100%.", (380, 426), 16, MUTED)
+    text(app.canvas, "Larger screens: drag scrollbars or use Shift + mouse wheel to move around.", (380, 451), 16, MUTED)
+
+    panel(app.canvas, (352, 488, 1024, 126))
+    text(app.canvas, "Galaxy map style", (380, 500), 21, INK)
     for index, (style, label) in enumerate((("clean", "Clean"), ("classic", "Classic"))):
         x = 380+index*496
-        app.button("galaxy_style_"+style, label, (x, 385, 472, 48),
+        app.button("galaxy_style_"+style, label, (x, 538, 472, 40),
                    lambda value=style: app.set_galaxy_style(value),
                    "tab_active" if map_style(app) == style else "tab")
-    description = ("Small icons and labels; dashed routes and previews; counts on click."
-                   if map_style(app) == "clean" else "Original labels, route lines and numbered fleet badges.")
-    text(app.canvas, description, (380, 450), 15, MUTED)
-    text(app.canvas, "Click a fleet or sensor contact to inspect its details.", (380, 479), 15, MUTED)
-    panel(app.canvas, (352, 532, 1024, 196))
-    text(app.canvas, "Galaxy colors", (380, 552), 21, INK)
-    text(app.canvas, "Your empire's color. Neutral systems stay gray.", (380, 590), 15, MUTED)
+    text(app.canvas, "Clean: small icons, route previews and details on click. Classic: full labels and counts.",
+         (380, 588), 16, MUTED)
+
+    panel(app.canvas, (352, 626, 1024, 126))
+    text(app.canvas, "Galaxy colors", (380, 638), 21, INK)
     for index, (palette, label) in enumerate((("blue", "Saturated blue"), ("turquoise", "Saturated turquoise"))):
         x = 380+index*496
-        app.button("galaxy_palette_"+palette, label, (x, 626, 472, 48),
+        app.button("galaxy_palette_"+palette, label, (x, 676, 472, 40),
                    lambda value=palette: app.set_galaxy_palette(value),
                    "tab_active" if app.settings["galaxy_palette"] == palette else "tab")
-        pg.draw.line(app.canvas, PLAYER_PALETTES[palette], (x+12, 684), (x+460, 684), 3)
-    text(app.canvas, "Used for your system labels, colony markers and fleets.", (380, 700), 13, MUTED)
-    text(app.canvas, "Mouse or Tab / ↑ ↓ + Enter · Esc goes back · F11 toggles fullscreen",
-         (380, 756), 14, MUTED)
+        pg.draw.line(app.canvas, PLAYER_PALETTES[palette], (x+12, 720), (x+460, 720), 3)
+    text(app.canvas, "Your system labels, colony markers and fleets; neutral systems stay gray.", (380, 729), 16, MUTED)
+    text(app.canvas, "Tab / ↑ ↓ + Enter · Esc goes back · F11 toggles fullscreen", (380, 772), 16, MUTED)
 
 
 def draw_settings(app):

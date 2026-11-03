@@ -1,4 +1,4 @@
 """Age of the Stars, built in the existing orion package."""
 
 GAME_TITLE = "Age of the Stars"
-__version__ = "0.84.0"
+__version__ = "0.85.0"

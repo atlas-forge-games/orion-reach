@@ -85,7 +85,7 @@ class PersistenceTests(unittest.TestCase):
     def test_settings_validate_types_and_recover_from_damage(self):
         settings={"fullscreen":False,"animated_background":False,"sound":False,"music":False,"music_volume":40,"galaxy_palette":"blue","galaxy_background":True,"autosave":True,"galaxy_style":"clean"}
         self.store.save_settings(settings)
-        self.assertEqual(self.store.load_settings(),settings)
+        self.assertEqual(self.store.load_settings(),dict(settings,ui_scale=100))
         (self.store.root/"settings.json").write_text('{"sound":"false","fullscreen":true}')
         self.assertIs(self.store.load_settings()["sound"],True)
         (self.store.root/"settings.json").write_text("[]")

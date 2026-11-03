@@ -99,7 +99,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         button = next(b for b in self.app.buttons if b.key == key)
         x, y = button.rect.center
         v = self.app.viewport
-        pos = (v.x+round(x*v.w/1440), v.y+round(y*v.h/900))
+        pos = (v.x+round(x*self.app.canvas.scale), v.y+round(y*self.app.canvas.scale))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()
@@ -137,7 +137,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "empire")
 
     def test_sorted_pagination_opens_correct_ids_with_letterboxing(self):
-        colonies = [(s, p) for s in self.app.game.systems for p in s.worlds][:12]
+        colonies = [(s, p) for s in self.app.game.systems for p in s.worlds][:30]
         for index, (_, planet) in enumerate(colonies):
             planet.colonized = True
             planet.owner = "player"
@@ -146,27 +146,28 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.click("open_empire")
-        self.assertEqual(len(self.row_keys()), 5)
+        capacity=self.app.empire_page_capacity
+        self.assertEqual(len(self.row_keys()), capacity)
         self.click("empire_sort_population")
-        expected_system, expected_planet = colonies[11]
+        expected_system, expected_planet = colonies[-1]
         self.assertEqual(self.row_keys()[0], f"empire_colony_{expected_system.id}_{expected_planet.id}")
         selection = self.app.game.selected_system, self.app.game.selected_planet
         self.key(pg.K_PAGEDOWN)
         self.assertEqual(self.app.empire_page, 1)
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=-1, x=0))
         self.app.render()
-        self.assertEqual(len(self.row_keys()), 2)
+        self.assertEqual(len(self.row_keys()), min(capacity,len(colonies)-2*capacity))
         self.key(pg.K_RIGHT)
-        self.assertEqual(self.app.empire_page, 2)
+        self.assertEqual(self.app.empire_page, min(3,(len(colonies)-1)//capacity))
         self.assertEqual(selection, (self.app.game.selected_system, self.app.game.selected_planet))
         self.key(pg.K_PAGEUP)
-        expected_system, expected_planet = colonies[6]
+        expected_system, expected_planet = colonies[-1-self.app.empire_page*capacity]
         self.click(self.row_keys()[0])
         self.assertEqual(self.app.screen, "planet")
         self.assertEqual(self.app.game.selected_system, expected_system.id)
         self.assertEqual(self.app.game.selected_planet, expected_planet.id)
         self.key(pg.K_i)
-        self.assertEqual(self.app.empire_page, 1)
+        self.assertEqual(self.app.empire_page, min(3,(len(colonies)-1)//capacity)-1)
         self.click("empire_sort_population")
         self.assertEqual(self.app.empire_page, 0)
         expected_system, expected_planet = colonies[0]

@@ -7,15 +7,21 @@ from typing import Callable
 import pygame as pg
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
-INK = (241, 246, 241)
-MUTED = (172, 172, 172)
-FAINT = (140, 140, 140)
+INK = (242, 247, 251)
+MUTED = (194, 207, 217)
+FAINT = (162, 180, 194)
 GOLD = (236, 199, 137)
-CYAN = (44, 164, 255)
+CYAN = (112, 211, 255)
 RIVAL_COLOR = (250, 168, 111)
 LINE = (50, 72, 88)
-PANEL = (10, 20, 29)
+PANEL = (12, 24, 35)
 RED = (255, 157, 145)
+
+# Shared readable roles for new/reflowed information screens.
+TEXT_SMALL = 16
+TEXT_BODY = 18
+TEXT_LABEL = 17
+TEXT_VALUE = 28
 
 
 @lru_cache(maxsize=64)
@@ -43,11 +49,22 @@ def text_image(value, size, color, family="sans", spacing=0):
 
 
 def text(surface, value, pos, size=18, color=INK, family="sans", spacing=0, right=False):
+    from .display import Canvas
     img = text_image(str(value),size,tuple(color),family,spacing)
     x, y = pos
     if right:
         x -= img.get_width()
-    surface.blit(img,(int(x),int(y)))
+    if isinstance(surface, Canvas):
+        native = text_image(str(value), max(1, round(size*surface.scale)), tuple(color),
+                            family, round(spacing*surface.scale))
+        if right:
+            # Align by the actual native glyph width, avoiding rounding drift.
+            native_pos = surface.point(pos)
+            pg.Surface.blit(surface, native, (native_pos[0]-native.get_width(), native_pos[1]))
+        else:
+            surface.blit_native(native, (x, y))
+    else:
+        surface.blit(img,(int(x),int(y)))
     return img.get_rect(topleft=(int(x),int(y)))
 
 
@@ -135,7 +152,7 @@ class Button:
         if self.style in ("tab", "tab_active"):
             selected=self.style=="tab_active"
             panel(surface,r,(27,43,51) if selected or active else PANEL,GOLD if selected or active else LINE)
-            size=11 if r.h < 24 else 13
+            size=11 if r.h < 24 else 13 if r.h < 36 else 16
             label=shorten(self.label,r.w-12,size)
             shade=GOLD if selected or active else color
             text(surface,label,(r.centerx-font(size).size(label)[0]//2,r.centery-font(size).get_height()//2),size,shade)

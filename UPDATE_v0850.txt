@@ -1,0 +1,28 @@
+AGE OF THE STARS / ORION REACH — v0.85.0 READABLE INTERFACE
+
+INSTALL
+Close the game. Extract this ZIP over v0.84.0 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game. No new dependency is needed.
+
+CHANGES
+- Larger, clearer Empire labels, values and colony details.
+- Brighter shared text colors and solid information panels.
+- Native-resolution shared text rendering instead of stretching a completed UI.
+- Responsive resource cards, taller colony rows and compact colony cards.
+- Saved interface sizes: 100%, 125%, 150%, 175%.
+- Sorting, filters, pagination, debt warnings and keyboard controls retained.
+
+CONTROLS
+Settings > Interface > Interface size.
+Ctrl + / Ctrl - changes size; Ctrl 0 resets to 100%.
+Empire reflows. Enlarged legacy screens keep their layout and offer scrollbars.
+Drag scrollbars or use Shift + wheel to move around. The wheel scrolls overflowing
+Empire pages; Page Up / Page Down change colony pages. Tab reveals focused controls.
+
+SAVES AND VALIDATION
+Existing saves and game rules are unchanged. Twelve new readability tests pass.
+The broader run passes 133 of 138 checks; the five remaining failures reproduce
+on the untouched v0.84.0 source. Details and screenshots are included.
+
+No files were committed or pushed.

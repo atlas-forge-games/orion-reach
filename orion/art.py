@@ -61,4 +61,7 @@ class Backdrop:
             ship(surface,869+drift*.8,773+math.cos(t*.15)*3,.36,-.34)
 
     def dim(self,surface):
+        if self.shade.get_size()!=surface.get_size():
+            self.shade=pg.Surface(surface.get_size(),pg.SRCALPHA)
+            self.shade.fill((3,8,14,193))
         surface.blit(self.shade,(0,0))
