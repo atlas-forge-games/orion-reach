@@ -42,7 +42,7 @@ from . import outposts as outpost_rules
 from . import observer as observer_rules
 from .races import RACES, SETUP_RACES, default_rival_race
 from .home_systems import name_home
-from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, MAX_RIVALS, relation_key
+from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, max_rivals, relation_key
 from .research import TECHNOLOGIES, ResearchState, building_yields, colony_yields, colony_maintenance
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
                         agreement_yields, make_contact, take_action)
@@ -2023,7 +2023,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=60):
+    def from_dict(cls, data, *, version=61):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2132,7 +2132,8 @@ class GameState:
                 raise ValueError("Invalid resource stockpile")
             if version >= 20:
                 extras, relations = data["other_opponents"], data["other_diplomacy"]
-                roster = CAMPAIGN_RIVAL_IDS if version >= 22 else RIVAL_IDS
+                roster = (CAMPAIGN_RIVAL_IDS if version >= 61 else
+                          CAMPAIGN_RIVAL_IDS[:6] if version >= 22 else RIVAL_IDS[:5])
                 if (not isinstance(extras, dict) or len(extras) >= len(roster)
                         or set(extras) != set(roster[1:len(extras)+1]) or (extras and opponent is None)):
                     raise ValueError("Invalid rival roster")
@@ -2194,9 +2195,10 @@ class GameState:
                 if not _integer(data["news_read_turn"], 0, game.turn):
                     raise ValueError("Invalid news read turn")
                 game.news_read_turn = data["news_read_turn"]
-                if "rival_6" in game.opponents and (
-                        game.opponents["rival_6"].race_id != "remnant"
-                        or not any(t.remnant_owner == "rival_6" for t in game.tomb_worlds)):
+                extra = CAMPAIGN_RIVAL_IDS[-1] if version >= 61 else "rival_6"
+                if extra in game.opponents and (
+                        game.opponents[extra].race_id != "remnant"
+                        or not any(t.remnant_owner == extra for t in game.tomb_worlds)):
                     raise ValueError("The extra rival must be an awakened Remnant enclave")
             black_holes.load(game, data, version)
             hyperlanes.load(game, data, version)
@@ -2292,10 +2294,15 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
     if rival_race_id is not None and (not isinstance(rival_race_id, str) or rival_race_id not in RACES):
         raise SaveError("Choose a valid rival race.")
     count_rivals = (3 if observer else 1 if with_ai else 0) if rival_count is None else rival_count
-    if observer and not _integer(count_rivals, 2, MAX_RIVALS):
-        raise SaveError(f"Choose between 2 and {MAX_RIVALS} computer empires to observe.")
-    if not _integer(count_rivals, 0, MAX_RIVALS):
-        raise SaveError(f"Choose between 0 and {MAX_RIVALS} rivals.")
+    limit = max_rivals(race_id)
+    if count_rivals == "all":
+        if rival_race_id == race_id:
+            raise SaveError("All civilizations requires a different race for every empire.")
+        count_rivals = limit
+    if observer and not _integer(count_rivals, 2, limit):
+        raise SaveError(f"Choose between 2 and {limit} computer empires to observe, or All civilizations.")
+    if not _integer(count_rivals, 0, limit):
+        raise SaveError(f"Choose between 0 and {limit} rivals, or All civilizations.")
     if type(random_starts) is not bool:
         raise SaveError("Random starts must be on or off.")
     try:
@@ -2361,8 +2368,15 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         homes = [] if observer else [systems[0]]
         for owner, rid in zip(RIVAL_IDS[:count_rivals], races):
             candidates = [s for s in systems if s not in homes and s.worlds]
+            if not candidates:
+                # A crowded seed may have too few systems with planets. Give an
+                # empty, unclaimed system a homeworld without moving any stars.
+                candidates = [s for s in systems if s not in homes]
             separated = [s for s in candidates if all(distance_ly(s, h) >= 20 for h in homes)]
             system = starts.choice(separated) if separated else max(candidates, key=lambda s: min(distance_ly(s, h) for h in homes))
+            if not system.worlds:
+                system.planets = 1
+                system.worlds = generate_planets(system, seed, player_home=False)
             # Equal size/minerals; native biomes are applied by _place_opponent.
             planet = starts.choice(system.worlds)
             planet.biome, planet.size, planet.richness, planet.gravity = "Terran", "Medium", "Average", "Normal"

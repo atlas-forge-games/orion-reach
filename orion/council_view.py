@@ -3,6 +3,7 @@
 from .council import settled_systems, solar_systems
 from . import council as council_balance
 from .race_art import draw_race_portrait
+from .pagination import page_rows
 from .ui import CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
 
@@ -54,7 +55,8 @@ def draw_council(app):
         for label, x in (("CIVILIZATION", 88), ("WORLD VOTES", 508), ("DELEGATION SUPPORTS", 656), ("VOTES RECEIVED", 1044)):
             text(surface, label, (x, 325), 10, GOLD, "mono", 1)
         tally = election.tally
-        for index, owner in enumerate(sorted(election.weights, key=lambda o: (-election.weights[o], o))):
+        owners = sorted(election.weights, key=lambda o: (-election.weights[o], o))
+        for index, owner in enumerate(page_rows(app, owners, 6, "council_empires", (1036, 704, 340, 36))):
             y = 348+index*56
             color = app.empire_color(owner)
             panel(surface, (64, y, 1312, 50), border=color if owner == election.winner else LINE)

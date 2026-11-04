@@ -13,7 +13,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion import combat, exploration, monsters, alignment
-from orion.empires import PLAYER, RIVAL, RIVAL_IDS, empire_color
+from orion.empires import PLAYER, RIVAL, RIVAL_IDS, empire_color, max_rivals
 from orion.model import GALAXY_SIZES, GameState, SaveError, Ship, new_game
 from orion.production import GATE_CHARGE_TURNS
 from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
@@ -42,7 +42,7 @@ def capture(game, attacker, defender):
 class RandomStartTests(unittest.TestCase):
     def test_all_sizes_and_rival_counts_create_separate_equipped_empires(self):
         for size in GALAXY_SIZES:
-            for count in range(6):
+            for count in range(max_rivals("terran")+1):
                 with self.subTest(size=size, count=count):
                     game = new_game(seed=2408, galaxy_size=size, rival_count=count)
                     self.assertEqual(tuple(game.opponents), RIVAL_IDS[:count])
@@ -76,7 +76,7 @@ class RandomStartTests(unittest.TestCase):
         self.assertGreater(len(rosters), 1)
 
     def test_invalid_counts_are_rejected_and_solo_has_no_conquest_result(self):
-        for count in (-1, 6, True, 1.5, "3", []):
+        for count in (-1, max_rivals("terran")+1, True, 1.5, "3", []):
             with self.subTest(count=count), self.assertRaises(SaveError):
                 new_game(seed=2, rival_count=count)
         solo = new_game(seed=2, rival_count=0)

@@ -1,11 +1,30 @@
-# Age of the Stars — Python prototype 0.87.0
+# Age of the Stars — Python prototype 0.88.0
 
-A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and up to five AI rivals for a
+A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
 The repository and Python package retain the name **Orion Reach**. The artwork, interface and code
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.88.0: all civilizations in one campaign
+
+Choose **All civilizations** in New Game → Galaxy options to include every
+playable race once. Play against **0–12 rivals**, or observe **2–13 computer
+empires**. Your civilization counts toward the total of 13; The Observer does
+not. All three galaxy sizes support the full roster, with distinct home systems
+and independent fleets, economies, research and diplomacy.
+
+Council ballots, statistics legends, rival objectives and coalition targets now
+have page controls. The shared Galaxy map / End turn footer stays in place.
+Existing empire colors and IDs are preserved, and the additional empires have
+their own colors. Black-hole generation also protects the Wanderers' mobile home.
+
+Install this incremental update over **v0.87.0**. Save format **61** reads earlier
+saves without adding rivals to an existing campaign. New saves require this
+version or later. See [implementation and validation](docs/all-civilizations.md).
+
+![All civilizations in setup](screenshots/setup_all_civilizations_v0880.png)
 
 ## New in v0.87.0: consistent campaign navigation
 
@@ -1431,10 +1450,10 @@ reproduce the overview, carrier tier, technology information and top-bar preview
 
 ## New in v0.40: The Observer
 
-Choose **The Observer** on the New Game race screen to watch **2–5 computer
+Choose **The Observer** on the New Game race screen to watch **2–13 computer
 empires** play a complete campaign. The Observer has no homeworld, ships,
 economy or diplomatic relationships, and never occupies a rival slot. Competing
-civilizations are still selected from the original eleven races without duplicates.
+civilizations are selected from all 13 playable races without duplicates.
 
 - See every system, planet and fleet, including ships in transit.
 - Click **End turn** (or **E**) to advance all computer empires. Space and ground
@@ -2174,7 +2193,7 @@ colonies is always possible.
 
 ## Random rivals and starting positions
 
-On the second **New Game** screen, choose **0–5 rivals**. Their races are drawn
+On the second **New Game** screen, choose **0–12 rivals** or **All civilizations**. Their races are drawn
 randomly without duplicates, excluding your own race. Empire name, galaxy size,
 seed and fog of war remain on this screen; your race is still selected first.
 

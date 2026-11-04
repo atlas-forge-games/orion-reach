@@ -58,7 +58,7 @@ from .setup_view import draw_race_select, draw_setup
 from .settings_view import SECTIONS as SETTINGS_SECTIONS, draw_settings
 from .races import SETUP_RACES as RACES
 from .observer_view import draw_observer, draw_observer_header
-from .empires import PLAYER_PALETTES, empire_color
+from .empires import PLAYER_PALETTES, empire_color, max_rivals
 from . import diplomacy as diplomacy_balance
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
@@ -829,6 +829,7 @@ class App:
                      "This ends treaties and sets relations to -100.", "Attack outpost", attack)
 
     def reset_empire_view(self):
+        self.list_pages={}
         self.specialist_return="empire"
         self.specialist_tab="visitors"
         self.specialist_selected=None
@@ -2669,8 +2670,8 @@ class App:
         if self.empire==RACES[self.race_id].default_empire:
             self.empire=RACES[race_id].default_empire
         self.race_id=race_id
-        if race_id=="observer":
-            self.rival_count=max(3,self.rival_count)
+        if self.rival_count!="all":
+            self.rival_count=min(max_rivals(race_id), max(3,self.rival_count) if race_id=="observer" else self.rival_count)
         self.field=None
         pg.key.stop_text_input()
 

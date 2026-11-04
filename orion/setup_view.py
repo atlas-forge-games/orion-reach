@@ -3,7 +3,7 @@
 import pygame as pg
 
 from .model import GALAXY_SIZES
-from .empires import MAX_RIVALS
+from .empires import max_rivals
 from .race_art import draw_race_portrait
 from .races import SETUP_RACES as RACES
 from .personalities import PERSONALITIES
@@ -79,16 +79,20 @@ def draw_setup(app):
     text(surface, "You see everything; AI explores." if observer and app.fog_of_war else
          "Explore to reveal planets and fleets." if app.fog_of_war else "All systems and fleets are visible.",
          (432, 583), 10, MUTED)
-    text(surface, "COMPUTER EMPIRES" if observer else "NUMBER OF RIVALS", (430, 600), 11, GOLD, "mono", 1)
-    for count in range(MAX_RIVALS+1):
-        x = 430+count*160
-        app.button(f"rival_count_{count}", "0 · Solo" if count == 0 else str(count),
-                   (x, 622, 146, 43), lambda n=count: app.choose_rival_count(n), enabled=not observer or count >= 2)
+    text(surface, "COMPUTER EMPIRES" if observer else "NUMBER OF RIVALS", (430, 605), 11, GOLD, "mono", 1)
+    limit = max_rivals(race.id)
+    for count in range(limit+1):
+        x, width = (430, 72) if count == 0 else (510+(count-1)*46, 40)
+        app.button(f"rival_count_{count}", "Solo" if count == 0 else str(count),
+                   (x, 627, width, 43), lambda n=count: app.choose_rival_count(n), enabled=not observer or count >= 2)
         if app.rival_count == count:
-            pg.draw.line(surface, GOLD, (x, 665), (x+146, 665), 2)
-    paragraph(surface, "Choose 2–5 computer empires. Random races and starting locations. Battles resolve automatically." if observer else
-              "Random rival races and starting locations. Every empire begins with its own fleet and economy.",
-              (431, 682), 930, 13, MUTED, 18)
+            pg.draw.line(surface, GOLD, (x, 670), (x+width, 670), 2)
+    app.button("rival_count_all", "All civilizations", (1124, 627, 252, 43),
+               lambda: app.choose_rival_count("all"), "primary" if app.rival_count == "all" else "ghost")
+    chosen = limit if app.rival_count == "all" else app.rival_count
+    summary = (f"{chosen} computer civilizations · Battles resolve automatically." if observer else
+               f"{chosen+1} civilizations · Your empire + {chosen} unique rivals." if chosen else "Solo campaign · No rivals.")
+    paragraph(surface, summary+" Random races and starting locations.", (431, 682), 930, 13, MUTED, 18)
     text(surface, "VICTORY CONDITIONS", (430, 721), 11, GOLD, "mono", 1)
     text(surface, "All off = open-ended play", (1376, 721), 12, MUTED, right=True)
     captions = ("Last surviving empire", "Win the galactic election", "Each civilization has a unique goal")

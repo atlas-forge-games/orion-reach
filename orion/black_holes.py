@@ -160,7 +160,13 @@ def detail(game, event):
 def seed_sites(game):
     """Use independent randomness and keep homes, normal guardians and IDs intact."""
     from . import monsters
-    homes = [system for system in game.systems if any(p.colonized for p in system.worlds)]
+    home_ids = {r.home_system for r in game.opponents.values()}
+    if not game.is_observer:
+        home_ids.add(0)
+    # Wanderers leave their starting planet to live aboard a mothership. Their
+    # home system must remain intact even though it has no planetary colony.
+    homes = [system for system in game.systems
+             if system.id in home_ids or any(p.colonized for p in system.worlds)]
     candidates = [s for s in game.systems if s.id != 0 and s not in homes and monsters.at(game, s.id) is None]
     rng = random.Random(f"orion-black-holes-v1:{game.seed}")
     rng.shuffle(candidates)

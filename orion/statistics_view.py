@@ -5,6 +5,7 @@ import pygame as pg
 
 from .statistics import METRICS, visible_series
 from .races import RACES
+from .pagination import page_rows
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, shorten, text, text_image
 
 PLOT = pg.Rect(144, 396, 844, 316)
@@ -123,7 +124,8 @@ def draw_statistics(app):
         centered(surface, "Advance turns to extend the history.", (PLOT.centerx, PLOT.top+20), 14, MUTED)
 
     text(surface, f"TURN {cursor} · "+("LIVE" if cursor == game.turn else "HISTORY"), (1070, 343), 12, GOLD, "mono")
-    for index, (owner, rows) in enumerate(series.items()):
+    legend = page_rows(app, list(series.items()), 6, "statistics_empires", (1064, 704, 298, 36))
+    for index, (owner, rows) in enumerate(legend):
         top = 370+index*54
         color = app.empire_color(owner)
         selected = owner not in app.statistics_hidden

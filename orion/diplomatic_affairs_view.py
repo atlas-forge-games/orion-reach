@@ -2,6 +2,7 @@
 from . import coalitions, tribute, first_contact, diplomatic_preferences as preferences
 from .model import RuleError
 from .races import RACES
+from .pagination import page_rows
 from .ui import panel, text, paragraph, shorten, GOLD, CYAN, INK, MUTED, RED, PANEL, LINE
 
 
@@ -101,13 +102,14 @@ def draw_coalitions(app, owner):
     if target not in options:
         target = options[0]
         app.dialog['coalition_choice'] = target
-    for i, other in enumerate(options):
+    for i, other in enumerate(page_rows(app, options, 5, "coalition_targets", (196, 529, 330, 36), state=app.dialog)):
         app.button('dialog_target_'+other, shorten(game.empire_name_for(other), 290, 15), (196, 274+i*49, 330, 40),
                    lambda o=other: app.dialog.update(coalition_choice=o), 'primary' if other == target else 'ghost')
     report, accepted = coalitions.willingness(game, owner, 'player', target)
     error = coalitions.proposal_error(game, 'player', owner, target)
-    text(surface, 'WILL ACCEPT' if accepted and not error else 'NOT READY TO AGREE', (566, 239), 13,
-         CYAN if accepted and not error else GOLD, 'mono')
+    text(surface, shorten('Against '+game.empire_name_for(target), 460, 15), (566, 239), 15, INK)
+    text(surface, 'WILL ACCEPT' if accepted and not error else 'NOT READY TO AGREE', (1246, 239), 13,
+         CYAN if accepted and not error else GOLD, 'mono', right=True)
     text(surface, f'Willingness {report.score:+} / requires {coalitions.ACCEPTANCE}', (566, 274), 22, INK)
     for i, (label, value) in enumerate(report.reasons):
         y = 319+i*28

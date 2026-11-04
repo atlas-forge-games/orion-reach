@@ -18,7 +18,7 @@ from orion.app import App
 from orion.empire import summarize_empire
 from orion.model import GameState, SaveError, new_game
 from orion.statistics_view import PLOT, axis_ticks, compact_points
-from orion.storage import Storage
+from orion.storage import SAVE_VERSION, Storage
 
 
 def campaign(**kwargs):
@@ -95,7 +95,7 @@ class StatisticsRulesTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 storage = Storage(folder)
                 restored, meta = storage.load(storage.save(game))
-                self.assertEqual(meta["version"], 52)
+                self.assertEqual(meta["version"], SAVE_VERSION)
                 self.assertEqual(restored, game)
                 game.advance_turn()
                 restored.advance_turn()
@@ -183,8 +183,11 @@ class StatisticsUITests(unittest.TestCase):
         app.render()
         button = next(b for b in app.buttons if b.key == key)
         self.assertTrue(button.enabled, key)
-        v = app.viewport
-        pos = (round(v.x+button.rect.centerx*v.w/1440), round(v.y+button.rect.centery*v.h/900))
+        app.display_view.ensure_visible(button.rect)
+        app.render()
+        app.present()
+        point = app.canvas.point(button.rect.center)
+        pos = (point[0]+app.viewport.x, point[1]+app.viewport.y)
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             app.handle_event(pg.event.Event(event, button=1, pos=pos))
             app.render()
@@ -223,9 +226,11 @@ class StatisticsUITests(unittest.TestCase):
         self.app.render()
         self.assertIn("statistics_empire_rival", [b.key for b in self.app.buttons])
         self.assertEqual(statistics.visible_series(self.app.game, "population")["rival"][0][0], 1)
-        self.app.viewport = pg.Rect(90, 80, 960, 600)
-        v = self.app.viewport
-        pos = (round(v.x+PLOT.centerx*v.w/1440), round(v.y+PLOT.centery*v.h/900))
+        self.app.window = pg.display.set_mode((1080, 900))
+        self.app.render()
+        self.app.present()
+        point = self.app.canvas.point(PLOT.center)
+        pos = (point[0]+self.app.viewport.x, point[1]+self.app.viewport.y)
         self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=pos))
         self.app.render()
         self.assertEqual(self.app.statistics_cursor_turn, 3)
@@ -242,9 +247,18 @@ class StatisticsUITests(unittest.TestCase):
         self.app.game = game
         self.app.open_statistics()
         for metric in statistics.METRICS:
-            self.app.set_statistics_metric(metric); self.app.render()
-            self.assertEqual(len([b for b in self.app.buttons if b.key.startswith("statistics_empire_")]), 7)
-            self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in self.app.buttons))
+            self.app.list_pages["statistics_empires"] = 0
+            self.app.set_statistics_metric(metric)
+            self.app.render()
+            seen = set()
+            while True:
+                seen.update(b.key.removeprefix("statistics_empire_") for b in self.app.buttons
+                            if b.key.startswith("statistics_empire_"))
+                self.assertTrue(all(self.app.canvas.get_rect().contains(b.rect) for b in self.app.buttons))
+                if not next(b for b in self.app.buttons if b.key == "statistics_empires_next").enabled:
+                    break
+                self.click("statistics_empires_next")
+            self.assertEqual(seen, set(game.owners))
         self.app.statistics_hidden = set(game.owners)
         self.app.render()
         self.app.game = campaign(race_id="observer", rival_count=3)

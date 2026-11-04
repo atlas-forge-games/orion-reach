@@ -1,0 +1,29 @@
+AGE OF THE STARS / ORION REACH — v0.88.0 ALL CIVILIZATIONS
+
+INSTALL
+Close the game. Extract this ZIP over v0.87.0 into the folder containing
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+This is an incremental update, not a complete game. No new dependency is needed.
+
+CHANGES
+- New Game > Galaxy options: choose All civilizations to include all 13 races.
+- Play with 0-12 unique rivals, or observe 2-13 computer empires.
+- Full rosters work on all galaxy sizes with distinct, equipped home systems.
+- Council, statistics, rival objectives and coalition targets have page controls.
+- Existing map colors are preserved; additional empires have distinct colors.
+- Black holes cannot replace the Wanderers' starting home system.
+- Shared Galaxy map / End turn navigation and interface sizing are preserved.
+
+SAVES
+Save format 61 reads earlier campaigns without adding rivals to them.
+Choose All civilizations when starting a new campaign. Saves written by this
+release require v0.88.0 or later.
+
+VALIDATION
+12 focused tests cover full rosters, seeded generation, save/load, 13 independent
+AI empires and paging with enlarged text. Additional regression results and
+three failures already present in v0.87.0 are documented in
+docs/all-civilizations.md. Sixteen full-roster previews were rendered and
+representative screens visually checked.
+
+No files were committed or pushed by this update.

@@ -17,6 +17,7 @@ from orion import combat, first_contact, news, tomb_worlds
 from orion.model import GameState, RuleError, SaveError, Ship, new_game
 from orion.observer import MAX_EVENTS
 from orion.races import RACES, SETUP_RACES
+from orion.empires import MAX_RIVALS
 from orion.storage import Storage
 from orion.research import TECHNOLOGIES
 from orion.ui import text_image
@@ -54,10 +55,10 @@ class ObserverRulesTests(unittest.TestCase):
             self.assertGreaterEqual(len(game.ships_owned_by(owner)), 3)
 
     def test_setup_limits_and_observer_rival_are_validated(self):
-        for count in (0, 1, 6, True):
+        for count in (0, 1, MAX_RIVALS+1, True):
             with self.assertRaises(SaveError):
                 observation(rival_count=count)
-        for count in (2, 5):
+        for count in (2, 5, MAX_RIVALS):
             self.assertEqual(len(observation(rival_count=count).owners), count)
         with self.assertRaises(SaveError):
             new_game(rival_race_id="observer")

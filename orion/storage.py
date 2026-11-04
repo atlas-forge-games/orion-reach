@@ -15,7 +15,7 @@ from .galaxy_style import DEFAULT_STYLE, STYLES
 from . import balance
 from .display import UI_SCALES
 
-SAVE_VERSION = 60
+SAVE_VERSION = 61
 DEFAULT_SETTINGS = {"fullscreen": False, "animated_background": True, "sound": True,
                     "music": True, "music_volume": 30, "galaxy_palette": DEFAULT_PALETTE,
                     "galaxy_background": True, "autosave": True,

@@ -11,6 +11,7 @@ from .council_view import council_summary
 from .victory import CONDITION_NAMES, colonies, gate_blocked, gate_site, race_goal, known_race_goals
 from .race_art import draw_race_portrait
 from .races import RACES
+from .pagination import page_rows
 from .exploration import known_rival_colonies
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RIVAL_COLOR, panel, paragraph, shorten, text
 
@@ -75,7 +76,7 @@ def draw_race_objectives(app):
     panel(surface, (842, 286, 534, 513))
     text(surface, "EMPIRES YOU HAVE MET", (862, 307), 12, GOLD, "mono")
     rows = known_race_goals(game)
-    for i, (owner, other) in enumerate(rows):
+    for i, (owner, other) in enumerate(page_rows(app, rows, 10, "objectives_empires", (1044, 747, 312, 36))):
         y = 344+i*37
         active = bool(colonies(game, owner))
         label = game.empire_name_for(owner) if active else game.empire_name_for(owner)+" · Eliminated"
