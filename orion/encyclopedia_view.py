@@ -90,7 +90,9 @@ def draw_info(app):
     app.button("info_back", "← Back · F1", (64, 124, 192, 46), app.close_info, "ghost")
     text(surface, "Galactic encyclopedia", (282, 127), 32, INK, "title")
     text(surface, f"{len(articles())} ENTRIES", (1376, 143), 11, CYAN, "mono", right=True)
-    text(surface, "The guide to your expedition: rules, civilizations and the tools to build an empire.", (66, 191), 15, MUTED)
+    caption = (f"{app.game.galaxy_size} galaxy · Seed {app.game.seed}" if app.game else
+               "The guide to your expedition, its civilizations and the tools to build an empire.")
+    text(surface, caption, (66, 191), 15, MUTED)
 
     for rect in (CATEGORY_RECT, INDEX_RECT, ARTICLE_RECT):
         panel(surface, rect, (9, 20, 29))

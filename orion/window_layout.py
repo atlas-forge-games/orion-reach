@@ -18,8 +18,6 @@ def interface_scale(window, percent=100):
 
 def view_profile(app):
     screen, game = app.screen, app.game
-    if screen == 'system' and game.systems[game.selected_system].kind == 'Black hole':
-        return 'galaxy_system'
     if screen == 'settings' and not app.settings_section:
         return 'settings_overview'
     if screen == 'objectives':
@@ -78,9 +76,9 @@ class LayoutAxis:
 class WindowLayout:
     x: LayoutAxis
     y: LayoutAxis
-    # A map or a battle occupies a row with an inspector beside it. Inside
-    # that row extra width belongs to the inspector, keeping distances and
-    # tactical cells at one scale. The header and dock can still span the row.
+    # A battle occupies a row with an inspector beside it. Inside
+    # that row extra width belongs to the inspector, keeping tactical cells
+    # at one scale. The header and dock can still span the row.
     board: tuple | None = None
 
     @classmethod
@@ -124,7 +122,7 @@ class WindowLayout:
 @lru_cache(maxsize=64)
 def reference_layout(source, available, screen, *, compact=True):
     """Extra room goes into content. Keep outer gutters and dock margins stable."""
-    spatial = screen in ('galaxy','galaxy_system','combat')
+    spatial = screen == 'combat'
     if compact and available[0] < (source[0] if spatial else 1200):
         return PanelFlow.build(COMPACT_ROWS.get(screen, SINGLE_COLUMN), available, screen)
     width = available[0] if compact else max(source[0],available[0])
@@ -132,12 +130,7 @@ def reference_layout(source, available, screen, *, compact=True):
     if target == source:
         return None
     if spatial:
-        if screen != 'combat':
-            from .app import MAP
-            board = MAP
-        else:
-            from .combat_camera import BOARD
-            board = BOARD
+        from .combat_camera import BOARD as board
         row = (board.top, board.bottom, LayoutAxis(source[0], target[0], board.right, 64))
         return WindowLayout.for_view(source, target, fixed_x=(64, 64),
                                      fixed_y=(board.bottom, 100), board=row)
@@ -163,8 +156,6 @@ COMPACT_ROWS = {
     'planet': ((50, (660,)), (306, (278, 1068)), (810, ()), FOOTER),
     'planet_colony': ((50, (660,)), (306, (278, 1068)), (702, ()), (810, (946,)), FOOTER),
     'planet_habitat': ((50, (660,)), (306, (278, 1068)), (840, (750,)), FOOTER),
-    'galaxy': ((131, (263, 488, 711, 934, 1157)), (180, (650,)), (754, (1038,)),
-               (810, (1040,)), (900, (636, 1075))),
     'combat': ((110, ()), (749, (1050,)), (810, ()), FOOTER),
     'designer': (HEADER, (208, ()), (808, (342, 973)), FOOTER),
     'specialists': (HEADER, (280, ()), (823, (422,)), FOOTER),
@@ -193,7 +184,6 @@ COMPACT_ROWS = {
     'news': (HEADER, (821,()), FOOTER),
     'result': ((572,()), (715,(721,)), (811,()), FOOTER),
 }
-COMPACT_ROWS['galaxy_system'] = (*COMPACT_ROWS['galaxy'][:-1], FOOTER)
 
 
 @dataclass(frozen=True)
@@ -233,9 +223,9 @@ class PanelFlow:
                     cell = cells.pop(0)
                     line.append(cell)
                     total += cell.w
-                # Preserve the aspect of the map and the battle grid, including
+                # Preserve the aspect of the battle grid, including
                 # the camera positions used for zoom and selection.
-                spatial = (screen,top) in (('galaxy',180),('galaxy_system',180),('combat',110)) and line[0].left == 0
+                spatial = screen == 'combat' and top == 110 and line[0].left == 0
                 row_height = round((bottom-top)*width/total) if spatial else bottom-top
                 if bottom == 900:
                     row_height = max(90, row_height)

@@ -22,8 +22,7 @@ from test_galaxy_fleets import fixture
 
 class RoutePreviewTests(unittest.TestCase):
     def setUp(self):
-        from orion.app import App, MAP
-        self.map = MAP
+        from orion.app import App
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.addCleanup(pg.quit)
@@ -54,7 +53,7 @@ class RoutePreviewTests(unittest.TestCase):
         return [(call.args[1], call.args[2], call.args[3]) for call in draw.call_args_list]
 
     def marker(self, identifier):
-        return next(rect for ships, rect, _ in fleet_markers(self.app, self.map)
+        return next(rect for ships, rect, _ in fleet_markers(self.app, self.app.map_rect)
                     if any(ship.id == identifier for ship in ships))
 
     def assert_on_route(self, identifier):
@@ -150,14 +149,15 @@ class RoutePreviewTests(unittest.TestCase):
         origin.x = origin.y = .5
         ship.destination, ship.departure_pending = 1, True
         ship.travel_total = ship.turns_remaining = 4
+        scale = self.app.map_camera.fit_scale(self.app.map_rect)
         for dx, dy in ((0, -80), (80, -80), (80, 0), (80, 80),
                        (0, 80), (-80, 80), (-80, 0), (-80, -80)):
-            target.x = .5+dx/(self.map.w-80)
-            target.y = .5+dy/(self.map.h-64)
+            target.x = .5+dx/(882*scale)
+            target.y = .5+dy/(509*scale)
             for zoom in (1, 2, 4):
                 self.app.map_camera.zoom = zoom
-                self.app.map_camera.center_on(.5, .5, self.map)
-                self.app.map_camera.pan(13, -7, self.map)
+                self.app.map_camera.center_on(.5, .5, self.app.map_rect)
+                self.app.map_camera.pan(13, -7, self.app.map_rect)
                 before = self.app.game.to_dict()
                 self.app.render()
                 self.assert_on_route(ship.id)

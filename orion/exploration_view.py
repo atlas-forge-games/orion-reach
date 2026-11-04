@@ -19,44 +19,46 @@ def draw_system_intelligence(app, star):
         black_hole_view.draw_panel(app, star)
         return
     surface, game = app.canvas, app.game
+    r = app.galaxy_layout.inspector
+    x, width = r.x+16, r.w-32
     known = game.known_system(star.id)
     live = game.system_visible(star.id)
-    panel(surface, (1051, 180, 325, 573))
+    panel(surface, r)
     heading = "SYSTEM INTELLIGENCE" if live else "LAST KNOWN SURVEY" if known else "UNCHARTED SYSTEM"
-    text(surface, heading, (1075, 203), 10, GOLD, "mono", 1)
-    text(surface, game.system_name(star.id), (1075, 245), 31, INK, "title")
-    text(surface, star.kind, (1075, 290), 14, MUTED)
+    text(surface, heading, (x, r.y+23), 10, GOLD, "mono", 1)
+    text(surface, game.system_name(star.id), (x, r.y+65), 31, INK, "title")
+    text(surface, star.kind, (x, r.y+110), 14, MUTED)
     guardian_status = monsters.known_status(game, star.id)
     guardian = monsters.at(game, star.id) if guardian_status else None
     if guardian:
-        ship_icon(surface, (1213, 366), 1.2, kind=guardian.kind)
-        text(surface, guardian.spec.name, (1075, 414), 17, RED if guardian_status == "alive" else CYAN)
-        text(surface, monsters.reward_caption(guardian, defeated=guardian_status == "defeated"), (1075, 441), 12, GOLD)
+        ship_icon(surface, (r.centerx, r.y+186), 1.2, kind=guardian.kind)
+        text(surface, guardian.spec.name, (x, r.y+234), 17, RED if guardian_status == "alive" else CYAN)
+        text(surface, monsters.reward_caption(guardian, defeated=guardian_status == "defeated"), (x, r.y+261), 12, GOLD)
     else:
-        draw_star(surface, (1213, 385), 26, STAR_COLORS[star.kind])
+        draw_star(surface, (r.centerx, r.y+205), 26, STAR_COLORS[star.kind])
     if known is None:
-        text(surface, "SURVEY REQUIRED", (1075, 456), 11, CYAN, "mono", 1)
+        text(surface, "SURVEY REQUIRED", (x, r.y+276), 11, CYAN, "mono", 1)
         paragraph(surface, "The star is on your charts. Its planets, resources and inhabitants are unknown until a ship arrives.",
-                  (1075, 492), 274, 15, MUTED, 25)
-        text(surface, "Scouts can also recover discoveries.", (1075, 626), 12, GOLD)
+                  (x, r.y+312), width, 15, MUTED, 25)
+        text(surface, "Scouts can also recover discoveries.", (x, r.y+446), 12, GOLD)
     else:
         owners = {owner for p in known.worlds for owner in (p.owner, p.outpost_owner) if owner}
         allegiance = ("Shared system" if len(owners)>1 else "Your empire" if "player" in owners else
                       " / ".join(game.empire_name_for(o) for o in game.opponents if o in owners) or "Unclaimed")
         survey = game.exploration.survey(star.id)
         label = "LIVE INTELLIGENCE" if live else f"OBSERVED ON TURN {survey.last_seen}"
-        text(surface, label, (1075, 462), 10, CYAN if live else GOLD, "mono", 1)
+        text(surface, label, (x, r.y+282), 10, CYAN if live else GOLD, "mono", 1)
         rows = [("Planets", str(known.planets)), ("Primary world", known.biome if known.planets else "None"),
                 ("Minerals", known.richness if known.planets else "—"), ("Allegiance", allegiance)]
         for index, (key, value) in enumerate(rows):
-            y = 500+index*44
-            text(surface, key, (1075, y), 13, MUTED)
-            text(surface, value, (1352, y), 13, INK, right=True)
-            pg.draw.line(surface, LINE, (1075, y+30), (1352, y+30))
+            y = r.y+320+index*44
+            text(surface, key, (x, y), 13, MUTED)
+            text(surface, value, (r.right-16, y), 13, INK, right=True)
+            pg.draw.line(surface, LINE, (x, y+30), (r.right-16, y+30))
         scan = "Scout survey complete" if star.id in game.exploration.scanned_player else "A scout can search for discoveries"
         if guardian:
             scan = ("Guardian attacks on arrival" if live else "Last seen guarded · Revisit to update") if guardian_status == "alive" else "Guardian defeated · Worlds accessible"
-        text(surface, scan, (1075, 671), 11, RED if guardian_status == "alive" else MUTED)
+        text(surface, scan, (x, r.bottom-82), 11, RED if guardian_status == "alive" else MUTED)
 
 
 def draw_unsurveyed_system(app, system):

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import pygame as pg
-from orion.app import App, MAP
+from orion.app import App
 from orion.model import Ship, new_game
 
 
@@ -33,7 +33,7 @@ def main():
             app.game.next_ship_id = 4
             app.go("galaxy")
             app.map_camera.zoom = 3
-            app.map_camera.center_on((origin.x+target.x)/2, (origin.y+target.y)/2, MAP)
+            app.map_camera.center_on((origin.x+target.x)/2, (origin.y+target.y)/2, app.map_rect)
             app.open_map_fleet(1)
             app.toggle_fleet_ship(3)  # Leave a ship docked to show the split clearly.
             app.mouse = app.star_pos(target)

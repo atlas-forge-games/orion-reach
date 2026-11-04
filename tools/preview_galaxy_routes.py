@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import pygame as pg
-from orion.app import App, MAP
+from orion.app import App
 from preview_galaxy_styles import demonstration
 
 
@@ -37,7 +37,7 @@ def main():
             ship = next(s for s in app.game.ships if s.in_transit)
             origin, target = app.game.systems[ship.system_id], app.game.systems[ship.destination]
             app.map_camera.zoom = 3
-            app.map_camera.center_on((origin.x+target.x)/2, (origin.y+target.y)/2, MAP)
+            app.map_camera.center_on((origin.x+target.x)/2, (origin.y+target.y)/2, app.map_rect)
             app.render()
             pg.image.save(app.canvas, str(out/"galaxy_routes_zoomed_v0833.png"))
             assert app.game.to_dict() == before

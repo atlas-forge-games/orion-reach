@@ -215,9 +215,7 @@ def star_label_rects(app, map_rect):
     obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
                  pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
                  for s in systems]
-    obstacles += [pg.Rect(map_rect.x, map_rect.y, map_rect.w, 34)]
-    if style != "clean":
-        obstacles.append(guardian_legend_rect(map_rect))
+    obstacles.extend(app.map_overlays())
     if style == "clean":
         obstacles.extend(rect.inflate(4, 4) for _, rect, _ in compact_fleet_markers(app, map_rect))
     preferred = []
@@ -232,7 +230,7 @@ def star_label_rects(app, map_rect):
 
 
 def star_obstacles(app, map_rect, radius=21):
-    obstacles = []
+    obstacles = app.map_overlays()
     for system in app.map_systems():
         x, y = app.star_pos(system)
         obstacles.append(hit_rect((x, y)) if system.kind == black_holes.KIND else
@@ -249,9 +247,8 @@ def known_guardian_kinds(game):
     return [kind for kind in monsters.MONSTERS if kind in seen]
 
 
-def guardian_legend_rect(map_rect, outside=False):
-    return pg.Rect(map_rect.x+12, map_rect.bottom+4 if outside else map_rect.bottom-34,
-                   map_rect.w-24, 20 if outside else 24)
+def guardian_legend_rect(map_rect):
+    return pg.Rect(map_rect.x, map_rect.bottom+3, map_rect.w, 24)
 
 
 def guardian_markers(app, map_rect):
@@ -259,8 +256,6 @@ def guardian_markers(app, map_rect):
     guardians = [g for g in app.game.guardians if monsters.known_status(app.game, g.system_id) == "alive"
                  and map_rect.collidepoint(app.star_pos(app.game.systems[g.system_id]))]
     obstacles = star_obstacles(app, map_rect)
-    if not clean_map(app):
-        obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     anchors = [app.star_pos(app.game.systems[g.system_id]) for g in guardians]
     preferred = [(round(x)-34, round(y)-33, 24, 24) for x, y in anchors]
     rectangles = marker_layout(tuple(map_rect.inflate(-8, -8)), tuple(tuple(r) for r in obstacles), tuple(preferred))
@@ -281,21 +276,19 @@ def draw_map_guardians(app, map_rect):
                        lambda sid=guardian.system_id: app.select_star(sid))
     kinds = known_guardian_kinds(app.game)
     ordering = app.fleet_popup or app.map_order_ids or app.route_ship_id is not None
-    if kinds and not (compact and ordering):
-        rect = guardian_legend_rect(map_rect, outside=compact)
-        if compact:
-            # Fixed dock icons must not disappear underneath an in-map legend.
-            app.canvas.set_clip(pg.Rect(map_rect.x, map_rect.bottom, map_rect.w, 28))
+    if kinds and not ordering:
+        rect = guardian_legend_rect(map_rect)
+        app.canvas.set_clip(rect)
         panel(app.canvas, rect, (9, 17, 28))
-        text(app.canvas, "GUARDIANS", (rect.x+10, rect.y+7), 9, MUTED, "mono")
+        text(app.canvas, "GUARDIANS", (rect.x+10, rect.y+3), 14, MUTED, "mono")
         entries = [(kind, monsters.MONSTERS[kind].name) for kind in kinds if kind in monsters.PRIZE_WORLDS]
         if any(kind not in monsters.PRIZE_WORLDS for kind in kinds):
             entries.append(("crown_sentinel", "Legendary guardian"))
-        spacing = (rect.w-130)//max(4, len(entries))
+        spacing = (rect.w-110)//max(1, len(entries))
         for index, (kind, name) in enumerate(entries):
-            x, y = rect.x+119+index*spacing, rect.centery
+            x, y = rect.x+109+index*spacing, rect.centery
             draw_guardian_symbol(app.canvas, (x, y), kind, 15)
-            text(app.canvas, name, (x+17, y-6), 10 if len(entries)>4 else 11, monsters.MONSTERS[kind].color)
+            text(app.canvas, shorten(name, spacing-23, 14), (x+13, y-8), 14, monsters.MONSTERS[kind].color)
     app.canvas.set_clip(old_clip)
 
 
@@ -307,9 +300,6 @@ def pirate_markers(app, map_rect):
     if not systems:
         return []
     obstacles = star_obstacles(app, map_rect)
-    if not clean_map(app):
-        obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
-    obstacles.append(pg.Rect(map_rect.x, map_rect.y, map_rect.w, 38))
     obstacles.extend(rect.inflate(3, 3) for _, rect, _ in guardian_markers(app, map_rect))
     anchors = [app.star_pos(app.game.systems[sid]) for sid in systems]
     preferred = [(round(x)+17, round(y)-33, 24, 24) for x, y in anchors]
@@ -339,11 +329,8 @@ def fleet_markers(app, map_rect):
     # Reserve each star's full click target; extra halo padding can consume the
     # last free badge positions on a 72-system map with multiple fleets per star.
     obstacles = star_obstacles(app, map_rect, radius=18)
-    obstacles.append(pg.Rect(map_rect.x, map_rect.y, map_rect.w, 38))
     obstacles.extend(rect.inflate(4, 4) for _, rect, _ in guardian_markers(app, map_rect))
     obstacles.extend(rect.inflate(4, 4) for _, rect, _ in pirate_markers(app, map_rect))
-    if known_guardian_kinds(app.game):
-        obstacles.append(guardian_legend_rect(map_rect).inflate(4, 4))
     bounds = map_rect.inflate(-8, -8)
     anchors, preferred_rects = [], []
     groups = []
@@ -441,16 +428,17 @@ def draw_fleet_popup(app):
     app.map_order_ids = tuple(sorted(app.fleet_selected_ids)) if editable else ()
     start = app.manifest_page*FLEET_SHIPS_PER_PAGE
     visible = ships[start:start+FLEET_SHIPS_PER_PAGE]
-    x, y, width = 1051, 180, 325
+    pane = app.galaxy_layout.inspector
+    x, y, width = pane.x, pane.y, pane.w
     bottom = y+120+len(visible)*48
-    rect = pg.Rect(x, y, width, bottom-y+150)
+    rect = pane
     app.fleet_popup_rect = rect
     panel(surface, rect, (10, 24, 34), app.empire_color(first.owner))
     app.button("fleet_popup_panel", "", rect, lambda: None, "hotspot")
     origin = game.systems[first.system_id]
     title = "Fleet in transit" if first.in_transit else f"Fleet at {game.system_name(origin.id)}"
-    text(surface, shorten(title, 241, 22), (x+18, y+17), 22, INK)
-    close = pg.Rect(x+278, y+13, 31, 31)
+    text(surface, shorten(title, width-77, 22), (x+18, y+17), 22, INK)
+    close = pg.Rect(pane.right-47, y+13, 31, 31)
     app.button("fleet_popup_close", "", close, app.close_fleet_popup)
     cx, cy = close.center
     pg.draw.line(surface, INK, (cx-4, cy-4), (cx+4, cy+4), 1)
@@ -458,7 +446,7 @@ def draw_fleet_popup(app):
     status = (f"To {game.system_name(first.destination)} · {turn_label(first.turns_remaining)} remaining"
               if first.in_transit else f"Departure queued · {turn_label(first.turns_remaining)} to {game.system_name(first.destination)}" if first.departure_pending else
               "Select ships, then click a destination" if own else "Computer fleet · inspection only" if game.is_observer else "Rival fleet · inspection only")
-    text(surface, shorten(status, 289, 12), (x+18, y+51), 12, GOLD if first.departure_pending else MUTED)
+    text(surface, shorten(status, width-36, 14), (x+18, y+51), 12, GOLD if first.departure_pending else MUTED)
     if editable:
         app.button("fleet_select_all", "All", (x+18, y+78, 85, 29), app.select_fleet_ships)
         app.button("fleet_select_none", "Clear", (x+114, y+78, 95, 29), lambda: app.select_fleet_ships(False))
@@ -467,7 +455,7 @@ def draw_fleet_popup(app):
     for index, ship in enumerate(visible):
         top = y+120+index*48
         selected = ship.id in app.fleet_selected_ids
-        row = pg.Rect(x+16, top, 293, 42)
+        row = pg.Rect(x+16, top, width-32, 42)
         panel(surface, row, (18, 39, 48) if selected else (8, 19, 27), CYAN if selected else LINE)
         if editable:
             box = pg.Rect(x+26, top+13, 15, 15)
@@ -481,7 +469,7 @@ def draw_fleet_popup(app):
         if editable:
             app.button(f"fleet_select_{ship.id}", "", row, lambda sid=ship.id: app.toggle_fleet_ship(sid), "hotspot")
         if ship.habitat:
-            app.button(f"mothership_open_{ship.id}", "Home", (x+236, top+18, 65, 23), lambda sid=ship.id: app.open_mothership(sid))
+            app.button(f"mothership_open_{ship.id}", "Home", (pane.right-89, top+18, 65, 23), lambda sid=ship.id: app.open_mothership(sid))
     pages = max(1, (len(ships)+FLEET_SHIPS_PER_PAGE-1)//FLEET_SHIPS_PER_PAGE)
     text(surface, f"PAGE {app.manifest_page+1}/{pages}", (x+18, bottom+12), 10, FAINT, "mono")
     app.button("fleet_page_previous", "←", (x+203, bottom+4, 47, 27), lambda: app.change_manifest_page(-1), enabled=app.manifest_page>0)
@@ -499,7 +487,7 @@ def draw_fleet_popup(app):
         duration = first.turns_remaining if keeping else game.travel_turns(origin, target, ships=selected)
         destination = (f"To {game.system_name(target.id)} · {turn_label(duration)}"
                        if target.id != origin.id else f"At {game.system_name(origin.id)}")
-        text(surface, shorten(destination, 290, 13), (x+18, bottom+66), 13, RED if blocked else INK)
+        text(surface, shorten(destination, width-36, 14), (x+18, bottom+66), 13, RED if blocked else INK)
         distance = game.supply_distance(target.id)
         fuel = ("Saved course kept · outside current range" if keeping and outside else
                 f"{'Out of range' if blocked else 'Fuel range'} · {distance:.1f} / {game.fuel_range(ships=selected)} ly from supply")
@@ -509,7 +497,7 @@ def draw_fleet_popup(app):
             fuel = f"Route speed +{route}%"+(f" · Final {radius:g} ly: −{slow:g}%" if slow else " · In fuel range")
         if lane:
             fuel = "Hyperlane · 1 turn · No fuel limit"
-        text(surface, shorten(fuel, 290, 11), (x+18, bottom+90), 11, RED if blocked else CYAN)
+        text(surface, shorten(fuel, width-36, 14), (x+18, bottom+90), 11, RED if blocked else CYAN)
         hint = ("Establish an outpost or research fuel tanks." if blocked else
                 f"Click {game.system_name(origin.id)} to cancel before End Turn." if first.departure_pending
                 else "Select at least one ship to give orders." if not app.fleet_selected_ids
@@ -530,7 +518,7 @@ def draw_fleet_popup(app):
             text(surface, details, (x+18, bottom+90), 11, CYAN)
         text(surface, "Orders are locked during flight." if own else "Only your empire's ships accept orders.", (x+18, bottom+66), 12, MUTED)
         hint = "Escape or × closes this popup."
-    text(surface, shorten(hint, 290, 11), (x+18, bottom+116), 11, RED if danger else GOLD if first.departure_pending else MUTED)
+    paragraph(surface, hint, (x+18, bottom+112), width-36, 14, RED if danger else GOLD if first.departure_pending else MUTED, 19)
 
 
 def draw_fleet(app):
@@ -615,28 +603,34 @@ def draw_fleet(app):
 
 def draw_order_panel(app, target):
     surface, game = app.canvas, app.game
+    r = app.galaxy_layout.inspector
+    x, width = r.x+16, r.w-32
     ships = [s for s in game.ships if s.id in app.map_order_ids]
     if not ships:
         return
     origin = game.systems[ships[0].system_id]
     duration = game.travel_turns(origin, target, ships=ships)
-    panel(surface, (1051, 180, 325, 573), border=GOLD)
-    text(surface, "CHOOSE DESTINATION", (1075, 203), 10, GOLD, "mono", 1)
-    text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (1075, 245), 25, INK, "title")
-    text(surface, f"Departing {game.system_name(origin.id)}", (1075, 289), 14, CYAN)
-    for index, (kind, spec) in enumerate({**SHIP_TYPES, **HULLS}.items()):
-        count = sum(s.kind == kind for s in ships)
-        text(surface, shorten(f"{count} × {spec.name}", 133, 11), (1075+(index//6)*146, 325+(index%6)*17), 11, MUTED)
-    pg.draw.line(surface, LINE, (1075, 431), (1352, 431))
-    text(surface, "DESTINATION PREVIEW", (1075, 453), 10, GOLD, "mono")
-    text(surface, game.system_name(target.id) if duration else "Choose a star", (1075, 486), 26, INK, "title")
+    panel(surface, r, border=GOLD)
+    text(surface, "CHOOSE DESTINATION", (x, r.y+23), 10, GOLD, "mono", 1)
+    text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (x, r.y+65), 25, INK, "title")
+    text(surface, f"Departing {game.system_name(origin.id)}", (x, r.y+109), 14, CYAN)
+    counts = {}
+    for ship in ships:
+        counts[ship.kind] = counts.get(ship.kind, 0)+1
+    types = {**SHIP_TYPES, **HULLS}
+    for index, (kind, count) in enumerate(counts.items()):
+        label = f"{count} × {types[kind].name}"
+        text(surface, shorten(label, width//2-8, 14), (x+(index%2)*(width//2), r.y+145+(index//2)*20), 14, MUTED)
+    pg.draw.line(surface, LINE, (x, r.y+251), (r.right-16, r.y+251))
+    text(surface, "DESTINATION PREVIEW", (x, r.y+273), 10, GOLD, "mono")
+    text(surface, game.system_name(target.id) if duration else "Choose a star", (x, r.y+306), 26, INK, "title")
     if duration:
-        text(surface, f"Arrival in {turn_label(duration)}", (1075, 530), 16, CYAN)
+        text(surface, f"Arrival in {turn_label(duration)}", (x, r.y+350), 16, CYAN)
         blocked = not game.can_reach(target.id, ships=ships)
         fuel = ("Hyperlane · No fuel limit" if hyperlanes.connects(game, origin.id, target.id) else
                 f"{'Out of range' if blocked else 'In range'} · {game.supply_distance(target.id):.1f} / {game.fuel_range(ships=ships)} ly")
         text(surface, fuel,
-             (1075, 588), 12, RED if blocked else CYAN)
+             (x, r.y+408), 12, RED if blocked else CYAN)
         known = game.known_system(target.id)
         enemy_count = len(game.foreign_fleet(target.id)) if game.system_visible(target.id) else 0
         targets = sum(not p.colonized and game.can_settle(p) for p in known.worlds) if known else 0
@@ -645,9 +639,9 @@ def draw_order_panel(app, target):
                   f"{enemy_count} rival ships in orbit" if enemy_count else f"{targets} worlds available to settle")
         if black_holes.at(game, target.id):
             detail = "FATAL APPROACH · Fleet will be lost" if black_holes.risk(game, target.id) else "Black-hole expedition · Guardian site"
-        text(surface, detail, (1075, 565), 13, RED if black_holes.risk(game, target.id) else MUTED)
+        text(surface, detail, (x, r.y+385), 13, RED if black_holes.risk(game, target.id) else MUTED)
     else:
-        text(surface, "Ships are still in orbit.", (1075, 530), 15, MUTED)
+        text(surface, "Ships are still in orbit.", (x, r.y+350), 15, MUTED)
     paragraph(surface, "Click a destination star to send. Hover to preview travel time. Escape returns to ship selection.",
-              (1075, 610), 277, 14, MUTED, 23)
-    app.button("edit_fleet_selection", "←  Change selection", (1075, 692, 277, 43), app.cancel_map_order)
+              (x, r.y+430), width, 14, MUTED, 23)
+    app.button("edit_fleet_selection", "←  Change selection", (x, r.bottom-61, width, 43), app.cancel_map_order)

@@ -4,9 +4,8 @@ import math
 import pygame as pg
 
 from . import sensors
-from .galaxy_fleet_view import fleet_markers, guardian_markers, guardian_legend_rect, marker_layout, pirate_markers, star_obstacles
+from .galaxy_fleet_view import fleet_markers, guardian_markers, marker_layout, pirate_markers, star_obstacles
 from .galaxy_style import clean_map
-from .galaxy_system_view import SYSTEM_PANEL
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
 
@@ -32,9 +31,7 @@ def map_contacts(app):
 
 def contact_markers(app, rect):
     contacts = [c for c in map_contacts(app) if rect.collidepoint(app.map_pos(c.x, c.y))]
-    obstacles = star_obstacles(app, rect)+[pg.Rect(rect.x, rect.y, rect.w, 37)]
-    if not clean_map(app):
-        obstacles.append(guardian_legend_rect(rect))
+    obstacles = star_obstacles(app, rect)
     obstacles += [r.inflate(4, 4) for _, r, _ in fleet_markers(app, rect)+guardian_markers(app, rect)]
     anchors = [app.map_pos(c.x, c.y) for c in contacts]
     if clean_map(app):
@@ -74,28 +71,29 @@ def draw_contacts(app, rect):
 
 
 def draw_contact_panel(app):
-    surface, game, rect = app.canvas, app.game, SYSTEM_PANEL
+    surface, game = app.canvas, app.game
+    r = app.galaxy_layout.inspector
     contact = next((c for c in sensors.contacts(game) if c.anchor == app.sensor_contact_id), None)
-    panel(surface, rect)
-    x, width = rect.x+24, rect.w-48
-    text(surface, "SENSOR CONTACT", (x, 204), 10, GOLD, "mono", 1)
+    panel(surface, r)
+    x, width = r.x+16, r.w-32
+    text(surface, "SENSOR CONTACT", (x, r.y+24), 10, GOLD, "mono", 1)
     if contact is None:
-        paragraph(surface, "This contact has expired. Last sightings are retained for 20 turns.", (x, 262), width, 17, MUTED, 27)
+        paragraph(surface, "This contact has expired. Last sightings are retained for 20 turns.", (x, r.y+82), width, 17, MUTED, 27)
     else:
         color = app.empire_color(contact.owner)
-        paragraph(surface, game.empire_name_for(contact.owner), (x, 240), width, 23, color, 29)
-        text(surface, "LIVE TRACK" if contact.active else f"LAST SEEN · TURN {contact.seen_turn}", (x, 320), 12, CYAN if contact.active else GOLD, "mono")
+        paragraph(surface, game.empire_name_for(contact.owner), (x, r.y+60), width, 23, color, 29)
+        text(surface, "LIVE TRACK" if contact.active else f"LAST SEEN · TURN {contact.seen_turn}", (x, r.y+140), 12, CYAN if contact.active else GOLD, "mono")
         nearby = game.systems[contact.near_system]
-        text(surface, shorten("Near "+game.system_name(nearby.id), width, 16), (x, 351), 16, INK)
-        pg.draw.line(surface, LINE, (x, 387), (rect.right-24, 387))
-        text(surface, f"FLEET SIZE: {contact.count if contact.count is not None else 'UNKNOWN'}", (x, 410), 12, INK, "mono")
+        text(surface, shorten("Near "+game.system_name(nearby.id), width, 16), (x, r.y+171), 16, INK)
+        pg.draw.line(surface, LINE, (x, r.y+207), (r.right-16, r.y+207))
+        text(surface, f"FLEET SIZE: {contact.count if contact.count is not None else 'UNKNOWN'}", (x, r.y+230), 12, INK, "mono")
         if contact.classes:
-            paragraph(surface, " · ".join(contact.classes), (x, 445), width, 14, MUTED, 22)
+            paragraph(surface, " · ".join(contact.classes), (x, r.y+265), width, 14, MUTED, 22)
         else:
-            paragraph(surface, "Improve sensors to identify ship classes.", (x, 449), width, 14, MUTED, 23)
+            paragraph(surface, "Improve sensors to identify ship classes.", (x, r.y+269), width, 14, MUTED, 23)
         heading = f"Heading {contact.heading:.0f}° clockwise from east" if contact.heading is not None else "Heading unavailable"
-        text(surface, heading, (x, 562), 11, CYAN if contact.active else MUTED)
-        paragraph(surface, "Destination orders and planet details are not revealed by sensors.", (x, 596), width, 12, MUTED, 21)
+        text(surface, heading, (x, r.y+382), 11, CYAN if contact.active else MUTED)
+        paragraph(surface, "Destination orders and planet details are not revealed by sensors.", (x, r.y+416), width, 12, MUTED, 21)
         if not contact.active:
-            paragraph(surface, "Position and composition may have changed.", (x, 650), width, 12, GOLD, 19)
-    app.button("sensor_close", "Close contact · Esc", (x, 704, width, 32), app.close_sensor_contact)
+            paragraph(surface, "Position and composition may have changed.", (x, r.bottom-103), width, 12, GOLD, 19)
+    app.button("sensor_close", "Close contact · Esc", (x, r.bottom-49, width, 32), app.close_sensor_contact)

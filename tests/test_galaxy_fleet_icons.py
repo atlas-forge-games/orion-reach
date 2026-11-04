@@ -20,8 +20,7 @@ from scenarios import fixed_start_game as new_game
 
 class FleetIconTests(unittest.TestCase):
     def setUp(self):
-        from orion.app import App, MAP
-        self.map = MAP
+        from orion.app import App
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.addCleanup(pg.quit)
@@ -36,7 +35,7 @@ class FleetIconTests(unittest.TestCase):
         self.app.present()
 
     def markers(self):
-        return {ships[0].id: (rect, anchor) for ships, rect, anchor in fleet_markers(self.app, self.map)}
+        return {ships[0].id: (rect, anchor) for ships, rect, anchor in fleet_markers(self.app, self.app.map_rect)}
 
     def test_art_is_transparent_detailed_bounded_and_has_a_missing_file_fallback(self):
         for habitat in (False, True):
@@ -58,12 +57,12 @@ class FleetIconTests(unittest.TestCase):
         home = self.game.systems[0]
         for zoom in (1, 1.25, 2, 4):
             self.app.map_camera.zoom = zoom
-            self.app.map_camera.center_on(home.x, home.y, self.map)
-            self.app.map_camera.pan(13, -7, self.map)
+            self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
+            self.app.map_camera.pan(13, -7, self.app.map_rect)
             before, anchor = self.markers()[10]
             self.assertEqual(before.center, (round(anchor[0]+30), round(anchor[1]+24)))
             home.name = "The Long Named Docking System"
-            labels = star_label_rects(self.app, self.map)
+            labels = star_label_rects(self.app, self.app.map_rect)
             self.assertEqual(self.markers()[10][0], before)
             self.assertEqual(before.collidelist(list(labels.values())), -1)
             self.assertEqual(flight_heading(self.app, self.game.ships[0]), 0)
@@ -93,20 +92,21 @@ class FleetIconTests(unittest.TestCase):
         ship.destination, ship.departure_pending = 1, False
         ship.travel_total, ship.turns_remaining = 4, 2
         home, destination = self.game.systems[:2]
+        scale = self.app.map_camera.fit_scale(self.app.map_rect)
         for dx, dy, expected in ((0, -80, 0), (80, -80, 45), (80, 0, 90), (80, 80, 135),
                                  (0, 80, 180), (-80, 80, 225), (-80, 0, 270), (-80, -80, 315)):
-            destination.x = home.x+dx/(self.map.w-80)
-            destination.y = home.y+dy/(self.map.h-64)
+            destination.x = home.x+dx/(882*scale)
+            destination.y = home.y+dy/(509*scale)
             for zoom in (1, 2):
                 self.app.map_camera.zoom = zoom
-                self.app.map_camera.center_on(home.x, home.y, self.map)
+                self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
                 self.assertAlmostEqual(flight_heading(self.app, ship), expected)
                 before = self.game.to_dict()
                 rect, anchor = self.markers()[ship.id]
                 expected_position = self.app.map_pos(*navigation.position(self.game, ship))
                 self.assertEqual(rect.center, tuple(round(v) for v in expected_position))
                 with patch("orion.galaxy_fleet_view.draw_map_ship") as draw:
-                    draw_map_fleets(self.app, self.map)
+                    draw_map_fleets(self.app, self.app.map_rect)
                 self.assertAlmostEqual(draw.call_args.args[4], expected)
                 self.assertEqual(self.game.to_dict(), before)
 
@@ -127,14 +127,14 @@ class FleetIconTests(unittest.TestCase):
     def test_viewport_clips_the_hit_target_without_sliding_the_dock(self):
         self.app.map_camera.zoom = 4
         home = self.game.systems[0]
-        self.app.map_camera.center_on(home.x, home.y, self.map)
-        self.app.map_camera.pan(self.map.right-35-self.app.star_pos(home)[0], 0, self.map)
+        self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
+        self.app.map_camera.pan(self.app.map_rect.right-35-self.app.star_pos(home)[0], 0, self.app.map_rect)
         self.app.render()
         rect, anchor = self.markers()[10]
         self.assertEqual(rect.center, (round(anchor[0]+30), round(anchor[1]+24)))
-        self.assertGreater(rect.right, self.map.right)
+        self.assertGreater(rect.right, self.app.map_rect.right)
         button = next(b for b in self.app.buttons if b.key == "map_fleet_10")
-        self.assertEqual(button.rect, rect.clip(self.map))
+        self.assertEqual(button.rect, rect.clip(self.app.map_rect))
         button.action()
         self.assertTrue(self.app.fleet_popup)
 

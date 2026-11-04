@@ -97,12 +97,11 @@ class MapStyleUITests(unittest.TestCase):
         self.assertEqual(restored.to_dict(), before)
 
     def test_small_fleet_target_opens_full_count_and_orders_still_work(self):
-        from orion.app import MAP
         self.assertEqual(self.app.settings["galaxy_style"], "clean")
         with patch("orion.galaxy_fleet_view.text", wraps=text) as written:
-            draw_map_fleets(self.app, MAP)
+            draw_map_fleets(self.app, self.app.map_rect)
         self.assertEqual(written.call_count, 0)
-        _, target, _ = fleet_markers(self.app, MAP)[0]
+        _, target, _ = fleet_markers(self.app, self.app.map_rect)[0]
         self.assertGreaterEqual(target.w, 22)
         self.click("map_fleet_1", edge=True)
         self.assertTrue(self.app.fleet_popup)
@@ -115,7 +114,6 @@ class MapStyleUITests(unittest.TestCase):
         self.assertTrue(all(s.destination == 1 and s.departure_pending for s in self.app.game.ships))
 
     def test_clean_markers_omit_badge_connectors_and_counts(self):
-        from orion.app import MAP
         use_nearby_system(self.app.game, 1)
         self.app.game.send_ships([1, 2, 3], 1)
         self.app.open_map_fleet(1)
@@ -126,7 +124,7 @@ class MapStyleUITests(unittest.TestCase):
             with patch("orion.galaxy_fleet_view.ship_icon"), \
                  patch("pygame.draw.line") as lines, \
                  patch("orion.galaxy_fleet_view.text") as written:
-                draw_map_fleets(self.app, MAP)
+                draw_map_fleets(self.app, self.app.map_rect)
             if style == "clean":
                 self.assertFalse(lines.called)
                 self.assertFalse(written.called)
@@ -135,7 +133,6 @@ class MapStyleUITests(unittest.TestCase):
                 self.assertIn("3", [str(call.args[1]) for call in written.call_args_list])
 
     def test_dense_map_labels_avoid_fixed_fleet_slots_at_multiple_zooms(self):
-        from orion.app import MAP
         self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5,
                                  fog_of_war=False, with_guardians=True, with_ai=False)
         game = self.app.game
@@ -147,16 +144,16 @@ class MapStyleUITests(unittest.TestCase):
         for zoom in (1.0, 2.0, 4.0):
             self.app.map_camera.zoom = zoom
             self.app.render()
-            markers = fleet_markers(self.app, MAP)
+            markers = fleet_markers(self.app, self.app.map_rect)
             visible = {s.id for s in game.visible_ships()
-                       if MAP.collidepoint(self.app.star_pos(game.systems[s.system_id]))}
+                       if self.app.map_rect.collidepoint(self.app.star_pos(game.systems[s.system_id]))}
             shown = {s.id for ships, _, _ in markers for s in ships}
             self.assertTrue(shown)
             self.assertLessEqual(shown, visible)
-            labels = list(star_label_rects(self.app, MAP).values())
+            labels = list(star_label_rects(self.app, self.app.map_rect).values())
             per_system = {}
             for ships, rect, _ in markers:
-                self.assertTrue(MAP.colliderect(rect))
+                self.assertTrue(self.app.map_rect.colliderect(rect))
                 self.assertEqual(rect.collidelist(labels), -1)
                 siblings = per_system.setdefault(ships[0].system_id, [])
                 self.assertEqual(rect.collidelist(siblings), -1)
@@ -180,14 +177,13 @@ class MapStyleUITests(unittest.TestCase):
             self.assertEqual(bands[0][1], bands[1][0])
 
     def test_sensor_count_appears_only_after_click(self):
-        from orion.app import MAP
         from orion.sensor_view import draw_contacts
         game = self.app.game
         game.fog_of_war = True
         contact = Contact("player", 9001, "rival", .5, .5, game.turn, 0, 2, 7)
         with patch("orion.sensors.contacts", return_value=[contact]):
             with patch("orion.sensor_view.text", wraps=text) as written:
-                draw_contacts(self.app, MAP)
+                draw_contacts(self.app, self.app.map_rect)
             self.assertFalse(written.called)
             self.click("sensor_contact_9001")
             self.assertEqual(self.app.sensor_contact_id, 9001)
@@ -196,14 +192,13 @@ class MapStyleUITests(unittest.TestCase):
             self.assertIn("FLEET SIZE: 7", [str(call.args[1]) for call in written.call_args_list])
 
     def test_hyperlane_connections_hidden_but_known_portals_remain(self):
-        from orion.app import MAP
         from orion.hyperlane_art import draw_network
         from orion.hyperlanes import HyperlaneProject
         project = HyperlaneProject("player", 0, 1, 300)
         with patch("orion.hyperlane_art.hyperlanes.visible_routes", return_value=[project]), \
              patch("orion.hyperlane_art.draw_portal") as portals, \
              patch("pygame.draw.lines") as lines:
-            draw_network(self.app, MAP)
+            draw_network(self.app, self.app.map_rect)
         self.assertFalse(lines.called)
         self.assertEqual(portals.call_count, 2)
 

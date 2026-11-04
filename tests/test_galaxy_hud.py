@@ -44,23 +44,22 @@ class GalaxyHudTests(unittest.TestCase):
             self.app.render()
 
     def test_unexplored_names_become_surveyed_and_never_leak_later_ownership(self):
-        from orion.app import MAP
         game = self.app.game = new_game(seed=2408, fog_of_war=True, with_guardians=False)
         target = game.systems[game.opponent.home_system]
         before = game.to_dict()
         self.assertEqual(system_label(game, target), "")
         self.assertEqual(label_bands(game, target), ("", ()))
-        self.assertNotIn(target.id, star_label_rects(self.app, MAP))
+        self.assertNotIn(target.id, star_label_rects(self.app, self.app.map_rect))
         self.assertEqual(game.to_dict(), before)
         self.click(f"star_{target.id}")
         self.assertEqual(game.selected_system, target.id)
-        self.assertNotIn(target.id, star_label_rects(self.app, MAP))
+        self.assertNotIn(target.id, star_label_rects(self.app, self.app.map_rect))
         scout = Ship(game.next_ship_id, "scout", target.id)
         game.next_ship_id += 1
         game.ships.append(scout)
         refresh(game)
         self.assertEqual(system_label(game, target), target.name.upper())
-        self.assertIn(target.id, star_label_rects(self.app, MAP))
+        self.assertIn(target.id, star_label_rects(self.app, self.app.map_rect))
         expected = label_bands(game, target)
         self.assertEqual(expected[1][0][2], empire_color("rival"))
         scout.system_id = 0
@@ -119,14 +118,14 @@ class GalaxyHudTests(unittest.TestCase):
             self.assertNotIn("save", buttons)
             self.assertNotIn("open_exploration", buttons)
             commands = [buttons[k] for k in (*routes, "pause", "end_turn") if k != "open_research"]
-            self.assertEqual(buttons["end_turn"].rect, pg.Rect(1081, 813, 295, 61))
+            self.assertEqual(buttons["end_turn"].rect, self.app.galaxy_layout.end_turn)
             self.assertLess(buttons["open_research"].rect.bottom, 130)
             self.assertLess(buttons["open_diplomacy"].rect.right, buttons["pause"].rect.left)
             self.assertLess(buttons["open_info"].rect.right, buttons["pause"].rect.left)
-            self.assertEqual(buttons["pause"].rect, pg.Rect(496, 813, 132, 61))
+            self.assertEqual(buttons["pause"].rect, self.app.galaxy_layout.commands[3])
             self.assertLess(buttons["pause"].rect.right, buttons["open_fleets"].rect.left)
             for i, button in enumerate(commands):
-                self.assertGreaterEqual(button.rect.top, 800)
+                self.assertGreater(button.rect.top, self.app.map_rect.bottom)
                 self.assertEqual(button.rect.collidelist([b.rect for b in commands[i+1:]]), -1)
             for key, screen in routes.items():
                 self.app.go("galaxy")
@@ -165,15 +164,15 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertIn("1,234 CR", values)
         self.assertIn("87 RP", values)
         self.assertIn(f"{income:+,} CR net / turn", values)
-        self.assertIn(f"{research:+,} RP / turn", values)
+        self.assertIn(f"Idle · {research:+,} RP / turn", values)
         self.assertIn("+9 / turn", values)
-        self.assertIn("22 made / 13 used", values)
+        self.click("food_report")
+        self.assertIn("22 made / 13 used", self.app.dialog["body"])
         self.assertIn("1 local shortage", values)
 
     def test_only_explored_system_names_reserve_map_space(self):
-        from orion.app import MAP
         self.app.game = new_game(seed=116545103, galaxy_size="Expansive", rival_count=5, fog_of_war=True)
-        labels = star_label_rects(self.app, MAP)
+        labels = star_label_rects(self.app, self.app.map_rect)
         self.assertEqual(set(labels), {s.id for s in self.app.map_systems()
                                        if self.app.game.system_explored(s.id)})
         self.assertTrue(labels)
@@ -181,7 +180,7 @@ class GalaxyHudTests(unittest.TestCase):
         for i, (identifier, rect) in enumerate(labels.items()):
             style = map_style(self.app)
             self.assertEqual(rect.size, font(*label_font(style)).size(system_label(self.app.game, self.app.game.systems[identifier], style)))
-            self.assertTrue(MAP.contains(rect))
+            self.assertTrue(self.app.map_rect.contains(rect))
             self.assertEqual(rect.collidelist(list(labels.values())[i+1:]), -1)
 
 

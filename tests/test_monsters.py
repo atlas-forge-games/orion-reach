@@ -521,7 +521,6 @@ class GuardianUITests(unittest.TestCase):
         self.assertTrue(all(not s.has_course for s in app.game.ships_owned_by()))
 
     def test_fleet_badges_do_not_cover_guardian_symbols_or_the_legend(self):
-        from orion.app import MAP
         from orion.galaxy_fleet_view import fleet_markers, guardian_markers, guardian_legend_rect, known_guardian_kinds
         app = self.app
         app.game = new_game(seed=2408, galaxy_size="Expansive", fog_of_war=False)
@@ -531,13 +530,13 @@ class GuardianUITests(unittest.TestCase):
         app.go("galaxy")
         app.render()
         self.assertEqual(set(known_guardian_kinds(app.game)), set(monsters.PRIZE_WORLDS))
-        symbols = [rect for _, rect, _ in guardian_markers(app, MAP)]
+        symbols = [rect for _, rect, _ in guardian_markers(app, app.map_rect)]
         self.assertEqual(len(symbols), 4)
         for index, rect in enumerate(symbols):
-            self.assertTrue(MAP.contains(rect))
+            self.assertTrue(app.map_rect.contains(rect))
             self.assertEqual(rect.collidelist(symbols[:index]), -1)
-        for _, rect, _ in fleet_markers(app, MAP):
-            self.assertEqual(rect.collidelist(symbols+[guardian_legend_rect(MAP, outside=app.settings["galaxy_style"] == "clean")]), -1)
+        for _, rect, _ in fleet_markers(app, app.map_rect):
+            self.assertEqual(rect.collidelist(symbols+[guardian_legend_rect(app.map_rect)]), -1)
 
     def test_symbols_and_legend_respect_fog_and_stale_guardian_knowledge(self):
         from orion.galaxy_fleet_view import known_guardian_kinds

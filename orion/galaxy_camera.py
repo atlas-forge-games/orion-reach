@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pygame as pg
 
-from .ui import INK, MUTED, panel, text
+from .ui import INK, panel, text
 
 MIN_ZOOM = 1.0
 MAX_ZOOM = 4.0
@@ -29,11 +29,26 @@ class GalaxyCamera:
         return (cx+(point[0]-cx-self.offset_x)/self.zoom,
                 cy+(point[1]-cy-self.offset_y)/self.zoom)
 
+    @staticmethod
+    def fit_scale(rect):
+        # The chart was authored on an 882 × 509 plotting area. Keep the same
+        # star patterns and fuel geometry at every viewport aspect ratio.
+        return min((rect.w-80)/882, (rect.h-64)/509)
+
     def position(self, x, y, rect):
-        return self.transform((rect.x+40+x*(rect.w-80), rect.y+32+y*(rect.h-64)), rect)
+        scale = self.fit_scale(rect)
+        return self.transform((rect.x+rect.w/2+(x-.5)*882*scale,
+                               rect.y+rect.h/2+(y-.5)*509*scale), rect)
 
     def radii(self, distance, rect):
-        return distance/140*(rect.w-80)*self.zoom, distance/100*(rect.h-64)*self.zoom
+        scale = self.fit_scale(rect)*self.zoom
+        return distance/140*882*scale, distance/100*509*scale
+
+    def resize(self, old, new):
+        scale = self.fit_scale(new)/self.fit_scale(old)
+        self.offset_x *= scale
+        self.offset_y *= scale
+        self.clamp(new)
 
     def clamp(self, rect):
         limit_x, limit_y = rect.w*(self.zoom-1)/2, rect.h*(self.zoom-1)/2
@@ -76,7 +91,7 @@ def handle_map_input(app, event, rect):
         app.map_pan_keys.discard(event.key)
         if event.key in (pg.K_LSHIFT, pg.K_RSHIFT):
             app.map_pan_keys.clear()
-    if app.screen != "galaxy" or app.dialog:
+    if not app.on_galaxy_chart() or app.dialog:
         clear_gesture(app)
         return False
     if app.map_drag:
@@ -101,7 +116,7 @@ def handle_map_input(app, event, rect):
             return True
     if event.type == pg.MOUSEBUTTONDOWN and event.button in (2, 3):
         point = app.logical_pos(event.pos)
-        if rect.collidepoint(point) and point[1] >= rect.y+38:
+        if app.map_background_at(point):
             app.mouse = point
             app.keyboard_mode = False
             app.pressed = None
@@ -140,7 +155,7 @@ def handle_map_input(app, event, rect):
 
 
 def update_map_input(app, elapsed, rect):
-    if app.screen != "galaxy" or app.dialog:
+    if not app.on_galaxy_chart() or app.dialog:
         clear_gesture(app)
         return
     dx = sum(PAN_KEYS[key][0] for key in app.map_pan_keys)
@@ -149,17 +164,21 @@ def update_map_input(app, elapsed, rect):
         app.map_camera.pan(dx*420*elapsed, dy*420*elapsed, rect)
 
 
-def draw_map_navigation(app, rect):
-    """Keep navigation fixed above the moving map; block hidden click targets."""
-    toolbar = pg.Rect(rect.x+2, rect.y+2, rect.w-4, 36)
-    panel(app.canvas, toolbar, (9, 20, 29))
-    app.button("map_toolbar", "", toolbar, lambda: None, "hotspot")
-    x, y = rect.x+12, rect.y+7
-    app.button("map_zoom_out", "−", (x, y, 32, 26), lambda: app.zoom_map(-1),
+def draw_map_navigation(app):
+    """Overlay only the corners, leaving stars between the controls interactive."""
+    tools = app.galaxy_layout.camera_tools
+    panel(app.canvas, tools, (9, 20, 29))
+    app.button("map_toolbar", "", tools, lambda: None, "hotspot")
+    x, y = tools.x+3, tools.y+3
+    app.button("map_zoom_out", "−", (x, y, 29, 27), lambda: app.zoom_map(-1),
                "tab", enabled=app.map_camera.zoom > MIN_ZOOM)
-    text(app.canvas, f"{app.map_camera.zoom*100:.0f}%", (x+40, y+7), 11, INK, "mono")
-    app.button("map_zoom_in", "+", (x+89, y, 32, 26), lambda: app.zoom_map(1),
+    text(app.canvas, f"{app.map_camera.zoom*100:.0f}%", (x+35, y+4), 14, INK, "mono")
+    app.button("map_zoom_in", "+", (x+82, y, 29, 27), lambda: app.zoom_map(1),
                "tab", enabled=app.map_camera.zoom < MAX_ZOOM)
-    app.button("map_fit", "Fit · 0", (x+130, y, 72, 26), app.fit_map, "tab")
-    app.button("map_center", "Center · C", (x+210, y, 96, 26), app.center_map, "tab")
-    text(app.canvas, "Wheel: zoom · Right-drag: pan", (x+320, y+8), 10, MUTED)
+    app.button("map_fit", "Fit", (x+116, y, 46, 27), app.fit_map, "tab")
+    app.button("map_center", "Center", (x+167, y, 74, 27), app.center_map, "tab")
+    if app.show_sensor_control():
+        app.button("sensor_overlay", "Sensors · S", app.galaxy_layout.sensors, app.toggle_sensors,
+                   "primary" if app.show_sensors else "tab")
+    app.button("toggle_inspector", "Show panel" if app.inspector_collapsed else "Hide panel",
+               app.galaxy_layout.panel_toggle, app.toggle_inspector, "tab")

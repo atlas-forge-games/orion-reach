@@ -79,7 +79,9 @@ class CampaignNavigationTests(unittest.TestCase):
         self.app.screen = 'galaxy'
         self.frame()
         button = self.button('end_turn')
-        self.assertEqual(button.rect, pg.Rect(1081, 813, 295, 61))
+        self.assertEqual(button.rect, self.app.galaxy_layout.end_turn)
+        self.assertGreater(button.rect.left, self.app.canvas.get_width()*.7)
+        self.assertGreater(button.rect.top, self.app.map_rect.bottom)
         self.assertEqual(button.style, 'command_primary')
         self.assertEqual(button.subtitle, 'Turn 2 · Year 2301')
         self.assertNotIn('galaxy_map', [b.key for b in self.app.buttons])

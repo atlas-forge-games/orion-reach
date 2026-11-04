@@ -264,19 +264,18 @@ class HabitatInterfaceTests(unittest.TestCase):
         import pygame as pg
         from orion.app import App
         from orion.galaxy_fleet_view import fleet_markers
-        from orion.app import MAP
         with tempfile.TemporaryDirectory() as folder:
             app=App(Path(folder),capture=True)
             try:
+                app.settings['galaxy_style']='classic'  # Large, labeled habitat badges.
                 app.game=game=campaign();ship=motherships.homes(game)[0]
                 app.dialog=None;app.go('galaxy');app.open_map_fleet(ship.id);app.render()
-                markers=[r for ships,r,_ in fleet_markers(app,MAP) if ship in ships]
+                markers=[r for ships,r,_ in fleet_markers(app,app.map_rect) if ship in ships]
                 self.assertGreaterEqual(markers[0].height,40)
                 button=next(b for b in app.buttons if b.key==f'mothership_open_{ship.id}')
                 self.assertTrue(button.enabled)
                 app.present()
-                v=app.viewport;x,y=button.rect.center
-                pos=(round(v.x+x*v.w/1440),round(v.y+y*v.h/900))
+                pos=app.window_pos(button.rect.center)
                 for event in (pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP):
                     app.handle_event(pg.event.Event(event,button=1,pos=pos));app.render()
                 app.dialog=None

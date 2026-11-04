@@ -1,0 +1,32 @@
+AGE OF THE STARS / ORION REACH — v0.90.0
+
+INSTALL
+Close the game. Extract this ZIP over v0.89.0 in the folder that contains
+main.py, orion/ and assets/. Replace the included files. Run python main.py
+to start the game. Existing campaigns use save format 61.
+
+GALAXY COMMAND
+The star chart takes the extra space in wide windows. At 1844 x 952 with
+100% interface size, the chart measures 1438 x 770 pixels and the system
+panel is 358 pixels wide. Hide panel expands the chart to 1806 x 770.
+Show panel restores the selection. Zooming, panning and plotting a course
+work in both layouts. Narrow layouts place system details below the chart.
+
+Credits, Research, Food, Resources and Energy each use three lines. Debt,
+imminent bankruptcy, idle research and local shortages appear on the cards.
+Select Credits, Food or Resources for the breakdown, Research for projects,
+or Energy for the colony report. The empire name, year and turn share this
+header. Info contains the campaign seed and the galaxy map controls.
+
+The inspector lists each planet on two lines. Hover for ownership and site
+details, or select a planet to open it. The full system view remains at the
+bottom of the panel. The command dock keeps End turn in the lower right.
+
+VALIDATION
+The panel and chart were rendered open and folded at seven window and font
+settings across nine campaign states. The audit checked inspector text bounds,
+button placement and the match between drawing and pointer coordinates.
+
+The ZIP was installed over the v0.89.0 source release and launched. All 147
+focused interface and navigation tests passed. Broader suites reproduced
+existing failures in earlier research, combat, economy and save fixtures.

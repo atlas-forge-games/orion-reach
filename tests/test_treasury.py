@@ -220,7 +220,11 @@ class TreasuryInterfaceTests(unittest.TestCase):
         before = self.app.game.to_dict()
         with patch("orion.galaxy_hud.text", wraps=text) as written:
             self.app.render()
-        self.assertTrue(any("Interest 100/turn" in str(call.args[1]) for call in written.call_args_list))
+        self.assertIn("CREDITS · DEBT", [str(call.args[1]) for call in written.call_args_list])
+        next(b for b in self.app.buttons if b.key == "credit_report").action()
+        self.assertIn("Interest 100 CR", self.app.dialog["body"])
+        self.assertIn("Bankruptcy at -10,000 CR", self.app.dialog["body"])
+        self.app.cancel_dialog()
         self.app.open_empire()
         with patch("orion.empire_view.text", wraps=text) as written:
             self.app.render()

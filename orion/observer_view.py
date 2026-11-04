@@ -6,7 +6,7 @@ from . import GAME_TITLE
 from .empire import summarize_empire
 from .first_contact import known
 from .fleets import group_fleets
-from .galaxy_hud import RESOURCE_RECTS, draw_galaxy_commands
+from .galaxy_hud import card_action, draw_galaxy_commands, draw_identity, resource_card
 from .personalities import PERSONALITIES
 from .race_art import draw_race_portrait
 from .races import RACES, OBSERVER
@@ -23,27 +23,17 @@ def draw_observer_header(app):
     game, surface = app.game, app.canvas
     worlds = [p for _, p in game.settlements()]
     alive = sum(bool(game.colony_systems(o)) for o in game.owners)
-    draw_race_portrait(surface, "observer", (64, 22, 88, 100))
-    text(surface, "THE", (165, 38), 11, MUTED, "mono", 2)
-    text(surface, "OBSERVER", (165, 58), 14, INK, "mono")
-    text(surface, "WATCHING", (165, 94), 9, CYAN, "mono", 1)
+    draw_identity(app, "Observer · Read only")
     stats = (("EMPIRES", str(alive), f"{len(game.owners)} civilizations recorded"),
              ("COLONIES", str(len(worlds)), "Across the whole galaxy"),
              ("POPULATION", f"{sum(p.workforce for p in worlds):,} B", "All inhabited worlds"),
              ("SHIPS", str(len(game.ships)), f"{sum(s.in_transit for s in game.ships)} in transit"),
              ("TECHNOLOGIES · R", str(sum(len(game.research_state(o).completed) for o in game.owners)),
               "View research reports"))
-    for rect, (label, value, caption) in zip(RESOURCE_RECTS, stats):
-        x, y, w, h = rect
-        panel(surface, rect, (9, 20, 29))
-        text(surface, label, (x+16, y+12), 10, GOLD, "mono", 1)
-        text(surface, value, (x+15, y+34), 28, OBSERVER.color, "mono")
-        text(surface, caption, (x+16, y+78), 10, MUTED)
-    app.button("open_research", "", RESOURCE_RECTS[4], app.open_research, "hotspot")
-    pg.draw.line(surface, LINE, (64, 129), (1376, 129))
-    text(surface, shorten(game.empire_name, 590, 26, "title"), (64, 140), 26, INK, "title")
-    text(surface, f"YEAR {game.year}   /   TURN {game.turn}", (718, 150), 12, CYAN, "mono")
-    text(surface, "ALL EMPIRES UNDER COMPUTER CONTROL", (1376, 151), 10, MUTED, "mono", right=True)
+    cards = app.galaxy_layout.cards
+    for rect, (label, value, caption) in zip(cards, stats):
+        resource_card(surface, rect, None, label, value, caption, OBSERVER.color)
+    card_action(app, "open_research", cards[4], app.open_research, "View research reports.")
 
 
 def report_rows(app):

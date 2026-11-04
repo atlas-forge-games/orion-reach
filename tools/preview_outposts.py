@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import pygame as pg
-from orion.app import App, MAP
+from orion.app import App
 from orion.model import new_game, Ship
 from orion import outposts, specialists, exploration
 
@@ -67,7 +67,7 @@ def main():
             app.go("galaxy")
             app.route_ship_id = 1
             app.map_camera.zoom = 2.5
-            app.map_camera.center_on(.445, .5, MAP)
+            app.map_camera.center_on(.445, .5, app.map_rect)
             capture("range")
             app.route_ship_id = None
             world.outpost_owner = "rival"

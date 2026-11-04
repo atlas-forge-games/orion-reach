@@ -9,9 +9,10 @@ os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 os.environ.setdefault('PYGAME_HIDE_SUPPORT_PROMPT', '1')
 
 import pygame as pg
-from orion.app import App, MAP
+from orion.app import App
 from orion.combat_camera import BOARD
-from orion.galaxy_system_view import SYSTEM_PANEL
+from orion.galaxy_layout import GalaxyLayout
+from orion.galaxy_camera import GalaxyCamera
 from orion.window_layout import reference_layout
 from tools.preview_all_screens import campaign, screen_states
 
@@ -61,7 +62,7 @@ class WindowLayoutTests(unittest.TestCase):
         app.go('galaxy')
         self.frame()
         self.assertEqual(app.display_view.maximum[0], 0)
-        self.assertGreaterEqual(app.canvas.rect(SYSTEM_PANEL).top, app.canvas.rect(MAP).bottom)
+        self.assertGreaterEqual(app.canvas.rect(app.galaxy_layout.inspector).top, app.canvas.rect(app.map_rect).bottom)
         self.click('galaxy_world_2')
         self.assertIn(app.screen,('planet','colony'))
         self.assertEqual(app.game.selected_planet, 2)
@@ -69,17 +70,21 @@ class WindowLayoutTests(unittest.TestCase):
         self.assertEqual(app.screen,'galaxy')
 
     def test_map_distances_and_combat_cells_have_one_scale_on_both_axes(self):
-        for screen, bounds in (('galaxy',MAP), ('combat',BOARD)):
-            for size in ((2133,900),(1440,1700),(823,514)):
-                with self.subTest(screen=screen,size=size):
-                    layout = reference_layout((1440,900),size,screen)
-                    x,y = bounds.center
-                    center = layout.place((x,y))
-                    dx = layout.place((x+42,y))[0]-center[0]
-                    dy = layout.place((x,y+42))[1]-center[1]
-                    self.assertAlmostEqual(dx,dy,delta=.1)
-                    self.assertAlmostEqual(layout.unplace(center)[0], x)
-                    self.assertAlmostEqual(layout.unplace(center)[1], y)
+        camera = GalaxyCamera()
+        for size in ((2133,900),(1440,1700),(823,514)):
+            with self.subTest(size=size):
+                chart = GalaxyLayout.fit(size).chart
+                origin = camera.position(0,0,chart)
+                end = camera.position(1,1,chart)
+                self.assertAlmostEqual((end[0]-origin[0])/882, (end[1]-origin[1])/509)
+                layout = reference_layout((1440,900),size,'combat')
+                x,y = BOARD.center
+                center = layout.place((x,y))
+                dx = layout.place((x+42,y))[0]-center[0]
+                dy = layout.place((x,y+42))[1]-center[1]
+                self.assertAlmostEqual(dx,dy,delta=.1)
+                self.assertAlmostEqual(layout.unplace(center)[0], x)
+                self.assertAlmostEqual(layout.unplace(center)[1], y)
 
     def test_large_text_research_choices_and_galaxy_shortcut_after_resize(self):
         app = self.app
@@ -122,7 +127,7 @@ class WindowLayoutTests(unittest.TestCase):
         app.go('galaxy')
         self.frame()
         scale = app.canvas.scale
-        self.assertGreaterEqual(app.canvas.rect(SYSTEM_PANEL).top, app.canvas.rect(MAP).bottom)
+        self.assertGreaterEqual(app.canvas.rect(app.galaxy_layout.inspector).top, app.canvas.rect(app.map_rect).bottom)
         self.assertEqual(app.viewport.w, 900)
         app.go('empire')
         self.frame()

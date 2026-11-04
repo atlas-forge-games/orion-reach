@@ -64,7 +64,6 @@ class ColorPreferenceUITests(unittest.TestCase):
             self.app.render()
 
     def assert_player_markers(self, expected):
-        from orion.app import MAP
         app = self.app
         # Exact color assertions use a 1:1 canvas; antialiasing at other sizes
         # is covered by the native drawing and scaled input tests.
@@ -73,11 +72,11 @@ class ColorPreferenceUITests(unittest.TestCase):
         home = app.game.headquarters()[0]
         x, y = (int(v) for v in app.star_pos(home))
         self.assertEqual(tuple(app.canvas.get_at((x + 10, y)))[:3], expected)
-        label = star_label_rects(app, MAP)[home.id]
+        label = star_label_rects(app, app.map_rect)[home.id]
         pixels = [tuple(app.canvas.get_at((x, y)))[:3]
                   for x in range(label.left, label.right) for y in range(label.top, label.bottom)]
         self.assertIn(expected, pixels)
-        own = next(rect for ships, rect, _ in fleet_markers(app, MAP) if ships[0].owner == "player")
+        own = next(rect for ships, rect, _ in fleet_markers(app, app.map_rect) if ships[0].owner == "player")
         self.assertEqual(tuple(app.canvas.get_at((own.left + 10, own.top)))[:3], expected)
 
     def test_options_recolor_real_markers_and_survive_restart(self):

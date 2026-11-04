@@ -49,7 +49,10 @@ def draw(app):
     if not available(app):
         return
     layout = getattr(app.canvas, 'layout', None)
-    galaxy, end = rects(layout.size if layout else app.canvas.get_size())
+    if app.on_galaxy_chart():
+        galaxy, end = app.galaxy_layout.galaxy_link, app.galaxy_layout.end_turn
+    else:
+        galaxy, end = rects(layout.size if layout else app.canvas.get_size())
     map_icon = 'system' if galaxy.w >= 240 else ''
     turn_icon = 'turn' if end.w >= 295 else ''
     if layout:

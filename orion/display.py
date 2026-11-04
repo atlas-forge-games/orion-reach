@@ -356,9 +356,13 @@ class DisplayView:
             # Plain wheel retains map zoom and list paging on the legacy views.
             from .window_layout import PanelFlow
             compact = isinstance(app.canvas.layout, PanelFlow)
-            if compact and app.screen == 'galaxy':
-                from .app import MAP
-                compact = not MAP.collidepoint(app.mouse)
+            if not app.dialog and app.on_galaxy_chart():
+                if app.map_rect.collidepoint(app.mouse):
+                    return False
+                pane = app.galaxy_layout.inspector
+                # Within a paged list the wheel changes page; the gutter and
+                # Shift+wheel can always scroll the rest of a tall layout.
+                compact = not (pane and pane.collidepoint(app.mouse) and app.inspector_has_pages())
             elif compact and app.screen == 'combat':
                 from .combat_camera import BOARD
                 compact = not BOARD.collidepoint(app.mouse)

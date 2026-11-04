@@ -86,9 +86,7 @@ class MothershipSystemTests(unittest.TestCase):
         import pygame as pg
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
-        v = self.app.viewport
-        x, y = button.rect.center
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = self.app.window_pos(button.rect.center)
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(event, button=1, pos=pos))
             self.app.render()
@@ -175,25 +173,25 @@ class MothershipSystemTests(unittest.TestCase):
 
     def test_route_display_tracks_selection_and_map_badge_omits_population(self):
         from orion.galaxy_fleet_view import draw_map_fleets
-        from orion.app import MAP
+        self.app.settings['galaxy_style'] = 'classic'  # This check inspects the labeled fleet badge.
         with patch('orion.galaxy_fleet_view.text') as drawn:
-            draw_map_fleets(self.app, MAP)
+            draw_map_fleets(self.app, self.app.map_rect)
         labels = [str(c.args[1]) for c in drawn.call_args_list]
         self.assertTrue(labels)
         self.assertFalse(any('/50' in s or s.endswith(' B') for s in labels))
         dest = target(self.app.game, 22)
         self.app.open_map_fleet(self.home.id)
         self.app.game.selected_system = dest.id
-        self.assertIn('RANGE 25 LY', self.drawn_text())
+        self.assertIn('Range 25 ly', self.drawn_text())
         self.click(f'fleet_select_{self.home.id}')
-        self.assertIn('RANGE 20 LY', self.drawn_text())
+        self.assertIn('20 ly from supply', self.drawn_text())
         self.assertIn('Out of range', self.drawn_text())
         self.app.open_mothership(self.home.id)
         self.click('mothership_course')
         self.app.select_star(dest.id)
         self.app.render()
         self.assertTrue(next(b for b in self.app.buttons if b.key == 'send_course').enabled)
-        self.assertIn('RANGE 25 LY', self.drawn_text())
+        self.assertIn('Range 25 ly', self.drawn_text())
 
 
 if __name__ == '__main__':

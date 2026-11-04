@@ -8,7 +8,6 @@ from .planet_art import draw_planet, draw_star
 from .system_views import STAR_COLORS, visual_seed
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, arrow, panel, paragraph, shorten, text
 
-SYSTEM_PANEL = pg.Rect(1051, 180, 325, 573)
 PLANETS_PER_PAGE = 4
 
 
@@ -38,8 +37,8 @@ def draw_system_panel(app, star):
         black_hole_view.draw_panel(app, star)
         return
     surface, game = app.canvas, app.game
-    r = SYSTEM_PANEL
-    x, right, width = r.x+24, r.right-24, r.w-48
+    r = app.galaxy_layout.inspector
+    x, right, width = r.x+15, r.right-15, r.w-30
     known = game.known_system(star.id)
     live = game.system_visible(star.id)
     worlds = known.worlds if known else []
@@ -52,55 +51,52 @@ def draw_system_panel(app, star):
     last = max(0, (len(entries)-1)//PLANETS_PER_PAGE)
     app.galaxy_planet_page = max(0, min(app.galaxy_planet_page, last))
     panel(surface, r)
-    text(surface, "SYSTEM OVERVIEW", (x, 201), 10, GOLD, "mono", 1)
+    text(surface, "SYSTEM OVERVIEW", (x, r.y+14), 14, GOLD, "mono", 1)
     survey = game.exploration.survey(star.id)
     status = "LIVE" if live else f"SEEN T{survey.last_seen}" if known else "UNCHARTED"
-    text(surface, status, (right, 202), 9, CYAN if live else MUTED, "mono", right=True)
-    text(surface, shorten(game.system_name(star.id), width-58, 29, "title"), (x, 227), 29, INK, "title")
-    text(surface, star.kind, (x, 267), 12, MUTED)
-    draw_star(surface, (right-21, 254), 13, STAR_COLORS[star.kind])
-
+    text(surface, status, (right, r.y+14), 14, CYAN if live else MUTED, "mono", right=True)
+    text(surface, shorten(game.system_name(star.id), width-58, 29, "title"), (x, r.y+42), 29, INK, "title")
+    draw_star(surface, (right-19, r.y+61), 13, STAR_COLORS[star.kind])
     if known is None:
-        text(surface, "Planetary data unknown", (x, 290), 11, FAINT)
-        pg.draw.line(surface, LINE, (x, 318), (right, 318))
-        draw_star(surface, (r.centerx, 392), 32, STAR_COLORS[star.kind])
-        text(surface, "SURVEY REQUIRED", (x, 462), 11, CYAN, "mono", 1)
+        text(surface, star.kind, (x, r.y+84), 14, MUTED)
+        pg.draw.line(surface, LINE, (x, r.y+120), (right, r.y+120))
+        draw_star(surface, (r.centerx, r.y+202), 32, STAR_COLORS[star.kind])
+        text(surface, "SURVEY REQUIRED", (x, r.y+276), 14, CYAN, "mono", 1)
         paragraph(surface, "Send a ship to reveal this system's planets, resources and inhabitants.",
-                  (x, 493), width, 14, MUTED, 24)
-        paragraph(surface, "A scout can also search for discoveries.", (x, 579), width, 12, GOLD, 20)
-        app.button("galaxy_build_scout", "Build a scout", (x, 628, width, 39), app.open_scout_shipyard,
+                  (x, r.y+308), width, 15, MUTED, 24)
+        paragraph(surface, "A scout can also search for discoveries.", (x, r.bottom-173), width, 14, GOLD, 20)
+        app.button("galaxy_build_scout", "Build a scout", (x, r.bottom-120, width, 38), app.open_scout_shipyard,
                    "command", icon="fleets", enabled=game.headquarters() is not None)
         routes = hyperlanes.connections(game, star.id)
-        app.button("open_system", "System view" if routes else "Full system view", (x, 705, 127 if routes else width, 32),
+        button_w = (width-8)//2 if routes else width
+        app.button("open_system", "System view" if routes else "Full system view", (x, r.bottom-50, button_w, 36),
                    lambda: app.open_system(star.id), "command", icon="system")
         if routes:
-            text(surface, f"{len(routes)} forgotten hyperlane{'s' if len(routes) != 1 else ''} · 1-turn passages", (x, 682), 11, CYAN)
-            app.button("galaxy_hyperlanes", "Hyperlanes", (x+136, 705, width-136, 32), lambda: app.go("hyperlane"), "command")
+            text(surface, f"{len(routes)} forgotten hyperlane{'s' if len(routes) != 1 else ''} · 1-turn passages",
+                 (x, r.bottom-76), 14, CYAN)
+            app.button("galaxy_hyperlanes", "Hyperlanes", (x+button_w+8, r.bottom-50, width-button_w-8, 36),
+                       lambda: app.go("hyperlane"), "command")
         return
 
     owners = known_owners(game, known)
     owner_color = app.empire_color(next(iter(owners))) if len(owners) == 1 else MUTED
-    text(surface, shorten(allegiance(game, known), width, 11), (x, 290), 11, owner_color)
-    summaries = [("Worlds", len(worlds)), ("Habitable", sum(p.habitability >= 35 for p in worlds)),
-                 ("Homes" if has_homes else "Colonies", sum(p.colonized for p in entries)),
-                 ("Population", f"{sum(p.workforce for p in entries)} B")]
-    strip = pg.Rect(x-6, 313, width+12, 68)
+    text(surface, shorten(star.kind+" · "+allegiance(game, known), width, 14), (x, r.y+84), 14, owner_color)
+    colonies = sum(p.colonized for p in entries)
+    unit = ("home" if colonies == 1 else "homes") if has_homes else ("colony" if colonies == 1 else "colonies")
+    strip = pg.Rect(x, r.y+113, width, 56)
     panel(surface, strip, (13, 27, 36))
-    cell = strip.w/2
-    for i, (label, value) in enumerate(summaries):
-        left = round(strip.x+(i%2)*cell)+8
-        top = 321+(i//2)*29
-        text(surface, label, (left, top), 14, MUTED)
-        text(surface, shorten(str(value), 39, 14), (left+cell-16, top), 14,
-             CYAN if i == 2 else INK, right=True)
+    text(surface, f"{len(worlds)} worlds · {sum(p.habitability >= 35 for p in worlds)} habitable",
+         (x+10, strip.y+6), 15, INK)
+    text(surface, f"{colonies} {unit} · {sum(p.workforce for p in entries)} B population",
+         (x+10, strip.y+30), 14, MUTED)
 
     guardian_status = monsters.known_status(game, star.id)
     guardian = monsters.at(game, star.id) if guardian_status else None
     prizes = monsters.prize_ids(known, guardian) if guardian else ()
     start = app.galaxy_planet_page*PLANETS_PER_PAGE
-    text(surface, "MOTHERSHIPS & PLANETS" if has_homes else "PLANETS · INNER TO OUTER", (x, 389), 14, GOLD, "mono")
+    text(surface, "MOTHERSHIPS & PLANETS" if has_homes else "PLANETS · INNER TO OUTER", (x, r.y+188), 14, GOLD, "mono")
     for index, world in enumerate(entries[start:start+PLANETS_PER_PAGE]):
-        row = pg.Rect(x-4, 411+index*56, width+8, 53)
+        row = pg.Rect(x, r.y+214+index*52, width, 47)
         action = (lambda sid=-world.id: app.open_mothership(sid)) if world.habitat else (lambda pid=world.id: app.open_planet(pid))
         button = app.button(entry_key(world), "", row, action, "hotspot")
         active = app.is_active(button)
@@ -113,31 +109,40 @@ def draw_system_panel(app, star):
         if world.colonized or world.outpost_owner or world.orbital_station:
             pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
         left = row.x+48
-        text(surface, shorten(world.name, row.w-102, 14), (left, row.y+1), 14, GOLD if active else INK)
-        value = "HOME" if world.habitat else "GAS" if world.is_gas_giant else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else f"{world.habitability}%"
-        text(surface, value, (row.right-9, row.y+1), 14, color, right=True)
+        text(surface, shorten(world.name, row.w-102, 14), (left, row.y+4), 14, GOLD if active else INK)
+        if world.habitat:
+            value = "HOME"
+        elif world.colonized:
+            value = f"{world.workforce} B"
+        elif world.orbital_station:
+            value = "STN"
+        elif world.outpost_owner:
+            value = "BASE"
+        elif world.id in prizes:
+            value = "RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE"
+        else:
+            value = "GAS" if world.is_gas_giant else f"{world.habitability}%"
+        text(surface, value, (row.right-9, row.y+4), 14, color, right=True)
         detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
-        text(surface, shorten(detail, row.w-58, 10),
-             (left, row.y+18), 14, MUTED)
+        text(surface, shorten(detail, row.w-58, 14),
+             (left, row.y+25), 14, MUTED)
         owner = ("Orbital station · "+game.empire_name_for(world.orbital_station.owner) if world.orbital_station else game.empire_name_for(world.owner) if world.colonized else
                  "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Not colonizable" if world.is_gas_giant else "Uncolonized")
         if world.id in prizes:
             owner += " · Ancient ruins" if guardian.kind == "ancient_sentinel" else " · Prize world"
-        text(surface, shorten(owner, row.w-58, 14), (left, row.y+36), 14, color)
+        surface.text_regions.append((row, f"{world.name} · {detail} · {owner}"))
 
     if not entries:
-        draw_star(surface, (r.centerx, 441), 30, STAR_COLORS[star.kind])
-        text(surface, "No planets detected", (x, 512), 20, INK, "title")
-        paragraph(surface, "This system contains only its central star.", (x, 551), width, 13, MUTED, 23)
+        draw_star(surface, (r.centerx, r.y+250), 30, STAR_COLORS[star.kind])
+        text(surface, "No planets detected", (x, r.y+310), 20, INK, "title")
+        paragraph(surface, "This system contains only its central star.", (x, r.y+352), width, 13, MUTED, 23)
     if last:
-        text(surface, f"{start+1}–{min(start+PLANETS_PER_PAGE,len(entries))} OF {len(entries)} "+("LOCATIONS" if has_homes else "WORLDS"), (x, 645), 10, MUTED, "mono")
+        text(surface, f"{start+1}–{min(start+PLANETS_PER_PAGE,len(entries))} OF {len(entries)} "+("LOCATIONS" if has_homes else "WORLDS"), (x, r.y+433), 10, MUTED, "mono")
         for name, delta, bx, enabled in (("previous", -1, right-82, start > 0), ("next", 1, right-37, app.galaxy_planet_page < last)):
-            button = app.button(f"galaxy_planets_{name}", "", (bx, 635, 37, 28),
+            button = app.button(f"galaxy_planets_{name}", "", (bx, r.y+426, 37, 28),
                                 lambda step=delta: app.change_galaxy_planet_page(step), "hotspot", enabled=enabled)
             panel(surface, button.rect, (16, 31, 41), GOLD if enabled and app.is_active(button) else LINE)
             arrow(surface, button.rect.center, GOLD if enabled else FAINT, back=delta < 0)
-    elif entries:
-        text(surface, "Click a planet or mothership" if has_homes else "Click a planet to open it", (x, 645), 11, MUTED)
 
     ships = len(game.fleet_at(star.id))
     rivals = len(game.foreign_fleet(star.id)) if live else 0
@@ -147,14 +152,14 @@ def draw_system_panel(app, star):
     if guardian:
         note = (("GUARDED" if live else "LAST SEEN GUARDED")+" · "+guardian.spec.name
                 if guardian_status == "alive" else "Guardian defeated · Worlds accessible")
-        text(surface, shorten(note, width, 11), (x, 670), 11, RED if guardian_status == "alive" else CYAN)
+        text(surface, shorten(note, width, 11), (x, r.bottom-104), 11, RED if guardian_status == "alive" else CYAN)
         scan = orbit if live else "Stored survey · Enemy activity unknown"
     elif pirates:
-        text(surface, "PIRATE ACTIVITY · Inspect the orange flag", (x, 670), 11, encounters.COLOR)
+        text(surface, "PIRATE ACTIVITY · Inspect the orange flag", (x, r.bottom-104), 11, encounters.COLOR)
         scan = orbit if live else "Last known pirate contact"
     else:
         note = orbit if live else "Stored survey · Enemy activity unknown"
-        text(surface, note, (x, 670), 11, CYAN if live else MUTED)
+        text(surface, note, (x, r.bottom-104), 11, CYAN if live else MUTED)
         scan = "Scout survey complete" if star.id in game.exploration.scanned_player else "A scout can search for discoveries"
     own_bases = len(defenses.bases(game, star.id, "player")) if live else 0
     enemy_bases = sum(p.owner != "player" for p in defenses.bases(game, star.id)) if live else 0
@@ -174,21 +179,21 @@ def draw_system_panel(app, star):
     target = app.rival_id if app.rival_id in opponents else opponents[0] if opponents else None
     reason = game.engagement_error(star.id, target=target) if can_face else None
     if can_face and len(opponents) > 1 and guardian_status != "alive":
-        text(surface, shorten("Target: "+game.empire_name_for(target), width-39, 10), (x, 687), 10, app.empire_color(target))
-        button = app.button("galaxy_target_next", "", (right-28, 682, 28, 21),
+        text(surface, shorten("Target: "+game.empire_name_for(target), width-39, 10), (x, r.bottom-80), 10, app.empire_color(target))
+        button = app.button("galaxy_target_next", "", (right-28, r.bottom-84, 28, 24),
                             lambda: app.change_rival(1, star.id), "hotspot")
         arrow(surface, button.rect.center, GOLD)
     else:
-        text(surface, shorten(reason or scan, width, 9), (x, 687), 9, MUTED)
+        text(surface, shorten(reason or scan, width, 9), (x, r.bottom-80), 9, MUTED)
     show_pirates = bool(pirates) and not can_face
     show_hyperlane = not can_face and not show_pirates and motherships.is_wanderer(game)
-    full_width = 127 if can_face or show_hyperlane or show_pirates else width
-    app.button("open_system", "System view" if can_face or show_hyperlane or show_pirates else "Full system view", (x, 707, full_width, 30),
+    full_width = (width-8)//2 if can_face or show_hyperlane or show_pirates else width
+    app.button("open_system", "System view" if can_face or show_hyperlane or show_pirates else "Full system view", (x, r.bottom-50, full_width, 36),
                lambda: app.open_system(star.id), "command")
     if can_face:
         app.button("galaxy_engage", "Face guardian" if guardian_status == "alive" else "Engage defenses" if enemy_bases else "Engage fleet",
-                   (x+136, 707, width-136, 30), lambda: app.engage_request(star.id, target), "command", enabled=reason is None)
+                   (x+full_width+8, r.bottom-50, width-full_width-8, 36), lambda: app.engage_request(star.id, target), "command", enabled=reason is None)
     elif show_pirates:
-        app.button("galaxy_pirates", "Pirates", (x+136, 707, width-136, 30), lambda: app.open_encounters(star.id), "command")
+        app.button("galaxy_pirates", "Pirates", (x+full_width+8, r.bottom-50, width-full_width-8, 36), lambda: app.open_encounters(star.id), "command")
     elif show_hyperlane:
-        app.button("galaxy_hyperlanes", "Hyperlanes", (x+136, 707, width-136, 30), lambda: app.go("hyperlane"), "command")
+        app.button("galaxy_hyperlanes", "Hyperlanes", (x+full_width+8, r.bottom-50, width-full_width-8, 36), lambda: app.go("hyperlane"), "command")

@@ -65,14 +65,15 @@ def draw_panel(app, star):
     site = black_holes.at(game, star.id)
     if site is None or not black_holes.charted(game, star):
         return
-    x, width = 1075, 277
+    r = app.galaxy_layout.inspector
+    x, width = r.x+16, r.w-32
     color = black_holes.SITES[site.kind][2]
-    panel(surface, (1051, 180, 325, 573))
-    text(surface, "BLACK HOLE", (x, 203), 10, color, "mono", 1)
-    text(surface, shorten(star.name, width, 28, "title"), (x, 236), 28, INK, "title")
-    draw_art(surface, site.kind, (1067, 278, 293, 195))
-    paragraph(surface, black_holes.SITES[site.kind][3], (x, 466), width, 13, MUTED, 21)
-    pg.draw.line(surface, LINE, (x, 522), (x+width, 522))
+    panel(surface, r)
+    text(surface, "BLACK HOLE", (x, r.y+23), 10, color, "mono", 1)
+    text(surface, shorten(star.name, width, 28, "title"), (x, r.y+56), 28, INK, "title")
+    draw_art(surface, site.kind, (x, r.y+98, width, 176))
+    paragraph(surface, black_holes.SITES[site.kind][3], (x, r.y+286), width, 13, MUTED, 21)
+    pg.draw.line(surface, LINE, (x, r.y+342), (x+width, r.y+342))
     status = monsters.known_status(game, star.id)
     own_relic = site.claimed_by == "player"
     live = game.system_visible(star.id)
@@ -92,18 +93,18 @@ def draw_panel(app, star):
     else:
         heading, tint = "EXPEDITION READY", CYAN
         detail = "Send a strong fleet to explore the ancient site outside the horizon. Expect a legendary guardian."
-    text(surface, heading, (x, 540), 11, tint, "mono_bold")
-    paragraph(surface, detail, (x, 568), width, 14, MUTED, 22)
+    text(surface, heading, (x, r.y+360), 11, tint, "mono_bold")
+    paragraph(surface, detail, (x, r.y+388), width, 14, MUTED, 22)
     if app.route_ship_id is not None:
-        return  # The existing course confirmation occupies the bottom of this panel.
+        return  # Stay in the active course workflow.
     if own_relic or (recovered and live):
-        app.button("black_hole_relic", "View recovered relic", (x, 657, width, 37),
+        app.button("black_hole_relic", "View recovered relic", (x, r.bottom-96, width, 37),
                    lambda: open_guide(app, site.relic_id), "command", icon="info")
     elif not safe:
-        app.button("black_hole_navigation", "Research safe navigation", (x, 657, width, 37),
+        app.button("black_hole_navigation", "Research safe navigation", (x, r.bottom-96, width, 37),
                    lambda: open_navigation(app), "command", icon="research")
     elif not game.is_observer:
-        app.button("black_hole_fleets", "Choose an expedition fleet", (x, 657, width, 37),
+        app.button("black_hole_fleets", "Choose an expedition fleet", (x, r.bottom-96, width, 37),
                    app.open_fleets, "command", icon="fleets")
-    app.button("black_hole_guide", "Expedition guide", (x, 706, width, 31),
+    app.button("black_hole_guide", "Expedition guide", (x, r.bottom-47, width, 31),
                lambda: open_guide(app), "command", icon="info")

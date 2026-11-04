@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.89.0
+# Age of the Stars — Python prototype 0.90.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,23 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.90.0 — more room for the galaxy
+
+The star chart takes the extra width in a wide window. Select **Hide panel**
+for a full-width chart or **Show panel** to return to the same system or fleet.
+Zoom, sensor coverage and fleet orders use the expanded chart. The inspector
+lists each planet on two lines and keeps **Full system view** at the bottom.
+
+The five resource cards share one compact header with the empire name, year
+and turn. Each card shows its label, value and one detail line. Local shortages,
+idle research and imminent bankruptcy appear there. Select a card for details.
+**Info** explains the map controls and shows the campaign seed. **End turn**
+stays at the bottom right.
+
+![Galaxy command at 1844 × 952](screenshots/galaxy_v0900.png)
+
+Extract this update over **v0.89.0**. Existing campaigns use save format 61.
 
 ## New in v0.89.0: responsive game screens
 

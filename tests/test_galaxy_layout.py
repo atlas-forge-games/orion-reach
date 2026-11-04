@@ -139,24 +139,22 @@ class RectangularMapInterfaceTests(unittest.TestCase):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         x, y = button.rect.center
-        v = self.app.viewport
-        pos = (v.x+round(x*v.w/1440), v.y+round(y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(event, button=1, pos=pos))
             self.app.render()
 
     def test_rectangular_map_names_fit_and_do_not_overlap_stars(self):
         from orion.black_holes import chart_systems
-        from orion.app import MAP
         from orion.galaxy_fleet_view import fleet_markers, star_label_rects
-        labels = list(star_label_rects(self.app, MAP).values())
+        labels = list(star_label_rects(self.app, self.app.map_rect).values())
         stars = [pg.Rect(round(x)-14, round(y)-14, 28, 28)
                  for x, y in (self.app.star_pos(s) for s in chart_systems(self.app.game))]
         for index, label in enumerate(labels):
-            self.assertTrue(MAP.contains(label))
+            self.assertTrue(self.app.map_rect.contains(label))
             self.assertEqual(label.collidelist(stars), -1)
             self.assertEqual(label.collidelist(labels[index+1:]), -1)
-        for ships, badge, anchor in fleet_markers(self.app, MAP):
+        for ships, badge, anchor in fleet_markers(self.app, self.app.map_rect):
             self.assertEqual(badge.collidelist(labels), -1)
 
     def test_map_accepts_a_local_course_and_blocks_a_distant_one(self):

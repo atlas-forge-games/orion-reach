@@ -49,7 +49,7 @@ from .victory_view import draw_objectives, draw_result
 from .ground_view import draw_ground
 from .news_view import NEWS_PER_PAGE, draw_news
 from . import news as news_rules
-from . import defenses, sensors, black_holes, black_hole_view
+from . import defenses, monsters, sensors, black_holes, black_hole_view
 from .sensor_view import draw_coverage, draw_contacts, draw_contact_panel
 from .production import PROJECTS, SHIP_TYPES
 from .designs import loadout_error
@@ -64,8 +64,9 @@ from . import diplomacy as diplomacy_balance
 from .fleet_views import FLEETS_PER_PAGE, QUEUE_PER_PAGE, draw_fleets, draw_shipyard
 from .fleets import fleet_containing
 from .galaxy_fleet_view import FLEET_SHIPS_PER_PAGE, draw_fleet, draw_fleet_popup, draw_fuel_range, draw_map_fleets, draw_map_guardians, draw_order_panel, guardian_markers, draw_map_pirates, pirate_markers, star_label_rects, ordered_ships
-from .galaxy_system_view import PLANETS_PER_PAGE, SYSTEM_PANEL, draw_system_panel, system_entries, entry_key
+from .galaxy_system_view import PLANETS_PER_PAGE, draw_system_panel, system_entries, entry_key
 from .motherships import visible_at
+from .galaxy_layout import DEFAULT_LAYOUT, GalaxyLayout
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_background import draw_galaxy_background
 from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
@@ -84,7 +85,7 @@ from .campaign_navigation import GAME_SCREENS
 
 STAR_COLORS={"Yellow dwarf":(230,207,141), "Blue star":(113,181,231),
              "Red dwarf":(221,124,108), "White star":(217,228,239), "Orange dwarf":(235,170,106)}
-MAP=pg.Rect(64,180,962,573)
+MAP = DEFAULT_LAYOUT.chart  # Reference size for offline previews.
 TURN_INPUT_EVENTS=(pg.KEYDOWN,pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP,pg.MOUSEWHEEL,pg.TEXTINPUT)
 
 
@@ -424,7 +425,7 @@ class App:
             selected=next((i for i,p in enumerate(entries) if p.id==self.game.selected_planet),None)
             if selected is not None:
                 self.galaxy_planet_page=selected//PLANETS_PER_PAGE
-                self.focus=entry_key(entries[selected])
+                self.focus=f"star_{self.game.selected_system}" if self.inspector_collapsed else entry_key(entries[selected])
 
     def change_galaxy_planet_page(self,delta):
         known=self.game.known_system(self.game.selected_system)
@@ -437,6 +438,8 @@ class App:
 
     def reset_fleet_view(self):
         self.map_camera=GalaxyCamera()
+        self.galaxy_layout=DEFAULT_LAYOUT
+        self.inspector_collapsed=False
         self.map_drag=None
         self.map_pan_keys=set()
         self.map_view_system=None
@@ -471,6 +474,45 @@ class App:
         self.show_sensors=False
         self.sensor_contact_id=None
 
+    @property
+    def map_rect(self):
+        return self.galaxy_layout.chart
+
+    def on_galaxy_chart(self,screen=None):
+        screen=self.screen if screen is None else screen
+        return screen=="galaxy" or (screen=="system" and self.game and
+               self.game.systems[self.game.selected_system].kind==black_holes.KIND)
+
+    def toggle_inspector(self):
+        self.inspector_collapsed=not self.inspector_collapsed
+        self.fleet_popup_rect=None
+        self.focus="toggle_inspector"
+        self.pressed=None
+
+    def show_sensor_control(self):
+        return (not self.game.is_observer and not self.fleet_popup and not self.map_order_ids
+                and self.route_ship_id is None)
+
+    def map_overlays(self):
+        layout=self.galaxy_layout
+        regions=[layout.camera_tools,layout.panel_toggle]
+        if self.show_sensor_control():
+            regions.append(layout.sensors)
+        if self.fleet_popup or self.map_order_ids or self.route_ship_id is not None:
+            regions.append(layout.order_strip)
+        return regions
+
+    def map_background_at(self,point):
+        return self.map_rect.collidepoint(point) and not any(r.collidepoint(point) for r in self.map_overlays())
+
+    def inspector_has_pages(self):
+        if self.fleet_popup:
+            return len(self.viewed_fleet())>FLEET_SHIPS_PER_PAGE
+        if self.sensor_contact_id is not None or self.route_ship_id is not None or self.map_order_ids:
+            return False
+        known=self.game.known_system(self.game.selected_system)
+        return bool(known and len(system_entries(self.game,known))>PLANETS_PER_PAGE)
+
     def toggle_sensors(self):
         if self.game.is_observer:
             return
@@ -490,6 +532,7 @@ class App:
     def open_sensor_contact(self,identifier):
         self.close_fleet_popup()
         self.route_ship_id=None
+        self.inspector_collapsed=False
         self.sensor_contact_id=identifier
         self.focus="sensor_close"
 
@@ -536,6 +579,7 @@ class App:
         if not ships:
             self.toast("That fleet is no longer available.",True)
             return
+        self.inspector_collapsed=False
         self.fleet_anchor_id=ship_id
         self.fleet_selected_ids={s.id for s in ships if s.owner==PLAYER and not s.in_transit}
         self.manifest_page=0
@@ -589,6 +633,7 @@ class App:
         if self.game.strategy_error():
             self.toast(self.game.strategy_error(),True)
             return
+        self.inspector_collapsed=False
         self.route_ship_id=None
         self.map_order_ids=tuple(sorted(self.fleet_selected_ids))
         self.game.selected_system=ships[0].system_id
@@ -602,12 +647,12 @@ class App:
         self.close_fleet_popup()
 
     def fleet_route_target(self):
-        if not self.keyboard_mode and not self.map_drag and MAP.collidepoint(self.mouse) and self.mouse[1]>=MAP.y+38:
+        if not self.keyboard_mode and not self.map_drag and self.map_background_at(self.mouse):
             # Match the click handler's topmost-first hit testing in dense clusters.
-            for sid, rect, _ in reversed(pirate_markers(self,MAP)):
+            for sid, rect, _ in reversed(pirate_markers(self,self.map_rect)):
                 if rect.collidepoint(self.mouse):
                     return sid
-            for guardian, rect, _ in reversed(guardian_markers(self,MAP)):
+            for guardian, rect, _ in reversed(guardian_markers(self,self.map_rect)):
                 if rect.collidepoint(self.mouse):
                     return guardian.system_id
             for system in reversed(self.map_systems()):
@@ -696,6 +741,7 @@ class App:
             ship=self.game.ship_at(ship_id)
             if ship.in_transit:
                 raise RuleError("Wait for this ship to arrive before assigning a new course.")
+            self.inspector_collapsed=False
             self.route_ship_id=ship_id
             self.map_order_ids=()
             self.game.selected_system=ship.system_id
@@ -736,6 +782,8 @@ class App:
             self.game.selected_system=system_id
             self.game.selected_planet=None
             self.focus="send_course"
+        if self.inspector_collapsed and self.route_ship_id is None and not self.map_order_ids:
+            self.focus=f"star_{system_id}"
 
     def send_course(self,accept_black_hole_risk=False):
         try:
@@ -2250,6 +2298,12 @@ class App:
             self.confirm("Could not save", "You can stay here and try again, or return to the menu. Your campaign remains in memory.",
                          "Return to menu",lambda:self.go("menu"))
 
+    def show_resource_detail(self,title,body,return_focus):
+        self.dialog={"title":title,"body":body,"return_focus":return_focus}
+        self.focus="dialog_cancel"
+        self.buttons=[]
+        self.pressed=None
+
     def confirm(self,title,body,label,action):
         self.dialog={"title":title,"body":body,"label":label,"action":action}
         self.focus="dialog_cancel"
@@ -2329,7 +2383,7 @@ class App:
             self.keyboard_mode=False
         if combat_camera.handle_input(self,event):
             return
-        if handle_map_input(self,event,MAP):
+        if handle_map_input(self,event,self.map_rect):
             return
         from .surface_construction import handle_input as handle_surface_construction
         if handle_surface_construction(self,event):
@@ -2392,10 +2446,12 @@ class App:
             change(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="fleet" and not self.dialog and event.y:
             self.change_manifest_page(-1 if event.y>0 else 1)
-        if event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and self.fleet_popup and not self.dialog and event.y:
+        if (event.type==pg.MOUSEWHEEL and self.on_galaxy_chart() and self.fleet_popup and not self.dialog and event.y
+                and self.galaxy_layout.inspector and self.galaxy_layout.inspector.collidepoint(self.mouse)):
             self.change_manifest_page(-1 if event.y>0 else 1)
-        elif (event.type==pg.MOUSEWHEEL and self.screen=="galaxy" and not self.dialog and event.y
-              and not self.map_order_ids and self.sensor_contact_id is None and self.route_ship_id is None and SYSTEM_PANEL.collidepoint(self.mouse)):
+        elif (event.type==pg.MOUSEWHEEL and self.on_galaxy_chart() and not self.dialog and event.y
+              and not self.map_order_ids and self.sensor_contact_id is None and self.route_ship_id is None and self.galaxy_layout.inspector
+              and self.galaxy_layout.inspector.collidepoint(self.mouse)):
             self.change_galaxy_planet_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen=="exploration" and not self.dialog and event.y:
             self.change_exploration_page(-1 if event.y>0 else 1)
@@ -2556,7 +2612,7 @@ class App:
                     self.advance_turn()
             elif event.key==pg.K_p:
                 self.pause()
-            elif event.key==pg.K_s and self.screen=="galaxy":
+            elif event.key==pg.K_s and self.on_galaxy_chart():
                 self.toggle_sensors()
             elif event.key==pg.K_i:
                 self.open_empire()
@@ -2576,8 +2632,8 @@ class App:
                 self.change_news_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="observer" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_observer_page(1 if event.key==pg.K_PAGEDOWN else -1)
-            elif (self.screen=="galaxy" and not self.fleet_popup and not self.map_order_ids
-                  and self.route_ship_id is None and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN)):
+            elif (self.on_galaxy_chart() and not self.inspector_collapsed and not self.fleet_popup and not self.map_order_ids
+                  and self.sensor_contact_id is None and self.route_ship_id is None and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN)):
                 self.change_galaxy_planet_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
@@ -2740,21 +2796,21 @@ class App:
         draw_settings(self)
 
     def map_pos(self,x,y):
-        return self.map_camera.position(x,y,MAP)
+        return self.map_camera.position(x,y,self.map_rect)
 
     def star_pos(self,system):
         return self.map_pos(system.x,system.y)
 
     def map_systems(self):
-        return [system for system in black_holes.chart_systems(self.game) if MAP.collidepoint(self.star_pos(system))]
+        return [system for system in black_holes.chart_systems(self.game) if self.map_rect.collidepoint(self.star_pos(system))]
 
     def map_button(self,key,rect,action):
-        rect=pg.Rect(rect).clip(MAP)
+        rect=pg.Rect(rect).clip(self.map_rect)
         if rect.w and rect.h:
             return self.button(key,"",rect,action,"hotspot")
 
     def zoom_map(self,steps,anchor=None):
-        self.map_camera.zoom_at(steps,MAP.center if anchor is None else anchor,MAP)
+        self.map_camera.zoom_at(steps,self.map_rect.center if anchor is None else anchor,self.map_rect)
         self.pressed=None
 
     def fit_map(self):
@@ -2765,13 +2821,13 @@ class App:
     def center_map(self):
         star=self.game.systems[self.game.selected_system]
         if black_holes.charted(self.game,star):
-            self.map_camera.center_on(star.x,star.y,MAP)
+            self.map_camera.center_on(star.x,star.y,self.map_rect)
         self.pressed=None
 
     def ensure_map_system(self,system_id):
         star=self.game.systems[system_id]
-        if black_holes.charted(self.game,star) and not MAP.inflate(-120,-120).collidepoint(self.star_pos(star)):
-            self.map_camera.center_on(star.x,star.y,MAP)
+        if black_holes.charted(self.game,star) and not self.map_rect.inflate(-120,-120).collidepoint(self.star_pos(star)):
+            self.map_camera.center_on(star.x,star.y,self.map_rect)
 
     def draw_galaxy(self):
         state=self.game
@@ -2781,14 +2837,14 @@ class App:
         style=map_style(self)
         compact=clean_map(self)
         (draw_observer_header if state.is_observer else draw_galaxy_header)(self)
-        draw_galaxy_background(self.canvas,MAP,self.settings["galaxy_background"],self.map_camera)
+        draw_galaxy_background(self.canvas,self.map_rect,self.settings["galaxy_background"],self.map_camera)
         old_clip=self.canvas.get_clip()
-        self.canvas.set_clip(MAP)
-        draw_coverage(self,MAP)
-        draw_fuel_range(self,MAP)
-        draw_network(self,MAP)
-        draw_clean_fleet_routes(self,MAP)
-        labels=star_label_rects(self,MAP)
+        self.canvas.set_clip(self.map_rect)
+        draw_coverage(self,self.map_rect)
+        draw_fuel_range(self,self.map_rect)
+        draw_network(self,self.map_rect)
+        draw_clean_fleet_routes(self,self.map_rect)
+        labels=star_label_rects(self,self.map_rect)
         moving=ordered_ships(self)
         preview=self.fleet_route_target() if self.map_order_ids or (compact and self.route_ship_id is not None) else state.selected_system
         for star in self.map_systems():
@@ -2830,81 +2886,87 @@ class App:
                     pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
                 draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"],style)
             self.map_button(f"star_{star.id}",(int(x)-18,int(y)-18,36,36),lambda s=star.id:self.select_star(s))
-        draw_map_fleets(self,MAP)
-        draw_map_guardians(self,MAP)
-        draw_map_pirates(self,MAP)
+        draw_map_fleets(self,self.map_rect)
+        draw_map_guardians(self,self.map_rect)
+        draw_map_pirates(self,self.map_rect)
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
-            draw_contacts(self,MAP)
+            draw_contacts(self,self.map_rect)
         self.canvas.set_clip(old_clip)
-        draw_map_navigation(self,MAP)
-        if self.map_order_ids or self.route_ship_id is not None:
-            slow=any(s.habitat is not None for s in moving)
-            speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus(slow=slow)/100)
-            keeping=bool(moving) and moving[0].departure_pending and moving[0].destination==preview
-            lane=moving[0].hyperlane if keeping else bool(moving) and hyperlanes.connects(state,moving[0].system_id,preview)
-            label="FORGOTTEN HYPERLANE · 1 TURN" if lane else f"RANGE {state.fuel_range(ships=moving)} LY · SPEED {speed:g} LY/TURN"
-            text(self.canvas,label,
-                 (MAP.right-16,MAP.y+18),10,CYAN,"mono",right=True)
-        if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
-            self.button("sensor_overlay", "Sensors on · S" if self.show_sensors else "Sensor range · S",
-                        (824,187,188,28),self.toggle_sensors,"primary" if self.show_sensors else "normal")
+        draw_map_navigation(self)
         self.map_view_system=state.selected_system
         star=state.systems[preview]
-        if not self.fleet_popup and not self.map_order_ids:
-            if self.sensor_contact_id is not None:
-                draw_contact_panel(self)
-            elif self.route_ship_id is None:
-                draw_system_panel(self,star)
-            else:
-                draw_system_intelligence(self,star)
-        if self.map_order_ids:
-            if not self.fleet_popup:
+        if self.galaxy_layout.inspector is not None:
+            if self.fleet_popup:
+                draw_fleet_popup(self)
+            elif self.map_order_ids:
                 draw_order_panel(self,star)
-            hint=f"{len(self.map_order_ids)} {'SHIP' if len(self.map_order_ids)==1 else 'SHIPS'} SELECTED · Click a destination, or the origin to cancel departure."
-        elif self.route_ship_id is None:
-            hint=("OBSERVING · Click stars, planets and fleets to inspect. End turn advances every computer empire." if state.is_observer else
-                  "Select a star, then a planet on the right. Click a fleet to send ships.")
-        else:
-            ship=state.ship_at(self.route_ship_id)
-            duration=state.travel_turns(state.systems[ship.system_id],star,ships=[ship])
-            blocked=not state.can_reach(star.id, ships=[ship])
-            lane=hyperlanes.connects(state,ship.system_id,star.id)
-            label="Out of fuel range" if blocked else "Use hyperlane · 1 turn" if lane else f"Send ship · {turn_label(duration)}" if duration else "Current system"
-            self.button("send_course",label,(1075,692,277,43),self.send_course,"command",enabled=duration>0 and not blocked,icon="course")
-            known=state.known_system(star.id)
-            targets=sum(not p.colonized and state.can_settle(p) for p in known.worlds) if known else 0
-            detail=f"{targets} potential colony worlds in the last survey." if known else "Planets unknown until arrival."
-            if black_holes.at(state,star.id):
-                detail="FATAL APPROACH: this ship will be lost." if black_holes.risk(state,star.id) else "Safe approach unlocked. Guardian combat possible."
-            hint=(f"{ship.name}: {state.supply_distance(star.id):.1f} ly from nearest supply point · Range {state.fuel_range(ships=[ship])} ly. "
-                  +("Establish an outpost or research fuel tanks." if blocked else detail))
-            if lane:
-                hint=f"{ship.name}: Forgotten hyperlane · 1 turn · No fuel limit. "+detail
-        ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
-        hint_y=785 if compact and not ordering and known_guardian_kinds(state) else 775
-        text(self.canvas,shorten(hint,765 if ordering else 944,13),(64,hint_y),13,MUTED)
-        text(self.canvas,f"{state.galaxy_size.upper()}   ·   SEED {state.seed}",(1376,778),10,FAINT,"mono",right=True)
-        if self.fleet_popup or self.map_order_ids:
-            self.button("cancel_fleet_course","Close",(848,763,178,32),self.cancel_map_order,"command",icon="close",shortcut="Esc")
-        elif self.route_ship_id is not None:
-            self.button("cancel_course","Cancel",(848,763,178,32),lambda:self.go("fleets"),"command",icon="close",shortcut="Esc")
+            elif self.sensor_contact_id is not None:
+                draw_contact_panel(self)
+            elif self.route_ship_id is not None:
+                draw_system_intelligence(self,state.systems[state.selected_system])
+            else:
+                draw_system_panel(self,star)
+        if self.fleet_popup or self.map_order_ids or self.route_ship_id is not None:
+            self.draw_map_order_strip(star,moving)
         draw_galaxy_commands(self)
-        if self.fleet_popup:
-            draw_fleet_popup(self)
+
+    def draw_map_order_strip(self,preview,ships):
+        state=self.game
+        bar=self.galaxy_layout.order_strip
+        panel(self.canvas,bar,(9,20,29))
+        self.button("map_order_strip","",bar,lambda:None,"hotspot")
+        close=pg.Rect(bar.right-92,bar.y+5,86,bar.h-10)
+        single=self.route_ship_id is not None
+        self.button("cancel_course" if single else "cancel_fleet_course","Cancel" if single else "Close",close,
+                    (lambda:self.go("fleets")) if single else self.cancel_map_order,"tab")
+        available=close.left-bar.left-20
+        if single:
+            preview=state.systems[state.selected_system]
+            ship=state.ship_at(self.route_ship_id)
+            duration=state.travel_turns(state.systems[ship.system_id],preview,ships=[ship])
+            send=pg.Rect(close.x-145,close.y,139,close.h)
+            self.button("send_course","Send · "+turn_label(duration) if duration else "At origin",send,self.send_course,
+                        "command",enabled=duration>0 and state.can_reach(preview.id,ships=[ship]),icon="course")
+            available=send.left-bar.left-20
+        heading="Fleet inspection"
+        detail="View the ships in the details panel."
+        tint=MUTED
+        if ships:
+            keeping=ships[0].departure_pending and ships[0].destination==preview.id
+            lane=ships[0].hyperlane if keeping else hyperlanes.connects(state,ships[0].system_id,preview.id)
+            reach=state.fuel_range(ships=ships)
+            speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus(slow=any(s.habitat for s in ships))/100)
+            heading=(ships[0].name if single else f"{len(ships)} selected")+" · "+state.system_name(preview.id)
+            detail=f"Range {reach} ly · Speed {speed:g} ly/turn"
+            if lane:
+                detail="Forgotten hyperlane · 1 turn"
+            if not keeping and not state.can_reach(preview.id,ships=ships):
+                detail=f"Out of fuel range · {state.supply_distance(preview.id):.1f} / {reach} ly from supply"
+                tint=RED
+            elif black_holes.risk(state,preview.id):
+                detail="Fatal approach · Arriving ships will be lost"
+                tint=RED
+            elif monsters.known_status(state,preview.id)=="alive":
+                detail="Guardian at destination · "+monsters.at(state,preview.id).spec.name
+                tint=RED
+        text(self.canvas,shorten(heading,available,15),(bar.x+8,bar.y+2),15,INK)
+        text(self.canvas,shorten(detail,available,14),(bar.x+8,bar.y+23),14,tint)
 
     def draw_pause(self):
         getattr(self,"draw_"+self.pause_return)()
         self.backdrop.dim(self.canvas)
         self.buttons=[]
         self.canvas.text_regions=[]
-        panel(self.canvas,(459,218,522,487))
-        text(self.canvas,"EXPEDITION PAUSED",(505,257),11,GOLD,"mono",2)
-        text(self.canvas,"The stars can wait.",(502,290),34,INK,"title")
-        self.button("resume","Resume campaign",(505,365,430,58),self.resume,"primary")
-        self.button("save","Save game",(505,438,430,54),self.save_game)
-        self.button("settings","Settings",(505,504,430,54),lambda:self.show_settings("pause"))
-        self.button("main_menu","Return to main menu",(505,570,430,54),self.to_menu)
-        self.button("quit","Quit game",(505,637,430,45),self.quit_request,"ghost")
+        visible=self.canvas.logical_rect(self.window.get_rect().move(-self.viewport.x,-self.viewport.y))
+        left,top=(visible.centerx-261,max(0,visible.centery-244)) if self.canvas.layout is None else (459,218)
+        panel(self.canvas,(left,top,522,487))
+        text(self.canvas,"EXPEDITION PAUSED",(left+46,top+39),11,GOLD,"mono",2)
+        text(self.canvas,"The stars can wait.",(left+43,top+72),34,INK,"title")
+        self.button("resume","Resume campaign",(left+46,top+147,430,58),self.resume,"primary")
+        self.button("save","Save game",(left+46,top+220,430,54),self.save_game)
+        self.button("settings","Settings",(left+46,top+286,430,54),lambda:self.show_settings("pause"))
+        self.button("main_menu","Return to main menu",(left+46,top+352,430,54),self.to_menu)
+        self.button("quit","Quit game",(left+46,top+419,430,45),self.quit_request,"ghost")
 
     def draw_system(self):
         draw_system(self)
@@ -3042,15 +3104,22 @@ class App:
         if "technology" in self.dialog:
             draw_technology_info(self,self.dialog["technology"])
             return
-        height=max(312,199+27*len(wrapped_lines(self.dialog["body"],526,16)))
+        width,height=self.message_size(self.canvas.get_width())
         visible=self.canvas.logical_rect(self.window.get_rect().move(-self.viewport.x,-self.viewport.y))
-        left=max(0,min(self.canvas.get_width()-596,visible.centerx-298))
+        left=max(0,min(self.canvas.get_width()-width,visible.centerx-width//2))
         top=max(0,min(self.canvas.get_height()-height,visible.centery-height//2))
-        panel(self.canvas,(left,top,596,height),PANEL,GOLD)
-        text(self.canvas,self.dialog["title"],(left+32,top+31),29,INK,"title")
-        paragraph(self.canvas,self.dialog["body"],(left+32,top+84),526,16,MUTED,27)
+        panel(self.canvas,(left,top,width,height),PANEL,GOLD)
+        text(self.canvas,shorten(self.dialog["title"],width-64,29,"title"),(left+32,top+31),29,INK,"title")
+        paragraph(self.canvas,self.dialog["body"],(left+32,top+84),width-70,16,MUTED,27)
+        if "action" not in self.dialog:
+            self.button("dialog_cancel","Close",(left+width-212,top+height-97,180,57),self.cancel_dialog,"primary")
+            return
         self.button("dialog_cancel","Cancel",(left+32,top+height-97,180,57),self.cancel_dialog)
-        self.button("dialog_ok",self.dialog["label"],(left+228,top+height-97,336,57),self.accept_dialog,"primary")
+        self.button("dialog_ok",self.dialog["label"],(left+228,top+height-97,width-260,57),self.accept_dialog,"primary")
+
+    def message_size(self,available_width):
+        width=min(596,available_width-16)
+        return width,max(312,199+27*len(wrapped_lines(self.dialog["body"],width-70,16)))
 
     def render(self):
         if self.game and self.game.selected_planet is not None and self.game.selected_planet < 0:
@@ -3077,7 +3146,7 @@ class App:
         page, page_origin = self.canvas, self.viewport.topleft
         mouse = self.window_pos(self.mouse) if self.mouse != (-1,-1) else None
         if 'body' in self.dialog and 'title' in self.dialog:
-            height = max(312,199+27*len(wrapped_lines(self.dialog['body'],526,16)))
+            _, height = self.message_size(available[0])
             logical = (available[0], max(available[1], height+32))
             layout = None
         else:
@@ -3113,7 +3182,17 @@ class App:
         available=(round(width/scale),round(height/scale))
         logical=SIZE
         layout=None
-        if self.screen=='empire':
+        page=self.pause_return if self.screen=="pause" else self.screen
+        if self.on_galaxy_chart(page):
+            system_view=page=="system"
+            ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
+            legend=bool(self.game and known_guardian_kinds(self.game)) and not ordering
+            layout_now=GalaxyLayout.fit(available,collapsed=self.inspector_collapsed,system_view=system_view,legend=legend)
+            if self.map_rect!=layout_now.chart:
+                self.map_camera.resize(self.map_rect,layout_now.chart)
+            self.galaxy_layout=layout_now
+            logical=layout_now.size
+        elif self.screen=='empire':
             from .empire_view import layout_for
             self.empire_layout=layout_for(self,available)
             logical=(self.empire_layout.width,self.empire_layout.height)
@@ -3195,6 +3274,6 @@ class App:
             self.process_events(pg.event.get())
             self.update_splash()
             self.update_combat()
-            update_map_input(self,elapsed,MAP)
+            update_map_input(self,elapsed,self.map_rect)
             self.render()
             self.present()

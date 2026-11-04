@@ -13,7 +13,6 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.exploration import refresh
-from orion.galaxy_system_view import SYSTEM_PANEL
 from orion.model import Ship, generate_planets
 from scenarios import fixed_start_game as new_game
 
@@ -96,7 +95,7 @@ class GalaxySystemInterfaceTests(unittest.TestCase):
             self.assertEqual(len(buttons), 4)
             seen.extend(b.key for b in buttons)
             for index, button in enumerate(buttons):
-                self.assertTrue(SYSTEM_PANEL.contains(button.rect))
+                self.assertTrue(self.app.galaxy_layout.inspector.contains(button.rect))
                 self.assertEqual(button.rect.collidelist([b.rect for b in buttons[index+1:]]), -1)
             if not page:
                 self.click("galaxy_planets_next")
@@ -110,7 +109,7 @@ class GalaxySystemInterfaceTests(unittest.TestCase):
         self.app.mouse = (300, 300)
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=-1))
         self.assertEqual(self.app.galaxy_planet_page, 0)
-        self.app.mouse = SYSTEM_PANEL.center
+        self.app.mouse = self.app.galaxy_layout.inspector.center
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=-1))
         self.app.render()
         self.assertEqual(self.app.galaxy_planet_page, 1)

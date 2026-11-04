@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import pygame as pg
-from orion.app import App, MAP
+from orion.app import App
 from orion.galaxy_fleet_icons import draw_map_ship
 from orion.model import Ship
 from orion.ui import INK, MUTED, text
@@ -42,7 +42,7 @@ def main():
                               Ship(3, "frigate", home.id, owner="rival")]
             app.game.next_ship_id = 4
             app.map_camera.zoom = 3
-            app.map_camera.center_on(home.x, home.y, MAP)
+            app.map_camera.center_on(home.x, home.y, app.map_rect)
             app.render()
             pg.image.save(app.canvas, str(out/"galaxy_docked_v0832.png"))
             # Native-size rendering of all eight headings for visual QA.

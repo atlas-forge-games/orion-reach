@@ -275,30 +275,28 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         # Collision-driven badge placement belongs to Classic. Clean's fixed
         # dock slots and true travel positions have their own regression tests.
         self.app.settings["galaxy_style"] = "classic"
-        from orion.app import MAP
         from orion.galaxy_fleet_view import fleet_markers, star_label_rects
         for seed in (0, 2408, 100):
             game = new_game(seed=seed, galaxy_size="Expansive")
             game.ships = [Ship(i+1, "frigate", system.id, owner=owner)
                           for i, (system, owner) in enumerate((s, o) for s in game.systems for o in (PLAYER, RIVAL))]
             self.app.game = game
-            markers = fleet_markers(self.app, MAP)
+            markers = fleet_markers(self.app, self.app.map_rect)
             self.assertEqual(len(markers), 144)
             rects = [rect for _, rect, _ in markers]
-            labels = list(star_label_rects(self.app, MAP).values())
+            labels = list(star_label_rects(self.app, self.app.map_rect).values())
             stars = [pg.Rect(int(x)-18, int(y)-18, 36, 36)
                      for x, y in (self.app.star_pos(s) for s in game.systems)]
             for index, rect in enumerate(rects):
-                self.assertTrue(MAP.contains(rect))
+                self.assertTrue(self.app.map_rect.contains(rect))
                 self.assertEqual(rect.collidelist(stars), -1)
                 self.assertEqual(rect.collidelist(labels), -1)
                 self.assertEqual(rect.collidelist(rects[:index]), -1)
 
     def test_clicking_origin_cancels_selected_departures_and_preserves_unselected_ships(self):
         self.app.game.set_trade_goods(0, 2)
-        from orion.app import MAP
         self.click("map_fleet_1")
-        self.assertFalse(self.app.fleet_popup_rect.colliderect(MAP))
+        self.assertFalse(self.app.fleet_popup_rect.colliderect(self.app.map_rect))
         self.click("fleet_select_2")
         self.click("fleet_select_4")
         self.click("star_1")

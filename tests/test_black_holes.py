@@ -302,19 +302,16 @@ class BlackHoleInterfaceTests(unittest.TestCase):
         app.render()
         button = next(b for b in app.buttons if b.key == key)
         self.assertTrue(button.enabled, key)
-        view = app.viewport
-        x, y = button.rect.center
-        pos = round(view.x+x*view.w/1440), round(view.y+y*view.h/900)
+        pos = app.window_pos(button.rect.center)
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             app.render()
 
     def test_hidden_sites_have_no_labels_hit_targets_or_hover_destinations(self):
-        from orion.app import MAP
         from orion.galaxy_fleet_view import star_label_rects
         app, game = self.app, self.app.game
         for site in game.black_holes.sites:
-            self.assertNotIn(site.system_id, star_label_rects(app, MAP))
+            self.assertNotIn(site.system_id, star_label_rects(app, app.map_rect))
             self.assertNotIn(f"star_{site.system_id}", {b.key for b in app.buttons})
             app.mouse = app.star_pos(game.systems[site.system_id])
             app.keyboard_mode = False

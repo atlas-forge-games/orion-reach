@@ -99,12 +99,12 @@ class CameraInterfaceTests(unittest.TestCase):
         self.click("map_fleet_1")
         game = self.app.game
         before, orders = game.to_dict(), self.app.map_order_ids
-        self.move(MAP.center)
-        world = self.app.map_camera.unproject(self.app.mouse, MAP)
+        self.move(self.app.map_rect.center)
+        world = self.app.map_camera.unproject(self.app.mouse, self.app.map_rect)
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=2, x=0))
         self.app.render()
         self.assertGreater(self.app.map_camera.zoom, 1)
-        for actual, expected in zip(self.app.map_camera.transform(world, MAP), self.app.mouse):
+        for actual, expected in zip(self.app.map_camera.transform(world, self.app.map_rect), self.app.mouse):
             self.assertAlmostEqual(actual, expected)
         self.assertTrue(self.app.fleet_popup)
         self.assertEqual(orders, self.app.map_order_ids)
@@ -150,42 +150,42 @@ class CameraInterfaceTests(unittest.TestCase):
         game.ships = [Ship(i+1, "scout", system.id) for i, system in enumerate(game.systems)]
         game.next_ship_id = len(game.ships)+1
         app.zoom_map(20)
-        app.map_camera.center_on(.5, .5, MAP)
+        app.map_camera.center_on(.5, .5, self.app.map_rect)
         app.render()
-        visible = {s.id for s in game.systems if MAP.collidepoint(app.star_pos(s))}
+        visible = {s.id for s in game.systems if self.app.map_rect.collidepoint(app.star_pos(s))}
         self.assertLess(len(visible), len(game.systems))
-        self.assertEqual(set(star_label_rects(app, MAP)), visible)
-        self.assertEqual({s[0].system_id for s, _, _ in fleet_markers(app, MAP)}, visible)
+        self.assertEqual(set(star_label_rects(app, self.app.map_rect)), visible)
+        self.assertEqual({s[0].system_id for s, _, _ in fleet_markers(app, self.app.map_rect)}, visible)
         self.assertEqual({int(b.key.removeprefix("star_")) for b in app.buttons if b.key.startswith("star_")}, visible)
         for b in app.buttons:
             if b.key.startswith(("star_", "map_fleet_")):
-                self.assertTrue(MAP.contains(b.rect))
-        for label in star_label_rects(app, MAP).values():
-            self.assertTrue(MAP.contains(label))
+                self.assertTrue(self.app.map_rect.contains(b.rect))
+        for label in star_label_rects(app, self.app.map_rect).values():
+            self.assertTrue(self.app.map_rect.contains(label))
 
     def test_guardians_and_sensor_contacts_follow_the_camera_and_cull_at_edges(self):
         app = self.app
         app.game = make_game(seed=804, race_id="observer", rival_count=5, with_tombs=False)
         app.fit_map()
         app.go("galaxy")
-        self.assertTrue(guardian_markers(app, MAP))
+        self.assertTrue(guardian_markers(app, self.app.map_rect))
         app.zoom_map(20)
         guardian = app.game.guardians[0]
         star = app.game.systems[guardian.system_id]
-        app.map_camera.center_on(star.x, star.y, MAP)
-        for threat, badge, anchor in guardian_markers(app, MAP):
+        app.map_camera.center_on(star.x, star.y, self.app.map_rect)
+        for threat, badge, anchor in guardian_markers(app, self.app.map_rect):
             self.assertEqual(anchor, app.star_pos(app.game.systems[threat.system_id]))
-            self.assertTrue(MAP.contains(badge))
+            self.assertTrue(self.app.map_rect.contains(badge))
         contacts = [sensors.Contact("player", 900+i, "rival", s.x, s.y, 1, s.id, 1)
                     for i, s in enumerate(app.game.systems)]
         with patch("orion.sensor_view.map_contacts", return_value=contacts):
-            markers = contact_markers(app, MAP)
+            markers = contact_markers(app, self.app.map_rect)
         self.assertLess(len(markers), len(contacts))
         self.assertTrue(markers)
         for contact, badge, anchor in markers:
             self.assertEqual(anchor, app.map_pos(contact.x, contact.y))
-            self.assertTrue(MAP.collidepoint(anchor))
-            self.assertTrue(MAP.contains(badge))
+            self.assertTrue(self.app.map_rect.collidepoint(anchor))
+            self.assertTrue(self.app.map_rect.contains(badge))
 
     def test_fog_and_hidden_black_holes_stay_private_at_every_zoom(self):
         app = self.app
@@ -195,12 +195,12 @@ class CameraInterfaceTests(unittest.TestCase):
         for site in app.game.black_holes.sites:
             star = app.game.systems[site.system_id]
             app.zoom_map(20)
-            app.map_camera.center_on(star.x, star.y, MAP)
+            app.map_camera.center_on(star.x, star.y, self.app.map_rect)
             app.render()
             self.assertFalse(any(b.key == f"star_{star.id}" for b in app.buttons))
-            self.assertNotIn(star.id, star_label_rects(app, MAP))
+            self.assertNotIn(star.id, star_label_rects(app, self.app.map_rect))
         visible_ships = {ship.id for ship in app.game.visible_ships()}
-        self.assertTrue(all(ship.id in visible_ships for ships, _, _ in fleet_markers(app, MAP) for ship in ships))
+        self.assertTrue(all(ship.id in visible_ships for ships, _, _ in fleet_markers(app, self.app.map_rect) for ship in ships))
         self.assertEqual(before, app.game.to_dict())
 
     def test_transit_positions_and_range_overlays_share_zoomed_geometry(self):
@@ -212,55 +212,55 @@ class CameraInterfaceTests(unittest.TestCase):
         ship.turns_remaining -= 1
         app.zoom_map(4)
         nx, ny = navigation.position(game, ship)
-        app.map_camera.center_on(nx, ny, MAP)
-        anchor = next(a for group, _, a in fleet_markers(app, MAP) if group[0].id == 1)
+        app.map_camera.center_on(nx, ny, self.app.map_rect)
+        anchor = next(a for group, _, a in fleet_markers(app, self.app.map_rect) if group[0].id == 1)
         self.assertEqual(anchor, app.map_pos(nx, ny))
         app.route_ship_id = 2
         app.show_sensors = True
         home = game.systems[0]
         radius = game.fuel_range(ships=[game.ship_at(app.route_ship_id)])
         with patch("pygame.draw.ellipse") as ellipse:
-            draw_fuel_range(app, MAP)
+            draw_fuel_range(app, self.app.map_rect)
             fuel = ellipse.call_args_list[0].args[2]
         with patch("orion.sensor_view.sensors.centers", return_value=[(home, radius)]), patch("pygame.draw.ellipse") as ellipse:
-            draw_coverage(app, MAP)
+            draw_coverage(app, self.app.map_rect)
             coverage = ellipse.call_args_list[0].args[2]
         # The union mask carries a two-pixel clipping margin on each side.
         self.assertEqual(fuel.move(-2, -2), coverage)
-        rx, ry = app.map_camera.radii(radius, MAP)
+        rx, ry = app.map_camera.radii(radius, self.app.map_rect)
         self.assertEqual(coverage.size, (round(2*rx), round(2*ry)))
-        self.assertAlmostEqual(coverage.centerx, app.star_pos(home)[0]-MAP.x, delta=1)
-        self.assertAlmostEqual(coverage.centery, app.star_pos(home)[1]-MAP.y, delta=1)
+        self.assertAlmostEqual(coverage.centerx, app.star_pos(home)[0]-self.app.map_rect.x, delta=1)
+        self.assertAlmostEqual(coverage.centery, app.star_pos(home)[1]-self.app.map_rect.y, delta=1)
 
     def test_shift_arrows_pan_while_ordinary_arrows_keep_navigation(self):
         self.app.zoom_map(4)
         selected = self.app.game.selected_system
         before = copy.copy(self.app.map_camera)
         self.key(pg.K_RIGHT, pg.KMOD_SHIFT)
-        update_map_input(self.app, .1, MAP)
+        update_map_input(self.app, .1, self.app.map_rect)
         self.assertLess(self.app.map_camera.offset_x, before.offset_x)
         self.assertEqual(self.app.game.selected_system, selected)
         self.key(pg.K_DOWN, pg.KMOD_SHIFT)
         self.assertLess(self.app.map_camera.offset_y, before.offset_y)
         self.key(pg.K_LSHIFT, kind=pg.KEYUP)
         stopped = copy.copy(self.app.map_camera)
-        update_map_input(self.app, .1, MAP)
+        update_map_input(self.app, .1, self.app.map_rect)
         self.assertEqual(self.app.map_camera, stopped)
         self.key(pg.K_RIGHT)
         self.assertNotEqual(self.app.game.selected_system, selected)
-        self.assertTrue(MAP.collidepoint(self.app.star_pos(self.app.game.systems[self.app.game.selected_system])))
+        self.assertTrue(self.app.map_rect.collidepoint(self.app.star_pos(self.app.game.systems[self.app.game.selected_system])))
 
     def test_navigation_buttons_preserve_game_and_view_survives_screen_visits(self):
         before = self.app.game.to_dict()
         self.click("map_zoom_in")
         self.click("map_zoom_in")
-        self.drag(MAP.center, (MAP.centerx+90, MAP.centery+50))
+        self.drag(self.app.map_rect.center, (self.app.map_rect.centerx+90, self.app.map_rect.centery+50))
         camera = copy.copy(self.app.map_camera)
         self.app.open_research()
         self.app.close_research()
         self.assertEqual(camera, self.app.map_camera)
         self.click("map_center")
-        self.assertTrue(MAP.collidepoint(self.app.star_pos(self.app.game.systems[0])))
+        self.assertTrue(self.app.map_rect.collidepoint(self.app.star_pos(self.app.game.systems[0])))
         self.click("map_fit")
         self.assertEqual(self.app.map_camera, GalaxyCamera())
         self.assertEqual(before, self.app.game.to_dict())
@@ -272,19 +272,19 @@ class CameraInterfaceTests(unittest.TestCase):
         app = self.app
         app.zoom_map(4)
         self.key(pg.K_LEFT, pg.KMOD_SHIFT)
-        app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, pos=self.window_pos(MAP.center), button=3))
+        app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, pos=self.window_pos(self.app.map_rect.center), button=3))
         app.handle_event(pg.event.Event(pg.WINDOWFOCUSLOST))
         self.assertIsNone(app.map_drag)
         self.assertFalse(app.map_pan_keys)
         stopped = copy.copy(app.map_camera)
         app.confirm("Test", "A modal dialog", "OK", lambda: None)
-        self.move(MAP.center)
+        self.move(self.app.map_rect.center)
         app.handle_event(pg.event.Event(pg.MOUSEWHEEL, x=0, y=1))
-        self.drag(MAP.center, (MAP.centerx+100, MAP.centery))
-        update_map_input(app, .1, MAP)
+        self.drag(self.app.map_rect.center, (self.app.map_rect.centerx+100, self.app.map_rect.centery))
+        update_map_input(app, .1, self.app.map_rect)
         self.assertEqual(stopped, app.map_camera)
         app.cancel_dialog()
-        app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, pos=self.window_pos(MAP.center), button=2))
+        app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, pos=self.window_pos(self.app.map_rect.center), button=2))
         app.go("research")
         self.assertIsNone(app.map_drag)
         self.assertFalse(app.map_pan_keys)
@@ -294,7 +294,7 @@ class CameraInterfaceTests(unittest.TestCase):
         path = app.storage.save(app.game)
         before = app.game.to_dict()
         app.zoom_map(4)
-        self.drag(MAP.center, (MAP.centerx+80, MAP.centery+50))
+        self.drag(self.app.map_rect.center, (self.app.map_rect.centerx+80, self.app.map_rect.centery+50))
         self.assertNotEqual(app.map_camera, GalaxyCamera())
         app.load_game(path)
         self.assertEqual(app.map_camera, GalaxyCamera())
@@ -304,7 +304,7 @@ class CameraInterfaceTests(unittest.TestCase):
         app = self.app
         before = app.canvas.copy()
         app.zoom_map(4)
-        self.move(MAP.center)
+        self.move(self.app.map_rect.center)
         app.handle_event(pg.event.Event(pg.MOUSEWHEEL, x=1, y=0))
         self.assertLess(app.map_camera.offset_x, 0)
         pg.key.set_mods(pg.KMOD_SHIFT)
@@ -312,8 +312,10 @@ class CameraInterfaceTests(unittest.TestCase):
         app.handle_event(pg.event.Event(pg.MOUSEWHEEL, x=0, y=1))
         self.assertGreater(app.map_camera.offset_y, 0)
         app.render()
-        for rect in (pg.Rect(0, 0, 1440, MAP.top), pg.Rect(MAP.right+1, MAP.top, 400, MAP.h),
-                     pg.Rect(0, MAP.bottom+1, 1440, 900-MAP.bottom-1)):
+        chart = app.map_rect
+        w, h = app.canvas.get_size()
+        for rect in (pg.Rect(0, 0, w, chart.top), pg.Rect(chart.right, chart.y, w-chart.right, chart.h),
+                     pg.Rect(0, chart.bottom, w, h-chart.bottom)):
             self.assertEqual(pg.image.tobytes(before.subsurface(rect), "RGB"),
                              pg.image.tobytes(app.canvas.subsurface(rect), "RGB"))
 
