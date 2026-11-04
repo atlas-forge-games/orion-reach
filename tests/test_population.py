@@ -330,8 +330,7 @@ class PopulationInterfaceTests(unittest.TestCase):
                 button = next(b for b in app.buttons if b.key == key)
                 self.assertTrue(button.enabled, key)
                 x, y = button.rect.center
-                view = app.viewport
-                pos = view.x+round(x*view.w/1440), view.y+round(y*view.h/900)
+                pos = app.window_pos((x, y))
                 for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
                     app.handle_event(pg.event.Event(kind, button=1, pos=pos))
                     app.render()

@@ -309,8 +309,7 @@ class ExplorationInterfaceTests(unittest.TestCase):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         x, y = button.rect.center
-        v = self.app.viewport
-        position = round(v.x+x*v.w/1440), round(v.y+y*v.h/900)
+        position = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=position))
             self.app.render()

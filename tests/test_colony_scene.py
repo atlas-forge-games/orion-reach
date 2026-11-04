@@ -69,8 +69,7 @@ class SceneInterfaceTests(unittest.TestCase):
         self.app.render()
         button = next(button for button in self.app.buttons if button.key == key)
         x, y = button.rect.center
-        v = self.app.viewport
-        pos = (v.x+round(x*v.w/1440), v.y+round(y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()
@@ -192,17 +191,17 @@ class SceneInterfaceTests(unittest.TestCase):
     def test_building_hit_areas_fit_the_foreground_with_administration_visible(self):
         earth = self.app.game.systems[0].worlds[2]
         earth.size = 'Huge'
-        scene = pg.Rect(24, 314, 1392, 406)
         for buildings in ([], ['hydroponic_farm', 'fusion_plant', 'solar_array'],
                           list(BUILDINGS)[:earth.building_capacity]):
             with self.subTest(buildings=len(buildings)):
                 earth.buildings = buildings.copy()
                 self.app.render()
+                scene = self.app.surface_scene_rect
                 buttons = [b for b in self.app.buttons if b.key.startswith('surface_')]
                 self.assertEqual(len(buttons), len(buildings)+2)
                 for i, button in enumerate(buttons):
                     self.assertTrue(scene.contains(button.rect), button.key)
-                    self.assertGreaterEqual(button.rect.bottom-38, scene.y+scene.h*.44)
+                    self.assertGreaterEqual(button.rect.bottom-38, int(scene.y+scene.h*.44))
                     for other in buttons[i+1:]:
                         self.assertFalse(button.rect.colliderect(other.rect), (button.key, other.key))
 

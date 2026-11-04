@@ -6,6 +6,7 @@ existing scene code keep its coordinates without resampling rendered fonts.
 """
 
 from functools import wraps
+from contextlib import contextmanager
 import math
 import pygame as pg
 
@@ -14,10 +15,19 @@ _DRAW_INSTALLED = False
 
 
 class Canvas(pg.Surface):
-    def __init__(self, size, scale=1.0):
+    def __init__(self, size, scale=1.0, layout=None, *, pixel_size=None):
         self.logical_size = tuple(map(int, size))
         self.scale = float(scale)
-        super().__init__(tuple(max(1, round(v*self.scale)) for v in size))
+        self.layout = layout
+        extent = layout.size if layout else size
+        super().__init__(pixel_size or tuple(max(1, round(v*self.scale)) for v in extent))
+
+    @staticmethod
+    def fitted_pixels(extent, available, scale, window):
+        # A rounded logical width can round back one pixel larger at 175%.
+        # An axis that fits gets exactly the window's pixels and no scrollbar.
+        return tuple(pixels if length == room else max(1, round(length*scale))
+                     for length,room,pixels in zip(extent,available,window))
 
     @property
     def pixel_size(self):
@@ -45,18 +55,63 @@ class Canvas(pg.Surface):
         pg.Surface.fill(self, color, self.rect((*pos, 1, 1)))
 
     def point(self, pos):
+        if self.layout:
+            pos = self.layout.place(pos)
         return tuple(round(v*self.scale) for v in pos)
+
+    def logical_point(self, pos):
+        point = tuple(v/self.scale for v in pos)
+        return self.layout.unplace(point) if self.layout else point
+
+    def slot(self, rect):
+        """Return a panel's allocated rectangle in native UI units."""
+        if not self.layout:
+            return pg.Rect(rect)
+        left, top, right, bottom = map(round, self.layout.rect_edges(pg.Rect(rect)))
+        return pg.Rect(left, top, right-left, bottom-top)
+
+    def source_slot(self, rect):
+        if not self.layout:
+            return pg.Rect(rect)
+        left, top, right, bottom = map(round, self.layout.source_edges(
+            rect.left, rect.top, rect.right, rect.bottom))
+        return pg.Rect(left, top, right-left, bottom-top)
+
+    @contextmanager
+    def native_space(self):
+        """Draw inside allocated panels with normal font, icon and padding metrics."""
+        layout, size = self.layout, self.logical_size
+        regions = getattr(self, 'text_regions', [])
+        start = len(regions)
+        self.layout, self.logical_size = None, layout.size
+        try:
+            yield
+        finally:
+            self.layout, self.logical_size = layout, size
+            for index in range(start, len(regions)):
+                region, label = regions[index]
+                regions[index] = self.source_slot(region), label
 
     def rect(self, value):
         r = pg.Rect(value)
+        if r.topleft == (0,0) and r.size == self.logical_size:
+            return pg.Rect((0,0), self.pixel_size)
+        if self.layout:
+            left, top, right, bottom = (round(n*self.scale) for n in self.layout.rect_edges(r))
+            return pg.Rect(left, top, right-left, bottom-top)
         left, top = self.point(r.topleft)
         right, bottom = self.point(r.bottomright)
         return pg.Rect(left, top, right-left, bottom-top)
 
     def logical_rect(self, value):
         r = pg.Rect(value)
-        left, top = math.floor(r.x/self.scale), math.floor(r.y/self.scale)
-        right, bottom = math.ceil(r.right/self.scale), math.ceil(r.bottom/self.scale)
+        if r.topleft == (0,0) and r.size == self.pixel_size:
+            return self.get_rect()
+        edges = (r.left/self.scale, r.top/self.scale, r.right/self.scale, r.bottom/self.scale)
+        if self.layout:
+            edges = self.layout.source_edges(*edges)
+        left, top = map(math.floor, edges[:2])
+        right, bottom = map(math.ceil, edges[2:])
         return pg.Rect(left, top, right-left, bottom-top)
 
     def get_clip(self):
@@ -73,26 +128,43 @@ class Canvas(pg.Surface):
         pos = dest.topleft if isinstance(dest, pg.Rect) else dest[:2]
         if isinstance(source, Canvas):
             logical = source.get_size()
+            if area is None and pos == (0,0) and self.layout == source.layout and self.pixel_size == source.pixel_size:
+                return self.logical_rect(pg.Surface.blit(self, source, (0,0), special_flags=special_flags))
             if area is not None:
                 logical = pg.Rect(area).size
                 source = pg.Surface.subsurface(source, source.rect(area))
-            target_size = self.point(logical)
         else:
             if area is not None:
                 source = source.subsurface(pg.Rect(area).clip(source.get_rect()))
-            target_size = self.point(source.get_size())
-        target_size = tuple(max(1, n) for n in target_size)
+            logical = source.get_size()
+        target = self.rect((*pos, *logical))
+        # Images retain their proportions. Full-screen backdrops are cropped
+        # to cover the window; portraits and other art fit their layout slot.
+        if self.layout and tuple(logical) == self.logical_size and tuple(pos) == (0, 0):
+            return self.blit_cover(source, target)
+        if self.layout:
+            target = pg.Rect((0, 0), logical).fit(target)
+        target_size = tuple(max(1, n) for n in target.size)
         if pg.Surface.get_size(source) != target_size:
             source = pg.transform.smoothscale(source, target_size)
-        result = pg.Surface.blit(self, source, self.point(pos), special_flags=special_flags)
+        result = pg.Surface.blit(self, source, target.topleft, special_flags=special_flags)
         return self.logical_rect(result)
+
+    def blit_cover(self, source, target):
+        """Fill a native pixel rectangle using a centered crop of the artwork."""
+        width, height = pg.Surface.get_size(source)
+        crop = target.fit(pg.Rect(0, 0, width, height))
+        image = pg.Surface.subsurface(source, crop)
+        if pg.Surface.get_size(image) != target.size:
+            image = pg.transform.smoothscale(image, target.size)
+        return self.logical_rect(pg.Surface.blit(self, image, target.topleft))
 
     def blits(self, blit_sequence, doreturn=True):
         result = [self.blit(*entry) for entry in blit_sequence]
         return result if doreturn else None
 
     def copy(self):
-        result = Canvas(self.logical_size, self.scale)
+        result = Canvas(self.logical_size, self.scale, self.layout, pixel_size=self.pixel_size)
         pg.Surface.blit(result, self, (0, 0))
         result.set_clip(self.get_clip())
         return result
@@ -101,6 +173,7 @@ class Canvas(pg.Surface):
         result = pg.Surface.subsurface(self, self.rect(rect))
         result.logical_size = pg.Rect(rect).size
         result.scale = self.scale
+        result.layout = None
         return result
 
     def blit_native(self, source, pos):
@@ -122,6 +195,14 @@ def install_draw_adapter():
         def draw(surface, color, *args, **kwargs):
             if not isinstance(surface, Canvas):
                 return original(surface, color, *args, **kwargs)
+            if name == 'line' and hasattr(surface.layout, 'line_segments') and len(args) >= 2:
+                segments = surface.layout.line_segments(args[0], args[1])
+                if segments is not None:
+                    thickness = args[2] if len(args) > 2 else kwargs.get('width',1)
+                    for start, end in segments:
+                        a, b = [tuple(round(n*surface.scale) for n in p) for p in (start,end)]
+                        original(surface, color, a, b, stroke(surface,thickness))
+                    return pg.Rect(args[0],(1,1)).union(pg.Rect(args[1],(1,1)))
             args, kwargs = transform(surface, list(args), dict(kwargs))
             return surface.logical_rect(original(surface, color, *args, **kwargs))
         setattr(pg.draw, name, draw)
@@ -152,8 +233,13 @@ def install_draw_adapter():
         return a, k
 
     def circle(s, a, k):
+        unit = s.scale
+        if hasattr(s.layout,'pane_at'):
+            pane = s.layout.pane_at(a[0] if a else k['center'])
+            if pane.spatial:
+                unit *= pane.target.w/pane.source.w
         arg(a, k, 0, 'center', s.point)
-        arg(a, k, 1, 'radius', lambda n: max(0, round(n*s.scale)))
+        arg(a, k, 1, 'radius', lambda n: max(0, round(n*unit)))
         arg(a, k, 2, 'width', lambda n: stroke(s, n))
         return a, k
 
@@ -202,9 +288,9 @@ class DisplayView:
         self.screen = None
         self.focus = None
 
-    def configure(self, window_size, logical_size, scale, screen):
-        physical = tuple(max(1, round(n*scale)) for n in logical_size)
-        geometry = (tuple(window_size), tuple(logical_size), scale, screen)
+    def configure(self, window_size, canvas, screen):
+        physical = canvas.pixel_size
+        geometry = (tuple(window_size), physical, canvas.layout, canvas.scale, screen)
         if geometry != getattr(self, 'geometry', None):
             self.drag = None
             self.bars = {}
@@ -217,13 +303,14 @@ class DisplayView:
         self.offset = [min(max(0, self.offset[i]), self.maximum[i]) for i in (0, 1)]
         origin = [max(0, (window_size[i]-physical[i])//2)-self.offset[i] for i in (0, 1)]
         self.viewport = pg.Rect(origin, physical)
-        self.scale = scale
+        self.canvas = canvas
         self.window_size = window_size
 
     def ensure_visible(self, rect):
+        native = self.canvas.rect(rect)
         for axis in (0, 1):
-            start = (rect.x if axis == 0 else rect.y)*self.scale
-            end = (rect.right if axis == 0 else rect.bottom)*self.scale
+            start = native.x if axis == 0 else native.y
+            end = native.right if axis == 0 else native.bottom
             span = self.window_size[axis]-self.BAR-8
             if start < self.offset[axis]+8:
                 self.offset[axis] = max(0, int(start)-8)
@@ -267,7 +354,15 @@ class DisplayView:
         if event.type == pg.MOUSEWHEEL and any(self.maximum):
             modifiers = pg.key.get_mods()
             # Plain wheel retains map zoom and list paging on the legacy views.
-            if (app.screen == 'empire' and not app.dialog) or modifiers & pg.KMOD_SHIFT:
+            from .window_layout import PanelFlow
+            compact = isinstance(app.canvas.layout, PanelFlow)
+            if compact and app.screen == 'galaxy':
+                from .app import MAP
+                compact = not MAP.collidepoint(app.mouse)
+            elif compact and app.screen == 'combat':
+                from .combat_camera import BOARD
+                compact = not BOARD.collidepoint(app.mouse)
+            if ((app.screen == 'empire' or compact) and not app.dialog) or modifiers & pg.KMOD_SHIFT:
                 self.scroll(-event.x*70, -event.y*70)
                 if not self.maximum[1]:
                     self.scroll(-event.y*70, 0)
@@ -277,12 +372,12 @@ class DisplayView:
 
     def present(self, app):
         size = app.window.get_size()
-        self.configure(size, app.canvas.get_size(), app.canvas.scale, app.screen)
+        self.configure(size, app.canvas, app.screen)
         if app.keyboard_mode and app.focus != self.focus:
             focused = next((b for b in app.buttons if b.key == app.focus), None)
             if focused:
                 self.ensure_visible(focused.rect)
-                self.configure(size, app.canvas.get_size(), app.canvas.scale, app.screen)
+                self.configure(size, app.canvas, app.screen)
             self.focus = app.focus
         app.viewport = self.viewport.copy()
         app.window.fill((2, 5, 9))

@@ -131,7 +131,8 @@ class SurfacePlacementUITests(SurfaceFixture):
 
     def click(self, pos, button=1):
         view = self.app.viewport
-        screen_pos = (round(view.x+pos[0]*self.app.canvas.scale), round(view.y+pos[1]*self.app.canvas.scale))
+        x, y = self.app.canvas.point(pos)
+        screen_pos = (view.x+x, view.y+y)
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=button, pos=screen_pos))
         self.app.render()

@@ -107,23 +107,27 @@ class AllScreenTests(unittest.TestCase):
                     visited.add(self.app.screen)
                     self.assertEqual(economy, (self.app.game.turn, self.app.game.credits, self.app.game.resources, self.app.game.research))
                     self.assertIsInstance(self.app.canvas, Canvas)
-                    self.assertEqual(self.app.canvas.pixel_size,
-                                     tuple(round(n*self.app.canvas.scale) for n in self.app.canvas.get_size()))
+                    self.assertEqual(self.app.canvas.pixel_size, self.app.viewport.size)
+                    self.assertGreaterEqual(self.app.viewport.w, window[0]-1)
+                    self.assertGreaterEqual(self.app.viewport.h, window[1]-1)
         self.assertFalse(set(GAME_SCREENS)-visited)
 
     def test_hover_reveals_full_label_inside_a_scrolled_zoomed_view(self):
         from tools.preview_all_screens import campaign
         app = self.app
         app.game = campaign()
-        app.game.credits = 123456789
+        app.game.empire_name = 'W'*32
         app.go('galaxy')
         app.window = pg.display.set_mode((1280, 800))
         app.settings['ui_scale'] = 175
         app.keyboard_mode = False
         app.render()
-        region, original = next((r, value) for r, value in app.canvas.text_regions if '123,456,789' in value)
+        region, original = next((r, value) for r, value in app.canvas.text_regions if value == app.game.empire_name)
         app.display_view.ensure_visible(region)
-        app.mouse = region.center
+        app.render()
+        app.present()
+        pos = app.canvas.rect(region).move(app.viewport.topleft).center
+        app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=pos))
         app.time = 1
         app.render()
         self.assertIsNone(app.text_tooltip_rect)
@@ -155,8 +159,8 @@ class UtilityScreenTests(unittest.TestCase):
                     self.assertIsInstance(editor.canvas, Canvas)
                     self.assertEqual(editor.canvas.pixel_size, editor.viewport.size)
                     _, rect, _, _ = next(b for b in editor.buttons if b[0] == 'tree')
-                    pos = (rect.centerx*editor.canvas.scale+editor.viewport.x,
-                           rect.centery*editor.canvas.scale+editor.viewport.y)
+                    point = editor.canvas.point(rect.center)
+                    pos = (point[0]+editor.viewport.x, point[1]+editor.viewport.y)
                     mapped = editor.coordinates(pos)
                     self.assertAlmostEqual(mapped[0], rect.centerx, delta=1)
                     self.assertAlmostEqual(mapped[1], rect.centery, delta=1)

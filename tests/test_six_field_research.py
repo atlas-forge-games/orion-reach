@@ -355,7 +355,7 @@ class SixFieldTests(unittest.TestCase):
         app.select_research_branch('construction'); app.select_research_tier(1); app.render(); app.present()
         third = next(b for b in app.buttons if b.key == 'research_choose_trade_algorithms')
         x, y = third.rect.center; v = app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = app.window_pos((x, y))
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             app.handle_event(pg.event.Event(event, pos=pos, button=1))
         self.assertEqual(app.game.technology.active, 'trade_algorithms')

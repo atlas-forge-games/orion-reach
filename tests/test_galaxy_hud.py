@@ -38,8 +38,7 @@ class GalaxyHudTests(unittest.TestCase):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         x, y = button.rect.center
-        view = self.app.viewport
-        pos = (view.x+round(x*view.w/1440), view.y+round(y*view.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()

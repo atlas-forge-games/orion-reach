@@ -36,7 +36,8 @@ class CombatZoomTests(unittest.TestCase):
 
     def physical(self, point):
         v = self.app.viewport
-        return (round(v.x+point[0]*v.w/1440), round(v.y+point[1]*v.h/900))
+        x, y = self.app.canvas.point(point)
+        return (v.x+x, v.y+y)
 
     def mouse(self, kind, point, button=1):
         self.app.handle_event(pg.event.Event(kind, pos=self.physical(point), button=button))

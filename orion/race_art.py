@@ -32,6 +32,11 @@ def _scaled_portrait(race_id, size):
 def draw_race_portrait(surface, race_id, rect):
     """Fit a portrait without stretching; missing or damaged PNGs use a seal."""
     rect = pg.Rect(rect)
+    if getattr(surface, 'layout', None):
+        fitted = rect.fit(surface.slot(rect))
+        with surface.native_space():
+            draw_race_portrait(surface,race_id,fitted)
+        return
     portrait = _scaled_portrait(race_id, rect.size)
     if portrait is None:
         pg.draw.rect(surface, (5, 12, 20), rect)

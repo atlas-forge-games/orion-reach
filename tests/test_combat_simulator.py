@@ -197,9 +197,9 @@ class SimulatorUITests(unittest.TestCase):
     def click(self, key):
         b = self.button(key)
         self.assertTrue(b.enabled, key)
-        x, y = b.rect.center
+        x, y = self.app.canvas.point(b.rect.center)
         v = self.app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = (v.x+x, v.y+y)
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, pos=pos, button=1))
             self.app.render()
@@ -214,9 +214,9 @@ class SimulatorUITests(unittest.TestCase):
 
     def right_click_ship(self, ship, position=None):
         from orion.combat_view import cell_center
-        x, y = cell_center(position or ship.position, self.app.combat_camera_row)
+        x, y = self.app.canvas.point(cell_center(position or ship.position, self.app.combat_camera_row))
         v = self.app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = (v.x+x, v.y+y)
         self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, pos=pos, button=3))
         self.app.render()
 

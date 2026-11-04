@@ -58,8 +58,7 @@ class GroupTransferInterfaceTests(unittest.TestCase):
     def click_at(self, x, y):
         self.app.render()
         self.app.present()
-        v = self.app.viewport
-        pos = (v.x+round(x*v.w/1440), v.y+round(y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()

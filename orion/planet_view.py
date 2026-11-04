@@ -407,7 +407,7 @@ def draw_planet_overview(app):
     else:
         facts += " · Growth varies by species" if game.is_observer and not planet.colonized else f" · Growth environment {factor}%"
     panel(surface, (40, 330, 700, 34), (10, 23, 30))
-    text(surface, facts, (52, 339), 13, INK)
+    text(surface, shorten(facts, 676, 13), (52, 339), 13, INK)
     if planet.slaves or (raiding.is_varkesh(game, planet.owner) and (system.id, planet.id) == raiding.home_location(game, planet.owner)):
         panel(surface, (40, 372, 700, 62), (10, 23, 30))
         text(surface, f"SLAVE POPULATION: {planet.slaves} / 100 · NATIVE: {planet.population} B", (52, 383), 13, GOLD)

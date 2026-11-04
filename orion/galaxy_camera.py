@@ -82,9 +82,10 @@ def handle_map_input(app, event, rect):
     if app.map_drag:
         button, last = app.map_drag
         if event.type == pg.MOUSEMOTION:
-            # Raw window deltas also work while the cursor crosses a letterbox.
-            dx = (event.pos[0]-last[0])*1440/app.viewport.w
-            dy = (event.pos[1]-last[1])*900/app.viewport.h
+            # Camera motion uses the same scale as the map's star positions.
+            map_pixels = app.canvas.rect(rect)
+            dx = (event.pos[0]-last[0])*rect.w/map_pixels.w
+            dy = (event.pos[1]-last[1])*rect.h/map_pixels.h
             app.map_camera.pan(dx, dy, rect)
             app.map_drag = (button, event.pos)
             app.pressed = None

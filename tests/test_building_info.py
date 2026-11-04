@@ -39,8 +39,7 @@ class BuildingInfoTests(unittest.TestCase):
         self.app.render()
         target = next(b for b in self.app.buttons if b.key == key)
         x, y = target.rect.center
-        view = self.app.viewport
-        pos = (round(view.x+x*view.w/1440), round(view.y+y*view.h/900))
+        pos = self.app.window_pos((x, y))
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(event, button=button, pos=pos))
         self.app.render()
@@ -98,8 +97,7 @@ class BuildingInfoTests(unittest.TestCase):
         before = self.game.to_dict()
         target = next(b for b in self.app.buttons if b.key == 'surface_factory')
         x, y = target.rect.center
-        view = self.app.viewport
-        pos = (round(view.x+x*view.w/1440), round(view.y+y*view.h/900))
+        pos = self.app.window_pos((x, y))
         with patch.object(self.game, 'bonuses_for', side_effect=AssertionError('Hidden live bonuses')):
             self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONUP, button=3, pos=pos))
         self.app.render()

@@ -485,8 +485,7 @@ class GuardianUITests(unittest.TestCase):
         app.present()
         button = next(b for b in app.buttons if b.key == key)
         x, y = button.rect.center
-        v = app.viewport
-        position = round(v.x+x*v.w/1440), round(v.y+y*v.h/900)
+        position = app.window_pos((x, y))
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             app.handle_event(pg.event.Event(event, button=1, pos=position))
             app.render()

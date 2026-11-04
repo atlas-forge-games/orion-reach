@@ -48,13 +48,18 @@ def rects(size):
 def draw(app):
     if not available(app):
         return
-    galaxy, end = rects(app.canvas.get_size())
+    layout = getattr(app.canvas, 'layout', None)
+    galaxy, end = rects(layout.size if layout else app.canvas.get_size())
+    map_icon = 'system' if galaxy.w >= 240 else ''
+    turn_icon = 'turn' if end.w >= 295 else ''
+    if layout:
+        galaxy, end = app.canvas.source_slot(galaxy), app.canvas.source_slot(end)
     reason = blocked_reason(app)
     turn_reason = reason or ('Finish or leave the landing plan first.' if app.screen == 'ground' else None)
     app.button('galaxy_map', 'Galaxy map', galaxy, lambda: return_to_galaxy(app),
-               'command', icon='system' if galaxy.w >= 240 else '', shortcut='G', enabled=reason is None)
+               'command', icon=map_icon, shortcut='G', enabled=reason is None)
     app.button('end_turn', 'End turn', end, app.advance_turn, 'command_primary',
-               icon='turn' if end.w >= 295 else '', shortcut='E', enabled=turn_reason is None)
+               icon=turn_icon, shortcut='E', enabled=turn_reason is None)
     # Explain unavailable actions without adding another line to a crowded view.
     for rect, message in ((galaxy, reason), (end, turn_reason)):
         if message:

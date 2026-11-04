@@ -296,8 +296,7 @@ class GroundInterfaceTests(unittest.TestCase):
         self.assertTrue(button.enabled, key)
         self.assertTrue(pg.Rect(0, 0, 1440, 900).contains(button.rect), key)
         x, y = button.rect.center
-        v = self.app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()

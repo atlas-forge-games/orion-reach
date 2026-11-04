@@ -72,7 +72,8 @@ class CameraInterfaceTests(unittest.TestCase):
 
     def window_pos(self, point):
         viewport = self.app.viewport
-        return (round(viewport.x+point[0]*viewport.w/1440), round(viewport.y+point[1]*viewport.h/900))
+        x, y = self.app.canvas.point(point)
+        return (viewport.x+x, viewport.y+y)
 
     def move(self, point):
         self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=self.window_pos(point), rel=(0, 0), buttons=(0, 0, 0)))

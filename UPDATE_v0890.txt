@@ -1,0 +1,29 @@
+AGE OF THE STARS / ORION REACH — v0.89.0
+
+INSTALL
+Close the game. Extract the ZIP over v0.88.0 into the folder that contains
+main.py, orion/ and assets/. Replace the included files, then run python main.py.
+
+INTERFACE
+The game uses the available width and height throughout its screens. Interface
+size controls the text size. Panels, images, buttons, mouse targets and keyboard
+focus follow the window layout. The galaxy map preserves star distances and
+combat preserves square cells. The combat simulator and balance editor also
+support wide windows.
+
+When space is tight, panels wrap into rows. Use the scrollbar, mouse wheel or
+keyboard focus to reach additional content. The map and battlefield retain
+their wheel zoom. A modal has a separate scroll position from the page behind it.
+
+This is an interface update over v0.88.0. Existing saves use format 61.
+
+VALIDATION
+87 targeted layout, navigation, readability and interaction tests passed.
+The resize audit covered 68 screen/dialog states across 36 screens at four
+window/zoom combinations (272 renders). It found no new overlapping buttons
+and no button whose painted center missed its input region. The ZIP was
+also applied to a clean v0.88.0 source checkout and launched.
+
+Separate broader checks reproduced existing v0.88.0 failures in combat
+fixtures, an exploration return-path expectation, the retired research
+legacy card and a legacy balance-save surface-layout comparison.

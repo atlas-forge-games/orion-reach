@@ -305,7 +305,8 @@ class EditorInterfaceTests(BalanceTestCase):
 
     def window_pos(self,point):
         v=self.editor.viewport
-        return (v.x+round(point[0]*v.w/1440),v.y+round(point[1]*v.h/900))
+        x,y=self.editor.canvas.point(point)
+        return (v.x+x,v.y+y)
 
     def test_click_edit_save_filter_and_unsaved_close(self):
         import pygame as pg

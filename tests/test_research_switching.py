@@ -142,8 +142,7 @@ class TechnologyInformationTests(unittest.TestCase):
         if button == 1:
             self.assertTrue(control.enabled)
         x, y = control.rect.center
-        v = self.app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, pos=pos, button=button))
             self.app.render()
@@ -200,8 +199,7 @@ class TechnologyInformationTests(unittest.TestCase):
         self.click("dialog_close")
         self.assertEqual((self.app.storage.saves_dir/"autosave.json").read_bytes(), saved)
         self.app.go("galaxy")
-        v = self.app.viewport
-        pos = (round(v.x+780*v.w/1440), round(v.y+237*v.h/900))
+        pos = self.app.window_pos((780, 237))
         self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONUP, pos=pos, button=3))
         self.assertIsNone(self.app.dialog)
         self.click("open_research", button=3)

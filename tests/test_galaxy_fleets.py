@@ -132,8 +132,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
 
     def click_position(self, point):
         x, y = point
-        v = self.app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()
@@ -169,8 +168,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.click("fleet_select_4")
         before = [s.__dict__.copy() for s in self.app.game.ships]
         x, y = self.app.star_pos(self.app.game.systems[1])
-        v = self.app.viewport
-        self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=(round(v.x+x*v.w/1440), round(v.y+y*v.h/900)), rel=(0, 0), buttons=(0, 0, 0)))
+        self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=self.app.window_pos((x, y)), rel=(0, 0), buttons=(0, 0, 0)))
         self.app.render()
         self.assertEqual(self.app.fleet_route_target(), 1)
         self.assertEqual(before, [s.__dict__ for s in self.app.game.ships])

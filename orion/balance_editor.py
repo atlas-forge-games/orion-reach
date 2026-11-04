@@ -7,6 +7,7 @@ from . import balance
 from . import GAME_TITLE
 from .balance_document import BalanceDocument
 from .display import Canvas, install_draw_adapter
+from .window_layout import interface_scale, reference_layout
 from .ui import text, text_image, draw_text_tooltip, shorten, font, panel, INK, MUTED, GOLD, CYAN, LINE, RED
 
 SIZE = (1440, 900)
@@ -401,7 +402,7 @@ class BalanceEditor:
 
     def coordinates(self,pos):
         self.prepare_canvas()
-        return ((pos[0]-self.viewport.x)*1440/self.viewport.w,(pos[1]-self.viewport.y)*900/self.viewport.h)
+        return self.canvas.logical_point((pos[0]-self.viewport.x,pos[1]-self.viewport.y))
 
     def handle_event(self,event):
         if event.type==pg.QUIT:
@@ -492,15 +493,15 @@ class BalanceEditor:
 
     def prepare_canvas(self):
         w,h=self.window.get_size()
-        scale=min(w/1440,h/900)
-        if self.canvas.scale != scale:
-            self.canvas=Canvas(SIZE,scale)
-        self.viewport=pg.Rect(0,0,max(1,round(1440*scale)),max(1,round(900*scale)))
-        self.viewport.center=(w//2,h//2)
+        scale=interface_scale((w,h))
+        layout=reference_layout(SIZE,(round(w/scale),round(h/scale)),'editor')
+        if self.canvas.scale != scale or self.canvas.layout != layout or self.canvas.pixel_size!=(w,h):
+            self.canvas=Canvas(SIZE,scale,layout,pixel_size=(w,h))
+        self.viewport=pg.Rect((0,0),self.canvas.pixel_size)
+        self.rendered_size=(w,h)
 
     def present(self):
-        scale=min(self.window.get_width()/1440,self.window.get_height()/900)
-        if self.canvas.scale != scale:
+        if getattr(self,'rendered_size',None) != self.window.get_size():
             self.draw()
         self.window.fill((0,0,0))
         self.window.blit(self.canvas,self.viewport)

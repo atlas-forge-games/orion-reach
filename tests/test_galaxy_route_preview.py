@@ -37,17 +37,15 @@ class RoutePreviewTests(unittest.TestCase):
     def click(self, key):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
-        view = self.app.viewport
         x, y = button.rect.center
-        point = (round(view.x+x*view.w/1440), round(view.y+y*view.h/900))
+        point = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=point))
             self.app.render()
 
     def hover(self, target):
         point = self.app.star_pos(self.app.game.systems[target]) if target is not None else (1040, 100)
-        view = self.app.viewport
-        position = (round(view.x+point[0]*view.w/1440), round(view.y+point[1]*view.h/900))
+        position = self.app.window_pos(point)
         self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=position, rel=(0, 0), buttons=(0, 0, 0)))
 
     def routes(self):

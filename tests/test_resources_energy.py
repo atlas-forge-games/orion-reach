@@ -295,8 +295,7 @@ class EconomyInterfaceTests(unittest.TestCase):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         self.assertTrue(button.enabled, key)
-        v = self.app.viewport
-        pos = (v.x+round(button.rect.centerx*v.w/1440), v.y+round(button.rect.centery*v.h/900))
+        pos = self.app.window_pos(button.rect.center)
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()

@@ -331,8 +331,7 @@ class VictoryScreenTests(unittest.TestCase):
         button = next(b for b in self.app.buttons if b.key == key)
         self.assertTrue(button.enabled, key)
         x, y = button.rect.center
-        viewport = self.app.viewport
-        pos = (round(viewport.x+x*viewport.w/1440), round(viewport.y+y*viewport.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()

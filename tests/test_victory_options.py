@@ -293,8 +293,7 @@ class VictorySetupScreenTests(unittest.TestCase):
         if mouse_button == 1:
             self.assertTrue(button.enabled, key)
         x, y = button.rect.center
-        v = self.app.viewport
-        pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=mouse_button, pos=pos))
             self.app.render()

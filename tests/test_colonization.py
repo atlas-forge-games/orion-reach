@@ -268,8 +268,7 @@ class ColonizationInterfaceTests(unittest.TestCase):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         x, y = button.rect.center
-        v = self.app.viewport
-        pos = (v.x+round(x*v.w/1440), v.y+round(y*v.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()

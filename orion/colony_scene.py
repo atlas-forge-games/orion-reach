@@ -142,7 +142,11 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     old_clip = surface.get_clip()
     surface.set_clip(rect.clip(old_clip))
     seed = f"{game.seed}:{system.id}:{planet.id}"
-    surface.blit(landscape(planet.biome, seed, rect.size, planet.colonized), rect)
+    terrain = landscape(planet.biome, seed, rect.size, planet.colonized)
+    if getattr(surface, 'layout', None):
+        surface.blit_cover(terrain, surface.rect(rect))
+    else:
+        surface.blit(terrain, rect)
     if planet.outpost_owner:
         from .outpost_view import draw_surface_outpost
         draw_surface_outpost(app, rect, game, system, planet)

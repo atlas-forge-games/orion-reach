@@ -132,8 +132,7 @@ class PopulationInfoUITests(PopulationInfoFixture):
 
     def click_population(self):
         x, y = pg.Rect(POPULATION_RECT).center
-        view = self.app.viewport
-        pos = (round(view.x+x*view.w/1440), round(view.y+y*view.h/900))
+        pos = self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=3, pos=pos))
 

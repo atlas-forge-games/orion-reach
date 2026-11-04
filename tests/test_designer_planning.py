@@ -149,8 +149,7 @@ class BlueprintPlanningUITests(unittest.TestCase):
         self.mouse(button.rect.center, 1)
 
     def mouse(self, logical, button):
-        v = self.app.viewport
-        pos = (round(v.x+logical[0]*v.w/1440), round(v.y+logical[1]*v.h/900))
+        pos = self.app.window_pos(logical)
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(event, button=button, pos=pos))
         self.app.render()

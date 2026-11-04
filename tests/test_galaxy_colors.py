@@ -58,8 +58,7 @@ class ColorPreferenceUITests(unittest.TestCase):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
         x, y = button.rect.center
-        viewport = self.app.viewport
-        pos = (viewport.x + round(x*viewport.w/1440), viewport.y + round(y*viewport.h/900))
+        pos = self.app.window_pos((x, y))
         for event in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(event, button=1, pos=pos))
             self.app.render()

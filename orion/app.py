@@ -7,6 +7,7 @@ from pathlib import Path
 import pygame as pg
 
 from .art import Backdrop, SIZE
+from .window_layout import interface_scale, reference_layout, view_profile
 from .audio import Audio
 from .branding import SPLASH_SECONDS, StudioBrand
 from . import GAME_TITLE, __version__
@@ -102,6 +103,11 @@ class App:
         pg.display.set_caption(f"{GAME_TITLE} | Space Strategy Prototype")
         self.display_view=DisplayView()
         self.canvas=Canvas(SIZE)
+        self.page_view=self.display_view
+        self.page_canvas=self.canvas
+        self.dialog_view=DisplayView()
+        self.dialog_canvas=None
+        self.displayed_dialog=None
         self.empire_layout=None
         self.empire_page_capacity=3
         self.viewport=pg.Rect(0,0,*self.windowed_size)
@@ -2283,8 +2289,11 @@ class App:
     def logical_pos(self,pos):
         if not self.viewport.collidepoint(pos):
             return (-1,-1)
-        return ((pos[0]-self.viewport.x)/self.canvas.scale,
-                (pos[1]-self.viewport.y)/self.canvas.scale)
+        return self.canvas.logical_point((pos[0]-self.viewport.x, pos[1]-self.viewport.y))
+
+    def window_pos(self,pos):
+        x,y=self.canvas.point(pos)
+        return self.viewport.x+x,self.viewport.y+y
 
     def activate(self,button):
         if not button.enabled:
@@ -2295,6 +2304,10 @@ class App:
     def handle_event(self,event):
         if self.turn_busy and event.type in TURN_INPUT_EVENTS:
             return
+        if (event.type in (pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP,pg.MOUSEMOTION) and
+                getattr(self,'_rendered_window_size',None) != self.window.get_size()):
+            self.render()
+            self.present()
         if self.display_view.handle_event(event,self):
             return
         if event.type==pg.QUIT:
@@ -3030,9 +3043,9 @@ class App:
             draw_technology_info(self,self.dialog["technology"])
             return
         height=max(312,199+27*len(wrapped_lines(self.dialog["body"],526,16)))
-        visible_w,visible_h=(n/self.canvas.scale for n in self.window.get_size())
-        left=max(0,min(self.canvas.get_width()-596,(visible_w-596)//2+self.display_view.offset[0]/self.canvas.scale))
-        top=max(0,min(self.canvas.get_height()-height,(visible_h-height)//2+self.display_view.offset[1]/self.canvas.scale))
+        visible=self.canvas.logical_rect(self.window.get_rect().move(-self.viewport.x,-self.viewport.y))
+        left=max(0,min(self.canvas.get_width()-596,visible.centerx-298))
+        top=max(0,min(self.canvas.get_height()-height,visible.centery-height//2))
         panel(self.canvas,(left,top,596,height),PANEL,GOLD)
         text(self.canvas,self.dialog["title"],(left+32,top+31),29,INK,"title")
         paragraph(self.canvas,self.dialog["body"],(left+32,top+84),526,16,MUTED,27)
@@ -3059,23 +3072,64 @@ class App:
         with frame_queries(self.game):
             self.draw_frame()
 
+    def draw_dialog_layer(self, window_size, available, scale):
+        # The page keeps its own layout and scroll position behind the modal.
+        page, page_origin = self.canvas, self.viewport.topleft
+        mouse = self.window_pos(self.mouse) if self.mouse != (-1,-1) else None
+        if 'body' in self.dialog and 'title' in self.dialog:
+            height = max(312,199+27*len(wrapped_lines(self.dialog['body'],526,16)))
+            logical = (available[0], max(available[1], height+32))
+            layout = None
+        else:
+            logical = SIZE
+            layout = reference_layout(SIZE,available,'dialog',compact=False)
+        overlay = self.dialog_canvas
+        pixels = Canvas.fitted_pixels(layout.size if layout else logical,available,scale,window_size)
+        if overlay is None or overlay.get_size()!=logical or overlay.layout!=layout or overlay.scale!=scale or overlay.pixel_size!=pixels:
+            overlay = self.dialog_canvas = Canvas(logical,scale,layout,pixel_size=pixels)
+        self.canvas, self.display_view = overlay, self.dialog_view
+        self.dialog_view.configure(window_size,overlay,self.screen)
+        if self.displayed_dialog is not self.dialog:
+            self.dialog_view.offset = [self.dialog_view.maximum[0]//2, 0]
+            self.dialog_view.focus = None
+            self.dialog_view.configure(window_size,overlay,self.screen)
+        self.displayed_dialog = self.dialog
+        self.viewport = self.dialog_view.viewport.copy()
+        if mouse is not None:
+            self.mouse = self.logical_pos(mouse)
+        overlay.text_regions = []
+        overlay.fill((3,8,14))
+        source = pg.Rect(-page_origin[0],-page_origin[1],*window_size)
+        pg.Surface.blit(overlay,page,(-self.viewport.x,-self.viewport.y),source)
+        self.draw_dialog()
+
     def draw_frame(self):
         width,height=self.window.get_size()
+        old_canvas,old_viewport=self.canvas,self.viewport.copy()
+        pointer=self.window_pos(self.mouse) if self.mouse!=(-1,-1) else None
+        self.canvas,self.display_view=self.page_canvas,self.page_view
         self._rendered_window_size=(width,height)
-        scale=min(width/SIZE[0],height/SIZE[1])*self.settings.get('ui_scale',100)/100
+        scale=interface_scale((width,height),self.settings.get('ui_scale',100))
+        available=(round(width/scale),round(height/scale))
         logical=SIZE
+        layout=None
         if self.screen=='empire':
             from .empire_view import layout_for
-            self.empire_layout=layout_for(self,(round(width/scale),round(height/scale)))
+            self.empire_layout=layout_for(self,available)
             logical=(self.empire_layout.width,self.empire_layout.height)
             if self.empire_page_capacity!=self.empire_layout.page_size:
                 first=self.empire_page*self.empire_page_capacity
                 self.empire_page_capacity=self.empire_layout.page_size
                 self.empire_page=first//self.empire_page_capacity
-        if self.canvas.get_size()!=logical or self.canvas.scale!=scale:
-            self.canvas=Canvas(logical,scale)
-        self.display_view.configure((width,height),logical,scale,self.screen)
+        else:
+            layout=reference_layout(SIZE,available,view_profile(self))
+        pixels=Canvas.fitted_pixels(layout.size if layout else logical,available,scale,(width,height))
+        if self.canvas.get_size()!=logical or self.canvas.scale!=scale or self.canvas.layout!=layout or self.canvas.pixel_size!=pixels:
+            self.canvas=self.page_canvas=Canvas(logical,scale,layout,pixel_size=pixels)
+        self.display_view.configure((width,height),self.canvas,self.screen)
         self.viewport=self.display_view.viewport.copy()
+        if pointer is not None and (self.canvas is not old_canvas or self.viewport!=old_viewport):
+            self.mouse=self.logical_pos(pointer)
         self.canvas.set_clip(None)
         self.canvas.fill((3,8,14))
         self.buttons=[]
@@ -3087,11 +3141,18 @@ class App:
             self.backdrop.draw(self.canvas,self.time,self.settings["animated_background"],full)
             if self.screen not in ("menu",*GAME_SCREENS,"pause"):
                 self.backdrop.dim(self.canvas)
-        getattr(self,"draw_"+self.screen)()
+        rendered_screen=self.screen
+        getattr(self,"draw_"+rendered_screen)()
+        if self.screen!=rendered_screen:
+            # A view can redirect, e.g. inspecting a still-hidden black hole.
+            # Rebuild its layout and targets before another event can use them.
+            return self.draw_frame()
         from .campaign_navigation import draw as draw_campaign_navigation
         draw_campaign_navigation(self)
         if self.dialog:
-            self.draw_dialog()
+            self.draw_dialog_layer((width,height),available,scale)
+        else:
+            self.displayed_dialog=None
         if self.notice and self.time<self.notice_until:
             message=shorten(self.notice,min(1160,self.canvas.get_width()-80),16)
             width=min(self.canvas.get_width()-24,font(16).size(message)[0]+54)

@@ -173,8 +173,7 @@ class InterfaceTests(unittest.TestCase):
 
     def click_position(self,logical_pos):
         x,y=logical_pos
-        v=self.app.viewport
-        pos=(v.x+round(x*v.w/1440),v.y+round(y*v.h/900))
+        pos=self.app.window_pos((x, y))
         for kind in (pg.MOUSEBUTTONDOWN,pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind,button=1,pos=pos))
             self.app.render()
@@ -244,11 +243,11 @@ class InterfaceTests(unittest.TestCase):
         self.key(pg.K_ESCAPE)
         self.assertEqual(self.app.screen,"menu")
 
-    def test_scaled_letterbox_and_quit_cancel(self):
+    def test_menu_fills_tall_window_and_quit_can_be_cancelled(self):
         self.app.window=pg.display.set_mode((1000,900),pg.RESIZABLE)
         self.app.present()
-        self.assertGreater(self.app.viewport.y,0)
-        self.assertEqual(self.app.logical_pos((2,2)),(-1,-1))
+        self.assertEqual(self.app.viewport,self.app.window.get_rect())
+        self.assertNotEqual(self.app.logical_pos((2,2)),(-1,-1))
         self.click("quit")
         self.assertIsNotNone(self.app.dialog)
         self.assertTrue(all(b.key.startswith("dialog_") for b in self.app.buttons))

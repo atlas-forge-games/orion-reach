@@ -219,8 +219,7 @@ class TierInterfaceTests(unittest.TestCase):
                     app.render()
                     button = next(b for b in app.buttons if b.key == f"research_tier_{tier}")
                     x, y = button.rect.center
-                    v = app.viewport
-                    pos = (round(v.x+x*v.w/1440), round(v.y+y*v.h/900))
+                    pos = app.window_pos((x, y))
                     for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
                         app.handle_event(pg.event.Event(kind, pos=pos, button=1))
                         app.render()

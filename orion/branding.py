@@ -26,8 +26,8 @@ class StudioBrand:
         self.scaled = {}
         self.make_splash(1)
 
-    def make_splash(self, scale):
-        self.splash = Canvas(SIZE, scale)
+    def make_splash(self, scale, layout=None):
+        self.splash = Canvas(SIZE, scale, layout)
         self.splash.fill((0, 0, 0))
         centered(self.splash, "A GAME BY", 55, 12, GOLD, "mono", 3)
         logo = self.fitted_logo((660, 660))
@@ -51,8 +51,10 @@ class StudioBrand:
         return self.scaled[size]
 
     def draw_splash(self, surface, elapsed, animated=True):
-        if self.splash.scale != getattr(surface, 'scale', 1):
-            self.make_splash(getattr(surface, 'scale', 1))
+        scale = getattr(surface, 'scale', 1)
+        layout = getattr(surface, 'layout', None)
+        if self.splash.scale != scale or self.splash.layout != layout:
+            self.make_splash(scale, layout)
         surface.fill((0, 0, 0))
         opacity = min(1, max(0, elapsed/FADE_SECONDS), max(0, (SPLASH_SECONDS-elapsed)/FADE_SECONDS))
         self.splash.set_alpha(round(255*opacity) if animated else 255)

@@ -89,9 +89,8 @@ class ReadabilityInterfaceTests(unittest.TestCase):
         button = next(b for b in self.app.buttons if b.key == key)
         self.app.display_view.ensure_visible(button.rect)
         self.frame()
-        x, y = button.rect.center
-        pos = (round(x*self.app.canvas.scale+self.app.viewport.x),
-               round(y*self.app.canvas.scale+self.app.viewport.y))
+        x, y = self.app.canvas.point(button.rect.center)
+        pos = (x+self.app.viewport.x, y+self.app.viewport.y)
         self.assertTrue(self.app.window.get_rect().collidepoint(pos))
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
