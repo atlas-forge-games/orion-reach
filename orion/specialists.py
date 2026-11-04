@@ -323,7 +323,9 @@ def normalize(game):
 
 def visit_chance(game, owner):
     race = game._empire(owner).race_id
-    return SOCIAL_VISIT_CHANCE if race in ("terran", "concord") else ISOLATED_VISIT_CHANCE if race in ("remnant", "nexus", "varkesh") else NORMAL_VISIT_CHANCE
+    base = SOCIAL_VISIT_CHANCE if race in ("terran", "concord") else ISOLATED_VISIT_CHANCE if race in ("remnant", "nexus", "varkesh") else NORMAL_VISIT_CHANCE
+    best_hub = max((game.building_efficiency(p, "space_hub") for _, p in game.settlements(owner)), default=0)
+    return base*best_hub
 
 
 def advance_visitors(game):

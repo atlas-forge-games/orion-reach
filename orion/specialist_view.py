@@ -105,7 +105,7 @@ def draw_empty(app):
         message = "Build a Space Hub on a colony or a Space Hub module aboard a mothership. Once operational, your first Hub welcomes a leader and an explorer if available. More specialists visit over time."
     paragraph(surface, message, (464, 380, 810, 100), 18, MUTED)
     details = [
-        f"Operational Hubs: {len(rules.hubs(game))} · Visitor chance: {rules.visit_chance(game, 'player')}% every {rules.VISIT_INTERVAL} turns.",
+        f"Operational Hubs: {len(rules.hubs(game))} · Visitor chance: {rules.visit_chance(game, 'player'):g}% every {rules.VISIT_INTERVAL} turns.",
         f"Visitors stay {rules.VISIT_DURATION} turns. Extra Hubs provide more meeting places; arrivals stay capped per empire.",
         f"Up to {rules.MAX_EMPLOYED} hires per empire. One leader per colony or mothership, one explorer per system.",
         "Hiring and salaries cost credits. Leaders can work at colonies or motherships without a Hub.",

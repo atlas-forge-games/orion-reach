@@ -2,8 +2,9 @@
 
 import pygame as pg
 
-from .buildings import BUILDINGS, BUILDING_GROUPS, MINERAL_FACTORS
-from . import economy
+from .buildings import BUILDINGS, BUILDING_GROUPS, MINERAL_FACTORS, facility_family
+from . import defenses, economy, navigation, sensors
+from .weapons import BEAMS
 from .building_art import draw_building_art
 from .habitat_modules import display_name
 from .model import PLAYER
@@ -22,45 +23,59 @@ def draw_planet_tabs(app, active):
             pg.draw.line(app.canvas, GOLD, (x, 250), (x+178, 250), 3)
 
 
-def compact_yields(game, definition, planet):
+def compact_yields(game, definition, planet, rate=1):
     benefits = game.bonuses_for(planet.owner)
+    if not rate:
+        return "No current output"
     if definition.id == "planetary_shield":
-        return f"{max(100, benefits.get('shield_capacity', 0))} shield points · +25/peaceful turn"
+        capacity = max(defenses.SHIELD_CAPACITY, benefits.get('shield_capacity', 0))
+        return f"{economy.whole_output(capacity*rate)} shield points · +{economy.whole_output(defenses.SHIELD_RECOVERY*rate)}/peaceful turn"
     if definition.id == "interdictor":
-        return f"{max(25, benefits.get('interdiction_slow', 0))}% hostile slowdown within {max(5, benefits.get('interdiction_range', 0))} ly"
+        slow = max(navigation.INTERDICTION_SLOW, benefits.get('interdiction_slow', 0))
+        radius = max(navigation.INTERDICTION_RANGE, benefits.get('interdiction_range', 0))
+        return f"{slow*rate:g}% hostile slowdown within {radius*rate:g} ly"
     if definition.energy_per_resource:
         return f"0–{definition.energy_output} ENERGY · 1 RES/{definition.energy_per_resource} energy · backup only"
     if definition.special_effect:
+        if rate < 1:
+            if definition.id == 'missile_base':
+                return f"{max(1, economy.whole_output(BEAMS['missile'].damage*rate))} missile damage"
+            if definition.id == 'sensor_array':
+                return f"+{sensors.ARRAY_RANGE*rate:g} ly local sensor range"
+            if definition.id == 'jump_gate':
+                return f"Up to +{economy.whole_output(navigation.GATE_SPEED_BONUS*rate)}% gate speed"
+            return f"{rate:.1%} of rated effect"
         return definition.special_effect
     if definition.training:
-        return f"+{definition.training} TROOP · CAP {definition.garrison_limit}"
+        return f"+{definition.training*rate:g} TROOP · CAP {economy.whole_output(definition.garrison_limit*rate)}"
     if definition.defence_bonus:
-        return f"+{definition.defence_bonus+game.bonuses_for(planet.owner).get('fortification_bonus', 0)}% DEFENCE"
+        extra = benefits.get('fortification_bonus', 0) if definition.id == 'fortifications' else 0
+        return f"+{(definition.defence_bonus+extra)*rate:g}% DEFENCE"
     values = game.building_yields(definition, planet)
-    parts = [f"+{v} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v]
+    parts = [f"+{v*rate:g} {unit}" for v, unit in zip(values, ("IND", "CR", "RP")) if v]
     if definition.food:
-        parts.append(f"+{definition.food} FOOD")
+        parts.append(f"+{definition.food*rate:g} FOOD")
     if definition.resources:
-        amount = int(definition.resources*MINERAL_FACTORS[planet.richness])+benefits.get("mine_resources", 0)
-        parts.append(f"+{amount} RES")
+        amount = definition.resources*MINERAL_FACTORS[planet.richness]
+        if facility_family(definition.id) == 'mine':
+            amount += benefits.get("mine_resources", 0)
+        parts.append(f"+{amount*rate:g} RES")
     if definition.energy_output:
         parts.append(f"+{definition.energy_output} ENERGY")
     for value, label in ((definition.growth_bonus, '% growth'), (definition.capacity_bonus, '% capacity'),
                          (definition.adaptation, '% environment penalty removed'), (definition.strain_relief, ' points strain relief')):
         if value:
-            parts.append(f'+{value}{label}')
+            parts.append(f'+{value*rate:g}{label}')
     if definition.shield_capacity:
-        parts.append(f'{definition.shield_capacity} shield points')
+        parts.append(f'{economy.whole_output(definition.shield_capacity*rate)} shield points')
     if definition.interdiction_slow:
-        parts.append(f'{definition.interdiction_slow}% hostile slowdown within {definition.interdiction_range} ly')
+        parts.append(f'{definition.interdiction_slow*rate:g}% hostile slowdown within {definition.interdiction_range*rate:g} ly')
     return " · ".join(parts)
 
 
-def building_effect(game, definition, planet):
-    if definition.training:
-        return f"+{definition.training} troop / turn · limit {definition.garrison_limit}"
-    effect = compact_yields(game, definition, planet)
-    bonus = definition.workforce_text(planet.richness)
+def building_effect(game, definition, planet, rate=1):
+    effect = compact_yields(game, definition, planet, rate)
+    bonus = definition.workforce_text(planet.richness, rate) if rate else ""
     return effect+(" · "+bonus if bonus else "")
 
 
@@ -72,6 +87,7 @@ def draw_colony(app):
     surface, game = app.canvas, app.game
     system = game.systems[game.selected_system]
     planet = game.planet_at(system.id, game.selected_planet)
+    power = game.planet_energy(planet)
     app.chrome("MODULE MANAGEMENT" if planet.habitat else "COLONY MANAGEMENT")
     app.button("colony_back", "←  Mothership overview" if planet.habitat else "←  Planet overview", (64, 124, 246, 47), lambda: app.go("planet"), "ghost")
     text(surface, shorten(f"{system.name.upper()}  /  {planet.name.upper()}", 580, 11, "mono"),
@@ -135,9 +151,11 @@ def draw_colony(app):
             definition = BUILDINGS[building_id]
             draw_building_art(surface, building_id, (x+6, y+5, 44, 34), habitat=planet.habitat)
             status = economy.building_status(planet, index, game.bonuses_for(planet.owner))
-            text(surface, shorten(status, 94, 14, "mono"), (x+52, y+24), 14, MUTED if status == "STANDBY" else RED if status in ("NO FUEL", "NO POWER", "DISABLED") else CYAN, "mono")
+            status_color = MUTED if status == "STANDBY" else RED if status in ("NO FUEL", "NO POWER", "DISABLED") else GOLD if "%" in status else CYAN
+            text(surface, shorten(status, 94, 14, "mono"), (x+52, y+24), 14, status_color, "mono")
             text(surface, shorten(display_name(definition, planet.habitat), 134, 13), (x+12, y+42), 13, INK)
-            text(surface, shorten(compact_yields(game, definition, planet), 136, 9), (x+12, y+63), 9, MUTED)
+            current = compact_yields(game, definition, planet, power.rate(definition, index))
+            text(surface, shorten(current, 136, 9), (x+12, y+63), 9, MUTED)
         elif index < planet.used_slots:
             queue_index, project = building_projects[index-len(planet.buildings)]
             definition = BUILDINGS[project.item_id]
@@ -193,12 +211,11 @@ def draw_colony(app):
                    lambda: setattr(app, 'colony_catalog_page', app.colony_catalog_page+1), enabled=app.colony_catalog_page < pages-1)
 
     if app.colony_build_page == 2:
-        power = game.planet_energy(planet)
         panel(surface, (951, 705, 425, 101))
         text(surface, "LOCAL POWER DISPATCH", (967, 718), 10, GOLD, "mono", 1)
         text(surface, f"{power.base_generated} steady + {power.backup_generated} backup / {power.demand} demand", (967, 738), 14, INK)
         text(surface, f"Backup fuel: {power.fuel_used} RES/turn · {game.resources_for(planet.owner):,} stored", (967, 763), 11, CYAN)
-        text(surface, "Steady sources first; backup burns fuel only when needed.", (967, 785), 10, MUTED)
+        text(surface, f"Energy-consuming facilities operate at {power.efficiency_label}.", (967, 785), 10, GOLD if power.efficiency < 1 else MUTED)
 
     # Inspect an existing building or queued project, with reversible queue cancellation.
     panel(surface, (64, 711, 662, 82))
@@ -206,7 +223,7 @@ def draw_colony(app):
     if slot is not None and 0 <= slot < len(planet.buildings):
         definition = BUILDINGS[planet.buildings[slot]]
         text(surface, display_name(definition, planet.habitat), (82, 724), 18, INK)
-        detail = building_effect(game, definition, planet)
+        detail = building_effect(game, definition, planet, power.rate(definition, slot))
         if definition.energy_output:
             output, fuel = next(((output, fuel) for i, output, fuel in game.planet_energy(planet).plants if i == slot), (0, 0))
             detail = f"{output} energy now / {definition.energy_output} capacity · {fuel} RES fuel/turn"
@@ -242,7 +259,6 @@ def draw_colony(app):
     app.button("colony_pause", "Menu", (64, 828, 126, 51), app.pause)
     app.button("colony_save", "Save · F5", (204, 828, 172, 51), app.save_game)
     text(surface, shorten(f"Resources: {game.resources:,} · {game.planet_resources(planet):+}/turn here, after {game.planet_energy(planet).fuel_used} RES fuel.", 414, 11, "sans"), (399, 828), 11, MUTED)
-    power = game.planet_energy(planet)
-    priority = "Farming and extraction modules have priority." if planet.habitat else "Farms and mines have priority."
-    power_text = f"Power: ∞ / {power.demand} needed. Empire-wide Dyson grid; no fuel consumed." if power.unlimited else f"Power: {power.generated}/{power.demand} needed. {priority}"
+    power_text = (f"Power: ∞ / {power.demand} needed · Dyson grid" if power.unlimited else
+                  f"Power: {power.generated}/{power.demand} needed · {power.efficiency_label} efficiency")
     text(surface, shorten(power_text, 414, 11, "sans"), (399, 850), 11, FAINT)

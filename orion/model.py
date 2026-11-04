@@ -402,6 +402,7 @@ class Planet:
     loyalty_until: int = 0
     orbital_station: gas_giants.OrbitalStation | None = None
     surface_layout: dict[str, list[int]] = field(default_factory=dict)
+    training_progress: float = 0
 
     @property
     def production_idle(self):
@@ -561,7 +562,7 @@ class Planet:
                 record[key] = 0
             if not _integer(record[key], 0, maximum):
                 raise ValueError("Invalid planetary defenses")
-        if ((record["shield_points"] and "planetary_shield" not in record.get("buildings", []))
+        if ((record["shield_points"] and not any(b in record.get("buildings", []) for b in defense_rules.SHIELD_BUILDINGS))
                 or (record["battery_hull"] and "missile_base" not in record.get("buildings", []))):
             raise ValueError("Defense health without a building")
         if version < 23:
@@ -576,6 +577,11 @@ class Planet:
         if (not _integer(record["garrison"], 0, ground_rules.MAX_GARRISON)
                 or (not data["colonized"] and record["garrison"] != 0)):
             raise ValueError("Invalid planetary garrison")
+        if version < 62:
+            record.setdefault("training_progress", 0)
+        progress = record["training_progress"]
+        if type(progress) not in (int, float) or not 0 <= progress < 1 or (progress and not data["colonized"]):
+            raise ValueError("Invalid garrison training progress")
         if (not _integer(record["militia_losses"], 0, max(104, 4+data["population"]) if version >= 23 else 104)
                 or (not data["colonized"] and record["militia_losses"] != 0)):
             raise ValueError("Invalid militia casualties")
@@ -1173,7 +1179,12 @@ class GameState:
                                     self._base_bonuses(owner), self.resources_for(owner)))
 
     def building_operational(self, planet, identifier):
-        return economy.operational(planet, identifier, self.bonuses_for(planet.owner))
+        return self.building_efficiency(planet, identifier) > 0
+
+    def building_efficiency(self, planet, identifier):
+        if identifier not in planet.buildings:
+            return 0
+        return economy.building_efficiency(planet, identifier, self.bonuses_for(planet.owner))
 
     def fund_project(self, project, owner=PLAYER):
         empire = self._empire(owner)
@@ -1907,7 +1918,7 @@ class GameState:
         for planet, _ in population_start:
             if planet.owner == PLAYER and self.planet_energy(planet).balance < 0:
                 report = self.planet_energy(planet)
-                affected = f"{len(report.offline)} {'modules' if planet.habitat else 'buildings'} offline"
+                affected = f"powered {'modules' if planet.habitat else 'buildings'} at {report.efficiency_label} efficiency"
                 if planet.ascension_gate and not report.gate_powered:
                     affected += "; Ascension Gate unpowered"
                 alerts.append(f"Energy shortage on {planet.name}: {affected}")
@@ -2023,7 +2034,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=61):
+    def from_dict(cls, data, *, version=62):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

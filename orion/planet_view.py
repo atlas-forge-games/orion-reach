@@ -8,7 +8,7 @@ from .habitat_modules import display_name
 from .buildings import BUILDINGS, workforce_bonuses
 from .colony_scene import draw_colony_scene
 from .colony_view import building_effect, compact_yields, turn_label
-from .ground_combat import forces, training_limit
+from .ground_combat import forces, training_limit, training_rate
 from .fleet_art import ship_icon
 from .model import PLAYER, RIVAL
 from .planet_art import draw_planet
@@ -173,10 +173,24 @@ def workforce_panel(app, game, planet, live):
                 f"{food.assembly_industry} to assembly" if food and food.assembly_industry else "Trade Goods" if planet.trade_goods else "construction", CYAN),
                ("research", "RESEARCH", f"+{research}" if live else "—", "research points", SCIENCE)]
     energy = game.planet_energy(planet) if live else None
+    energy_detail = "last survey"
+    if energy is not None:
+        if energy.unlimited:
+            energy_detail = "Dyson grid · no fuel"
+        elif energy.efficiency < 1:
+            energy_detail = f"{energy.efficiency_label} efficiency"
+        elif energy.balance < 0:
+            energy_detail = "Gate paused"
+        elif energy.orbital_generated:
+            energy_detail = f"{energy.orbital_generated} orbital · {energy.fuel_used} fuel"
+        elif energy.fuel_used:
+            energy_detail = f"{energy.fuel_used} RES fuel/turn"
+        else:
+            energy_detail = f"{energy.balance:+} surplus"
     outputs += [("resources", "RESOURCES", f"{game.planet_resources(planet):+}" if live else "—",
                  f"{game.resources:,} stored" if owned else "mined / turn", ROLE_COLORS["miners"]),
                 ("energy", "ENERGY", (f"∞ / {energy.demand}" if energy.unlimited else f"{energy.generated}/{energy.demand}") if live else "—",
-                 ("Dyson grid · no fuel" if energy.unlimited else f"{energy.orbital_generated} orbital · {energy.fuel_used} fuel" if energy.orbital_generated else f"{energy.fuel_used} RES fuel/turn" if energy.fuel_used else f"{energy.balance:+} surplus") if live else "last survey", RED if live and energy.balance < 0 else GOLD)]
+                 energy_detail, RED if live and energy.balance < 0 else GOLD)]
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*124
         panel(surface, (x, 86, 120, 61), (15, 28, 37))
@@ -186,8 +200,8 @@ def workforce_panel(app, game, planet, live):
         text(surface, shorten(caption, 108, 8), (x+7, 130), 8, MUTED)
     benefits = game.bonuses_for(planet.owner) if live else {}
     staff = workforce_bonuses(planet, benefits)
-    details = {"farmers": f"{farmer_output(planet, benefits)} base food each" if needs_food else "food not required",
-               "workers": f"{research_balance.WORKER_INDUSTRY+staff.industry:g} base IND each", "scientists": f"{research_balance.SCIENTIST_RESEARCH+staff.research} base RP each",
+    details = {"farmers": f"{farmer_output(planet, benefits):g} base food each" if needs_food else "food not required",
+               "workers": f"{research_balance.WORKER_INDUSTRY+staff.industry:g} base IND each", "scientists": f"{research_balance.SCIENTIST_RESEARCH+staff.research:g} base RP each",
                "miners": f"{economy.miner_output(planet, benefits):g} base RES each"}
     preview = None
     for role in WORKER_ROLES:
@@ -414,25 +428,29 @@ def draw_planet_overview(app):
         text(surface, "Normal worker output and food use · 5% death chance per unit each turn", (52, 409), 12, MUTED)
     if planet.ascension_gate and live:
         app.button("planet_objectives", f"Ascension Gate · {planet.gate_charge}/5", (1110, 330, 288, 34), app.open_objectives)
-    if "planetary_shield" in planet.buildings or "missile_base" in planet.buildings:
+    has_shield = any(b in planet.buildings for b in defenses.SHIELD_BUILDINGS)
+    if has_shield or "missile_base" in planet.buildings:
         panel(surface, (770, 321, 628, 45), (10, 23, 30))
-        cap = str(defenses.shield_capacity(game, planet)) if live else "?"
-        shield = f"SHIELD {planet.shield_points}/{cap}" if "planetary_shield" in planet.buildings else "NO SHIELD"
+        cap = defenses.operational_shield_capacity(game, planet) if live else "?"
+        shield_points = min(planet.shield_points, cap) if live else planet.shield_points
+        shield = f"SHIELD {shield_points}/{cap}" if has_shield else "NO SHIELD"
         battery = f"MISSILE BASE {planet.battery_hull or defenses.BASE_HULL}/{defenses.BASE_HULL}" if "missile_base" in planet.buildings else "NO BASE"
-        if live and "planetary_shield" in planet.buildings and not game.building_operational(planet, "planetary_shield"):
+        if live and has_shield and not cap:
             shield += " OFFLINE"
         if live and "missile_base" in planet.buildings and not game.building_operational(planet, "missile_base"):
             battery += " OFFLINE"
         text(surface, shield+" · "+battery, (784, 327), 12, CYAN)
-        text(surface, f"Peaceful recovery: +{defenses.SHIELD_RECOVERY} shield, +{defenses.BASE_RECOVERY} base hull/turn" if live else "Defense status at last survey", (784, 348), 11, MUTED)
+        recovery = defenses.recovery_rates(game, planet) if live else None
+        text(surface, f"Peaceful recovery: +{recovery[0]} shield, +{recovery[1]} base hull/turn" if live else "Defense status at last survey", (784, 348), 11, MUTED)
     if planet.colonized:
         defence = forces(planet, game.bonuses_for(planet.owner) if live else {})
         caption = (f"{len(planet.buildings)} buildings · {len(planet.building_projects)} reserved / {planet.building_capacity} slots"
                    f"    GROUND: {defence.garrison} garrison + {defence.militia} militia · +{defence.defence_bonus}% firepower")
         if not live:
             caption += " · Last observed"
-        elif training_limit(planet, game.bonuses_for(planet.owner) if live else {}):
-            caption += f" · Barracks +1/turn, limit {training_limit(planet, game.bonuses_for(planet.owner) if live else {})}"
+        elif limit := training_limit(planet, game.bonuses_for(planet.owner) if live else {}):
+            rate = training_rate(planet, game.bonuses_for(planet.owner) if live else {})
+            caption += f" · Barracks +{rate:g}/turn, limit {limit}"
         text(surface, shorten(caption, 780, 12), (24, 832), 12, CYAN)
     elif planet.is_gas_giant:
         text(surface, shorten(f"Atmospheric world · No population or building slots · Orbit {planet.orbit_au:.2f} AU", 789, 12, "sans"), (24, 832), 12, MUTED)

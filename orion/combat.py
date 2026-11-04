@@ -1,4 +1,4 @@
-from .economy import remove_building
+from .economy import remove_building, whole_output
 """Deterministic, grid-based fleet combat; campaign losses commit on resolution."""
 
 from collections import deque
@@ -90,6 +90,7 @@ class CombatShip:
     repair_remaining: int = 0
     drone_role: str | None = None
     large_hull: bool = True
+    battery_damage: int | None = None
 
     def __post_init__(self):
         if self.design is None and self.owner in OWNERS:
@@ -117,6 +118,8 @@ class CombatShip:
 
     @property
     def damage(self):
+        if self.battery_damage is not None:
+            return self.battery_damage
         if self.kind == 'combat_drone':
             return drone_strength(BEAMS[self.weapon].damage)
         return self.design.damage if self.design else BEAMS[self.weapon].damage
@@ -191,6 +194,7 @@ class CombatState:
     encounter_id: int | None = None
     projectiles: list[combat_projectiles.Projectile] = field(default_factory=list)
     board_rows: int = 0
+    standby_bases: list[int] = field(default_factory=list)  # Older battles omitted some underpowered bases.
 
     @property
     def guardian(self):
@@ -254,8 +258,10 @@ class CombatState:
         self.log = self.log[-8:]
 
     @classmethod
-    def from_dict(cls, data, game, *, version=57):
+    def from_dict(cls, data, game, *, version=62):
         from .model import _integer, _name
+        if version < 62 and isinstance(data, dict):
+            data = {**data, "standby_bases": []}
         if version < 53 and isinstance(data, dict):
             data = {**data, "board_rows": 0}
         if version < 52 and isinstance(data, dict):
@@ -272,7 +278,7 @@ class CombatState:
                                  if isinstance(row, dict) else row for row in data["ships"]]
         if not isinstance(data, dict) or set(data) != {
                 "system_id", "initiator", "ships", "round", "active_owner", "acted",
-                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired", "encounter_id", "projectiles", "board_rows"}:
+                "log", "status", "retreat_destination", "moved", "accuracy", "shots_fired", "encounter_id", "projectiles", "board_rows", "standby_bases"}:
             raise ValueError("Invalid combat state")
         if type(data["accuracy"]) is not bool or not _integer(data["shots_fired"], 0, 100_000_000):
             raise ValueError("Invalid combat random sequence")
@@ -308,7 +314,9 @@ class CombatState:
                 raise ValueError("Combat does not match diplomatic state")
         ships = []
         for row in rows:
-            fields = {"id", "kind", "owner", "hull", "initial_hull"}
+            if version < 62 and isinstance(row, dict):
+                row = {**row, "battery_damage": None}  # Earlier battles used the rated weapon damage.
+            fields = {"id", "kind", "owner", "hull", "initial_hull", "battery_damage"}
             if version >= 13:
                 fields |= {"x", "y", "weapon"}
             if version >= 18:
@@ -324,6 +332,9 @@ class CombatState:
             monster = row["owner"] == MONSTER
             pirate = row["owner"] == encounters.PIRATES
             station = row["kind"] == "missile_base"
+            damage = row.get("battery_damage")
+            if damage is not None and (not station or not _integer(damage, 1, BEAMS["missile"].damage)):
+                raise ValueError("Invalid missile base firepower")
             drone = row["kind"] == "combat_drone"
             role = row.get("drone_role") if version >= 31 else "assault" if drone else None
             if ((drone and (not isinstance(role, str) or role not in DRONE_ROLES))
@@ -499,7 +510,14 @@ class CombatState:
         expected_bases = {defenses.base_id(state.system_id, p.id) for p in defenses.bases(game, state.system_id)
                           if p.owner in sides} if not guarded and not (pirates and pirate_fleet.kind == "planet") else set()
         battle_bases = {s.id for s in ships if s.kind == "missile_base" and (state.status == "active" or s.hull > 0)}
-        if expected_bases != battle_bases:
+        # Preserve the roster and launched missiles of a battle already in progress.
+        if version < 62:
+            state.standby_bases = sorted(expected_bases-battle_bases)
+        standby = state.standby_bases
+        if (not isinstance(standby, list) or any(type(i) is not int or i not in expected_bases for i in standby)
+                or len(standby) != len(set(standby)) or set(standby) & battle_bases
+                or any(game.building_efficiency(defenses.base_planet(game, i), "missile_base") >= 1 for i in standby)
+                or expected_bases != battle_bases | set(standby)):
             raise ValueError("Battle omitted planetary defenses")
         if pirates:
             expected_pirates = {pirate_fleet.unit_id(i) for i, hull in enumerate(pirate_fleet.hulls) if hull}
@@ -627,7 +645,8 @@ def battle_ship(game, ship):
 
 def battle_bases(game, system_id, owner):
     return [CombatShip(defenses.base_id(system_id, p.id), "missile_base", owner,
-                       p.battery_hull or defenses.BASE_HULL, p.battery_hull or defenses.BASE_HULL, weapon="missile")
+                       p.battery_hull or defenses.BASE_HULL, p.battery_hull or defenses.BASE_HULL, weapon="missile",
+                       battery_damage=max(1, whole_output(BEAMS["missile"].damage*game.building_efficiency(p, "missile_base"))))
             for p in defenses.bases(game, system_id, owner)]
 
 

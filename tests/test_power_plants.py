@@ -69,8 +69,8 @@ class PowerDispatchTests(unittest.TestCase):
         g.resources = 1
         power = g.planet_energy(p)
         self.assertEqual((power.used, power.backup_generated, power.fuel_used), (16, 4, 1))
-        self.assertEqual(power.offline, (2,))
-        self.assertEqual(g.planet_yields(p)[2], 0)
+        self.assertEqual((power.offline, power.efficiency), ((), .8))
+        self.assertEqual(g.planet_yields(p)[2], 3)
         g.resources = 0
         power = g.planet_energy(p)
         self.assertEqual((power.used, power.fuel_used, power.backup_generated), (12, 0, 0))
@@ -79,17 +79,15 @@ class PowerDispatchTests(unittest.TestCase):
             g.advance_turn()
             self.assertGreaterEqual(g.resources, 0)
 
-    def test_fuel_is_not_burned_for_partial_power_that_cannot_run_a_building(self):
+    def test_partial_backup_generation_is_useful_to_every_building(self):
         g, p = self.game, self.planet
         p.buildings = ["planetary_shield", "interdictor", "jump_gate", "thermal_plant"]
         g.resources = 0
-        self.assertEqual(g.planet_energy(p).used, 8)
-        # One Resource powers the second 8-energy load using the spare steady 4.
+        self.assertEqual((g.planet_energy(p).used, g.planet_energy(p).efficiency), (12, .5))
         g.resources = 1
         self.assertEqual((g.planet_energy(p).used, g.planet_energy(p).fuel_used), (16, 1))
-        # Another 4 energy cannot power the final 8-energy load, so keep its fuel.
         g.resources = 2
-        self.assertEqual((g.planet_energy(p).used, g.planet_energy(p).fuel_used), (16, 1))
+        self.assertEqual((g.planet_energy(p).used, g.planet_energy(p).fuel_used), (20, 2))
 
     def test_multiple_backup_plants_share_capacity_and_leave_unneeded_ones_idle(self):
         g, p = self.game, self.planet
@@ -109,7 +107,7 @@ class PowerDispatchTests(unittest.TestCase):
         g.toggle_building(0, 2, 4)
         self.assertEqual(g.planet_energy(p).fuel_used, 1)
         g.toggle_building(0, 2, 5)
-        self.assertEqual((g.planet_energy(p).fuel_used, g.planet_energy(p).offline), (0, (3,)))
+        self.assertEqual((g.planet_energy(p).fuel_used, g.planet_energy(p).efficiency), (0, .75))
         self.assertEqual(economy.building_status(p, 5, g.bonuses_for()), "DISABLED")
         g.toggle_building(0, 2, 5)
         g.demolish_building(0, 2, 4)
@@ -124,7 +122,7 @@ class PowerDispatchTests(unittest.TestCase):
             p.buildings = ["research_lab"]*4+["thermal_plant"]
         g.resources = 1
         self.assertEqual((g.planet_energy(first).fuel_used, g.planet_energy(second).fuel_used), (1, 0))
-        self.assertEqual(g.planet_energy(second).offline, (3,))
+        self.assertEqual((g.planet_energy(first).efficiency, g.planet_energy(second).efficiency), (1, .75))
         g.resources = 2
         self.assertEqual((g.planet_energy(first).fuel_used, g.planet_energy(second).fuel_used), (1, 1))
         g.resources = 1
@@ -153,9 +151,8 @@ class PowerDispatchTests(unittest.TestCase):
         self.assertEqual(g.planet_resources(p), economy.mining_output(p, g.bonuses_for())-2)
         self.assertGreater(powered.produced, 6)
         g.resources = 0
-        self.assertFalse(g.building_operational(p, "interdictor"))
-        # Farms and mines retain priority even without reserve fuel.
-        self.assertEqual(g.population_report(p).produced, powered.produced)
+        self.assertEqual(g.building_efficiency(p, "interdictor"), .6)
+        self.assertEqual(g.population_report(p).produced, powered.produced-2)
         self.assertEqual(g.planet_energy(p).fuel_used, 0)
 
 

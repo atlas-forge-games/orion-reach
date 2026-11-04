@@ -5,7 +5,7 @@ from functools import lru_cache
 from .buildings import BUILDINGS, workforce_bonuses, facility_family
 from .production import ASCENSION_GATE, HULL_TECHNOLOGIES
 from .population import LUSH_BIOMES, assembly_work
-from .economy import active_buildings
+from .economy import operating_facilities, whole_output
 from .legacy_research import LEGACY_TECHNOLOGIES, validate_legacy
 
 
@@ -413,7 +413,7 @@ def building_yields(definition, richness, bonuses):
 
 def scaled_output(value, percent):
     """Round bonuses up and penalties down; do not create output from zero."""
-    return (value*(100+percent)+(99 if percent > 0 else 0))//100
+    return (whole_output(value)*(100+percent)+(99 if percent > 0 else 0))//100
 
 
 def gross_colony_yields(planet, bonuses):
@@ -423,12 +423,14 @@ def gross_colony_yields(planet, bonuses):
     if not planet.colonized:
         return 0, 0, 0
     staff = workforce_bonuses(planet, bonuses)
-    industry = max(1, WORKER_INDUSTRY*planet.workers)+int(planet.workers*staff.industry)+bonuses.get("colony_industry", 0)
-    income = POPULATION_INCOME*planet.workforce+int(planet.workforce*staff.income)+bonuses.get("colony_income", 0)
+    industry = max(1, WORKER_INDUSTRY*planet.workers)+planet.workers*staff.industry+bonuses.get("colony_industry", 0)
+    income = POPULATION_INCOME*planet.workforce+planet.workforce*staff.income+bonuses.get("colony_income", 0)
     research = (SCIENTIST_RESEARCH+staff.research)*planet.scientists+bonuses.get("colony_research", 0)
-    for identifier in active_buildings(planet, bonuses):
-        extra = building_yields(BUILDINGS[identifier], planet.richness, bonuses)
-        industry, income, research = industry+extra[0], income+extra[1], research+extra[2]
+    for building, rate in operating_facilities(planet, bonuses):
+        fixed_industry, fixed_income, fixed_research = building_yields(building, planet.richness, bonuses)
+        industry += rate*fixed_industry
+        income += rate*fixed_income
+        research += rate*fixed_research
     income += (planet.workforce//2)*bonuses.get("income_per_two_pop", 0)
     if planet.biome in ("Desert", "Ice"):
         income += bonuses.get("rough_income", 0)

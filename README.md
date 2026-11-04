@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.90.0
+# Age of the Stars — Python prototype 0.91.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,23 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.91.0 — energy shortages
+
+Each colony or mothership shares its available energy among all enabled facilities
+that draw power. With 7 energy for 10 demand, each operates at 70%. For example,
+a factory with six industrial workers normally adds 4 fixed industry and 6 worker
+bonus industry. At 70% it adds 7. The workers also produce their usual 6 base
+industry, for a total of 13. The game sums fractional contributions before
+rounding the colony's output to whole units.
+
+The planet's Energy card, building status and output breakdowns show the local
+percentage. Disabling a facility frees power for the others. Additional generation
+restores efficiency up to 100%. Credit upkeep stays fixed.
+
+Extract this update over **v0.90.0**. Existing campaigns load normally. New saves
+use format **62**, which records partial troop training and missile-base firepower
+for battles already in progress.
 
 ## New in v0.90.0 — more room for the galaxy
 
@@ -2666,12 +2683,13 @@ change construction prices, output and upkeep. Work and slot costs stay fixed.
 Energy stays on its colony. Basic supply is 12; steady power plants add generation.
 Thermal backup plants run last and burn stored Resources only for useful extra
 power, up to 24 per plant at 1 RES per 4 energy, rounded up.
-Farms and mines receive power first, then other buildings in slot order. Loads
-that do not fit automatically go offline. Disabled or unpowered buildings
-produce nothing and grant no workforce or military bonus, but still cost their
-fixed credit maintenance. Manually disable a building from its inspection panel
-to free power for another. New power generation takes effect as soon as built;
-normal economic output is calculated from each turn's starting buildings.
+Enabled buildings that require energy share the local supply in proportion to
+their demand. Their fixed production, workforce improvements and powered effects
+scale by the fraction supplied, up to 100%. Buildings with zero demand receive
+their full effects. Disabled buildings produce nothing and still cost their
+fixed credit maintenance. Disable a building from its inspection panel to free
+power for the others. Normal output uses the buildings present at the start
+of the turn.
 
 - One local queue consumes industrial work. Overflow can start the next project
   if its materials are available; unused work is not stored.

@@ -80,7 +80,7 @@ class Site:
     system_id: int
     planet_id: int
     built: int
-    age: int = 0
+    age: float = 0
 
 
 @dataclass
@@ -224,7 +224,7 @@ def operating(game, owner):
 
 def mature(game, owner):
     age = {"lithar": 12, "xenonflora": 10, "skirr": 8}.get(race(game, owner), 0)
-    return [(s, p) for s, p in operating(game, owner) if s.age >= age]
+    return [(s, p) for s, p in operating(game, owner) if s.age+1e-9 >= age]
 
 
 def population_counts(game, owner):
@@ -331,7 +331,14 @@ def fraction(game, owner):
 def research_reservation(game, owner="player"):
     if "race" not in game.victory_conditions or race(game, owner) not in ("nexus", "remnant"):
         return 0
-    return min(max(0, 500*scale(game, owner)-game.legacy.investments.get(owner, 0)), 20*len(operating(game, owner)))
+    return min(max(0, 500*scale(game, owner)-game.legacy.investments.get(owner, 0)),
+               investment_capacity(game, owner, operating(game, owner)))
+
+
+def investment_capacity(game, owner, ready):
+    from .economy import whole_output
+    building = spec_for(game, owner).building
+    return whole_output(20*sum(game.building_efficiency(p, building) for _, p in ready))
 
 
 def record_raid(game, owner, sid, pid):
@@ -352,7 +359,7 @@ def record_accession(game, owner, planet):
 
 def immigrate(game, owner, ready):
     from .species import composition
-    if game.turn % 3 or not ready:
+    if not ready:
         return
     empire = game._empire(owner)
     counts = population_counts(game, owner)
@@ -397,19 +404,31 @@ def advance(game, alerts):
         if spec is None:
             continue
         rid = race(game, owner)
-        for s, p in sites(game, owner):
-            s.age = min(1_000_000, s.age+1) if s.built < game.turn and site_error(game, s, p) is None else 0
         ready = operating(game, owner)
+        # Whole-population transfers and trials require a complete facility cycle.
+        period = {"serevan": 3, "varkesh": 6}.get(rid, 1)
+        due = []
+        for s, p in sites(game, owner):
+            if (s, p) not in ready:
+                s.age = 0
+                continue
+            rate = game.building_efficiency(p, spec.building)
+            previous = s.age
+            s.age = min(1_000_000, s.age+rate) if s.built < game.turn else 0
+            cycle = (s.built+s.age+1e-9)//period
+            previous_cycle = (s.built+previous+1e-9)//period
+            if (rate == 1 and game.turn % period == 0) or (rate < 1 and cycle > previous_cycle):
+                due.append((s, p))
         empire = game._empire(owner)
         if rid in ("kharuun", "nexus", "remnant"):
             total = (600 if rid == "kharuun" else 500)*scale(game, owner)
             attribute = "resources" if rid == "kharuun" else "research"
-            paid = min(max(0, total-game.legacy.investments.get(owner, 0)), 20*len(ready), max(0, getattr(empire, attribute)))
+            paid = min(max(0, total-game.legacy.investments.get(owner, 0)), investment_capacity(game, owner, ready), max(0, getattr(empire, attribute)))
             setattr(empire, attribute, getattr(empire, attribute)-paid)
             game.legacy.investments[owner] = game.legacy.investments.get(owner, 0)+paid
         if rid == "concord":
             from .species import composition
-            for s, p in ready:
+            for s, p in due:
                 p.species = composition(p, rid)
                 others = [r for r in p.species if r != rid]
                 if others:
@@ -419,8 +438,8 @@ def advance(game, alerts):
                         del p.species[original]
                     p.species[rid] = p.species.get(rid, 0)+1
         if rid == "serevan":
-            immigrate(game, owner, ready)
-        if rid == "varkesh" and ready and game.turn % 6 == 0 and not any(o != owner and game.settlements(o) for o in game.owners):
+            immigrate(game, owner, due)
+        if rid == "varkesh" and due and not any(o != owner and game.settlements(o) for o in game.owners):
             trophies = game.legacy.trophies.setdefault(owner, [])
             if len(trophies) < 3 and empire.resources >= 200 and sum(game.military_strength(s) for s in game.ships_owned_by(owner)) >= 120:
                 empire.resources -= 200
@@ -525,7 +544,7 @@ def load(game, data, version):
                 or type(s.system_id) is not int or not 0 <= s.system_id < len(game.systems)
                 or type(s.planet_id) is not int or not 0 <= s.planet_id < len(game.systems[s.system_id].worlds)
                 or type(s.built) is not int or not 1 <= s.built <= game.turn
-                or type(s.age) is not int or not 0 <= s.age <= game.turn-s.built):
+                or type(s.age) not in (int, float) or not 0 <= s.age <= game.turn-s.built):
             raise ValueError("Invalid legacy site values")
         p = game.planet_at(s.system_id, s.planet_id)
         key = s.system_id, s.planet_id

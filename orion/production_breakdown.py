@@ -22,17 +22,20 @@ def describe(game, planet, kind):
         raise ValueError('Choose a colonized planet and a valid output.')
     b = economy.local_bonuses(planet, game.bonuses_for(planet.owner))
     staff = workforce_bonuses(planet, b)
-    active = economy.active_buildings(planet, b)
+    active = economy.operating_facilities(planet, b)
+    power = game.planet_energy(planet)
     lines = []
+    if power.efficiency < 1:
+        lines.append(f'Local power {power.generated}/{power.demand}. Facilities requiring energy run at {power.efficiency_label}.')
     def add(label, value):
         lines.append(f'{label}: {value:g}')
         return value
     def buildings(field, factor=1):
         total = 0
-        for identifier in active:
-            value = getattr(BUILDINGS[identifier], field)*factor
+        for spec, rate in active:
+            value = getattr(spec, field)*factor*rate
             if value:
-                total += add(display_name(BUILDINGS[identifier], planet.habitat), value)
+                total += add(display_name(spec, planet.habitat), value)
         return total
     def strain(value):
         r = game.strain_report(planet)
@@ -46,7 +49,7 @@ def describe(game, planet, kind):
     if kind in ('industry', 'research', 'credits'):
         if kind == 'industry':
             raw = add(f'{planet.workers} workers × {research.WORKER_INDUSTRY:g} (minimum 1)', max(1, research.WORKER_INDUSTRY*planet.workers))
-            raw += add(f'Worker facility bonus: floor({planet.workers} × {staff.industry:g})', int(planet.workers*staff.industry))
+            raw += add(f'Worker facility bonus ({planet.workers} × {staff.industry:g})', planet.workers*staff.industry)
             raw += add('Colony bonuses (race, research, leader)', b.get('colony_industry', 0))
             percent = b.get('industry_percent', 0)+(b.get('harsh_industry_percent', 0) if planet.biome not in population.LUSH_BIOMES else 0)
             index = 0
@@ -56,16 +59,16 @@ def describe(game, planet, kind):
             percent, index = b.get('research_percent', 0), 2
         else:
             raw = add(f'{planet.workforce} population × {research.POPULATION_INCOME:g}', planet.workforce*research.POPULATION_INCOME)
-            raw += add(f'Facility income: floor({planet.workforce} × {staff.income:g})', int(planet.workforce*staff.income))
+            raw += add(f'Facility income ({planet.workforce} × {staff.income:g})', planet.workforce*staff.income)
             raw += add('Colony bonuses (race, research, leader)', b.get('colony_income', 0))
             raw += add('Population / terrain bonuses', (planet.workforce//2)*b.get('income_per_two_pop', 0)+(b.get('rough_income', 0) if planet.biome in ('Desert','Ice') else 0))
             percent, index = b.get('income_percent', 0), 1
-        for identifier in active:
-            value = research.building_yields(BUILDINGS[identifier], planet.richness, b)[index]
+        for spec, rate in active:
+            value = research.building_yields(spec, planet.richness, b)[index]*rate
             if value:
-                raw += add(display_name(BUILDINGS[identifier], planet.habitat)+' (incl. upgrades)', value)
+                raw += add(display_name(spec, planet.habitat)+' (incl. upgrades)', value)
         scaled = research.scaled_output(raw, percent)
-        lines.append(f'Subtotal {raw:g} × {1+percent/100:g} = {scaled:g} (whole-unit rounding)')
+        lines.append(f'Subtotal {raw:g}, rounded down to {economy.whole_output(raw)} before the {percent:+g}% modifier = {scaled:g}')
         adjusted = strain(scaled)
         if kind == 'industry':
             adjusted = max(1, adjusted)
@@ -99,23 +102,24 @@ def describe(game, planet, kind):
         factor = MINERAL_FACTORS[planet.richness]
         add('Mineral multiplier ('+planet.richness+')', factor)
         base = buildings('resources',factor)
-        extra = sum(BUILDINGS[x].resources_per_miner for x in active)
+        extra = sum(spec.resources_per_miner*rate for spec, rate in active)
         workers = add(f'{planet.miners} miners × ({economy.MINER_RESOURCES:g} base + {extra:g} facilities) × {factor:g}', planet.miners*economy.miner_output(planet,b))
         raw = add('Base extraction', economy.BASE_EXTRACTION)
         raw += add('Colony bonuses (race, research, leader)', b.get('colony_resources',0))
-        raw += add('Mine research bonuses', sum(facility_family(x)=='mine' for x in active)*b.get('mine_resources',0))
-        raw += add('Facilities + miners, rounded down together', int(base+workers))
+        upgrades = add('Mine research bonuses', sum(rate for spec, rate in active if facility_family(spec.id)=='mine')*b.get('mine_resources',0))
+        raw += add('Facilities + miners + upgrades, rounded down together', economy.whole_output(base+workers+upgrades))
         strain(raw)
         add('Subtract resources burned for energy', game.planet_energy(planet).fuel_used)
         total = game.planet_resources(planet)
     else:
-        power = game.planet_energy(planet)
         if power.unlimited:
             lines.append('Completed Dyson Sphere: unlimited empire-wide energy.')
             total = float('inf')
         else:
             add('Base energy', economy.BASE_ENERGY)
             add('Colony energy bonuses', b.get('colony_energy',0))
+            if power.orbital_generated:
+                add('Orbital platforms', power.orbital_generated)
             for i,identifier in enumerate(planet.buildings):
                 spec = BUILDINGS[identifier]
                 if i not in planet.disabled_buildings and spec.energy_output and not spec.energy_per_resource:
@@ -124,7 +128,10 @@ def describe(game, planet, kind):
             add('Resources burned by backup plants',power.fuel_used)
             total = power.generated
         add('Total demand',power.demand)
+        if planet.ascension_gate:
+            lines.append(f'Legacy Ascension Gate requires {economy.GATE_ENERGY} spare energy after buildings.')
         add('Actually supplied to loads',power.used)
+        lines.append(f'Operating efficiency for buildings requiring energy: {power.efficiency_label}.')
         lines.append('Energy is local and is not reduced by administrative strain.')
     unavailable = len(planet.buildings)-len(active)
     if unavailable:

@@ -91,9 +91,9 @@ def describe(game, planet, *, live):
 
     lines.append(f"Before environment (after capacity check): {millions(report.base_growth_rate):g} million / turn.")
     if report.facility_growth:
-        lines.append(f"Powered population facilities: +{report.facility_growth}% growth; applies to biological, assembly and passive growth before environment.")
+        lines.append(f"Powered population facilities add {report.facility_growth:g}% to growth before environmental effects.")
     if report.adaptation:
-        lines.append(f"Powered habitat facilities remove {report.adaptation}% of the environmental penalty (combined cap 80%).")
+        lines.append(f"Powered habitat facilities remove {report.adaptation:g}% of the environmental penalty (combined cap 80%).")
     if planet.habitat:
         lines.append("Habitat environment: 100%; the planet below does not affect growth.")
     else:
@@ -110,14 +110,14 @@ def describe(game, planet, *, live):
     if b.get('food_use_percent', 0) <= -100:
         lines.append("Food is not required by this population.")
     else:
-        active = economy.active_buildings(planet, b)
+        active = economy.operating_facilities(planet, b)
         natural = population.BASE_FOOD[planet.biome] + environments.native_food(planet)
-        farms = sum(BUILDINGS[key].food for key in active)
+        farms = sum(spec.food*rate for spec, rate in active)
         farmer_food = planet.farmers * population.farmer_output(planet, b)
         other = b.get('colony_food', 0) + (b.get('lush_food', 0) if planet.biome in population.LUSH_BIOMES else 0)
-        lines += [f"Food sources before strain: {natural} natural + {farmer_food} farmers + {farms} facilities + {other} bonuses.",
+        lines += [f"Food sources before strain: {natural:g} natural + {farmer_food:g} farmers + {farms:g} facilities + {other:g} bonuses.",
                   f"Food use: {100+b.get('food_use_percent', 0):g}% × {planet.workforce} billion workers, rounded up = {report.consumed}.",
-                  f"Food lost to local strain: {natural+farmer_food+farms+other-report.produced} / turn."]
+                  f"Food lost to local strain and whole-unit rounding: {natural+farmer_food+farms+other-report.produced:g} / turn."]
         power = economy.energy_report(planet, b)
         inactive = [display_name(BUILDINGS[key], planet.habitat) for index, key in enumerate(planet.buildings)
                     if BUILDINGS[key].food and (index in planet.disabled_buildings or index in power.offline)]

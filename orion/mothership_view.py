@@ -77,7 +77,7 @@ def draw_overview(app, ship):
         draw_building_art(surface, identifier, (x+4, y+6, 62, 50), alpha=alpha, habitat=True)
         for line, label in enumerate(wrapped_lines(display_name(BUILDINGS[identifier], True), 118, 12)[:2]):
             text(surface, label, (x+69, y+9+line*15), 12, INK)
-        status_color = RED if status in ("DISABLED", "NO POWER", "NO FUEL") else CYAN if alpha == 255 else GOLD
+        status_color = RED if status in ("DISABLED", "NO POWER", "NO FUEL") else GOLD if "%" in status or alpha < 255 else CYAN
         text(surface, shorten(status, 119, 9), (x+69, y+49), 9, status_color)
     text(surface, "Click to manage modules · Right-click for info", (780, 700), 12, INK)
     text(surface, "Ship construction and gate charging pause during flight.", (780, 725), 12, MUTED)

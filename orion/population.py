@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
-from .buildings import BUILDINGS, workforce_bonuses
-from .economy import active_buildings
+from .buildings import workforce_bonuses
+from .economy import operating_facilities, whole_output
 from . import environments
 
 POPULATION_LIMITS = {"Tiny": 8, "Small": 12, "Medium": 16, "Large": 20, "Huge": 24}
@@ -29,7 +29,7 @@ def population_capacity(planet, bonuses=None):
     base = POPULATION_LIMITS[planet.size] + (GAIA_CAPACITY if planet.biome == "Gaia" else 0)
     from .economy import local_bonuses
     bonuses = local_bonuses(planet, bonuses)
-    return min(100, base*(100+bonuses.get("capacity_percent", 0)+bonuses.get('facility_capacity', 0))//100)
+    return min(100, whole_output(base*(100+bonuses.get("capacity_percent", 0)+bonuses.get('facility_capacity', 0))/100))
 
 
 def food_required(population, bonuses=None):
@@ -97,8 +97,8 @@ class PopulationReport:
     passive_growth: int = 0
     swarm: bool = False
     environment_percent: int = 100
-    facility_growth: int = 0
-    adaptation: int = 0
+    facility_growth: float = 0
+    adaptation: float = 0
 
     @property
     def consumed(self):
@@ -123,7 +123,7 @@ class PopulationReport:
     def growth_rate(self):
         base = self.base_growth_rate
         if base:
-            base = max(1, base*(100+self.facility_growth)//100)
+            base = max(1, whole_output(base*(100+self.facility_growth)/100))
         return max(1, base*self.environment_percent//100) if base else 0
 
     @property
@@ -169,7 +169,7 @@ def food_production(planet, bonuses=None, *, farmers=None):
         if planet.biome in LUSH_BIOMES:
             produced += bonuses.get("lush_food", 0)
         produced += (planet.farmers if farmers is None else farmers)*farmer_output(planet, bonuses)
-        produced += sum(BUILDINGS[b].food for b in active_buildings(planet, bonuses))
+        produced += sum(b.food*rate for b, rate in operating_facilities(planet, bonuses))
     return reduced_output(produced, bonuses, "food")
 
 
@@ -187,7 +187,7 @@ def report(planet, bonuses=None):
     environment = environments.growth_factor(planet)
     adaptation = bonuses.get('facility_adaptation', 0)
     if 0 < environment < 100:
-        environment += (100-environment)*adaptation//100
+        environment += whole_output((100-environment)*adaptation/100)
     return PopulationReport(planet.population, population_capacity(planet, bonuses), produced,
                             planet.growth_progress, planet.colonized, GAIA_GROWTH_LIMIT if planet.biome == "Gaia" else GROWTH_LIMIT,
                             food_required(planet.workforce, bonuses), growth,

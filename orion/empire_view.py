@@ -218,7 +218,7 @@ def colony_values(game, planet):
     growth = f'Growth {food.progress}%' if food.growth_rate else 'Limit reached' if planet.population >= food.capacity else 'Growth paused'
     population = f'{planet.population}+{planet.slaves} S' if planet.slaves else f'{planet.population}/{food.capacity} B'
     return [
-        (population, f'Power {power.balance}' if power.balance < 0 else growth, INK, RED if power.balance < 0 else MUTED),
+        (population, f'{power.efficiency_label} power' if power.efficiency < 1 else 'Gate paused' if power.balance < 0 else growth, INK, RED if power.balance < 0 else MUTED),
         (f'{food.balance:+}', f'{food.produced}/{food.consumed} used', RED if food.balance < 0 else CYAN, MUTED),
         (str(industry), 'per turn', CYAN, MUTED),
         (f'{income:+}', f'{game.planet_maintenance(planet)} upkeep', RED if income < 0 else INK, MUTED),

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from fractions import Fraction
 from . import ground_combat, monsters
+from .economy import whole_output
 from .navigation import hostile
 
 BASE_HULL = 40
@@ -40,9 +41,20 @@ def shield_capacity(game, planet):
 
 def operational_shield_capacity(game, planet):
     from .buildings import BUILDINGS
-    return max((max(SHIELD_CAPACITY, game.bonuses_for(planet.owner).get('shield_capacity', 0))
-                    if b == 'planetary_shield' else BUILDINGS[b].shield_capacity
-                    for b in SHIELD_BUILDINGS if game.building_operational(planet, b)), default=0)
+    capacity = 0
+    for b in SHIELD_BUILDINGS:
+        rate = game.building_efficiency(planet, b)
+        if rate:
+            strength = (max(SHIELD_CAPACITY, game.bonuses_for(planet.owner).get('shield_capacity', 0))
+                        if b == 'planetary_shield' else BUILDINGS[b].shield_capacity)
+            capacity = max(capacity, whole_output(strength*rate))
+    return capacity
+
+
+def recovery_rates(game, planet):
+    shield = max(game.building_efficiency(planet, b) for b in SHIELD_BUILDINGS)
+    battery = game.building_efficiency(planet, "missile_base")
+    return whole_output(SHIELD_RECOVERY*shield), whole_output(BASE_RECOVERY*battery)
 
 
 def effective_shield(game, planet):
@@ -73,10 +85,11 @@ def advance(game):
                           for s in game.ships)
             if not blocked and planet.bombarded_turn < game.turn-1:
                 capacity = operational_shield_capacity(game, planet)
+                shield_repair, base_repair = recovery_rates(game, planet)
                 if capacity:
-                    planet.shield_points = min(capacity, planet.shield_points+SHIELD_RECOVERY)
-                if game.building_operational(planet, "missile_base"):
-                    planet.battery_hull = min(BASE_HULL, (planet.battery_hull or BASE_HULL)+BASE_RECOVERY)
+                    planet.shield_points = min(capacity, planet.shield_points+shield_repair)
+                if base_repair:
+                    planet.battery_hull = min(BASE_HULL, (planet.battery_hull or BASE_HULL)+base_repair)
 
 
 def bombardment_fleet(game, system_id, owner):
@@ -155,7 +168,8 @@ def bombard(game, system_id, planet_id, owner="player"):
         raise RuleError(error)
     planet = game.planet_at(system_id, planet_id)
     absorbed, losses = bombardment_forecast(game, system_id, planet_id, owner)
-    planet.shield_points -= absorbed
+    if absorbed:
+        planet.shield_points = effective_shield(game, planet)-absorbed
     troops = ground_combat.forces(planet, game.bonuses_for(planet.owner))
     apply_ground_casualties(planet, troops, troops.troops-losses)
     planet.bombarded_turn = game.turn

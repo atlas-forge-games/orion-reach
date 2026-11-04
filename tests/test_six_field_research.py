@@ -147,13 +147,9 @@ class SixFieldTests(unittest.TestCase):
                 self.assertEqual(economy.local_bonuses(planet, b)['facility_growth'], 25)
                 planet.disabled_buildings = [3]
                 self.assertEqual(game.population_report(planet).growth_rate, before.growth_rate)
-                planet.disabled_buildings = [0]
-                planet.buildings[0] = 'solar_array'
-                planet.buildings += ['quantum_research_lab', 'nanofactory']
-                # Put expensive loads ahead of the care centre to exhaust local power.
                 planet.buildings = ['quantum_research_lab', 'medical_centre']
                 planet.disabled_buildings = []
-                self.assertEqual(game.population_report(planet).facility_growth, 0)
+                self.assertAlmostEqual(game.population_report(planet).facility_growth, 25*12/14)
 
     def test_adaptation_reduces_penalties_without_removing_racial_preferences_or_changing_planets(self):
         game = self.game(); planet = game.planet_at(0, 2)

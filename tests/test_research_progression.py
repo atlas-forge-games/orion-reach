@@ -115,14 +115,14 @@ class ProgressionTests(unittest.TestCase):
             planet.richness = richness
             self.assertEqual(mining_output(planet, bonuses), 2+int(29*factor)+9)
 
-    def test_power_shortage_and_disabling_remove_new_facility_output(self):
+    def test_advanced_facilities_share_power_and_disabling_a_mine_restores_the_lab(self):
         planet = self.game().planet_at(0, 2)
         planet.miners, planet.scientists = 2, 2
         planet.buildings = ['quantum_research_lab', 'deep_core_mine']
         report = energy_report(planet)
-        self.assertEqual(report.active, (1,))  # Mines retain priority over labs.
-        self.assertEqual(report.offline, (0,))
-        self.assertEqual(gross_colony_yields(planet, {})[2], 4)
+        self.assertEqual((report.active, report.efficiency), ((0, 1), .75))
+        self.assertEqual(report.offline, ())
+        self.assertEqual(gross_colony_yields(planet, {})[2], 19)  # 4 base + 75% of (14 + 2 × 3).
         self.assertEqual(planet.maintenance_per_turn, 10)
         planet.disabled_buildings = [1]
         self.assertEqual(energy_report(planet).active, (0,))

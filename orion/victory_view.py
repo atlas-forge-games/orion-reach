@@ -63,7 +63,7 @@ def draw_race_objectives(app):
             system, planet = worlds[app.gate_colony_index]
             text(surface, shorten(planet.name, 250, 14), (86, 734), 14, INK)
             site = next((s for s, p in legacy.sites(game, "player") if p is planet), None)
-            status = (legacy.site_error(game, site, planet) or f"Operating · {site.age} turns") if site else "Manage installation in colony production"
+            status = (legacy.site_error(game, site, planet) or f"Operating · {site.age:g} effective turns") if site else "Manage installation in colony production"
             text(surface, shorten(status, 470, 12), (86, 763), 12, MUTED)
             app.button("legacy_previous", "←", (570, 738, 43, 38), lambda: app.change_gate_colony(-1), enabled=app.gate_colony_index > 0)
             app.button("legacy_next", "→", (620, 738, 43, 38), lambda: app.change_gate_colony(1), enabled=app.gate_colony_index < len(worlds)-1)

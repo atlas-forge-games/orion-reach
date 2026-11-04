@@ -75,7 +75,7 @@ def describe(game, system_id, planet, key, *, live):
         sections += [
             ('BASE UPKEEP & POWER', f'{spec.maintenance} Credits / turn · {spec.energy_use} energy demand'),
             ('STATUS', status or f'{built} built'),
-            ('VALUES', f'{planet.richness} mineral richness, before empire bonuses and administration. Benefits require the building to operate.'),
+            ('VALUES', f'Figures above assume full power and {planet.richness.lower()} mineral richness, before empire bonuses and administration. See Status for current power.'),
         ]
     location = planet.name+(' · Last survey' if not live else ' · Onboard module' if planet.habitat else ' · Colony structure')
     return BuildingInfo(identifier, title, location, tuple(sections), planet.habitat)

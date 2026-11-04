@@ -58,7 +58,7 @@ def local_centers(game, owner="player"):
     radius = game.bonuses_for(owner).get("sensor_range", 0)
     if not radius:
         return []
-    return [(s, radius+(ARRAY_RANGE if any(p.owner == owner and game.building_operational(p, "sensor_array") for p in s.worlds) else 0))
+    return [(s, radius+ARRAY_RANGE*max(game.building_efficiency(p, "sensor_array") for p in s.worlds if p.owner == owner))
             for s in game.supply_centers(owner) if any(p.owner == owner for p in s.worlds)]
 
 

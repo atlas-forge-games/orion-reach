@@ -47,18 +47,18 @@ class BuildingSpec:
     def worker_bonus(self, richness):
         return self.industry_per_worker*(MINERAL_FACTORS[richness] if self.mineral_scaled else 1)
 
-    def workforce_text(self, richness):
+    def workforce_text(self, richness, rate=1):
         parts = []
         if self.industry_per_worker:
-            parts.append(f"+{self.worker_bonus(richness):g} IND/worker")
+            parts.append(f"+{self.worker_bonus(richness)*rate:g} IND/worker")
         if self.research_per_scientist:
-            parts.append(f"+{self.research_per_scientist} RP/scientist")
+            parts.append(f"+{self.research_per_scientist*rate:g} RP/scientist")
         if self.food_per_farmer:
-            parts.append(f"+{self.food_per_farmer} food/farmer")
+            parts.append(f"+{self.food_per_farmer*rate:g} food/farmer")
         if self.resources_per_miner:
-            parts.append(f"+{self.resources_per_miner*MINERAL_FACTORS[richness]:g} RES/miner")
+            parts.append(f"+{self.resources_per_miner*MINERAL_FACTORS[richness]*rate:g} RES/miner")
         if self.income_per_population:
-            parts.append(f"+{self.income_per_population:g} CR/pop")
+            parts.append(f"+{self.income_per_population*rate:g} CR/pop")
         return " · ".join(parts)
 
     def yields(self, richness):
@@ -181,7 +181,7 @@ for _key in NEW_BUILDINGS:
     _groups[_group].append(_key)
 BUILDING_GROUPS = tuple(tuple(group) for group in _groups)
 
-# Facility families share research bonuses, power priority and AI preferences.
+# Facility families share research bonuses and AI preferences.
 # Each distinct facility still occupies a slot and can be built once per colony.
 FACILITY_FAMILIES = {
     "factory": ("factory", "advanced_factory", "construction_bureau", "robotic_factory", "superconducting_foundry", "nanofactory"),
@@ -200,16 +200,16 @@ def facility_family(identifier):
 @dataclass(frozen=True)
 class WorkforceBonuses:
     industry: float
-    food: int
-    research: int
+    food: float
+    research: float
     income: float
 
 
 def workforce_bonuses(planet, bonuses=None):
     """Add bonuses from completed buildings; fractions are rounded after summing."""
-    from .economy import active_buildings
-    buildings = [BUILDINGS[b] for b in active_buildings(planet, bonuses)]
-    return WorkforceBonuses(sum(b.worker_bonus(planet.richness) for b in buildings),
-                           sum(b.food_per_farmer for b in buildings),
-                           sum(b.research_per_scientist for b in buildings),
-                           sum(b.income_per_population for b in buildings))
+    from .economy import operating_facilities
+    buildings = operating_facilities(planet, bonuses)
+    return WorkforceBonuses(sum(b.worker_bonus(planet.richness)*rate for b, rate in buildings),
+                           sum(b.food_per_farmer*rate for b, rate in buildings),
+                           sum(b.research_per_scientist*rate for b, rate in buildings),
+                           sum(b.income_per_population*rate for b, rate in buildings))

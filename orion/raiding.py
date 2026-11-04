@@ -52,6 +52,7 @@ def expected_loot(game, planet, owner="player"):
 def abandon(planet):
     planet.owner, planet.colonized = None, False
     planet.population = planet.slaves = planet.garrison = planet.militia_losses = 0
+    planet.training_progress = 0
     planet.farmers = planet.scientists = planet.miners = planet.growth_progress = 0
     planet.ascension_gate, planet.gate_charge = False, 0
     planet.shield_points = planet.battery_hull = planet.bombarded_turn = 0

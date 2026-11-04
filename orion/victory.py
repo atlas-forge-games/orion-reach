@@ -206,6 +206,7 @@ def apply_ground_outcome(planet, owner, defending, outcome):
         planet.owner = owner
         planet.shield_points = 0
         planet.garrison = outcome.attackers
+        planet.training_progress = 0
         planet.militia_losses = 4+planet.population
         # Populations, buildings and normal paid projects survive occupation.
         # The gate is bound to its original empire and cannot be inherited.

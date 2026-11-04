@@ -139,19 +139,20 @@ class EnergyRulesTests(unittest.TestCase):
         self.game = campaign()
         self.planet = self.game.planet_at(0, 2)
 
-    def test_generation_is_local_and_priority_preserves_farms_and_mines(self):
+    def test_generation_is_local_and_shared_by_farms_mines_and_labs(self):
         g, p = self.game, self.planet
         p.buildings = ["research_lab"]*3+["hydroponic_farm", "mine"]
         report = g.planet_energy(p)
         self.assertEqual((report.generated, report.demand, report.used), (12, 16, 12))
-        self.assertEqual(report.offline, (2,))
-        self.assertEqual(g.planet_yields(p)[2], 8)
+        self.assertEqual((report.offline, report.efficiency), ((), .75))
+        self.assertEqual(g.planet_yields(p)[2], 9)
         other = g.planet_at(0, 3)
         other.colonized, other.owner, other.population = True, "player", 1
         other.buildings = ["solar_array"]*2
         totals = summarize_empire(g)
         self.assertGreater(totals.energy_generated, totals.energy_demand)
         self.assertEqual(totals.energy_shortages, 1)
+        self.assertEqual(g.planet_energy(p).efficiency, .75)
         self.assertEqual(colony_rows(g, "power"), [(g.systems[0], p)])
 
     def test_manual_switch_frees_energy_but_retains_upkeep_and_survives_reload(self):

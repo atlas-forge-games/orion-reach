@@ -1,6 +1,7 @@
 """Shared construction resources and independent, deterministic colony grids."""
 
 from dataclasses import dataclass
+from math import floor
 from .buildings import BUILDINGS, MINERAL_FACTORS, facility_family
 
 STARTING_RESOURCES = 120
@@ -28,10 +29,21 @@ class EnergyReport:
     plants: tuple[tuple[int, int, int], ...] = ()
     unlimited: bool = False
     orbital_generated: int = 0
+    efficiency: float = 1
 
     @property
     def balance(self):
         return self.generated-self.demand
+
+    @property
+    def efficiency_label(self):
+        return f"{round(100*self.efficiency, 1):g}%"
+
+    def rate(self, building, slot=None):
+        """Operating fraction, checking the slot when it may be disabled."""
+        if slot is not None and slot not in self.active:
+            return 0
+        return self.efficiency if building.energy_use else 1
 
 
 class PowerBonuses(dict):
@@ -69,13 +81,10 @@ def dispatch_power(planets, bonuses, resources):
 
 
 def energy_report(planet, bonuses=None, *, fuel_budget=0):
-    """Farms and mines have priority; other loads follow building-slot order.
+    """Share available power proportionally between enabled building loads.
 
-    Steady sources run first. Backup burns only enough fuel for loads which
-    can actually operate; it never spends fuel on unusable partial power.
-    A shortage suspends whole buildings, so
-    every economic and military effect has the same unambiguous on/off state.
-    Demand includes automatically suspended loads, but excludes manual stops.
+    Steady generation runs first, then fuel-backed generation. A legacy
+    Ascension Gate can charge only from ten whole units left after buildings.
     """
     if not planet.colonized:
         return EnergyReport()
@@ -83,18 +92,12 @@ def energy_report(planet, bonuses=None, *, fuel_budget=0):
         return bonuses.power(planet)
     bonuses = bonuses or {}
     enabled = [i for i in range(len(planet.buildings)) if i not in planet.disabled_buildings]
-    generated = BASE_ENERGY+bonuses.get("colony_energy", 0)
     plants = [(i, BUILDINGS[planet.buildings[i]]) for i in enabled if BUILDINGS[planet.buildings[i]].energy_output]
-    generated += sum(b.energy_output for _, b in plants if not b.energy_per_resource)
-    base_generated = generated
+    base_generated = max(0, BASE_ENERGY+bonuses.get("colony_energy", 0)
+                         +sum(b.energy_output for _, b in plants if not b.energy_per_resource))
     backup = [(i, b) for i, b in plants if b.energy_per_resource]
-    remaining_fuel = max(0, fuel_budget)
-    for _, building in backup:
-        output = min(building.energy_output, remaining_fuel*building.energy_per_resource)
-        generated += output
-        remaining_fuel -= (output+building.energy_per_resource-1)//building.energy_per_resource
-    demand = sum(BUILDINGS[planet.buildings[i]].energy_use for i in enabled)
-    demand += GATE_ENERGY if planet.ascension_gate else 0
+    building_demand = sum(BUILDINGS[planet.buildings[i]].energy_use for i in enabled)
+    demand = building_demand+(GATE_ENERGY if planet.ascension_gate else 0)
     if bonuses.get("unlimited_energy"):
         # Store finite supplied energy for saves/statistics; display the flag as ∞.
         return EnergyReport(generated=max(base_generated, demand), demand=demand, used=demand,
@@ -103,19 +106,16 @@ def energy_report(planet, bonuses=None, *, fuel_budget=0):
                             backup_capacity=sum(b.energy_output for _, b in backup),
                             plants=tuple((i, 0 if b.energy_per_resource else b.energy_output, 0) for i, b in plants),
                             unlimited=True)
-    priority = {"hydroponic_farm": 0, "mine": 1}
-    used, active, offline = 0, [], []
-    for i in sorted(enabled, key=lambda i: (priority.get(facility_family(planet.buildings[i]), 2), i)):
-        cost = BUILDINGS[planet.buildings[i]].energy_use
-        if used+cost <= generated:
-            active.append(i)
-            used += cost
-        else:
-            offline.append(i)
-    gate_powered = planet.ascension_gate and used+GATE_ENERGY <= generated
-    if gate_powered:
-        used += GATE_ENERGY
-    needed, remaining_fuel, fuel_used = max(0, used-base_generated), max(0, fuel_budget), 0
+    gate_powered = False
+    if planet.ascension_gate:
+        available, fuel = base_generated, max(0, fuel_budget)
+        for _, building in backup:
+            output = min(building.energy_output, fuel*building.energy_per_resource)
+            available += output
+            fuel -= (output+building.energy_per_resource-1)//building.energy_per_resource
+        gate_powered = available >= demand
+    target = demand if gate_powered else building_demand
+    needed, remaining_fuel, fuel_used = max(0, target-base_generated), max(0, fuel_budget), 0
     outputs = []
     for i, building in plants:
         if building.energy_per_resource:
@@ -127,21 +127,51 @@ def energy_report(planet, bonuses=None, *, fuel_budget=0):
         else:
             output, fuel = building.energy_output, 0
         outputs.append((i, output, fuel))
-    backup_generated = max(0, used-base_generated)
-    return EnergyReport(base_generated+backup_generated, demand, used, tuple(sorted(active)), tuple(sorted(offline)), gate_powered,
-                        base_generated, sum(b.energy_output for _, b in backup), backup_generated, fuel_used, tuple(outputs))
+    backup_generated = max(0, target-base_generated)-needed
+    generated = base_generated+backup_generated
+    efficiency = generated/building_demand if generated < building_demand else 1
+    offline = tuple(i for i in enabled if generated == 0 and BUILDINGS[planet.buildings[i]].energy_use)
+    return EnergyReport(generated=generated, demand=demand, used=min(target, generated),
+                        active=tuple(i for i in enabled if i not in offline), offline=offline,
+                        gate_powered=gate_powered, base_generated=base_generated,
+                        backup_capacity=sum(b.energy_output for _, b in backup),
+                        backup_generated=backup_generated, fuel_used=fuel_used, plants=tuple(outputs),
+                        efficiency=efficiency)
+
+
+def operating_facilities(planet, bonuses=None):
+    """Installed, active facilities and the share of each one's rated output."""
+    if getattr(bonuses, 'facility_planet', None) == id(planet):
+        return bonuses.facilities
+    report = energy_report(planet, bonuses)
+    specs = (BUILDINGS[planet.buildings[i]] for i in report.active)
+    return [(spec, report.rate(spec)) for spec in specs]
 
 
 def active_buildings(planet, bonuses=None):
-    return [planet.buildings[i] for i in energy_report(planet, bonuses).active]
+    return [spec.id for spec, rate in operating_facilities(planet, bonuses)]
+
+
+def building_efficiency(planet, identifier, bonuses=None):
+    if identifier not in planet.buildings:
+        return 0
+    report = energy_report(planet, bonuses)
+    if any(planet.buildings[i] == identifier for i in report.active):
+        return report.rate(BUILDINGS[identifier])
+    return 0
 
 
 def operational(planet, identifier, bonuses=None):
-    return identifier in active_buildings(planet, bonuses)
+    return building_efficiency(planet, identifier, bonuses) > 0
+
+
+def whole_output(value):
+    """Truncate whole game units after summing fractional facility output."""
+    return floor(value+1e-9)
 
 
 def miner_output(planet, bonuses=None):
-    extra = sum(BUILDINGS[b].resources_per_miner for b in active_buildings(planet, bonuses))
+    extra = sum(b.resources_per_miner*rate for b, rate in operating_facilities(planet, bonuses))
     return (MINER_RESOURCES+extra)*MINERAL_FACTORS[planet.richness]
 
 
@@ -150,10 +180,10 @@ def mining_output(planet, bonuses=None):
     if not planet.colonized:
         return 0
     bonuses = local_bonuses(planet, bonuses)
-    buildings = active_buildings(planet, bonuses)
-    base = sum(BUILDINGS[b].resources for b in buildings)*MINERAL_FACTORS[planet.richness]
-    raw = (BASE_EXTRACTION+bonuses.get("colony_resources", 0)+int(base+planet.miners*miner_output(planet, bonuses))
-           +sum(facility_family(b) == "mine" for b in buildings)*bonuses.get("mine_resources", 0))
+    buildings = operating_facilities(planet, bonuses)
+    base = sum(b.resources*rate for b, rate in buildings)*MINERAL_FACTORS[planet.richness]
+    upgrades = sum(rate for b, rate in buildings if facility_family(b.id) == "mine")*bonuses.get("mine_resources", 0)
+    raw = BASE_EXTRACTION+bonuses.get("colony_resources", 0)+whole_output(base+planet.miners*miner_output(planet, bonuses)+upgrades)
     return reduced_output(raw, bonuses, "mining")
 
 
@@ -164,11 +194,11 @@ def local_bonuses(planet, bonuses):
     values = source.at(planet) if isinstance(source, PowerBonuses) else (source or {})
     result = PowerBonuses(values, values.power) if isinstance(values, PowerBonuses) else FacilityBonuses(values)
     result.facility_source, result.facility_planet = source, id(planet)
-    facilities = [BUILDINGS[key] for key in active_buildings(planet, values)]
-    result['facility_growth'] = sum(b.growth_bonus for b in facilities)
-    result['facility_capacity'] = sum(b.capacity_bonus for b in facilities)
-    result['facility_adaptation'] = min(80, sum(b.adaptation for b in facilities))
-    relief = sum(b.strain_relief for b in facilities)
+    facilities = result.facilities = operating_facilities(planet, values)
+    result['facility_growth'] = sum(b.growth_bonus*rate for b, rate in facilities)
+    result['facility_capacity'] = sum(b.capacity_bonus*rate for b, rate in facilities)
+    result['facility_adaptation'] = min(80, sum(b.adaptation*rate for b, rate in facilities))
+    relief = sum(b.strain_relief*rate for b, rate in facilities)
     result['administrative_strain'] = max(0, result.get('administrative_strain', 0)-relief)
     result['facility_strain_relief'] = relief
     return result
@@ -185,10 +215,16 @@ def building_status(planet, index, bonuses=None):
     if BUILDINGS[planet.buildings[index]].energy_per_resource:
         output = next((output for slot, output, _ in report.plants if slot == index), 0)
         return "BACKUP ON" if output else "NO FUEL" if report.balance < 0 else "STANDBY"
-    return "NO POWER" if index in report.offline else "OPERATIONAL"
+    if index in report.offline:
+        return "NO POWER"
+    if report.rate(BUILDINGS[planet.buildings[index]]) < 1:
+        return f"{report.efficiency_label} POWER"
+    return "OPERATIONAL"
 
 
 def remove_building(planet, index):
     identifier = planet.buildings.pop(index)
+    if BUILDINGS[identifier].training and not any(BUILDINGS[b].training for b in planet.buildings):
+        planet.training_progress = 0
     planet.disabled_buildings = [i-(i > index) for i in planet.disabled_buildings if i != index]
     return identifier

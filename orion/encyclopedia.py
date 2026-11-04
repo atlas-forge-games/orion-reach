@@ -144,7 +144,7 @@ def guides():
         Article("power", "economy", "Keeping buildings powered", "Steady generation and backup fuel", (
             ("LOCAL SUPPLY", "Buildings consume energy. Power plants add local generation; research can improve the supply and unlock new plant types."),
             ("BACKUP LAST", "Steady power is used first. Thermal backup plants run only when needed and burn Resources for the energy they supply. Without enough fuel, they cannot cover the remaining demand."),
-            ("SHORTAGES", "Insufficient power shuts down affected buildings' output and bonuses. Check the colony's operating status and power balance before expanding demand."),
+            ("SHORTAGES", "A colony supplying 7 of 10 required energy runs every enabled energy-consuming facility at 70%. This scales fixed output, workforce bonuses and powered equipment. Workers still produce their base output. Disable a building to release its share of power, or increase generation. Fixed credit upkeep continues."),
             ("PLANT CATALOG", "Open Buildings to compare solar arrays, geothermal, fusion, thermal backup and singularity plants, including their research requirements and maintenance."),
         )),
         Article("construction", "economy", "Construction and upkeep", "Base costs and local production", (

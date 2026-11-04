@@ -1,6 +1,7 @@
 """Snapshot colony corridors and local interdiction when a voyage is ordered."""
 
 import math
+from .economy import whole_output
 from .production import distance_ly
 from . import production as production_balance
 
@@ -39,19 +40,22 @@ def route_modifiers(game, origin, destination, owner):
     bonus = 0
     if own_origin and own_target:
         bonus = game.bonuses_for(owner).get("colony_speed", 0)
-        if all(any(game.building_operational(p, "jump_gate") for p in group) for group in (own_origin, own_target)):
-            bonus = GATE_SPEED_BONUS
+        gate_rate = min(max(game.building_efficiency(p, "jump_gate") for p in group)
+                        for group in (own_origin, own_target))
+        if gate_rate:
+            bonus = max(bonus, whole_output(GATE_SPEED_BONUS*gate_rate)) if gate_rate < 1 else GATE_SPEED_BONUS
     fields = []
     for p in destination.worlds:
         if not hostile(game, owner, p.owner):
             continue
         benefits = game.bonuses_for(p.owner)
-        if game.building_operational(p, 'interdictor'):
-            fields.append((max(INTERDICTION_SLOW, benefits.get("interdiction_slow", 0)), max(INTERDICTION_RANGE, benefits.get("interdiction_range", 0))))
-        if game.building_operational(p, 'advanced_interdictor'):
+        if rate := game.building_efficiency(p, 'interdictor'):
+            fields.append((rate*max(INTERDICTION_SLOW, benefits.get("interdiction_slow", 0)),
+                           rate*max(INTERDICTION_RANGE, benefits.get("interdiction_range", 0))))
+        if rate := game.building_efficiency(p, 'advanced_interdictor'):
             from .buildings import BUILDINGS
             spec = BUILDINGS['advanced_interdictor']
-            fields.append((spec.interdiction_slow, spec.interdiction_range))
+            fields.append((rate*spec.interdiction_slow, rate*spec.interdiction_range))
     slow, radius = max(fields, default=(0, 0))
     if game.bonuses_for(owner).get("field_stabilization"):
         slow /= 2

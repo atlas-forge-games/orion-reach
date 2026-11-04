@@ -155,6 +155,7 @@ def advance(game, alerts):
         strip(planet)
         planet.owner = mission.owner
         planet.garrison = planet.militia_losses = 0
+        planet.training_progress = 0
         planet.ascension_gate, planet.gate_charge = False, 0
         planet.construction_queue[:] = [q for q in planet.construction_queue if q.item_id != ASCENSION_GATE.id]
         game.union_missions.remove(mission)

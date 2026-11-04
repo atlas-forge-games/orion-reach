@@ -2,8 +2,7 @@
 
 from dataclasses import dataclass
 
-from .buildings import BUILDINGS
-from .economy import active_buildings
+from .economy import operating_facilities, whole_output
 
 MAX_GARRISON = 100_000  # Includes occupation forces larger than the training limit.
 
@@ -46,14 +45,19 @@ class GroundOutcome:
 def forces(planet, bonuses=None):
     if not planet.colonized:
         return GroundForces(0, 0, 0)
-    buildings = active_buildings(planet, bonuses)
-    bonus = (bonuses or {}).get("fortification_bonus", 0) if "fortifications" in buildings else 0
+    buildings = operating_facilities(planet, bonuses)
+    bonus = (bonuses or {}).get("fortification_bonus", 0)*max(
+        (rate for b, rate in buildings if b.id == "fortifications"), default=0)
     return GroundForces(max(0, 4+planet.population-planet.militia_losses), planet.garrison,
-                        sum(BUILDINGS[b].defence_bonus for b in buildings)+bonus)
+                        whole_output(sum(b.defence_bonus*rate for b, rate in buildings)+bonus))
 
 
 def training_limit(planet, bonuses=None):
-    return sum(BUILDINGS[b].garrison_limit for b in active_buildings(planet, bonuses))
+    return whole_output(sum(b.garrison_limit*rate for b, rate in operating_facilities(planet, bonuses)))
+
+
+def training_rate(planet, bonuses=None):
+    return sum(b.training*rate for b, rate in operating_facilities(planet, bonuses))
 
 
 def train(planet, bonuses=None):
@@ -62,8 +66,13 @@ def train(planet, bonuses=None):
         return 0
     # Militia remuster gradually; losses cannot be reset by reopening an invasion.
     planet.militia_losses = max(0, planet.militia_losses-1)
-    recruits = min(sum(BUILDINGS[b].training for b in active_buildings(planet, bonuses)),
-                   max(0, training_limit(planet, bonuses)-planet.garrison))
+    room = max(0, training_limit(planet, bonuses)-planet.garrison)
+    training = training_rate(planet, bonuses)
+    if not training or not room:
+        return 0
+    progress = planet.training_progress+training
+    recruits = min(room, whole_output(progress))
+    planet.training_progress = round(max(0, progress-recruits), 12) if recruits < room else 0
     planet.garrison += recruits
     return recruits
 
