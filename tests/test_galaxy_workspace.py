@@ -12,6 +12,8 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame as pg
 from orion import black_holes
 from orion.app import App
+from orion.display import Canvas
+from orion.galaxy_hud import resource_card, scaled_resource_art
 from orion.galaxy_layout import GalaxyLayout
 from orion.model import new_game
 from orion.ui import text
@@ -121,6 +123,54 @@ class GalaxyWorkspaceTests(unittest.TestCase):
         self.frame()
         self.click("star_1")
         self.assertTrue(all(game.ship_at(s).destination==1 for s in orders))
+
+    def test_open_fleet_panel_leaves_the_bottom_left_star_clickable(self):
+        app, game = self.app, self.app.game
+        origin, target = game.systems[:2]
+        origin.x, origin.y = .46, .5
+        target.x = target.y = .5
+        self.frame()
+        self.click("map_fleet_1")
+        selected = app.map_order_ids
+        chart = app.map_rect
+        app.map_camera.zoom_at(6, chart.center, chart)
+        x, y = app.star_pos(target)
+        point = app.galaxy_layout.order_strip.center
+        app.map_camera.pan(point[0]-x, point[1]-y, chart)
+        app.mouse, app.keyboard_mode = point, False
+        self.frame()
+        self.assertNotIn("map_order_strip", [b.key for b in app.buttons])
+        self.assertTrue(app.map_background_at(point))
+        self.assertEqual(app.fleet_route_target(), target.id)
+        self.click("star_1")
+        self.assertTrue(selected)
+        self.assertTrue(all(game.ship_at(i).destination == target.id for i in selected))
+        self.click("toggle_inspector")
+        self.assertIn("map_order_strip", [b.key for b in app.buttons])
+        self.assertFalse(app.map_background_at(app.galaxy_layout.order_strip.center))
+        self.click("cancel_fleet_course")
+        self.assertFalse(app.fleet_popup)
+        self.assertTrue(all(game.ship_at(i).destination == target.id for i in selected))
+
+    def test_resource_art_fits_beside_every_text_row(self):
+        for width, size in ((176, 40), (294, 56)):
+            for scale in (1, 1.75):
+                with self.subTest(width=width, scale=scale):
+                    card = pg.Rect(4, 4, width, 72)
+                    canvas = Canvas((width+8, 80), scale)
+                    canvas.text_regions = []
+                    rows = []
+                    def measure(*args, **kwargs):
+                        rows.append(text(*args, **kwargs))
+                        return rows[-1]
+                    art = scaled_resource_art("credits", round(size*scale))
+                    with patch("orion.galaxy_hud.text", side_effect=measure), patch.object(canvas, "blit_native", wraps=canvas.blit_native) as blits:
+                        resource_card(canvas, card, "credits", "CREDITS · DEBT", "-9,999 CR", "Bankruptcy next turn!", (255, 200, 100))
+                    pos, = [c.args[1] for c in blits.call_args_list if c.args[0] is art]
+                    icon = art.get_rect(topleft=canvas.point(pos))
+                    self.assertTrue(canvas.rect(card).contains(icon))
+                    self.assertEqual(len(rows), 3)
+                    self.assertTrue(all(not canvas.rect(row).colliderect(icon) for row in rows))
 
     def test_stars_in_the_gap_between_floating_controls_remain_clickable(self):
         app, game = self.app, self.app.game

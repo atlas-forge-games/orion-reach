@@ -70,10 +70,9 @@ from .galaxy_layout import DEFAULT_LAYOUT, GalaxyLayout
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_background import draw_galaxy_background
 from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
-from . import production as production_balance
 from .galaxy_labels import draw_system_label
 from .galaxy_style import STYLES as GALAXY_STYLES, clean_map, map_style
-from .galaxy_fleet_view import draw_clean_fleet_routes, known_guardian_kinds
+from .galaxy_fleet_view import draw_clean_fleet_routes, fleet_cruise_speed, known_guardian_kinds
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
 from .exploration import known_rival_colonies
@@ -493,12 +492,17 @@ class App:
         return (not self.game.is_observer and not self.fleet_popup and not self.map_order_ids
                 and self.route_ship_id is None)
 
+    def show_map_order_strip(self):
+        # Individual courses use the strip's Send button. Fleet orders live in the inspector.
+        return (self.route_ship_id is not None or
+                (self.galaxy_layout.inspector is None and bool(self.fleet_popup or self.map_order_ids)))
+
     def map_overlays(self):
         layout=self.galaxy_layout
         regions=[layout.camera_tools,layout.panel_toggle]
         if self.show_sensor_control():
             regions.append(layout.sensors)
-        if self.fleet_popup or self.map_order_ids or self.route_ship_id is not None:
+        if self.show_map_order_strip():
             regions.append(layout.order_strip)
         return regions
 
@@ -2906,7 +2910,7 @@ class App:
                 draw_system_intelligence(self,state.systems[state.selected_system])
             else:
                 draw_system_panel(self,star)
-        if self.fleet_popup or self.map_order_ids or self.route_ship_id is not None:
+        if self.show_map_order_strip():
             self.draw_map_order_strip(star,moving)
         draw_galaxy_commands(self)
 
@@ -2929,13 +2933,13 @@ class App:
                         "command",enabled=duration>0 and state.can_reach(preview.id,ships=[ship]),icon="course")
             available=send.left-bar.left-20
         heading="Fleet inspection"
-        detail="View the ships in the details panel."
+        detail="Show panel to inspect the ships."
         tint=MUTED
         if ships:
             keeping=ships[0].departure_pending and ships[0].destination==preview.id
             lane=ships[0].hyperlane if keeping else hyperlanes.connects(state,ships[0].system_id,preview.id)
             reach=state.fuel_range(ships=ships)
-            speed=100*production_balance.SHIP_SPEED*(1+state.ship_speed_bonus(slow=any(s.habitat for s in ships))/100)
+            speed=fleet_cruise_speed(state,ships)
             heading=(ships[0].name if single else f"{len(ships)} selected")+" · "+state.system_name(preview.id)
             detail=f"Range {reach} ly · Speed {speed:g} ly/turn"
             if lane:

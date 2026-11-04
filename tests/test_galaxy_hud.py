@@ -147,7 +147,7 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "galaxy")
         self.assertEqual(self.app.map_order_ids, selected)
         self.assertEqual(self.app.game.to_dict(), before)
-        self.click("cancel_fleet_course")
+        self.click("fleet_popup_close")
         self.assertFalse(self.app.fleet_popup)
 
     def test_resource_bar_shows_net_income_and_local_shortage_with_positive_total_food(self):

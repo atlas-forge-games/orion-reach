@@ -177,7 +177,7 @@ class GalaxyFleetInterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.fleet_popup)
         self.assertEqual(self.app.map_order_ids, ())
         self.click("map_fleet_1")
-        self.click("cancel_fleet_course")
+        self.click("fleet_popup_close")
         self.assertEqual(self.app.screen, "galaxy")
         self.assertEqual(before, [s.__dict__ for s in self.app.game.ships])
 

@@ -182,7 +182,7 @@ class MothershipSystemTests(unittest.TestCase):
         dest = target(self.app.game, 22)
         self.app.open_map_fleet(self.home.id)
         self.app.game.selected_system = dest.id
-        self.assertIn('Range 25 ly', self.drawn_text())
+        self.assertIn('25 ly from supply', self.drawn_text())
         self.click(f'fleet_select_{self.home.id}')
         self.assertIn('20 ly from supply', self.drawn_text())
         self.assertIn('Out of range', self.drawn_text())

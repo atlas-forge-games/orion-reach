@@ -5,6 +5,7 @@ from functools import lru_cache
 import pygame as pg
 
 from .command_buttons import command_icon
+from .display import Canvas
 from .empire import summarize_empire
 from . import news
 from .research import TECHNOLOGIES
@@ -28,26 +29,42 @@ NAVIGATION = (
 def resource_art(kind):
     try:
         original = pg.image.load(str(ASSETS / "resources" / f"{kind}-v1.png"))
-        return pg.transform.smoothscale(original, (25, 25))
+        return pg.transform.smoothscale(original, (256, 256))
     except (OSError, pg.error):
         # Older installs remain usable if the optional images have not arrived.
         if kind in ("resources", "energy"):
             from .planet_view import resource_icon
             art = pg.Surface((58, 58), pg.SRCALPHA)
             resource_icon(art, kind, (29, 29), GOLD if kind == "energy" else (204, 163, 122), 1.7)
-            return pg.transform.smoothscale(art, (25, 25))
+            return art
         icon = {"credits": "empire", "research": "research", "food": "system"}[kind]
-        return command_icon(icon, 25, CYAN)
+        return command_icon(icon, 64, CYAN)
+
+
+@lru_cache(maxsize=60)
+def scaled_resource_art(kind, pixels):
+    return pg.transform.smoothscale(resource_art(kind), (pixels, pixels))
 
 
 def resource_card(surface, r, kind, title, value, detail, accent, *, detail_color=MUTED):
     panel(surface, r, (9, 20, 29))
     x, width = r.x+11, r.w-22
-    text(surface, shorten(title, width, 14, "mono"), (x, r.y+4), 14, accent, "mono")
-    text(surface, shorten(value, width-31, 21, "mono"), (x, r.y+22), 21, INK, "mono")
+    detail_width = width
     if kind:
-        surface.blit(resource_art(kind), (r.right-35, r.y+21))
-    text(surface, shorten(detail, width, 14), (x, r.y+49), 14, detail_color)
+        # On narrow cards leave the entire bottom line available for alerts.
+        compact = r.w < 220
+        size = 40 if compact else 56
+        icon = pg.Rect(r.right-8-size, r.y+5 if compact else r.centery-size//2, size, size)
+        width = icon.left-x-8
+        if not compact:
+            detail_width = width
+        if isinstance(surface, Canvas):
+            surface.blit_native(scaled_resource_art(kind, max(1, round(size*surface.scale))), icon.topleft)
+        else:
+            surface.blit(scaled_resource_art(kind, size), icon.topleft)
+    text(surface, shorten(title, width, 14, "mono"), (x, r.y+4), 14, accent, "mono")
+    text(surface, shorten(value, width, 21, "mono"), (x, r.y+22), 21, INK, "mono")
+    text(surface, shorten(detail, detail_width, 14), (x, r.y+49), 14, detail_color)
 
 
 def card_action(app, key, rect, action, hint):

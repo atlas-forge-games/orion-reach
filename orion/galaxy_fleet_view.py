@@ -139,6 +139,11 @@ def ordered_ships(app):
     return [s for s in app.game.ships if s.id in identifiers]
 
 
+def fleet_cruise_speed(game, ships):
+    bonus = game.ship_speed_bonus(slow=any(s.habitat for s in ships))
+    return production_balance.SHIP_SPEED*(100+bonus)
+
+
 def draw_fuel_range(app, map_rect):
     """The actual union of supply areas, with no lines inside overlapping circles."""
     game = app.game
@@ -474,12 +479,14 @@ def draw_fleet_popup(app):
     text(surface, f"PAGE {app.manifest_page+1}/{pages}", (x+18, bottom+12), 10, FAINT, "mono")
     app.button("fleet_page_previous", "←", (x+203, bottom+4, 47, 27), lambda: app.change_manifest_page(-1), enabled=app.manifest_page>0)
     app.button("fleet_page_next", "→", (x+262, bottom+4, 47, 27), lambda: app.change_manifest_page(1), enabled=app.manifest_page<pages-1)
-    text(surface, f"{len(app.fleet_selected_ids)} / {len(ships)} selected" if editable else f"{len(ships)} ships · Read only",
-         (x+18, bottom+43), 12, app.empire_color(first.owner))
+    selected = [s for s in ships if s.id in app.fleet_selected_ids]
+    selection = f"{len(selected)} / {len(ships)} selected" if editable else f"{len(ships)} ships · Read only"
+    if editable and selected:
+        selection += f" · {fleet_cruise_speed(game, selected):g} ly/turn"
+    text(surface, shorten(selection, width-36, 14), (x+18, bottom+43), 12, app.empire_color(first.owner))
     danger = False
     if editable:
         target = game.systems[app.fleet_route_target()]
-        selected = [s for s in ships if s.id in app.fleet_selected_ids]
         keeping = first.departure_pending and target.id == first.destination
         outside = not game.can_reach(target.id, ships=selected)
         lane = first.hyperlane if keeping else hyperlanes.connects(game, origin.id, target.id)
@@ -613,7 +620,8 @@ def draw_order_panel(app, target):
     panel(surface, r, border=GOLD)
     text(surface, "CHOOSE DESTINATION", (x, r.y+23), 10, GOLD, "mono", 1)
     text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (x, r.y+65), 25, INK, "title")
-    text(surface, f"Departing {game.system_name(origin.id)}", (x, r.y+109), 14, CYAN)
+    departure = f"Departing {game.system_name(origin.id)} · {fleet_cruise_speed(game, ships):g} ly/turn"
+    text(surface, shorten(departure, width, 14), (x, r.y+109), 14, CYAN)
     counts = {}
     for ship in ships:
         counts[ship.kind] = counts.get(ship.kind, 0)+1
@@ -637,9 +645,12 @@ def draw_order_panel(app, target):
         detail = ("Unsurveyed · Planets unknown" if known is None else
                   "Last survey · Activity unknown" if not game.system_visible(target.id) else
                   f"{enemy_count} rival ships in orbit" if enemy_count else f"{targets} worlds available to settle")
+        danger = black_holes.risk(game, target.id) or monsters.known_status(game, target.id) == "alive"
         if black_holes.at(game, target.id):
             detail = "FATAL APPROACH · Fleet will be lost" if black_holes.risk(game, target.id) else "Black-hole expedition · Guardian site"
-        text(surface, detail, (x, r.y+385), 13, RED if black_holes.risk(game, target.id) else MUTED)
+        elif danger:
+            detail = f"Guardian at destination · {monsters.at(game, target.id).spec.name}"
+        text(surface, shorten(detail, width, 14), (x, r.y+385), 13, RED if danger else MUTED)
     else:
         text(surface, "Ships are still in orbit.", (x, r.y+350), 15, MUTED)
     paragraph(surface, "Click a destination star to send. Hover to preview travel time. Escape returns to ship selection.",
