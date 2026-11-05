@@ -52,9 +52,10 @@ def draw_system_panel(app, star):
     app.galaxy_planet_page = max(0, min(app.galaxy_planet_page, last))
     panel(surface, r)
     text(surface, "SYSTEM OVERVIEW", (x, r.y+14), 14, GOLD, "mono", 1)
-    survey = game.exploration.survey(star.id)
-    status = "LIVE" if live else f"SEEN T{survey.last_seen}" if known else "UNCHARTED"
-    text(surface, status, (right, r.y+14), 14, CYAN if live else MUTED, "mono", right=True)
+    if not live:
+        survey = game.exploration.survey(star.id)
+        status = f"SEEN T{survey.last_seen}" if known else "UNCHARTED"
+        text(surface, status, (right, r.y+14), 14, MUTED, "mono", right=True)
     text(surface, shorten(game.system_name(star.id), width-58, 29, "title"), (x, r.y+42), 29, INK, "title")
     draw_star(surface, (right-19, r.y+61), 13, STAR_COLORS[star.kind])
     if known is None:
