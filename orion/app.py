@@ -2689,7 +2689,7 @@ class App:
         b=Button(key,label,pg.Rect(rect),action,subtitle,style,enabled,icon,shortcut,badge)
         self.buttons.append(b)
         active=self.is_active(b)
-        if self.on_galaxy_chart():
+        if self.on_galaxy_chart() and not key.startswith("dialog_"):
             style={"command_dock":"console_dock", "command_primary":"console_primary",
                    "command":"console", "tab":"console_tool", "tab_active":"console_active",
                    "normal":"console_tool", "primary":"console_active"}.get(style,style)
@@ -2697,9 +2697,11 @@ class App:
         return b
 
     def chrome(self,section="COMMAND",back=None):
+        from .console_theme import header_plate
+        panel(self.canvas,(58,28,318,72))
         emblem(self.canvas,77,64,.62)
         text(self.canvas,GAME_TITLE.upper(),(110,46),18,INK,spacing=1)
-        text(self.canvas,section,(111,73),10,MUTED,"mono",2)
+        header_plate(self.canvas,(103,70,262,27),section)
         if self.screen in GAME_SCREENS and self.screen not in ("empire","combat","ground","result","council"):
             self.button("open_empire","Empire",(998,31,179,64),self.open_empire,"command",icon="empire",shortcut="I")
         if self.screen in GAME_SCREENS and self.screen not in ("fleets","combat","ground","result","council"):

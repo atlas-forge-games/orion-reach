@@ -64,9 +64,11 @@ class CombatSimulator(App):
             self.designer_return = "sim_setup"
 
     def chrome(self, section="COMBAT SIMULATOR", back=None):
+        from .console_theme import console_frame, header_plate
+        console_frame(self.canvas, (32, 24, 318, 72))
         emblem(self.canvas, 55, 57, .65)
         text(self.canvas, GAME_TITLE.upper(), (88, 39), 18, INK, spacing=1)
-        text(self.canvas, "COMBAT SIMULATOR", (89, 68), 10, CYAN, "mono", 2)
+        header_plate(self.canvas, (81, 67, 262, 27), "COMBAT SIMULATOR")
         if self.screen == "combat":
             self.button("sim_setup_back", "Edit fleets", (738, 36, 147, 43), self.edit_setup)
             self.button("sim_speed", f"Speed {self.sim_speed}×", (897, 36, 138, 43), self.cycle_speed)

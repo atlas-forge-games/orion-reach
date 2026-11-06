@@ -1,6 +1,6 @@
 """A small fuel depot placed on its actual planet landscape."""
-import pygame as pg
 from .building_art import draw_building_art
+from .console_theme import console_frame
 from .ui import CYAN, INK, MUTED, panel, shorten, text
 from . import outposts
 
@@ -20,4 +20,4 @@ def draw_surface_outpost(app, rect, game, system, planet):
     caption = (f"{planet.outpost_hull}/{outposts.OUTPOST_HULL} hull · Repairs +{outposts.OUTPOST_RECOVERY}/peaceful turn"
                if live else "Stored survey · Current status unknown")
     text(surface, caption, (cx-218, bottom+115), 12, CYAN if live else MUTED)
-    pg.draw.rect(surface, (38, 57, 68), rect, 1)
+    console_frame(surface, rect, filled=False)

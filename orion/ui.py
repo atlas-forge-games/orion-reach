@@ -216,8 +216,12 @@ def panel(surface, rect, fill=PANEL, border=LINE):
             for slot in slots:
                 panel(surface,slot,fill,border)
         return
-    pg.draw.rect(surface,fill,rect,border_radius=3)
-    pg.draw.rect(surface,border,rect,1,border_radius=3)
+    from .console_theme import console_frame
+    r = pg.Rect(rect)
+    if r.w <= 0 or r.h <= 0:
+        return
+    console_frame(surface, r, compact=min(r.size) < 86, fill_color=fill,
+                  accent=(69, 128, 150) if border == LINE else border)
 
 
 def arrow(surface, pos, color=GOLD, back=False):
@@ -254,56 +258,11 @@ class Button:
             with surface.native_space():
                 replace(self, rect=allocated).draw(surface,active,pressed)
             return
-        if self.style in ("title_primary", "title_menu"):
-            from .title_screen import draw_title_button
-            draw_title_button(self,surface,active,pressed)
-            return
-        if self.style in ("command", "command_primary", "command_dock"):
-            from .command_buttons import draw_command_button
-            draw_command_button(self,surface,active,pressed)
-            return
-        if self.style.startswith("console"):
-            from .galaxy_console import draw_console_button
-            draw_console_button(self,surface,active,pressed)
-            return
         r=self.rect
-        color=INK if self.enabled else FAINT
         if self.style=="hotspot":
             if active and self.enabled:
                 pg.draw.rect(surface,GOLD,r,1,border_radius=4)
             return
-        if self.style in ("tab", "tab_active"):
-            selected=self.style=="tab_active"
-            panel(surface,r,(27,43,51) if selected or active else PANEL,GOLD if selected or active else LINE)
-            size=11 if r.h < 24 else 13 if r.h < 36 else 16
-            label=shorten(self.label,r.w-12,size)
-            shade=GOLD if selected or active else color
-            text(surface,label,(r.centerx-font(size).size(label)[0]//2,r.centery-font(size).get_height()//2),size,shade)
-        elif self.style=="primary":
-            pg.draw.rect(surface,(233,205,153) if active else GOLD,r,border_radius=2)
-            if r.h < 48:
-                text(surface,shorten(self.label,r.w-55,14),(r.x+14,r.centery-font(14).get_height()//2),14,(17,27,32))
-            else:
-                text(surface,shorten(self.label,r.w-76,20),(r.x+24,r.centery-font(20).get_height()//2),20,(17,27,32))
-            arrow(surface,(r.right-28,r.centery),(17,27,32))
-        elif self.style=="menu":
-            if active:
-                pg.draw.rect(surface,(18,33,42),r,border_radius=2)
-            pg.draw.line(surface,LINE,(r.left,r.bottom),(r.right,r.bottom))
-            text(surface,shorten(self.label,r.w-76,23),(r.x+24,r.y+12),23,GOLD if active else color)
-            if self.subtitle:
-                text(surface,shorten(self.subtitle,r.w-76,14),(r.x+24,r.y+42),14,MUTED)
-            arrow(surface,(r.right-28,r.centery),GOLD if active else FAINT)
-        elif self.style=="ghost":
-            text(surface,shorten(self.label,r.w-28,15),(r.x+14,r.centery-font(15).get_height()//2),15,GOLD if active else color)
-            if active:
-                pg.draw.line(surface,GOLD,(r.x+14,r.bottom-7),(r.right-14,r.bottom-7))
-        else:
-            panel(surface,r,(23,38,46) if active else PANEL,GOLD if active else LINE)
-            size = 14 if r.h < 32 or r.w < 120 else 17
-            padding = 6 if r.w < 80 else 10 if r.w < 140 else 12 if r.h < 32 else 18
-            label = shorten(self.label,r.w-2*padding,size)
-            left = r.centerx-font(size).size(label)[0]//2 if r.w < 80 else r.x+padding
-            text(surface,label,(left,r.centery-font(size).get_height()//2),size,GOLD if active else color)
-        if active and self.enabled:
-            pg.draw.rect(surface,GOLD,r.inflate(6,6),1,border_radius=3)
+        from .console_theme import BUTTON_STYLES, draw_console_button
+        style = self.style if self.style.startswith("console") else BUTTON_STYLES.get(self.style, "console_normal")
+        draw_console_button(replace(self,style=style),surface,active,pressed)

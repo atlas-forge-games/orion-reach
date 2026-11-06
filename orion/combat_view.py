@@ -317,7 +317,8 @@ def draw_battlefield(app):
     if move_preview is not None:
         draw_movement_preview(surface, selected, move_preview, paths[move_preview], camera)
     surface.set_clip(old_clip)
-    pg.draw.rect(surface, LINE, BOARD, 1)
+    from .console_theme import console_frame
+    console_frame(surface, BOARD, filled=False)
 
 
 def draw_combat(app):

@@ -8,6 +8,7 @@ import pygame as pg
 
 from .building_art import draw_building_art
 from .buildings import BUILDINGS
+from .console_theme import console_frame
 from . import colony_layout
 from .economy import building_status
 from .model import PLAYER, RIVAL
@@ -204,7 +205,7 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     if planet.is_gas_giant:
         if framed:
             text(surface, "Atmospheric survey · No colonies or surface outposts", (rect.x+18, rect.bottom-24), 12, INK)
-        pg.draw.rect(surface, (38, 57, 68), rect, 1)
+        console_frame(surface, rect, filled=False)
         surface.set_clip(old_clip)
         return
     if not planet.colonized:
@@ -224,5 +225,5 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
         footer = "Stored survey · Buildings and ownership reflect the last observation. Send a ship to update."
     if framed:
         text(surface, footer, (rect.x+18, rect.bottom-24), 12, INK)
-    pg.draw.rect(surface, (38, 57, 68), rect, 1)
+    console_frame(surface, rect, filled=False)
     surface.set_clip(old_clip)

@@ -4,6 +4,7 @@ from functools import lru_cache
 import pygame as pg
 
 from .command_buttons import command_icon
+from .console_theme import console_frame
 from .encyclopedia import CATEGORIES, Article, articles, category_articles
 from . import black_holes
 from .ui import ASSETS, CYAN, GOLD, INK, LINE, MUTED, font, panel, shorten, text, wrapped_lines
@@ -67,7 +68,7 @@ def draw_article_illustration(app, article):
     image = article_illustration(article.image, rect.size)
     if image is not None:
         app.canvas.blit(image, image.get_rect(center=rect.center))
-        pg.draw.rect(app.canvas, LINE, rect, 1)
+        console_frame(app.canvas, rect, filled=False)
     else:
         icon = command_icon("info", 44, MUTED)
         app.canvas.blit(icon, icon.get_rect(center=(rect.centerx, rect.centery-17)))

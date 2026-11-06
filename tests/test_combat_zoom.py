@@ -166,8 +166,12 @@ class CombatZoomTests(unittest.TestCase):
         self.app.time += 2; self.app.update_combat(); self.app.render()
         self.click(camera.view(self.app).project((13, 4)))
         self.assertEqual(self.app.combat_target_id, 2)
+        target = self.app.game.combat.ship(2)
+        hull_before = target.hull
+        expected_damage = self.app.game.combat.ship(1).damage
         self.click_button('combat_fire')
-        self.assertEqual(self.app.game.combat.ship(2).hull, 15)
+        # This checks zoomed input, independently of the current stock-ship balance.
+        self.assertEqual(target.hull, hull_before-expected_damage)
         effect = self.app.combat_animation
         elapsed = effect.elapsed
         before = self.app.game.to_dict()

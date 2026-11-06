@@ -164,8 +164,8 @@ def draw_empire(app):
     for i, line in enumerate(wrapped_lines(debt_note(game, s), layout.width-2*MARGIN-24, TEXT_SMALL)):
         text(surface, line, (MARGIN+12, layout.debt_top+9+i*22), TEXT_SMALL, RED if warning else MUTED)
     panel(surface, (MARGIN, layout.filters_top-4, layout.width-2*MARGIN, layout.rows_top-layout.filters_top))
-    text(surface, 'Colonies', (MARGIN, layout.filters_top+7), 23, INK)
-    text(surface, f'{len(rows)} / {s.colonies}', (MARGIN+118, layout.filters_top+12), TEXT_SMALL, MUTED)
+    text(surface, 'Colonies', (MARGIN+8, layout.filters_top+7), 23, INK)
+    text(surface, f'{len(rows)} / {s.colonies}', (MARGIN+126, layout.filters_top+12), TEXT_SMALL, MUTED)
     filter_width = min(112, (layout.width-2*MARGIN-205-32)//5)
     x = right-5*filter_width-32
     for i, key in enumerate(FILTERS):

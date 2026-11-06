@@ -9,6 +9,7 @@ from .research import BRANCHES, TECHNOLOGIES, TIER_NAMES, branch_tiers, choices
 from .research_fields import is_modern
 from .buildings import BUILDINGS
 from .building_art import draw_building_art
+from .console_theme import header_plate
 from . import hyperlanes, race_victory
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, font, panel, paragraph, shorten, text, wrapped_lines
 
@@ -51,7 +52,7 @@ def draw_project_summary(app, rate):
     text(surface, "CURRENT PROJECT", (84, 201), 9, MUTED, "mono", 1)
     if state.active:
         active = TECHNOLOGIES[state.active]
-        text(surface, active.name, (83, 222), 23, INK)
+        text(surface, shorten(active.name, 628, 23), (83, 222), 23, INK)
         text(surface, f"{state.progress} / {state.project_cost} RP · {project_eta(game, active, rate)}",
              (84, 255), 12, CYAN)
         app.button("research_show_active", "View", (732, 219, 102, 40),
@@ -71,9 +72,9 @@ def draw_project_summary(app, rate):
         (1130, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
     ):
         pg.draw.line(surface, LINE, (x-20, 207), (x-20, 271))
-        text(surface, label, (x, 201), 9, MUTED, "mono", 1)
+        text(surface, shorten(label, 224, 14, "mono"), (x, 201), 14, MUTED, "mono")
         text(surface, shorten(value, 224, 23), (x, 222), 23, CYAN)
-        text(surface, caption, (x, 257), 11, MUTED)
+        text(surface, shorten(caption, 224, 14), (x, 257), 14, MUTED)
 
 
 def draw_choice_row(app, technology, rect):
@@ -134,8 +135,7 @@ def draw_field_overview(app):
             key, action = f"research_branch_{branch.id}", lambda b=branch.id: app.select_research_branch(b)
         active = next((t for t in options if t.id == state.active), None)
         panel(surface, (x, y, width, height), (10, 24, 32), GOLD if active else LINE)
-        pg.draw.rect(surface, (24, 39, 47), (x+1, y+1, width-2, 32))
-        text(surface, name, (x+14, y+7), 18, GOLD if active else INK)
+        header_plate(surface, (x+6, y+5, 300, 27), name, size=17, color=GOLD if active else INK)
         text(surface, tier_label, (x+324, y+12), 9, MUTED, "mono")
         candidate = active or options[0]
         cost = state.project_cost if active else candidate.cost
@@ -179,8 +179,7 @@ def draw_six_fields(app):
         options = choices(branch.id, tier)
         active = state.active in {t.id for t in options}
         panel(surface, (x, y, width, height), (10, 24, 32), GOLD if active else LINE)
-        pg.draw.rect(surface, (24, 39, 47), (x+1, y+1, width-2, 37))
-        text(surface, branch.name, (x+15, y+9), 21, GOLD if active else INK)
+        header_plate(surface, (x+6, y+6, width-190, 28), branch.name, size=18, color=GOLD if active else INK)
         text(surface, f'TIER {TIER_NAMES[tier-1]} / {TIER_NAMES[tiers[-1]-1]}', (x+width-15, y+15), 10, CYAN, 'mono', right=True)
         app.button('research_branch_'+branch.id, '', (x+1, y+1, width-2, 37),
                    lambda b=branch.id: app.select_research_branch(b), 'hotspot')
@@ -214,7 +213,7 @@ def draw_branch_detail(app):
     text(surface, "CURRENT PROJECT", (85, 298), 9, MUTED, "mono", 1)
     if state.active:
         active, cost = TECHNOLOGIES[state.active], state.project_cost
-        text(surface, active.name, (85, 317), 23, INK)
+        text(surface, shorten(active.name, 628, 23), (85, 317), 23, INK)
         remaining = cost-state.progress
         turns = math.ceil(remaining/rate) if rate else None
         eta = f"{turns} {'turn' if turns == 1 else 'turns'} at current output" if rate else "Build a research lab to make progress"
@@ -228,14 +227,14 @@ def draw_branch_detail(app):
         text(surface, "Choose a technology below", (85, 321), 23, INK)
         caption = f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}." if state.completed else "Build a research lab to generate research points."
         text(surface, caption, (86, 361), 12, MUTED)
-    for x, label, value, caption in (
-        (885, "RESEARCH OUTPUT", f"+{rate} RP", output_caption(game)),
-        (1082, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
+    for x, width, label, value, caption in (
+        (885, 175, "RESEARCH OUTPUT", f"+{rate} RP", output_caption(game)),
+        (1082, 272, "BANKED POINTS", f"{game.research:,} RP", "applied when you choose"),
     ):
         pg.draw.line(surface, LINE, (x-22, 307), (x-22, 378))
-        text(surface, label, (x, 303), 9, MUTED, "mono", 1)
-        text(surface, value, (x, 327), 25, CYAN)
-        text(surface, caption, (x, 365), 11, MUTED)
+        text(surface, shorten(label, width, 14, "mono"), (x, 303), 14, MUTED, "mono")
+        text(surface, shorten(value, width, 25), (x, 327), 25, CYAN)
+        text(surface, shorten(caption, width, 14), (x, 365), 14, MUTED)
 
     for index, item in enumerate(BRANCHES.values()):
         y = 419+index*44

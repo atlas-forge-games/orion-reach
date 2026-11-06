@@ -121,7 +121,8 @@ def draw_system(app):
             text(surface, "Frigate required to engage", (1080, 262), 11, MUTED, right=True)
 
     panel(surface, (64, 308, 1312, 311), (6, 16, 24))
-    text(surface, "ORBITAL OVERVIEW", (88, 329), 10, GOLD, "mono", 2)
+    from .console_theme import header_plate
+    header_plate(surface, (76, 320, 288, 28), "ORBITAL OVERVIEW")
     if system.worlds:
         pg.draw.line(surface, LINE, (287, 420), (1325, 420), 1)
     draw_star(surface, (224, 434), 45, STAR_COLORS[system.kind])
