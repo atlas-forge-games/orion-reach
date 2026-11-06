@@ -36,10 +36,9 @@ def draw_race_select(app):
     y = paragraph(surface, race.description, (914, 590), 436, 13, MUTED, 19)+12
     for trait in race.traits:
         y = paragraph(surface, "• "+trait, (914, y), 436, 11, race.color, 16)+4
-    text(surface, "Next: galaxy options, rivals and victory conditions.", (66, 835), 14, MUTED)
     if race.id != 'observer':
         from .environments import race_caption
-        text(surface, race_caption(race.id), (66, 803), 13, race.color)
+        paragraph(surface, race_caption(race.id), (914, y+8), 436, 13, race.color, 19)
     app.button("setup_next", "Continue → Galaxy options", (966, 815, 410, 57),
                lambda: app.go("setup"), "primary")
 
