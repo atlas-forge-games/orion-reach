@@ -23,7 +23,7 @@ class GalaxyLayout:
     galaxy_link: pg.Rect | None
 
     @classmethod
-    def fit(cls, available, *, collapsed=False, system_view=False, legend=False):
+    def fit(cls, available, *, collapsed=False, system_view=False):
         width, height = available
         margin, gap, card_h = 18, 10, 72
         inner = width-2*margin
@@ -38,7 +38,7 @@ class GalaxyLayout:
         panel_w = 338
         chart_w = inner if stacked or collapsed else inner-panel_w-gap
         # Give a stacked map enough height to plot a readable full galaxy.
-        extra = (574+gap if stacked else 0)+(27 if legend else 0)
+        extra = 574+gap if stacked else 0
         if stacked:
             min_chart_h = max(375, round(chart_w*.52))
         else:

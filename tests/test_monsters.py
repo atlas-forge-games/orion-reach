@@ -520,8 +520,8 @@ class GuardianUITests(unittest.TestCase):
         self.click("star_0")
         self.assertTrue(all(not s.has_course for s in app.game.ships_owned_by()))
 
-    def test_fleet_badges_do_not_cover_guardian_symbols_or_the_legend(self):
-        from orion.galaxy_fleet_view import fleet_markers, guardian_markers, guardian_legend_rect, known_guardian_kinds
+    def test_fleet_badges_do_not_cover_guardian_symbols(self):
+        from orion.galaxy_fleet_view import fleet_markers, guardian_markers
         app = self.app
         app.game = new_game(seed=2408, galaxy_size="Expansive", fog_of_war=False)
         for guardian in app.game.guardians:
@@ -529,29 +529,25 @@ class GuardianUITests(unittest.TestCase):
                 fleet(app.game, guardian.system_id, ("scout", "frigate"), owner)
         app.go("galaxy")
         app.render()
-        self.assertEqual(set(known_guardian_kinds(app.game)), set(monsters.PRIZE_WORLDS))
         symbols = [rect for _, rect, _ in guardian_markers(app, app.map_rect)]
         self.assertEqual(len(symbols), 4)
         for index, rect in enumerate(symbols):
             self.assertTrue(app.map_rect.contains(rect))
             self.assertEqual(rect.collidelist(symbols[:index]), -1)
         for _, rect, _ in fleet_markers(app, app.map_rect):
-            self.assertEqual(rect.collidelist(symbols+[guardian_legend_rect(app.map_rect)]), -1)
+            self.assertEqual(rect.collidelist(symbols), -1)
 
-    def test_symbols_and_legend_respect_fog_and_stale_guardian_knowledge(self):
-        from orion.galaxy_fleet_view import known_guardian_kinds
+    def test_symbols_respect_fog_and_stale_guardian_knowledge(self):
         app = self.app
         app.game = new_game(seed=2408)
         app.go("galaxy")
         app.render()
-        self.assertEqual(known_guardian_kinds(app.game), [])
         self.assertFalse(any(b.key.startswith("guardian_") for b in app.buttons))
         guardian = next(g for g in app.game.guardians if g.kind == "void_leviathan")
         scout = app.game.ship_at(1)
         scout.system_id = guardian.system_id
         exploration.refresh(app.game)
         app.render()
-        self.assertEqual(known_guardian_kinds(app.game), [guardian.kind])
         self.assertEqual([b.key for b in app.buttons if b.key.startswith("guardian_")], [f"guardian_{guardian.system_id}"])
         scout.system_id = 0
         guardian.hull = 0  # A defeat out of sight must not remove the last-known warning.

@@ -57,7 +57,7 @@ def draw_sidebar(app):
 
 def draw_graphics(app):
     toggle(app, "fullscreen", "Fullscreen", "Use the entire display. F11 also toggles this setting.", 320)
-    toggle(app, "animated_background", "Animated background", "Moving ships and softly twinkling stars.", 436)
+    toggle(app, "animated_background", "Animated effects", "Moving backgrounds and gently pulsing map stars.", 436)
     toggle(app, "galaxy_background", "Galaxy background", "Nebula artwork behind the galaxy map.", 552)
 
 

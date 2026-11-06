@@ -71,9 +71,9 @@ from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_background import draw_galaxy_background
 from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
 from .galaxy_labels import draw_system_label, known_owners
-from .galaxy_star_art import draw_atlas_star
+from .galaxy_star_art import draw_atlas_star, star_hit_radius
 from .galaxy_style import STYLES as GALAXY_STYLES, clean_map, map_style
-from .galaxy_fleet_view import draw_clean_fleet_routes, fleet_cruise_speed, known_guardian_kinds
+from .galaxy_fleet_view import draw_clean_fleet_routes, fleet_cruise_speed
 from .encyclopedia import CATEGORIES, category_articles
 from .encyclopedia_view import ARTICLES_PER_PAGE, INDEX_RECT, article_body_rect, draw_info, scroll_article, selected_article
 from .exploration import known_rival_colonies
@@ -662,7 +662,8 @@ class App:
                     return guardian.system_id
             for system in reversed(self.map_systems()):
                 x,y=self.star_pos(system)
-                rect=black_hole_view.hit_rect((x,y)) if system.kind==black_holes.KIND else pg.Rect(int(x)-18,int(y)-18,36,36)
+                radius=star_hit_radius(self.map_camera.zoom) if clean_map(self) else 18
+                rect=black_hole_view.hit_rect((x,y)) if system.kind==black_holes.KIND else pg.Rect(int(x)-radius,int(y)-radius,2*radius,2*radius)
                 if rect.collidepoint(self.mouse):
                     return system.id
         return self.game.selected_system
@@ -2873,7 +2874,9 @@ class App:
             if compact:
                 owner_colors=tuple(self.empire_color(owner) for owner in known_owners(state,star))
                 draw_atlas_star(self.canvas,(x,y),STAR_COLORS[star.kind],known is not None,
-                                owner_colors,selection_color,self.empire_color(base_owner) if base_owner else None)
+                                owner_colors,selection_color,self.empire_color(base_owner) if base_owner else None,
+                                zoom=self.map_camera.zoom,time=self.time,star_id=star.id,
+                                animated=self.settings["animated_background"])
             else:
                 color=STAR_COLORS[star.kind] if known else tuple(c//3 for c in STAR_COLORS[star.kind])
                 pg.draw.circle(self.canvas,tuple(c//8 for c in color),(int(x),int(y)),14)
@@ -2897,7 +2900,8 @@ class App:
                     tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))
                     pg.draw.line(self.canvas,LINE,(int(x),int(y)),tip)
                 draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"],style)
-            self.map_button(f"star_{star.id}",(int(x)-18,int(y)-18,36,36),lambda s=star.id:self.select_star(s))
+            radius=star_hit_radius(self.map_camera.zoom) if compact else 18
+            self.map_button(f"star_{star.id}",(int(x)-radius,int(y)-radius,2*radius,2*radius),lambda s=star.id:self.select_star(s))
         draw_map_fleets(self,self.map_rect)
         draw_map_guardians(self,self.map_rect)
         draw_map_pirates(self,self.map_rect)
@@ -3197,9 +3201,7 @@ class App:
         page=self.pause_return if self.screen=="pause" else self.screen
         if self.on_galaxy_chart(page):
             system_view=page=="system"
-            ordering=self.fleet_popup or self.map_order_ids or self.route_ship_id is not None
-            legend=bool(self.game and known_guardian_kinds(self.game)) and not ordering
-            layout_now=GalaxyLayout.fit(available,collapsed=self.inspector_collapsed,system_view=system_view,legend=legend)
+            layout_now=GalaxyLayout.fit(available,collapsed=self.inspector_collapsed,system_view=system_view)
             if self.map_rect!=layout_now.chart:
                 self.map_camera.resize(self.map_rect,layout_now.chart)
             self.galaxy_layout=layout_now

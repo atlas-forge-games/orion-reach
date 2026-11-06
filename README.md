@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.92.0
+# Age of the Stars — Python prototype 0.92.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,18 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.92.1 — radiant stars
+
+Star Atlas stars have bright white cores, coloured halos and fine rays. Their
+light pulses gently on independent four-to-six-second cycles. Stars and ownership
+rings grow as you zoom in, while names and ship icons keep their screen size.
+Names, dock positions and click targets adjust to the larger stars.
+
+The guardian legend below the map has been removed, giving its space back to
+the chart. Guardian symbols and details remain available at their systems.
+Turn off **Settings → Graphics → Animated effects** to freeze the pulsing.
+Extract this update over **v0.92.0**. Campaign saves still use format **62**.
 
 ## New in v0.92.0 — Star Atlas
 

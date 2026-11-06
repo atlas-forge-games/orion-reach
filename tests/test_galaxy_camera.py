@@ -78,11 +78,12 @@ class CameraInterfaceTests(unittest.TestCase):
     def move(self, point):
         self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=self.window_pos(point), rel=(0, 0), buttons=(0, 0, 0)))
 
-    def click(self, key):
+    def click(self, key, *, edge=False):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
+        point = (button.rect.right-3, button.rect.centery) if edge else button.rect.center
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
-            self.app.handle_event(pg.event.Event(kind, pos=self.window_pos(button.rect.center), button=1))
+            self.app.handle_event(pg.event.Event(kind, pos=self.window_pos(point), button=1))
             self.app.render()
 
     def key(self, key, mod=0, kind=pg.KEYDOWN):
@@ -137,7 +138,11 @@ class CameraInterfaceTests(unittest.TestCase):
         self.app.zoom_map(4, self.app.star_pos(game.systems[0]))
         self.app.center_map()
         self.click("map_fleet_1")
-        self.click(f"star_{target.id}")
+        button = next(b for b in self.app.buttons if b.key == f"star_{target.id}")
+        self.assertGreater(button.rect.w, 36)
+        self.move((button.rect.right-3, button.rect.centery))
+        self.assertEqual(self.app.fleet_route_target(), target.id)
+        self.click(f"star_{target.id}", edge=True)
         self.assertTrue(all(s.departure_pending and s.destination == target.id for s in game.ships))
         self.click("star_0")
         self.assertTrue(all(not s.has_course for s in game.ships))

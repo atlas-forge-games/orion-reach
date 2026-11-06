@@ -57,12 +57,13 @@ class FleetIconTests(unittest.TestCase):
 
     def test_dock_offset_survives_labels_zoom_and_pan(self):
         home = self.game.systems[0]
-        for zoom in (1, 1.25, 2, 4):
+        for zoom, offset in ((1, 30), (2.25, 45), (4, 60)):
             self.app.map_camera.zoom = zoom
             self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
             self.app.map_camera.pan(13, -7, self.app.map_rect)
             before, anchor = self.markers()[10]
-            self.assertEqual(before.center, (round(anchor[0]+30), round(anchor[1]+30)))
+            self.assertEqual(before.center, (round(anchor[0]+offset), round(anchor[1]+offset)))
+            self.assertEqual(before.size, (28, 28))
             home.name = "The Long Named Docking System"
             labels = star_label_rects(self.app, self.app.map_rect)
             self.assertEqual(self.markers()[10][0], before)
@@ -130,10 +131,10 @@ class FleetIconTests(unittest.TestCase):
         self.app.map_camera.zoom = 4
         home = self.game.systems[0]
         self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
-        self.app.map_camera.pan(self.app.map_rect.right-35-self.app.star_pos(home)[0], 0, self.app.map_rect)
+        self.app.map_camera.pan(self.app.map_rect.right-65-self.app.star_pos(home)[0], 0, self.app.map_rect)
         self.app.render()
         rect, anchor = self.markers()[10]
-        self.assertEqual(rect.center, (round(anchor[0]+30), round(anchor[1]+30)))
+        self.assertEqual(rect.center, (round(anchor[0]+60), round(anchor[1]+60)))
         self.assertGreater(rect.right, self.app.map_rect.right)
         button = next(b for b in self.app.buttons if b.key == "map_fleet_10")
         self.assertEqual(button.rect, rect.clip(self.app.map_rect))

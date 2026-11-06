@@ -11,6 +11,7 @@ from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .galaxy_labels import label_size, system_label
 from .galaxy_style import clean_map, map_style
+from .galaxy_star_art import star_hit_radius, star_zoom_scale
 from .galaxy_fleet_icons import ICON_BOX, draw_map_ship, flight_heading, visible_course
 from . import monsters, navigation, black_holes, hyperlanes
 from .hyperlane_art import LANE_COLOR
@@ -106,6 +107,7 @@ def compact_fleet_markers(app, map_rect):
     """Docked icons keep fixed slots; queued icons line up at their route's start."""
     groups = group_fleets(app.game.visible_ships())
     slots = docking_slots(app, groups)
+    scale = star_zoom_scale(app.map_camera.zoom)
     result = []
     for ships in groups:
         ship = ships[0]
@@ -120,13 +122,13 @@ def compact_fleet_markers(app, map_rect):
             if length:
                 # Presentation only: keep the icon clear of the star where possible,
                 # without advancing the voyage or changing its saved duration.
-                distance = min(32, length/2)
+                distance = min(32*scale, length/2)
                 x += dx/length*distance
                 y += dy/length*distance
         elif not ship.in_transit:
             slot = slots[ship.id]
-            x += DOCK_OFFSET[0] + (slot % DOCK_COLUMNS)*DOCK_SPACING
-            y += DOCK_OFFSET[1] + (slot // DOCK_COLUMNS)*DOCK_SPACING
+            x += DOCK_OFFSET[0]*scale + (slot % DOCK_COLUMNS)*DOCK_SPACING
+            y += DOCK_OFFSET[1]*scale + (slot // DOCK_COLUMNS)*DOCK_SPACING
         rect = pg.Rect(0, 0, ICON_BOX, ICON_BOX)
         rect.center = round(x), round(y)
         if rect.colliderect(map_rect):
@@ -216,9 +218,11 @@ def star_label_rects(app, map_rect):
     """Keep names inside the rectangular map and clear of nearby stars and names."""
     systems = app.map_systems()
     style = map_style(app)
+    scale = star_zoom_scale(app.map_camera.zoom) if style == "clean" else 1
+    radius = star_hit_radius(app.map_camera.zoom) if style == "clean" else 15
     named_systems = [s for s in systems if system_label(app.game, s, style)]
     obstacles = [hit_rect(app.star_pos(s)) if s.kind == black_holes.KIND else
-                 pg.Rect(round(app.star_pos(s)[0])-15, round(app.star_pos(s)[1])-15, 30, 30)
+                 pg.Rect(round(app.star_pos(s)[0])-radius, round(app.star_pos(s)[1])-radius, 2*radius, 2*radius)
                  for s in systems]
     obstacles.extend(app.map_overlays())
     if style == "clean":
@@ -228,7 +232,7 @@ def star_label_rects(app, map_rect):
         x, y = app.star_pos(system)
         width, height = label_size(system_label(app.game, system, style), style, app.canvas.scale)
         top = round(y)-height//2 if style == "clean" else round(y)-9
-        offset = 36 if system.kind == black_holes.KIND else 24 if style == "clean" else 17
+        offset = 36 if system.kind == black_holes.KIND else round(24*scale) if style == "clean" else 17
         preferred.append((round(x)+offset, top, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))
@@ -236,6 +240,8 @@ def star_label_rects(app, map_rect):
 
 
 def star_obstacles(app, map_rect, radius=21):
+    if clean_map(app):
+        radius = round(radius*star_zoom_scale(app.map_camera.zoom))
     obstacles = app.map_overlays()
     for system in app.map_systems():
         x, y = app.star_pos(system)
@@ -246,15 +252,6 @@ def star_obstacles(app, map_rect, radius=21):
     if clean_map(app):
         obstacles.extend(rect.inflate(4, 4) for _, rect, _ in compact_fleet_markers(app, map_rect))
     return obstacles
-
-
-def known_guardian_kinds(game):
-    seen = {g.kind for g in game.guardians if monsters.known_status(game, g.system_id) is not None}
-    return [kind for kind in monsters.MONSTERS if kind in seen]
-
-
-def guardian_legend_rect(map_rect):
-    return pg.Rect(map_rect.x, map_rect.bottom+3, map_rect.w, 24)
 
 
 def guardian_markers(app, map_rect):
@@ -280,21 +277,6 @@ def draw_map_guardians(app, map_rect):
         draw_guardian_symbol(app.canvas, rect.center, guardian.kind, 13 if compact else 18)
         app.map_button(f"guardian_{guardian.system_id}", rect,
                        lambda sid=guardian.system_id: app.select_star(sid))
-    kinds = known_guardian_kinds(app.game)
-    ordering = app.fleet_popup or app.map_order_ids or app.route_ship_id is not None
-    if kinds and not ordering:
-        rect = guardian_legend_rect(map_rect)
-        app.canvas.set_clip(rect)
-        panel(app.canvas, rect, (9, 17, 28))
-        text(app.canvas, "GUARDIANS", (rect.x+10, rect.y+3), 14, MUTED, "mono")
-        entries = [(kind, monsters.MONSTERS[kind].name) for kind in kinds if kind in monsters.PRIZE_WORLDS]
-        if any(kind not in monsters.PRIZE_WORLDS for kind in kinds):
-            entries.append(("crown_sentinel", "Legendary guardian"))
-        spacing = (rect.w-110)//max(1, len(entries))
-        for index, (kind, name) in enumerate(entries):
-            x, y = rect.x+109+index*spacing, rect.centery
-            draw_guardian_symbol(app.canvas, (x, y), kind, 15)
-            text(app.canvas, shorten(name, spacing-23, 14), (x+13, y-8), 14, monsters.MONSTERS[kind].color)
     app.canvas.set_clip(old_clip)
 
 
