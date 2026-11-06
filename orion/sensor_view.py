@@ -6,6 +6,7 @@ import pygame as pg
 from . import sensors
 from .galaxy_fleet_view import fleet_markers, guardian_markers, marker_layout, pirate_markers, star_obstacles
 from .galaxy_style import clean_map
+from .galaxy_console import console_panel, header_plate
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, panel, paragraph, shorten, text
 
 
@@ -74,9 +75,9 @@ def draw_contact_panel(app):
     surface, game = app.canvas, app.game
     r = app.galaxy_layout.inspector
     contact = next((c for c in sensors.contacts(game) if c.anchor == app.sensor_contact_id), None)
-    panel(surface, r)
+    console_panel(surface, r)
     x, width = r.x+16, r.w-32
-    text(surface, "SENSOR CONTACT", (x, r.y+24), 10, GOLD, "mono", 1)
+    header_plate(surface, (r.x+5, r.y+5, width, 28), "SENSOR CONTACT")
     if contact is None:
         paragraph(surface, "This contact has expired. Last sightings are retained for 20 turns.", (x, r.y+82), width, 17, MUTED, 27)
     else:

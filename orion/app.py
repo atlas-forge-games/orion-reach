@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 import pygame as pg
@@ -2688,7 +2689,11 @@ class App:
         b=Button(key,label,pg.Rect(rect),action,subtitle,style,enabled,icon,shortcut,badge)
         self.buttons.append(b)
         active=self.is_active(b)
-        b.draw(self.canvas,active,active and self.pressed==key)
+        if self.on_galaxy_chart():
+            style={"command_dock":"console_dock", "command_primary":"console_primary",
+                   "command":"console", "tab":"console_tool", "tab_active":"console_active",
+                   "normal":"console_tool", "primary":"console_active"}.get(style,style)
+        replace(b,style=style).draw(self.canvas,active,active and self.pressed==key)
         return b
 
     def chrome(self,section="COMMAND",back=None):
@@ -2908,6 +2913,8 @@ class App:
         if not state.is_observer and not self.fleet_popup and not self.map_order_ids and self.route_ship_id is None:
             draw_contacts(self,self.map_rect)
         self.canvas.set_clip(old_clip)
+        from .galaxy_console import console_frame
+        console_frame(self.canvas,self.galaxy_layout.chart.inflate(10,10),filled=False)
         draw_map_navigation(self)
         self.map_view_system=state.selected_system
         star=state.systems[preview]
@@ -2929,7 +2936,8 @@ class App:
     def draw_map_order_strip(self,preview,ships):
         state=self.game
         bar=self.galaxy_layout.order_strip
-        panel(self.canvas,bar,(9,20,29))
+        from .galaxy_console import console_frame
+        console_frame(self.canvas,bar,compact=True)
         self.button("map_order_strip","",bar,lambda:None,"hotspot")
         close=pg.Rect(bar.right-92,bar.y+5,86,bar.h-10)
         single=self.route_ship_id is not None

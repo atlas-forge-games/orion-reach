@@ -10,6 +10,7 @@ from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
 from .galaxy_labels import label_size, system_label
+from .galaxy_console import console_panel, console_row, header_plate
 from .galaxy_style import clean_map, map_style
 from .galaxy_star_art import star_hit_radius, star_zoom_scale
 from .galaxy_fleet_icons import ICON_BOX, draw_map_ship, flight_heading, visible_course
@@ -421,11 +422,11 @@ def draw_fleet_popup(app):
     bottom = y+120+len(visible)*48
     rect = pane
     app.fleet_popup_rect = rect
-    panel(surface, rect, (10, 24, 34), app.empire_color(first.owner))
+    console_panel(surface, rect, accent=app.empire_color(first.owner))
     app.button("fleet_popup_panel", "", rect, lambda: None, "hotspot")
     origin = game.systems[first.system_id]
     title = "Fleet in transit" if first.in_transit else f"Fleet at {game.system_name(origin.id)}"
-    text(surface, shorten(title, width-77, 22), (x+18, y+17), 22, INK)
+    header_plate(surface, (x+5, y+8, width-61, 36), title, color=INK, size=20)
     close = pg.Rect(pane.right-47, y+13, 31, 31)
     app.button("fleet_popup_close", "", close, app.close_fleet_popup)
     cx, cy = close.center
@@ -444,14 +445,14 @@ def draw_fleet_popup(app):
         top = y+120+index*48
         selected = ship.id in app.fleet_selected_ids
         row = pg.Rect(x+16, top, width-32, 42)
-        panel(surface, row, (18, 39, 48) if selected else (8, 19, 27), CYAN if selected else LINE)
+        console_row(surface, row, selected=selected, owner=CYAN if selected else None)
         if editable:
             box = pg.Rect(x+26, top+13, 15, 15)
             pg.draw.rect(surface, CYAN if selected else FAINT, box, 1)
             if selected:
                 pg.draw.lines(surface, CYAN, False, [(x+29, top+20), (x+32, top+24), (x+38, top+16)], 2)
         ship_icon(surface, (x+63, top+20), .37, app.empire_color(first.owner), kind=ship.kind)
-        text(surface, ship.name, (x+88, top+4), 14, INK)
+        text(surface, shorten(ship.name, width-106, 14, "sans_bold"), (x+88, top+4), 14, INK, "sans_bold")
         detail = f"{ship.habitat.population}/50 B · {ship.hull} hull" if ship.habitat else f"{ship.hull}/{ship.max_hull} hull"
         text(surface, detail, (x+89, top+24), 10, MUTED)
         if editable:
@@ -600,8 +601,8 @@ def draw_order_panel(app, target):
         return
     origin = game.systems[ships[0].system_id]
     duration = game.travel_turns(origin, target, ships=ships)
-    panel(surface, r, border=GOLD)
-    text(surface, "CHOOSE DESTINATION", (x, r.y+23), 10, GOLD, "mono", 1)
+    console_panel(surface, r)
+    header_plate(surface, (r.x+5, r.y+5, width, 28), "CHOOSE DESTINATION")
     text(surface, f"{len(ships)} {'ship' if len(ships)==1 else 'ships'} selected", (x, r.y+65), 25, INK, "title")
     departure = f"Departing {game.system_name(origin.id)} · {fleet_cruise_speed(game, ships):g} ly/turn"
     text(surface, shorten(departure, width, 14), (x, r.y+109), 14, CYAN)

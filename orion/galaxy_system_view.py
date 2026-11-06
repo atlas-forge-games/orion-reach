@@ -4,9 +4,10 @@ import pygame as pg
 
 from . import monsters, defenses, motherships, hyperlanes
 from .galaxy_labels import known_owners
+from .galaxy_console import DIVIDER, console_frame, console_panel, console_row, header_plate
 from .planet_art import draw_planet, draw_star
 from .system_views import STAR_COLORS, visual_seed
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, arrow, panel, paragraph, shorten, text
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, arrow, paragraph, shorten, text
 
 PLANETS_PER_PAGE = 4
 
@@ -50,8 +51,8 @@ def draw_system_panel(app, star):
         app.galaxy_planet_page = selected//PLANETS_PER_PAGE
     last = max(0, (len(entries)-1)//PLANETS_PER_PAGE)
     app.galaxy_planet_page = max(0, min(app.galaxy_planet_page, last))
-    panel(surface, r)
-    text(surface, "SYSTEM OVERVIEW", (x, r.y+14), 14, GOLD, "mono", 1)
+    console_panel(surface, r)
+    header_plate(surface, (r.x+5, r.y+5, width, 28), "SYSTEM OVERVIEW")
     if not live:
         survey = game.exploration.survey(star.id)
         status = f"SEEN T{survey.last_seen}" if known else "UNCHARTED"
@@ -85,32 +86,29 @@ def draw_system_panel(app, star):
     colonies = sum(p.colonized for p in entries)
     unit = ("home" if colonies == 1 else "homes") if has_homes else ("colony" if colonies == 1 else "colonies")
     strip = pg.Rect(x, r.y+113, width, 56)
-    panel(surface, strip, (13, 27, 36))
     text(surface, f"{len(worlds)} worlds · {sum(p.habitability >= 35 for p in worlds)} habitable",
-         (x+10, strip.y+6), 15, INK)
+         (x, strip.y+6), 15, INK)
     text(surface, f"{colonies} {unit} · {sum(p.workforce for p in entries)} B population",
-         (x+10, strip.y+30), 14, MUTED)
+         (x, strip.y+30), 14, MUTED)
 
     guardian_status = monsters.known_status(game, star.id)
     guardian = monsters.at(game, star.id) if guardian_status else None
     prizes = monsters.prize_ids(known, guardian) if guardian else ()
     start = app.galaxy_planet_page*PLANETS_PER_PAGE
-    text(surface, "MOTHERSHIPS & PLANETS" if has_homes else "PLANETS · INNER TO OUTER", (x, r.y+188), 14, GOLD, "mono")
+    text(surface, "MOTHERSHIPS & PLANETS" if has_homes else "PLANETS · INNER TO OUTER", (x, r.y+180), 14, GOLD, "sans_bold")
+    pg.draw.line(surface, (136, 115, 74), (x, r.y+204), (right, r.y+204))
     for index, world in enumerate(entries[start:start+PLANETS_PER_PAGE]):
-        row = pg.Rect(x, r.y+214+index*52, width, 47)
+        row = pg.Rect(x, r.y+210+index*54, width, 50)
         action = (lambda sid=-world.id: app.open_mothership(sid)) if world.habitat else (lambda pid=world.id: app.open_planet(pid))
         button = app.button(entry_key(world), "", row, action, "hotspot")
         active = app.is_active(button)
         selected = world.id == game.selected_planet
-        panel(surface, row, (23, 43, 53) if active else (16, 32, 42) if selected else (9, 22, 31),
-              GOLD if active else (58, 90, 103) if selected else LINE)
-        draw_planet(surface, world, (row.x+23, row.centery), 35, visual_seed(game, known, world))
         visible_owner = world.owner or world.outpost_owner or (world.orbital_station.owner if world.orbital_station else None)
         color = app.empire_color(visible_owner) if visible_owner else MUTED
-        if world.colonized or world.outpost_owner or world.orbital_station:
-            pg.draw.circle(surface, color, (row.x+37, row.y+12), 3)
-        left = row.x+48
-        text(surface, shorten(world.name, row.w-102, 14), (left, row.y+4), 14, GOLD if active else INK)
+        console_row(surface, row, active=active, selected=selected, owner=color if visible_owner else None)
+        draw_planet(surface, world, (row.x+27, row.centery), 40, visual_seed(game, known, world))
+        left = row.x+54
+        text(surface, shorten(world.name, row.w-118, 15, "sans_bold"), (left, row.y+4), 15, INK, "sans_bold")
         if world.habitat:
             value = "HOME"
         elif world.colonized:
@@ -123,10 +121,10 @@ def draw_system_panel(app, star):
             value = "RUINS" if guardian.kind == "ancient_sentinel" else "PRIZE"
         else:
             value = "GAS" if world.is_gas_giant else f"{world.habitability}%"
-        text(surface, value, (row.right-9, row.y+4), 14, color, right=True)
+        text(surface, value, (row.right-5, row.y+5), 14, color, right=True)
         detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
-        text(surface, shorten(detail, row.w-58, 14),
-             (left, row.y+25), 14, MUTED)
+        text(surface, shorten(detail, row.w-59, 14),
+             (left, row.y+27), 14, MUTED)
         owner = ("Orbital station · "+game.empire_name_for(world.orbital_station.owner) if world.orbital_station else game.empire_name_for(world.owner) if world.colonized else
                  "Outpost · "+game.empire_name_for(world.outpost_owner) if world.outpost_owner else "Not colonizable" if world.is_gas_giant else "Uncolonized")
         if world.id in prizes:
@@ -138,13 +136,14 @@ def draw_system_panel(app, star):
         text(surface, "No planets detected", (x, r.y+310), 20, INK, "title")
         paragraph(surface, "This system contains only its central star.", (x, r.y+352), width, 13, MUTED, 23)
     if last:
-        text(surface, f"{start+1}–{min(start+PLANETS_PER_PAGE,len(entries))} OF {len(entries)} "+("LOCATIONS" if has_homes else "WORLDS"), (x, r.y+433), 10, MUTED, "mono")
+        text(surface, f"{start+1}–{min(start+PLANETS_PER_PAGE,len(entries))} OF {len(entries)} "+("LOCATIONS" if has_homes else "WORLDS"), (x, r.y+436), 10, MUTED, "mono")
         for name, delta, bx, enabled in (("previous", -1, right-82, start > 0), ("next", 1, right-37, app.galaxy_planet_page < last)):
-            button = app.button(f"galaxy_planets_{name}", "", (bx, r.y+426, 37, 28),
+            button = app.button(f"galaxy_planets_{name}", "", (bx, r.y+429, 37, 28),
                                 lambda step=delta: app.change_galaxy_planet_page(step), "hotspot", enabled=enabled)
-            panel(surface, button.rect, (16, 31, 41), GOLD if enabled and app.is_active(button) else LINE)
+            console_frame(surface, button.rect, active=enabled and app.is_active(button), enabled=enabled, compact=True)
             arrow(surface, button.rect.center, GOLD if enabled else FAINT, back=delta < 0)
 
+    pg.draw.line(surface, DIVIDER, (x, r.bottom-108), (right, r.bottom-108))
     ships = len(game.fleet_at(star.id))
     rivals = len(game.foreign_fleet(star.id)) if live else 0
     from . import encounters

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 import pygame as pg
 
-from .ui import INK, panel, text
+from .ui import INK, text
+from .galaxy_console import console_frame
 
 MIN_ZOOM = 1.0
 MAX_ZOOM = 4.0
@@ -167,7 +168,7 @@ def update_map_input(app, elapsed, rect):
 def draw_map_navigation(app):
     """Overlay only the corners, leaving stars between the controls interactive."""
     tools = app.galaxy_layout.camera_tools
-    panel(app.canvas, tools, (9, 20, 29))
+    console_frame(app.canvas, tools, compact=True)
     app.button("map_toolbar", "", tools, lambda: None, "hotspot")
     x, y = tools.x+3, tools.y+3
     app.button("map_zoom_out", "−", (x, y, 29, 27), lambda: app.zoom_map(-1),

@@ -5,6 +5,7 @@ import math
 import pygame as pg
 
 from . import black_holes, monsters
+from .galaxy_console import console_panel, header_plate
 from .ui import ASSETS, CYAN, GOLD, INK, LINE, MUTED, RED, panel, paragraph, shorten, text
 
 
@@ -68,8 +69,8 @@ def draw_panel(app, star):
     r = app.galaxy_layout.inspector
     x, width = r.x+16, r.w-32
     color = black_holes.SITES[site.kind][2]
-    panel(surface, r)
-    text(surface, "BLACK HOLE", (x, r.y+23), 10, color, "mono", 1)
+    console_panel(surface, r, accent=color)
+    header_plate(surface, (r.x+5, r.y+5, width, 28), "BLACK HOLE", color=color)
     text(surface, shorten(star.name, width, 28, "title"), (x, r.y+56), 28, INK, "title")
     draw_art(surface, site.kind, (x, r.y+98, width, 176))
     paragraph(surface, black_holes.SITES[site.kind][3], (x, r.y+286), width, 13, MUTED, 21)

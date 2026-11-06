@@ -6,12 +6,13 @@ import pygame as pg
 
 from .command_buttons import command_icon
 from .display import Canvas
+from .galaxy_console import DIVIDER, console_panel
 from .empire import summarize_empire
 from . import news
 from .research import TECHNOLOGIES
 from . import hyperlanes
 from .treasury import BANKRUPTCY_LIMIT, INTEREST_PERCENT
-from .ui import ASSETS, CYAN, GOLD, INK, MUTED, RED, panel, shorten, text
+from .ui import ASSETS, CYAN, GOLD, INK, MUTED, RED, font, shorten, text
 
 FOOD_GREEN = (157, 199, 132)
 NAVIGATION = (
@@ -47,7 +48,6 @@ def scaled_resource_art(kind, pixels):
 
 
 def resource_card(surface, r, kind, title, value, detail, accent, *, detail_color=MUTED):
-    panel(surface, r, (9, 20, 29))
     x, width = r.x+11, r.w-22
     detail_width = width
     if kind:
@@ -62,25 +62,31 @@ def resource_card(surface, r, kind, title, value, detail, accent, *, detail_colo
             surface.blit_native(scaled_resource_art(kind, max(1, round(size*surface.scale))), icon.topleft)
         else:
             surface.blit(scaled_resource_art(kind, size), icon.topleft)
-    text(surface, shorten(title, width, 14, "mono"), (x, r.y+4), 14, accent, "mono")
-    text(surface, shorten(value, width, 21, "mono"), (x, r.y+22), 21, INK, "mono")
+    text(surface, shorten(title, width, 14, "sans_bold"), (x, r.y+4), 14, accent, "sans_bold")
+    value_size = 21 if font(21, "mono_bold").size(value)[0] <= width else 18
+    text(surface, shorten(value, width, value_size, "mono_bold"), (x, r.y+22), value_size, INK, "mono_bold")
     text(surface, shorten(detail, detail_width, 14), (x, r.y+49), 14, detail_color)
 
 
 def card_action(app, key, rect, action, hint):
-    button = app.button(key, "", rect, action, "hotspot")
-    if app.is_active(button):
-        pg.draw.rect(app.canvas, CYAN, rect, 1, border_radius=3)
+    app.button(key, "", rect, action, "console_hotspot")
     app.canvas.text_regions.append((rect, hint))
 
 
 def draw_identity(app, caption):
     r = app.galaxy_layout.identity
     game, surface = app.game, app.canvas
-    x = r.x+4
-    text(surface, shorten(game.empire_name, r.w-8, 23, "title"), (x, r.y+1), 23, INK, "title")
+    slots = (r, *app.galaxy_layout.cards)
+    console_panel(surface, r.unionall(slots))
+    for slot in slots:
+        if slot.x > r.x:
+            pg.draw.line(surface, DIVIDER, (slot.x-5, slot.y+7), (slot.x-5, slot.bottom-7))
+        if slot.y > r.y:
+            pg.draw.line(surface, DIVIDER, (slot.x+6, slot.y-3), (slot.right-6, slot.y-3))
+    x = r.x+8
+    text(surface, shorten(game.empire_name, r.w-16, 23, "title"), (x, r.y+1), 23, INK, "title")
     text(surface, f"Year {game.year} · Turn {game.turn}", (x, r.y+30), 14, CYAN)
-    text(surface, shorten(caption, r.w-8, 14), (x, r.y+50), 14, MUTED)
+    text(surface, shorten(caption, r.w-16, 14), (x, r.y+50), 14, MUTED)
 
 
 def draw_galaxy_header(app):
@@ -114,7 +120,7 @@ def draw_galaxy_header(app):
     if active:
         app.technology_info_region(active, research)
     if idle:
-        pg.draw.rect(surface, GOLD, research, 1, border_radius=3)
+        pg.draw.line(surface, GOLD, (research.x+11, research.bottom-1), (research.x+58, research.bottom-1), 2)
 
     def shortage(count):
         return f"{count} local shortage"+("s" if count != 1 else "")
@@ -147,6 +153,10 @@ def draw_galaxy_commands(app, *, compact=False):
         rects = tuple(pg.Rect(64+i*104, 813, 100, 61) for i in range(7))
     else:
         rects = app.galaxy_layout.commands
+        dock = rects[0].unionall((*rects, app.galaxy_layout.end_turn))
+        if app.galaxy_layout.galaxy_link is not None:
+            dock.union_ip(app.galaxy_layout.galaxy_link)
+        console_panel(app.canvas, dock, accent=(69, 128, 150))
     unread = news.unread_count(game)
     for index, (key, label, method, icon, shortcut) in enumerate(NAVIGATION):
         if game.is_observer and key == "open_empire":

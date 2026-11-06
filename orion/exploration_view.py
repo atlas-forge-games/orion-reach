@@ -5,6 +5,7 @@ import pygame as pg
 from .exploration import DISCOVERIES
 from .fleet_art import ship_icon
 from .planet_art import draw_star
+from .galaxy_console import console_panel, header_plate
 from . import monsters
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, panel, paragraph, shorten, text
 
@@ -23,9 +24,9 @@ def draw_system_intelligence(app, star):
     x, width = r.x+16, r.w-32
     known = game.known_system(star.id)
     live = game.system_visible(star.id)
-    panel(surface, r)
+    console_panel(surface, r)
     heading = "SYSTEM INTELLIGENCE" if live else "LAST KNOWN SURVEY" if known else "UNCHARTED SYSTEM"
-    text(surface, heading, (x, r.y+23), 10, GOLD, "mono", 1)
+    header_plate(surface, (r.x+5, r.y+5, width, 28), heading)
     text(surface, game.system_name(star.id), (x, r.y+65), 31, INK, "title")
     text(surface, star.kind, (x, r.y+110), 14, MUTED)
     guardian_status = monsters.known_status(game, star.id)

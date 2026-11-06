@@ -262,6 +262,10 @@ class Button:
             from .command_buttons import draw_command_button
             draw_command_button(self,surface,active,pressed)
             return
+        if self.style.startswith("console"):
+            from .galaxy_console import draw_console_button
+            draw_console_button(self,surface,active,pressed)
+            return
         r=self.rect
         color=INK if self.enabled else FAINT
         if self.style=="hotspot":
