@@ -70,7 +70,8 @@ from .galaxy_layout import DEFAULT_LAYOUT, GalaxyLayout
 from .galaxy_hud import draw_galaxy_header, draw_galaxy_commands
 from .galaxy_background import draw_galaxy_background
 from .galaxy_camera import GalaxyCamera, clear_gesture, draw_map_navigation, handle_map_input, update_map_input
-from .galaxy_labels import draw_system_label
+from .galaxy_labels import draw_system_label, known_owners
+from .galaxy_star_art import draw_atlas_star
 from .galaxy_style import STYLES as GALAXY_STYLES, clean_map, map_style
 from .galaxy_fleet_view import draw_clean_fleet_routes, fleet_cruise_speed, known_guardian_kinds
 from .encyclopedia import CATEGORIES, category_articles
@@ -2863,27 +2864,34 @@ class App:
                     draw_system_label(self.canvas,state,star,label.topleft,selected,self.settings["galaxy_palette"],style)
                 continue
             known=state.known_system(star.id)
-            color=STAR_COLORS[star.kind] if known else tuple(c//3 for c in STAR_COLORS[star.kind])
-            pg.draw.circle(self.canvas,tuple(c//8 for c in color),(int(x),int(y)),14)
-            pg.draw.circle(self.canvas,tuple(c//3 for c in color),(int(x),int(y)),8)
-            pg.draw.circle(self.canvas,color,(int(x),int(y)),4)
-            pg.draw.circle(self.canvas,INK,(int(x),int(y)),1)
+            selection_color=None
             if selected:
                 ordering=bool(self.map_order_ids or self.route_ship_id is not None)
                 queued=next((s for s in state.ships if s.id in self.map_order_ids and s.departure_pending and s.destination==star.id),None)
                 selection_color=RED if ordering and not queued and not state.can_reach(star.id, ships=moving) else GOLD
-                pg.draw.circle(self.canvas,selection_color,(int(x),int(y)),19,1)
-                for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
-                    pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
-            owners={p.owner for p in known.worlds if p.colonized} if known else set()
-            owners.update(s.owner for s in visible_at(state, star.id))
             base_owner=next((p.outpost_owner for p in known.worlds if p.outpost_owner),None) if known else None
-            if base_owner:
-                pg.draw.rect(self.canvas,self.empire_color(base_owner),(round(x)-5,round(y)+15,10,7),1)
-            if PLAYER in owners:
-                pg.draw.circle(self.canvas,self.empire_color(PLAYER),(int(x),int(y)),11,2)
-            for index,owner in enumerate(o for o in state.opponents if o in owners):
-                pg.draw.circle(self.canvas,self.empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,2)
+            if compact:
+                owner_colors=tuple(self.empire_color(owner) for owner in known_owners(state,star))
+                draw_atlas_star(self.canvas,(x,y),STAR_COLORS[star.kind],known is not None,
+                                owner_colors,selection_color,self.empire_color(base_owner) if base_owner else None)
+            else:
+                color=STAR_COLORS[star.kind] if known else tuple(c//3 for c in STAR_COLORS[star.kind])
+                pg.draw.circle(self.canvas,tuple(c//8 for c in color),(int(x),int(y)),14)
+                pg.draw.circle(self.canvas,tuple(c//3 for c in color),(int(x),int(y)),8)
+                pg.draw.circle(self.canvas,color,(int(x),int(y)),4)
+                pg.draw.circle(self.canvas,INK,(int(x),int(y)),1)
+                if selected:
+                    pg.draw.circle(self.canvas,selection_color,(int(x),int(y)),19,1)
+                    for dx,dy in ((-25,0),(25,0),(0,-25),(0,25)):
+                        pg.draw.circle(self.canvas,selection_color,(int(x+dx),int(y+dy)),1)
+                owners={p.owner for p in known.worlds if p.colonized} if known else set()
+                owners.update(s.owner for s in visible_at(state, star.id))
+                if base_owner:
+                    pg.draw.rect(self.canvas,self.empire_color(base_owner),(round(x)-5,round(y)+15,10,7),1)
+                if PLAYER in owners:
+                    pg.draw.circle(self.canvas,self.empire_color(PLAYER),(int(x),int(y)),11,2)
+                for index,owner in enumerate(o for o in state.opponents if o in owners):
+                    pg.draw.circle(self.canvas,self.empire_color(owner),(int(x),int(y)),(15 if PLAYER in owners else 11)+4*index,2)
             if label:=labels.get(star.id):
                 if not compact and abs(label.x-(x+17))+abs(label.y-(y-9))>12:
                     tip=(min(max(int(x),label.left),label.right),min(max(int(y),label.top),label.bottom))

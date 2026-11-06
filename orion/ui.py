@@ -28,10 +28,10 @@ TEXT_VALUE = 28
 
 @lru_cache(maxsize=128)
 def _pixel_font(size, family="sans"):
-    filename = {"sans": "DejaVuSans.ttf", "mono": "DejaVuSansMono.ttf",
+    filename = {"sans": "DejaVuSans.ttf", "sans_bold": "DejaVuSans.ttf", "mono": "DejaVuSansMono.ttf",
                 "mono_bold": "DejaVuSansMono.ttf", "title": "DejaVuSerif.ttf"}[family]
     face = pg.font.Font(str(ASSETS / "fonts" / filename), size)
-    face.set_bold(family == "mono_bold")
+    face.set_bold(family in ("mono_bold", "sans_bold"))
     return face
 
 

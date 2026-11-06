@@ -15,7 +15,7 @@ import pygame as pg
 from orion.empires import empire_color
 from orion.exploration import refresh
 from orion.galaxy_fleet_view import star_label_rects
-from orion.galaxy_labels import LABEL_FAMILY, LABEL_SIZE, draw_system_label, label_bands, label_font, system_label
+from orion.galaxy_labels import LABEL_FAMILY, LABEL_SIZE, draw_system_label, label_bands, label_size, system_label
 from orion.galaxy_style import map_style
 from orion.model import Ship
 from orion.ui import font, text_image
@@ -179,7 +179,7 @@ class GalaxyHudTests(unittest.TestCase):
         self.assertLess(len(labels), len(self.app.map_systems()))
         for i, (identifier, rect) in enumerate(labels.items()):
             style = map_style(self.app)
-            self.assertEqual(rect.size, font(*label_font(style)).size(system_label(self.app.game, self.app.game.systems[identifier], style)))
+            self.assertEqual(rect.size, label_size(system_label(self.app.game, self.app.game.systems[identifier], style), style, self.app.canvas.scale))
             self.assertTrue(self.app.map_rect.contains(rect))
             self.assertEqual(rect.collidelist(list(labels.values())[i+1:]), -1)
 

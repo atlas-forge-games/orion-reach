@@ -105,12 +105,12 @@ def draw_interface(app):
 
     panel(app.canvas, (352, 488, 1024, 126))
     text(app.canvas, "Galaxy map style", (380, 500), 21, INK)
-    for index, (style, label) in enumerate((("clean", "Clean"), ("classic", "Classic"))):
+    for index, (style, label) in enumerate((("clean", "Star Atlas"), ("classic", "Classic"))):
         x = 380+index*496
         app.button("galaxy_style_"+style, label, (x, 538, 472, 40),
                    lambda value=style: app.set_galaxy_style(value),
                    "tab_active" if map_style(app) == style else "tab")
-    text(app.canvas, "Clean: small icons, route previews and details on click. Classic: full labels and counts.",
+    text(app.canvas, "Star Atlas: bright names, ownership rings and compact ships. Classic: colored names and counts.",
          (380, 588), 16, MUTED)
 
     panel(app.canvas, (352, 626, 1024, 126))
@@ -121,7 +121,7 @@ def draw_interface(app):
                    lambda value=palette: app.set_galaxy_palette(value),
                    "tab_active" if app.settings["galaxy_palette"] == palette else "tab")
         pg.draw.line(app.canvas, PLAYER_PALETTES[palette], (x+12, 720), (x+460, 720), 3)
-    text(app.canvas, "Your system labels, colony markers and fleets; neutral systems stay gray.", (380, 729), 16, MUTED)
+    text(app.canvas, "Your empire's ownership markers and fleet accents.", (380, 729), 16, MUTED)
     text(app.canvas, "Tab / ↑ ↓ + Enter · Esc goes back · F11 toggles fullscreen", (380, 772), 16, MUTED)
     text(app.canvas, "Hover over an abbreviated label to read its full text.", (380, 796), 14, MUTED)
 

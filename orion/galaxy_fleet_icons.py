@@ -1,4 +1,4 @@
-"""Cached illustrated map icons with faction rims and arbitrary flight headings."""
+"""Compact illustrated fleets with faction accents, drawn at their final pixel size."""
 
 from functools import lru_cache
 import math
@@ -6,9 +6,10 @@ import pygame as pg
 
 from .ui import ASSETS
 from .model import PLAYER
+from .display import Canvas
 
-ICON_BOX = 22
-ART_SIZE = 18
+ICON_BOX = 28
+ART_SIZE = 24
 
 
 def visible_course(app, ship):
@@ -34,7 +35,7 @@ def icon_master(habitat=False):
         if not bounds.w or not bounds.h:
             return None
         image = image.subsurface(bounds).copy()
-        scale = 128/max(image.get_size())
+        scale = 256/max(image.get_size())
         return pg.transform.smoothscale(image, (max(1, round(image.get_width()*scale)),
                                                max(1, round(image.get_height()*scale))))
     except (OSError, pg.error):
@@ -51,29 +52,55 @@ def fallback_art(color, habitat):
     return image
 
 
-@lru_cache(maxsize=384)
-def icon_sprite(color, habitat=False, heading=0):
+@lru_cache(maxsize=32)
+def accented_master(color, habitat=False):
     master = icon_master(habitat)
     if master is None:
-        master = fallback_art(color, habitat)
+        return fallback_art(color, habitat)
+    master = master.copy()
+    # Recolour the blue engine/navigation lights, preserving the light hull.
+    # A faction rim at this size would obscure the ship's silhouette.
+    for x in range(master.get_width()):
+        for y in range(master.get_height()):
+            r, g, b, alpha = master.get_at((x, y))
+            cool = min(g, b)-r
+            if alpha and cool > 12 and b > 85:
+                amount = min(1, cool/45)
+                light = max(r, g, b)/255
+                accent = tuple(round((channel*.8+51)*light) for channel in color)
+                mixed = tuple(round(old*(1-amount)+new*amount) for old, new in zip((r, g, b), accent))
+                master.set_at((x, y), (*mixed, alpha))
+    if not habitat:
+        # Keep the two aft lights legible after reduction to a compact icon.
+        width, height = master.get_size()
+        for fraction in (.42, .62):
+            center = (round(width*fraction), round(height*.95))
+            pg.draw.circle(master, color, center, max(1, round(height*.035)))
+            light = tuple(round(channel*.5+127) for channel in color)
+            pg.draw.circle(master, light, center, max(1, round(height*.012)))
+    return master
+
+
+@lru_cache(maxsize=384)
+def icon_sprite(color, habitat=False, heading=0, pixels=ICON_BOX):
+    master = accented_master(color, habitat)
     rotated = pg.transform.rotozoom(master, -heading, 1)
     bounds = rotated.get_bounding_rect(min_alpha=32)
     if bounds.w and bounds.h:
         rotated = rotated.subsurface(bounds).copy()
-    scale = ART_SIZE/max(rotated.get_size())
+    scale = (ART_SIZE*pixels/ICON_BOX)/max(rotated.get_size())
     size = (max(1, round(rotated.get_width()*scale)), max(1, round(rotated.get_height()*scale)))
     artwork = pg.transform.smoothscale(rotated, size)
-    outline = pg.mask.from_surface(artwork, 32).to_surface(
-        setcolor=(*color, 255), unsetcolor=(0, 0, 0, 0))
-    sprite = pg.Surface((ICON_BOX, ICON_BOX), pg.SRCALPHA)
-    rect = artwork.get_rect(center=(ICON_BOX//2, ICON_BOX//2))
-    for offset in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-        sprite.blit(outline, rect.move(offset))
+    sprite = pg.Surface((pixels, pixels), pg.SRCALPHA)
+    rect = artwork.get_rect(center=(pixels//2, pixels//2))
     sprite.blit(artwork, rect)
     return sprite
 
 
 def draw_map_ship(surface, center, color, habitat=False, heading=0):
     # One-degree bins avoid new cache entries from floating-point zoom roundoff.
-    sprite = icon_sprite(tuple(color), habitat, round(heading) % 360)
-    surface.blit(sprite, sprite.get_rect(center=center))
+    scale = surface.scale if isinstance(surface, Canvas) else 1
+    sprite = icon_sprite(tuple(color), habitat, round(heading) % 360,
+                         max(1, round(ICON_BOX*scale)))
+    position = surface.point(center) if isinstance(surface, Canvas) else center
+    pg.Surface.blit(surface, sprite, sprite.get_rect(center=position))

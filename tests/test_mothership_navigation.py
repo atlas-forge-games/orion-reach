@@ -146,7 +146,10 @@ class MothershipSystemTests(unittest.TestCase):
         self.assertEqual(known_owners(game, origin), ('player',))
         self.assertEqual(label_bands(game, origin)[1][0][2], self.app.empire_color('player'))
         x, y = map(int, self.app.star_pos(origin))
-        self.assertEqual(tuple(self.app.canvas.get_at((x+10, y)))[:3], self.app.empire_color('player'))
+        # The thin ring is antialiased, including at fractional interface sizes.
+        ring = tuple(self.app.canvas.get_at((x+10, y)))[:3]
+        self.assertTrue(all(abs(actual-expected) <= 8 for actual, expected in
+                            zip(ring, self.app.empire_color('player'))))
         game.send_ships([s.id for s in game.ships], dest.id)
         self.assertEqual(known_owners(game, origin), ('player',))
         advance(game)

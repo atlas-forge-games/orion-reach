@@ -1,17 +1,42 @@
 """Galaxy name styling based only on the player's current or stored survey."""
 
+from functools import lru_cache
+from math import ceil
 import pygame as pg
 
 from .empires import DEFAULT_PALETTE, EMPIRE_IDS, empire_color
-from .ui import FAINT, INK, MUTED, font, text
+from .ui import FAINT, INK, MUTED, _pixel_font, font, text
+from .display import Canvas
 from . import black_holes, motherships
 
 LABEL_SIZE = 13
 LABEL_FAMILY = "mono_bold"
+ATLAS_LABEL_SIZE = 16
 
 
 def label_font(style="classic"):
-    return (11, "sans") if style == "clean" else (LABEL_SIZE, LABEL_FAMILY)
+    return (ATLAS_LABEL_SIZE, "sans_bold") if style == "clean" else (LABEL_SIZE, LABEL_FAMILY)
+
+
+@lru_cache(maxsize=512)
+def atlas_label(label, pixels):
+    """Rasterize type and its quiet dark outline directly at the display size."""
+    glyphs = _pixel_font(pixels, "sans_bold").render(label, True, INK)
+    edge = max(1, round(pixels/ATLAS_LABEL_SIZE))
+    image = pg.Surface((glyphs.get_width()+2*edge, glyphs.get_height()+2*edge), pg.SRCALPHA)
+    shadow = glyphs.copy()
+    shadow.fill((3, 6, 10, 255), special_flags=pg.BLEND_RGBA_MULT)
+    for dx, dy in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
+        image.blit(shadow, (edge+dx*edge, edge+dy*edge))
+    image.blit(glyphs, (edge, edge))
+    return image
+
+
+def label_size(label, style="classic", scale=1):
+    if style == "clean":
+        image = atlas_label(label, max(1, round(ATLAS_LABEL_SIZE*scale)))
+        return tuple(ceil(n/scale) for n in image.get_size())
+    return font(*label_font(style)).size(label)
 
 
 def system_label(game, system, style="classic"):
@@ -39,6 +64,8 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE, style="cl
     label = system_label(game, system, style)
     if not label:
         return "", ()
+    if style == "clean":
+        return label, ((0, font(*label_font(style)).size(label)[0], INK),)
     owners = known_owners(game, system)
     face = font(*label_font(style))
     width = face.size(label)[0]
@@ -58,6 +85,14 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE, style="cl
 
 
 def draw_system_label(surface, game, system, pos, selected=False, palette=DEFAULT_PALETTE, style="classic"):
+    if style == "clean":
+        label = system_label(game, system, style)
+        if label:
+            scale = surface.scale if isinstance(surface, Canvas) else 1
+            image = atlas_label(label, max(1, round(ATLAS_LABEL_SIZE*scale)))
+            position = surface.point(pos) if isinstance(surface, Canvas) else pos
+            pg.Surface.blit(surface, image, position)
+        return
     label, bands = label_bands(game, system, selected, palette, style)
     size, family = label_font(style)
     x, y = pos

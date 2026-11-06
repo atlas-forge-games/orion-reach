@@ -19,7 +19,7 @@ from orion.galaxy_labels import label_bands
 from orion.model import Ship
 from orion.sensors import Contact
 from orion.storage import Storage
-from orion.ui import text
+from orion.ui import INK, text
 from scenarios import fixed_start_game as new_game, use_nearby_system
 
 
@@ -108,7 +108,7 @@ class MapStyleUITests(unittest.TestCase):
         self.assertEqual(self.app.fleet_selected_ids, {1, 2, 3})
         with patch("orion.galaxy_fleet_view.text", wraps=text) as written:
             self.app.render()
-        self.assertIn("3 / 3 selected", [str(call.args[1]) for call in written.call_args_list])
+        self.assertTrue(any(str(call.args[1]).startswith("3 / 3 selected") for call in written.call_args_list))
         use_nearby_system(self.app.game, 1)
         self.click("star_1")
         self.assertTrue(all(s.destination == 1 and s.departure_pending for s in self.app.game.ships))
@@ -159,8 +159,8 @@ class MapStyleUITests(unittest.TestCase):
                 self.assertEqual(rect.collidelist(siblings), -1)
                 siblings.append(rect)
 
-    def test_clean_labels_keep_fog_and_multicolor_ownership(self):
-        game = self.app.game = new_game(seed=804, fog_of_war=True, with_guardians=False, with_ai=False)
+    def test_atlas_keeps_names_bright_and_surveyed_owners_on_rings(self):
+        game = self.app.game = new_game(seed=804, fog_of_war=True, with_guardians=False, with_ai=True)
         unknown = next(s for s in game.systems if not game.system_explored(s.id))
         self.assertEqual(label_bands(game, unknown, style="clean"), ("", ()))
         shared = game.systems[0]
@@ -172,9 +172,17 @@ class MapStyleUITests(unittest.TestCase):
             self.app.set_galaxy_palette(palette)
             label, bands = label_bands(game, shared, palette=palette, style="clean")
             self.assertEqual(label, "Oberon")
-            self.assertEqual([band[2] for band in bands],
-                             [self.app.empire_color("player"), self.app.empire_color("rival")])
-            self.assertEqual(bands[0][1], bands[1][0])
+            self.assertEqual([band[2] for band in bands], [INK])
+            with patch("orion.app.draw_atlas_star") as drawn:
+                self.app.render()
+            shared_call = next(call for call in drawn.call_args_list
+                               if call.args[1] == self.app.star_pos(shared))
+            self.assertEqual(shared_call.args[4],
+                             (self.app.empire_color("player"), self.app.empire_color("rival")))
+            hidden_call = next(call for call in drawn.call_args_list
+                               if call.args[1] == self.app.star_pos(unknown))
+            self.assertFalse(hidden_call.args[3])
+            self.assertEqual(hidden_call.args[4], ())
 
     def test_sensor_count_appears_only_after_click(self):
         from orion.sensor_view import draw_contacts

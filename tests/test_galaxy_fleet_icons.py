@@ -12,7 +12,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame as pg
 from orion import navigation
-from orion.galaxy_fleet_icons import flight_heading, icon_master, icon_sprite
+from orion.galaxy_fleet_icons import accented_master, flight_heading, icon_master, icon_sprite
 from orion.galaxy_fleet_view import draw_map_fleets, fleet_markers, star_label_rects
 from orion.model import Ship
 from scenarios import fixed_start_game as new_game
@@ -42,16 +42,18 @@ class FleetIconTests(unittest.TestCase):
             self.assertIsNotNone(icon_master(habitat))
             for heading in range(0, 360, 45):
                 sprite = icon_sprite((44, 164, 255), habitat, heading)
-                self.assertEqual(sprite.get_size(), (22, 22))
+                self.assertEqual(sprite.get_size(), (28, 28))
                 self.assertEqual(sprite.get_at((0, 0)).a, 0)
-                self.assertTrue(pg.Rect(0, 0, 22, 22).contains(sprite.get_bounding_rect()))
-                pixels = {tuple(sprite.get_at((x, y))) for x in range(22) for y in range(22)
+                self.assertTrue(pg.Rect(0, 0, 28, 28).contains(sprite.get_bounding_rect()))
+                pixels = {tuple(sprite.get_at((x, y))) for x in range(28) for y in range(28)
                           if sprite.get_at((x, y)).a > 100}
                 self.assertGreater(len(pixels), 20)
         icon_sprite.cache_clear()
+        accented_master.cache_clear()
         with patch("orion.galaxy_fleet_icons.icon_master", return_value=None):
             self.assertGreater(pg.mask.from_surface(icon_sprite((250, 168, 111), False, 90)).count(), 20)
         icon_sprite.cache_clear()
+        accented_master.cache_clear()
 
     def test_dock_offset_survives_labels_zoom_and_pan(self):
         home = self.game.systems[0]
@@ -60,7 +62,7 @@ class FleetIconTests(unittest.TestCase):
             self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
             self.app.map_camera.pan(13, -7, self.app.map_rect)
             before, anchor = self.markers()[10]
-            self.assertEqual(before.center, (round(anchor[0]+30), round(anchor[1]+24)))
+            self.assertEqual(before.center, (round(anchor[0]+30), round(anchor[1]+30)))
             home.name = "The Long Named Docking System"
             labels = star_label_rects(self.app, self.app.map_rect)
             self.assertEqual(self.markers()[10][0], before)
@@ -121,7 +123,7 @@ class FleetIconTests(unittest.TestCase):
         ship.system_id, ship.destination, ship.turns_remaining = 1, None, 0
         docked, anchor = self.markers()[10]
         self.assertNotEqual(docked, moving)
-        self.assertEqual(docked.center, (round(anchor[0]+30), round(anchor[1]+24)))
+        self.assertEqual(docked.center, (round(anchor[0]+30), round(anchor[1]+30)))
         self.assertEqual(flight_heading(self.app, ship), 0)
 
     def test_viewport_clips_the_hit_target_without_sliding_the_dock(self):
@@ -131,7 +133,7 @@ class FleetIconTests(unittest.TestCase):
         self.app.map_camera.pan(self.app.map_rect.right-35-self.app.star_pos(home)[0], 0, self.app.map_rect)
         self.app.render()
         rect, anchor = self.markers()[10]
-        self.assertEqual(rect.center, (round(anchor[0]+30), round(anchor[1]+24)))
+        self.assertEqual(rect.center, (round(anchor[0]+30), round(anchor[1]+30)))
         self.assertGreater(rect.right, self.app.map_rect.right)
         button = next(b for b in self.app.buttons if b.key == "map_fleet_10")
         self.assertEqual(button.rect, rect.clip(self.app.map_rect))

@@ -9,7 +9,7 @@ from .fleet_art import ship_icon
 from .monster_art import draw_guardian_symbol
 from .fleets import group_fleets
 from .model import PLAYER, RIVAL
-from .galaxy_labels import label_font, system_label
+from .galaxy_labels import label_size, system_label
 from .galaxy_style import clean_map, map_style
 from .galaxy_fleet_icons import ICON_BOX, draw_map_ship, flight_heading, visible_course
 from . import monsters, navigation, black_holes, hyperlanes
@@ -21,8 +21,8 @@ from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
 FLEET_SHIPS_PER_PAGE = 6
-DOCK_OFFSET = (30, 24)
-DOCK_SPACING = 24
+DOCK_OFFSET = (30, 30)
+DOCK_SPACING = 32
 DOCK_COLUMNS = 3
 
 
@@ -226,9 +226,10 @@ def star_label_rects(app, map_rect):
     preferred = []
     for system in named_systems:
         x, y = app.star_pos(system)
-        width, height = font(*label_font(style)).size(system_label(app.game, system, style))
+        width, height = label_size(system_label(app.game, system, style), style, app.canvas.scale)
         top = round(y)-height//2 if style == "clean" else round(y)-9
-        preferred.append((round(x)+(34 if system.kind == black_holes.KIND else 17), top, width, height))
+        offset = 36 if system.kind == black_holes.KIND else 24 if style == "clean" else 17
+        preferred.append((round(x)+offset, top, width, height))
     rectangles = marker_layout(tuple(map_rect.inflate(-10, -10)),
                                tuple(tuple(r) for r in obstacles), tuple(preferred))
     return {s.id: pg.Rect(rect) for s, rect in zip(named_systems, rectangles)}
@@ -397,9 +398,9 @@ def draw_map_fleets(app, map_rect):
             color = GOLD
         if compact:
             if selected:
-                pg.draw.circle(surface, color, rect.center, 10, 1)
+                pg.draw.rect(surface, color, rect, 1, border_radius=3)
             habitat = any(s.habitat is not None for s in ships)
-            draw_map_ship(surface, rect.center, color, habitat, flight_heading(app, ships[0]))
+            draw_map_ship(surface, rect.center, app.empire_color(ships[0].owner), habitat, flight_heading(app, ships[0]))
             app.map_button(f"map_fleet_{ships[0].id}", rect,
                            lambda sid=ships[0].id: app.open_map_fleet(sid))
             continue
