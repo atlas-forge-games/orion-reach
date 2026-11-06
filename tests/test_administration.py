@@ -13,7 +13,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 from orion import administration as admin, balance, economy, population, statistics
 from orion.model import new_game, Ship, GameState, SaveError
 from orion.research import gross_colony_yields
-from orion.storage import Storage
+from orion.storage import Storage, SAVE_VERSION
 
 
 def campaign(**kwargs):
@@ -48,6 +48,29 @@ class AdministrationTests(unittest.TestCase):
         self.assertEqual(self.game.strain_report(self.home).total, 0)
         self.assertEqual(self.game.planet_yields(self.home), (4, 8, 0))
         self.assertEqual(self.game.system_integration, {})
+
+    def test_strain_inspector_uses_current_cap_relief_and_integration(self):
+        from orion.strain_info import describe
+        colony = settle(self.game, self.ids[0], ly=42)
+        colony.buildings = ["administration_centre"]
+        before = self.game.to_dict()
+        info = describe(self.game, colony)
+        self.assertEqual(info.total, 75)
+        body = "\n".join(info.lines)
+        self.assertIn("Combined before cap: 98.0% · Cap: 90%", body)
+        self.assertIn("Facility relief: 15 percentage points", body)
+        self.assertIn("integration in 8 turns", body)
+        self.assertIn("Research: 75.0% · Credits: 75.0%", body)
+        self.assertIn("Industry: 37.5% · Resources: 37.5% · Food: 18.8%", body)
+        self.assertEqual(self.game.to_dict(), before)
+        colony.disabled_buildings = [0]
+        self.assertEqual(describe(self.game, colony).total, 90)
+        colony.disabled_buildings = []
+        self.game.turn += 8
+        self.game.systems[self.ids[0]].x = self.game.systems[0].x+14/140
+        info = describe(self.game, colony)
+        self.assertAlmostEqual(info.total, 7)
+        self.assertIn("This system is fully integrated.", info.lines)
 
     def test_first_new_system_adds_eight_points_everywhere(self):
         colony = settle(self.game, self.ids[0], ly=7)
@@ -242,7 +265,7 @@ class AdministrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             restored, metadata = storage.load(storage.save(self.game))
-        self.assertEqual(metadata["version"], 52)
+        self.assertEqual(metadata["version"], SAVE_VERSION)
         self.assertEqual(restored.system_integration, self.game.system_integration)
         self.assertEqual(restored.strain_report(restored.planet_at(self.ids[0], 0)), self.game.strain_report(colony))
 
@@ -348,9 +371,7 @@ class AdministrationInterfaceTests(unittest.TestCase):
         app.render()
 
     def test_breakdown_is_private_and_keeps_building_controls_clear(self):
-        import pygame as pg
         from unittest.mock import patch
-        from orion.planet_view import text
         from orion.buildings import BUILDINGS
         game, app = self.game, self.app
         home = game.planet_at(0, 2)
@@ -361,19 +382,91 @@ class AdministrationInterfaceTests(unittest.TestCase):
                    list(BUILDINGS)[:home.building_capacity])
         for buildings in layouts:
             home.buildings = buildings
-            with patch("orion.planet_view.text", wraps=text) as drawn:
-                app.render()
-                self.assertTrue(any("ADMINISTRATION" in str(call.args[1]) for call in drawn.call_args_list))
-            footer = pg.Rect(40, 728, 900, 100)
+            app.render()
+            indicator = next(b for b in app.buttons if b.key == "planet_strain")
             buttons = [b for b in app.buttons if b.key.startswith("surface_")]
             for i, button in enumerate(buttons):
-                self.assertFalse(button.rect.colliderect(footer), button.key)
+                self.assertFalse(button.rect.colliderect(indicator.rect), button.key)
                 for other in buttons[i+1:]:
                     self.assertFalse(button.rect.colliderect(other.rect), (button.key, other.key))
         game.selected_system = game.opponent.home_system
         app.open_planet(game.opponent.home_planet)
         with patch.object(game, "strain_report", side_effect=AssertionError("Private enemy breakdown")):
             app.render()
+            self.assertNotIn("planet_strain", [b.key for b in app.buttons])
+            app.show_strain_info()
+            self.assertIsNone(app.dialog)
+
+    def test_strain_right_click_preserves_workers_and_state_at_each_scale(self):
+        import pygame as pg
+        from unittest.mock import patch
+        from orion.strain_info import describe
+        game, app = self.game, self.app
+        app.settings["autosave"] = app.settings["animated_background"] = False
+        app.open_planet(2)
+        home = game.planet_at(0, 2)
+        for window, scale in (((1920, 1080), 100), ((1280, 800), 175), ((900, 1200), 125)):
+            with self.subTest(window=window, scale=scale):
+                app.window = pg.display.set_mode(window)
+                app.settings["ui_scale"] = scale
+                app.keyboard_mode = False
+                app.render()
+                indicator = next(b for b in app.buttons if b.key == "planet_strain")
+                app.display_view.ensure_visible(indicator.rect)
+                app.render()
+                app.present()
+                pos = app.window_pos(indicator.rect.center)
+                self.assertTrue(app.window.get_rect().collidepoint(pos))
+                app.focus = "worker_workers"
+                app.worker_source, app.worker_count = "workers", 2
+                before = game.to_dict()
+                with patch.object(app, "save_game", side_effect=AssertionError("Inspection saved state")):
+                    for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
+                        app.handle_event(pg.event.Event(kind, button=3, pos=pos))
+                    self.assertEqual(app.dialog["strain_info"], describe(game, home))
+                    app.render()
+                    app.present()
+                    self.assertEqual(app.display_view.maximum, [0, 0])
+                    for button in app.buttons:
+                        visible = app.canvas.rect(button.rect).move(app.viewport.topleft)
+                        self.assertTrue(app.window.get_rect().contains(visible), button.key)
+                    next_page = next((b for b in app.buttons if b.key == "dialog_strain_next"), None)
+                    if scale == 175:
+                        self.assertIsNotNone(next_page)
+                        self.assertTrue(next_page.enabled)
+                        next_pos = app.window_pos(next_page.rect.center)
+                        for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
+                            app.handle_event(pg.event.Event(kind, button=1, pos=next_pos))
+                        self.assertEqual(app.dialog["info_page"], 1)
+                        app.render()
+                        app.present()
+                    app.handle_event(pg.event.Event(pg.MOUSEBUTTONUP, button=3, pos=(window[0]//2, window[1]//2)))
+                    self.assertIsNone(app.dialog)
+                    self.assertEqual(app.focus, "worker_workers")
+                self.assertEqual((app.worker_source, app.worker_count), ("workers", 2))
+                self.assertEqual(game.to_dict(), before)
+        app.render()
+        app.focus, app.keyboard_mode = "planet_strain", True
+        app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_RETURN, mod=0))
+        self.assertIn("strain_info", app.dialog)
+        app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_ESCAPE, mod=0))
+        self.assertIsNone(app.dialog)
+        self.assertEqual(app.focus, "planet_strain")
+
+    def test_stored_survey_cannot_open_strain_inspector(self):
+        from unittest.mock import patch
+        from orion import exploration
+        game = self.app.game = campaign(fog_of_war=True)
+        sid, pid = game.opponent.home_system, game.opponent.home_planet
+        exploration.record_survey(game, sid, "player")
+        game.selected_system = sid
+        self.app.open_planet(pid)
+        self.assertFalse(game.system_visible(sid))
+        with patch.object(game, "strain_report", side_effect=AssertionError("Hidden strain")):
+            self.app.render()
+            self.assertNotIn("planet_strain", [b.key for b in self.app.buttons])
+            self.app.show_strain_info()
+            self.assertIsNone(self.app.dialog)
 
 
 if __name__ == "__main__":

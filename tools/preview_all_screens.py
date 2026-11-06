@@ -82,6 +82,7 @@ def screen_states(app):
     app.screen = 'planet'
     for name, show in (
         ('population_info', app.show_population_info),
+        ('strain_info', app.show_strain_info),
         ('building_info', lambda: app.show_building_info('surface_factory')),
         ('output_breakdown', lambda: app.show_output_breakdown('industry')),
         ('alignment', app.show_alignment),

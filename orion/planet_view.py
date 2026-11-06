@@ -95,16 +95,15 @@ def empire_stockpile(app, rect):
     game, surface = app.game, app.canvas
     rect = pg.Rect(rect)
     panel(surface, rect)
-    text(surface, "EMPIRE", (rect.x+10, rect.y+6), 9, MUTED, "mono")
-    text(surface, "STOCKPILE", (rect.x+10, rect.y+21), 9, MUTED, "mono")
     income, research = game.empire_rates
     items = (("credits", "Credits", game.credits, income, GOLD),
              ("resources", "Resources", game.resources, game.resource_rate(), ROLE_COLORS["miners"]),
              ("research", "Research", game.research, research, SCIENCE))
-    width = (rect.w-100)//len(items)
+    width = (rect.w-16)//len(items)
     for index, (kind, label, amount, rate, color) in enumerate(items):
-        x = rect.x+100+index*width
-        pg.draw.line(surface, LINE, (x, rect.y+6), (x, rect.bottom-6))
+        x = rect.x+8+index*width
+        if index:
+            pg.draw.line(surface, LINE, (x, rect.y+6), (x, rect.bottom-6))
         resource_icon(surface, kind, (x+15, rect.y+19), color, .45)
         text(surface, f"{label} {amount:,}", (x+30, rect.y+3), 12, RED if amount < 0 else color)
         text(surface, f"{rate:+,} / turn"+(" net" if kind != "research" else ""),
@@ -145,8 +144,6 @@ def system_panel(app, game, system, planet, live):
             text(app.canvas, shorten(detail, 198, 14), (64, y+18), 14, MUTED)
         basic = "ORB" if world.orbital_station else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
         text(app.canvas, basic, (255, label_y+1), 14, color, right=True)
-    if len(system.worlds) <= 4:
-        text(app.canvas, "COLORS IDENTIFY EACH EMPIRE", (38, 272), 9, MUTED, "mono")
 
 
 def workforce_panel(app, game, planet, live):
@@ -162,7 +159,6 @@ def workforce_panel(app, game, planet, live):
     app.button("population_info", "", POPULATION_RECT, app.show_population_info, "hotspot")
     text(surface, "NATIVE POP." if planet.slaves else "POPULATION", (308, 67), 10, GOLD, "mono")
     text(surface, population_summary(planet, food), (408, 60), 19, INK)
-    text(surface, "Right-click: growth", (1042, 67), 9, MUTED, right=True)
     needs_food = game.bonuses_for(planet.owner or PLAYER).get("food_use_percent", 0) > -100
     upkeep = game.planet_maintenance(planet)
     outputs = [("credits", "NET CREDITS", f"{credits:+}" if live else "—",
@@ -203,7 +199,6 @@ def workforce_panel(app, game, planet, live):
     details = {"farmers": f"{farmer_output(planet, benefits):g} base food each" if needs_food else "food not required",
                "workers": f"{research_balance.WORKER_INDUSTRY+staff.industry:g} base IND each", "scientists": f"{research_balance.SCIENTIST_RESEARCH+staff.research:g} base RP each",
                "miners": f"{economy.miner_output(planet, benefits):g} base RES each"}
-    preview = None
     for role in WORKER_ROLES:
         rect = worker_row_rect(role)
         y = rect.y
@@ -216,7 +211,6 @@ def workforce_panel(app, game, planet, live):
         selected = min(count, app.worker_count) if app.worker_source == role else 0
         if active and not app.worker_source:
             selected = worker_selection_count(count, None if app.keyboard_mode else app.mouse[0])
-            preview = role, selected
         if active or app.worker_source == role:
             panel(surface, button.rect, (23, 38, 45), color)
         text(surface, ROLE_LABELS[role], (314, y+9), 10, color, "mono")
@@ -241,18 +235,15 @@ def workforce_panel(app, game, planet, live):
     if not live:
         caption = f"Stored survey · {planet.workforce} B inhabitants last observed. Current production is unknown."
     elif not planet.colonized:
-        caption = f"{BASE_FOOD[planet.biome]} natural food · Establish a colony to assign workers."
+        caption = f"{BASE_FOOD[planet.biome]} natural food"
     elif not owned:
         caption = "Foreign colony · Worker assignments are read-only."
     elif app.worker_source:
-        caption = f"{app.worker_count} selected from {ROLE_LABELS[app.worker_source].lower()} · Click destination · ←/→ quantity · Same row / Esc cancels"
-    elif preview:
-        caption = f"Select {preview[1]} from {ROLE_LABELS[preview[0]].lower()} · Click here, then click the destination job."
+        caption = f"{app.worker_count} selected · {ROLE_LABELS[app.worker_source].lower()}"
     else:
-        caption = "Left-click: assign workers. Right-click population, a row or a total for details."
-        if planet.slaves:
-            caption = f"+{planet.slaves} billion slaves · Left-click: workers. Right-click: population / outputs."
-    text(surface, shorten(caption, 742, 11), (302, 279), 11, MUTED)
+        caption = f"+{planet.slaves} billion slaves" if planet.slaves else ""
+    if caption:
+        text(surface, shorten(caption, 742, 11), (302, 279), 11, MUTED)
 
 
 def construction_panel(app, game, system, planet, live):
@@ -315,15 +306,15 @@ def construction_panel(app, game, system, planet, live):
         text(surface, shorten(game.construction_status(planet) if owned or game.is_observer else "Last observed project", 310, 11), (1090, 232), 11, GOLD)
     else:
         text(surface, "No project observed" if not live else "Choose production" if owned else "No active project" if planet.colonized else "Unsettled world", (1090, 97), 22, INK)
-        paragraph(surface, "Send a ship to refresh this survey." if not live else
-                  "This civilization chooses its own construction and worker assignments." if game.is_observer and planet.colonized else
-                  "An unsettled world. Watch which civilization reaches it first." if game.is_observer else
-                  ("Build a module or launch a ship from this mothership." if planet.habitat else "Build a structure or launch a ship from this colony.") if owned else
-                  "Defeat the space defenses, then use the actions below to board, raid or destroy this mobile home." if planet.habitat else
-                  f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
-                  "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
-                  "A colony ship settles this world. An outpost ship builds a surface refuelling base.",
-                  (1090, 143), 306, 14, MUTED, 25)
+        if not owned:
+            paragraph(surface, "Send a ship to refresh this survey." if not live else
+                      "This civilization chooses its own construction and worker assignments." if game.is_observer and planet.colonized else
+                      "An unsettled world. Watch which civilization reaches it first." if game.is_observer else
+                      "Defeat the space defenses, then use the actions below to board, raid or destroy this mobile home." if planet.habitat else
+                      f"Active shield: {defenses.effective_shield(game, planet)} points. Clear orbital defenders before landing troops." if planet.colonized else
+                      "The Varkesh cannot colonize. Raid inhabited worlds for captives and credits." if raiding.is_varkesh(game) else
+                      "A colony ship settles this world. An outpost ship builds a surface refuelling base.",
+                      (1090, 143), 306, 14, MUTED, 25)
     if game.is_observer:
         if planet.colonized:
             app.button("observer_planet_empire", "Inspect civilization", (1090, 257, 310, 29),
@@ -387,19 +378,8 @@ def draw_planet_overview(app):
         from .gas_giant_view import draw_stations
         draw_stations(app, game, system, planet, live)
     if show_administration:
-        from .administration import MAX_STRAIN
         strain = game.strain_report(planet)
-        panel(surface, (40, 706, 900, 100), (10, 23, 30))
-        text(surface, f"ADMINISTRATION · {strain.total:.1f}% STRAIN · {strain.systems} settled systems",
-             (52, 718), 12, GOLD, "mono")
-        reduction = f" · facilities −{strain.relief:g} points" if strain.relief else ''
-        text(surface, f"Empire {strain.empire:g}% + integration {strain.integration:g}% + local distance {strain.distance:.1f}% · cap {MAX_STRAIN:g}%"+reduction,
-             (52, 741), 12, INK)
-        text(surface, f"Output loss: RP {strain.loss('research'):.1f}% · CR {strain.loss('credits'):.1f}% · IND {strain.loss('industry'):.1f}% · RES {strain.loss('mining'):.1f}% · food {strain.loss('food'):.1f}%",
-             (52, 762), 12, MUTED)
-        location = f"Capital: {strain.capital} · {strain.distance_ly:.1f} ly away"
-        location += f" · This system integrates in {strain.integration_remaining} turns" if strain.integration_remaining else " · This system integrated"
-        text(surface, shorten(location, 876, 11), (52, 784), 11, CYAN)
+        app.button("planet_strain", f"Strain {strain.total:.1f}%", (40, 706, 210, 50), app.show_strain_info)
     if planet.owner == PLAYER and live:
         from . import specialists
         leader = next((p for p in specialists.employed(game) if p.spec.role == "leader"
@@ -457,10 +437,6 @@ def draw_planet_overview(app):
     else:
         suitability = 'Growth varies by species' if game.is_observer else f'Your species: {factor}% growth efficiency'
         text(surface, shorten(f"{planet.building_capacity} building slots · {suitability} · {planet.orbit_au:.2f} AU", 789, 12, "sans"), (24, 832), 12, MUTED)
-    hint = "E: End turn · R: Research · I: Empire · P: Menu · F5: Save"
-    if live and planet.owner == PLAYER and not game.is_observer:
-        hint = "Click open ground to build here · E: End turn · F5: Save"
-    text(surface, shorten(hint if planet.is_gas_giant else "Click buildings to manage · Right-click for info · "+hint, 780, 11), (24, 857), 11, MUTED)
     if planet.colonized:
         from .accession_view import open_panel
         app.button("planet_populations", "Populations", (954, 766, 204, 39),

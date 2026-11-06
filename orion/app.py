@@ -2033,6 +2033,22 @@ class App:
         self.pressed=None
         self.buttons=[]
 
+    def show_strain_info(self):
+        from .strain_info import describe
+        if self.dialog or not self.game or self.screen!="planet" or self.game.selected_planet is None:
+            return
+        game=self.game
+        if not self.selected_habitat() and not game.system_visible(game.selected_system):
+            return
+        planet=game.planet_at(game.selected_system,game.selected_planet)
+        if not planet.colonized or (planet.owner!=PLAYER and not game.is_observer):
+            return
+        self.dialog={"strain_info":describe(game,planet),"info_page":0,"return_focus":self.focus}
+        self.focus="dialog_cancel"
+        self.keyboard_mode=True
+        self.pressed=None
+        self.buttons=[]
+
     def show_output_breakdown(self,kind):
         from .production_breakdown import describe
         planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
@@ -2399,10 +2415,13 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "population_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "population_info" in self.dialog or "strain_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
                     self.cancel_dialog()
             else:
                 if self.screen=="planet":
+                    if any(b.key=="planet_strain" and b.rect.collidepoint(self.mouse) for b in self.buttons):
+                        self.show_strain_info()
+                        return
                     from .population_info import POPULATION_RECT
                     if pg.Rect(POPULATION_RECT).collidepoint(self.mouse):
                         self.show_population_info()
@@ -3120,6 +3139,10 @@ class App:
             from .population_info import draw
             draw(self)
             return
+        if "strain_info" in self.dialog:
+            from .strain_info import draw
+            draw(self)
+            return
         if "building_info" in self.dialog:
             from .building_info import draw
             draw(self)
@@ -3174,6 +3197,9 @@ class App:
         if 'body' in self.dialog and 'title' in self.dialog:
             _, height = self.message_size(available[0])
             logical = (available[0], max(available[1], height+32))
+            layout = None
+        elif 'strain_info' in self.dialog:
+            logical = (max(400, available[0]), max(360, available[1]))
             layout = None
         else:
             logical = SIZE
