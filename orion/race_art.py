@@ -8,11 +8,18 @@ from .races import SETUP_RACES as RACES
 from .ui import ASSETS
 
 
+PORTRAIT_FILES = {
+    "concord": "concord-v2.jpeg",
+    "aetheri": "aetheri-v2.jpeg",
+}
+
+
 @lru_cache(maxsize=len(RACES))
 def _load_portrait(race_id):
     # Resolve beside the source, so launching from another directory also works.
+    filename = PORTRAIT_FILES.get(race_id, f"{race_id}-v1.png")
     try:
-        return pg.image.load(str(ASSETS / "portraits" / f"{race_id}-v1.png"))
+        return pg.image.load(str(ASSETS / "portraits" / filename))
     except (OSError, pg.error):
         return None
 
@@ -30,7 +37,7 @@ def _scaled_portrait(race_id, size):
 
 
 def draw_race_portrait(surface, race_id, rect):
-    """Fit a portrait without stretching; missing or damaged PNGs use a seal."""
+    """Fit a portrait without stretching; missing or damaged images use a seal."""
     rect = pg.Rect(rect)
     if getattr(surface, 'layout', None):
         fitted = rect.fit(surface.slot(rect))

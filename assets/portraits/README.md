@@ -1,4 +1,4 @@
-# Orion Reach — race portraits v1
+# Age of the Stars — race portraits
 
 Thirteen race portraits and one Observer portrait. The collection includes
 supplied illustrations and artwork generated during development. See
@@ -17,26 +17,39 @@ root to place the files under assets/portraits/.
 | Wanderers | wanderers-v1.png |
 | Xenonflora | xenonflora-v1.png |
 | Nexus | nexus-v1.png |
-| Aetheri | aetheri-v1.png |
-| Dominion of One | concord-v1.png |
+| Aetheri | aetheri-v2.jpeg |
+| Dominion of One | concord-v2.jpeg |
 | Serevan Union | serevan-v1.png |
 | Skirr Swarm | skirr-v1.png |
 | The Remnant | remnant-v1.png |
 | The Observer (spectator mode) | observer-v1.png |
 
-Each file is an unmodified PNG; supplied artwork is preserved as provided.
+Portraits use PNG or JPEG files; supplied artwork is preserved as provided.
 The renderer preserves their aspect ratio and caches loaded and scaled images.
 Missing or unreadable images fall back to the matching procedural race emblem.
-To replace a portrait, keep its filename and restart the game. The filename stem
-before `-v1` is the stable race ID. The current portraits depict Aelari as a blue
+To replace a portrait, keep its active filename above and restart the game.
+The filename stem before the version suffix is the stable race ID. The current portraits depict Aelari as a blue
 aquatic envoy, Lithar as jagged living stone with glowing amber seams, Varkesh as tusked warlords in
 battered armor beneath red clan banners,
 Wanderers are mothlike navigators, Xenonflora are a bioluminescent ecosystem
 with luminous branching structures and flowering canopies above an alien world,
-Nexus are linked floating machines, Aetheri are loops of luminous energy,
-the Concord are symbiotic organisms, and the Remnant is a purple humanoid
-survivor with an ornate circular gold headpiece. Earlier portrait drafts
-are not included in the game.
+Nexus are linked floating machines, Aetheri are a luminous energy being with
+violet eyes, Dominion of One is a collective of faces surrounding a central
+envoy, and the Remnant is a purple humanoid survivor with an ornate circular
+gold headpiece. The shared renderer selects the active files listed above.
+
+## Dominion of One and Aetheri portrait update — v0.94.3
+
+The supplied `dominion_of_one.jpeg` (1280 × 1536) and `atheri.jpeg`
+(1254 × 1254) are copied byte-for-byte to `concord-v2.jpeg` and
+`aetheri-v2.jpeg`. Dominion of One retains the stable internal race ID
+`concord`; Aetheri retains `aetheri`. The JPEGs are selected through the shared
+portrait loader, so every screen uses the replacement after restarting.
+
+The complete images retain their original proportions. The taller Dominion
+portrait has space at the sides when fitted into a square frame. No crop,
+rescaling, recoloring or recompression is baked into the supplied files.
+Older `concord-v1.png` and `aetheri-v1.png` files are no longer selected.
 
 ## Xenonflora portrait update — v0.72.2
 

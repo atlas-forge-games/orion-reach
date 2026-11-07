@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.94.2
+# Age of the Stars — Python prototype 0.94.3
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,17 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.94.3 — Dominion of One and Aetheri portraits
+
+Dominion of One and Aetheri use the newly supplied portraits throughout race
+selection, diplomacy, first contact and other empire views. The original JPEGs
+are preserved at full resolution and fitted to each frame with their original
+proportions.
+
+Extract this incremental update over **v0.94.2**, then restart the game.
+Existing campaigns use the new portraits automatically. Save format remains
+**62**. See [the update notes](docs/dominion-aetheri-portraits.md).
 
 ## New in v0.94.2 — civilization details
 
