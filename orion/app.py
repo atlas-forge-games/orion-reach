@@ -127,6 +127,7 @@ class App:
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
+        self.production_info_regions=[]
         self.focus=None
         self.keyboard_mode=False
         self.mouse=(-1,-1)
@@ -2235,6 +2236,29 @@ class App:
         self.confirm("Buy current production?",f"Finish {name} immediately for {price} credits (2 CR per remaining work). "
                      f"Also reserves {project.needs_resources} Resources if not already reserved. Other queued projects are kept.","Buy",buy)
 
+    def show_production_info(self,identifier):
+        if self.dialog or self.screen!="production" or self.game.selected_planet is None:
+            return
+        planet=self.game.planet_at(self.game.selected_system,self.game.selected_planet)
+        if identifier=="trade_goods":
+            from .production import TRADE_GOODS_PERCENT
+            body=(f"Converts {TRADE_GOODS_PERCENT}% of this colony's industry into credits, then applies local credit strain "
+                  f"and rounds down. Current income: +{self.game.trade_goods_income(planet)} CR / turn. "
+                  "Queued projects keep their progress while Trade Goods is active. "
+                  "Add a project or select a queued project to resume construction.")
+            self.show_resource_detail("Trade Goods",body,self.focus)
+            self.dialog["production_info"]=identifier
+        elif identifier in BUILDINGS:
+            from .building_info import describe_project
+            info=describe_project(self.game,planet,identifier)
+            self.dialog={"building_info":info,"info_page":0,"return_focus":self.focus}
+            self.focus="dialog_close"
+            self.buttons=[]
+            self.pressed=None
+        else:
+            return
+        self.keyboard_mode=True
+
     def show_building_info(self,key):
         from .building_info import describe
         if self.dialog or self.screen!="planet" or self.game.selected_planet is None:
@@ -2417,9 +2441,15 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.pressed=None
             if self.dialog:
-                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "population_info" in self.dialog or "strain_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
+                if "technology" in self.dialog or "designer_info" in self.dialog or "output_breakdown" in self.dialog or "building_info" in self.dialog or "production_info" in self.dialog or "population_info" in self.dialog or "strain_info" in self.dialog or "alignment_info" in self.dialog or 'diplomatic_affairs' in self.dialog:
                     self.cancel_dialog()
             else:
+                if self.screen=="production":
+                    identifier=next((item for item,rect in reversed(self.production_info_regions)
+                                     if rect.collidepoint(self.mouse)),None)
+                    if identifier:
+                        self.show_production_info(identifier)
+                        return
                 if self.screen=="planet":
                     if any(b.key=="planet_strain" and b.rect.collidepoint(self.mouse) for b in self.buttons):
                         self.show_strain_info()
@@ -3194,7 +3224,7 @@ class App:
             _, height = self.message_size(available[0])
             logical = (available[0], max(available[1], height+32))
             layout = None
-        elif 'strain_info' in self.dialog:
+        elif 'strain_info' in self.dialog or 'building_info' in self.dialog:
             logical = (max(400, available[0]), max(360, available[1]))
             layout = None
         else:
@@ -3256,6 +3286,7 @@ class App:
         self.buttons=[]
         self.technology_regions=[]
         self.module_regions=[]
+        self.production_info_regions=[]
         self.canvas.text_regions=[]
         if self.screen not in ("splash", "menu"):
             full=self.screen not in (*GAME_SCREENS,"pause")

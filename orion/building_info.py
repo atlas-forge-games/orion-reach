@@ -2,6 +2,7 @@
 
 from collections import Counter
 from dataclasses import dataclass
+import pygame as pg
 
 from .buildings import BUILDINGS
 from .building_art import draw_building_art
@@ -18,6 +19,24 @@ class BuildingInfo:
     location: str
     sections: tuple[tuple[str, str], ...]
     habitat: bool = False
+
+
+def describe_project(game, planet, identifier):
+    """Preview a catalogue building without adding it to the colony or queue."""
+    from .colony_view import compact_yields
+    from .research import building_maintenance
+    spec = BUILDINGS[identifier]
+    sections = [('PURPOSE', spec.description),
+                ('OUTPUT AT FULL POWER', compact_yields(game, spec, planet))]
+    if bonus := spec.workforce_text(planet.richness):
+        sections.append(('WORKFORCE BONUS', bonus))
+    upkeep = building_maintenance(identifier, game.bonuses_for(planet.owner))
+    sections.extend((
+        ('UPKEEP & POWER', f'{upkeep} Credits / turn · {spec.energy_use} energy demand'),
+        ('CONSTRUCTION', f'{game.project_price(identifier)} Resources · {spec.work_cost} work'),
+    ))
+    location = planet.name+(' · Module project' if planet.habitat else ' · Building project')
+    return BuildingInfo(identifier, display_name(spec, planet.habitat), location, tuple(sections), planet.habitat)
 
 
 def describe(game, system_id, planet, key, *, live):
@@ -83,26 +102,35 @@ def describe(game, system_id, planet, key, *, live):
 
 def draw(app):
     info, surface = app.dialog['building_info'], app.canvas
-    panel(surface, (260, 100, 920, 700), PANEL, GOLD)
-    text(surface, 'MODULE INFORMATION' if info.habitat else 'BUILDING INFORMATION', (294, 125), 11, GOLD, 'mono', 1)
-    text(surface, shorten(info.title, 660, 30, 'title'), (294, 154), 30, INK, 'title')
-    text(surface, shorten(info.location, 660, 13), (294, 199), 13, CYAN)
-    draw_building_art(surface, info.identifier, (982, 127, 158, 112), habitat=info.habitat)
+    width, height = surface.get_size()
+    bounds = pg.Rect(0, 0, min(920, width-32), min(700, height-32))
+    bounds.center = width//2, height//2
+    left, top = bounds.x+24, bounds.y
+    panel(surface, bounds, PANEL, GOLD)
+    text(surface, 'MODULE INFORMATION' if info.habitat else 'BUILDING INFORMATION', (left, top+16), 11, GOLD, 'mono', 1)
+    text(surface, shorten(info.title, bounds.w-204, 30, 'title'), (left, top+38), 30, INK, 'title')
+    text(surface, shorten(info.location, bounds.w-204, 13), (left, top+78), 13, CYAN)
+    draw_building_art(surface, info.identifier, (bounds.right-160, top+12, 136, 90), habitat=info.habitat)
     rows = []
     for heading, body in info.sections:
         rows.append((heading, GOLD))
-        rows.extend((line, INK) for line in wrapped_lines(body, 842, 15))
+        rows.extend((line, INK) for line in wrapped_lines(body, bounds.w-48, 15))
         rows.append(('', MUTED))
-    per_page = 19
+    if rows:
+        rows.pop()
+    leading = 21 if bounds.h < 600 else 23
+    per_page = max(1, (bounds.h-180)//leading)
     last = max(0, (len(rows)-1)//per_page)
     page = min(last, max(0, app.dialog.get('info_page', 0)))
     for i, (line, color) in enumerate(rows[page*per_page:(page+1)*per_page]):
-        text(surface, line, (294, 258+i*23), 15, color)
+        text(surface, line, (left, top+116+i*leading), 15, color)
+    controls_y = bounds.bottom-58
     if last:
-        app.button('dialog_building_previous', '←', (294, 733, 52, 40),
+        app.button('dialog_building_previous', '←', (left, controls_y, 42, 40),
                    lambda: app.dialog.update(info_page=page-1), enabled=page > 0)
-        text(surface, f'{page+1} / {last+1}', (361, 746), 12, MUTED)
-        app.button('dialog_building_next', '→', (418, 733, 52, 40),
+        text(surface, f'{page+1} / {last+1}', (left+52, controls_y+12), 12, MUTED)
+        app.button('dialog_building_next', '→', (left+106, controls_y, 42, 40),
                    lambda: app.dialog.update(info_page=page+1), enabled=page < last)
-    text(surface, 'Right-click or Esc to close', (500, 746), 12, MUTED)
-    app.button('dialog_close', 'Close · Esc', (944, 731, 202, 44), app.cancel_dialog, 'primary')
+    if bounds.w >= 720:
+        text(surface, 'Right-click or Esc to close', (left+184, controls_y+12), 12, MUTED)
+    app.button('dialog_close', 'Close · Esc', (bounds.right-186, controls_y, 162, 40), app.cancel_dialog, 'primary')

@@ -19,7 +19,7 @@ from orion.empire import colony_rows, summarize_empire
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
 from orion.production import MAX_QUEUE
 from orion.research import TECHNOLOGIES, colony_yields
-from orion.storage import Storage
+from orion.storage import SAVE_VERSION, Storage
 from scenarios import empty_fleet_game
 
 
@@ -189,7 +189,7 @@ class TradeGoodsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             storage = Storage(folder)
             path = storage.save(self.game)
-            self.assertEqual(json.loads(path.read_text())["version"], 52)
+            self.assertEqual(json.loads(path.read_text())["version"], SAVE_VERSION)
             self.assertEqual(storage.load(path)[0], self.game)
         legacy = self.game.to_dict()
         for row in legacy["systems"]+legacy["exploration"]["surveys"]:
