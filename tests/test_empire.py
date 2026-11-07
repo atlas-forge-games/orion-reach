@@ -97,9 +97,8 @@ class EmpireInterfaceTests(unittest.TestCase):
     def click(self, key):
         self.app.render()
         button = next(b for b in self.app.buttons if b.key == key)
-        x, y = button.rect.center
-        v = self.app.viewport
-        pos = (v.x+round(x*self.app.canvas.scale), v.y+round(y*self.app.canvas.scale))
+        self.app.present()
+        pos = self.app.window_pos(button.rect.center)
         for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()
@@ -136,7 +135,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.key(pg.K_i)
         self.assertEqual(self.app.screen, "empire")
 
-    def test_sorted_pagination_opens_correct_ids_with_letterboxing(self):
+    def test_sorted_scrolling_opens_correct_ids_with_letterboxing(self):
         colonies = [(s, p) for s in self.app.game.systems for p in s.worlds][:30]
         for index, (_, planet) in enumerate(colonies):
             planet.colonized = True
@@ -146,32 +145,64 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.app.window = pg.display.set_mode((980, 900), pg.RESIZABLE)
         self.app.present()
         self.click("open_empire")
-        capacity=self.app.empire_page_capacity
-        self.assertEqual(len(self.row_keys()), capacity)
+        self.assertGreater(len(self.row_keys()), 1)
         self.click("empire_sort_population")
-        expected_system, expected_planet = colonies[-1]
-        self.assertEqual(self.row_keys()[0], f"empire_colony_{expected_system.id}_{expected_planet.id}")
-        selection = self.app.game.selected_system, self.app.game.selected_planet
+        view = self.app.empire_scroll
+        expected = [f"empire_colony_{s.id}_{p.id}" for s, p in reversed(colonies)]
+        self.assertEqual(list(view.keys), expected)
+        self.assertEqual(self.row_keys()[0], expected[0])
+        fixed = {b.key: b.rect.copy() for b in self.app.buttons if not b.key.startswith("empire_colony_")}
+        before = self.app.game.to_dict()
         self.key(pg.K_PAGEDOWN)
-        self.assertEqual(self.app.empire_page, 1)
+        previous = view.offset
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, y=-1, x=0))
         self.app.render()
-        self.assertEqual(len(self.row_keys()), min(capacity,len(colonies)-2*capacity))
-        self.key(pg.K_RIGHT)
-        self.assertEqual(self.app.empire_page, min(3,(len(colonies)-1)//capacity))
-        self.assertEqual(selection, (self.app.game.selected_system, self.app.game.selected_planet))
-        self.key(pg.K_PAGEUP)
-        expected_system, expected_planet = colonies[-1-self.app.empire_page*capacity]
-        self.click(self.row_keys()[0])
+        self.assertGreater(view.offset, previous)
+        self.key(pg.K_END)
+        self.assertEqual(view.offset, view.maximum)
+        self.assertEqual(self.row_keys()[-1], expected[-1])
+        self.assertEqual(self.app.focus, expected[-1])
+        for button in self.app.buttons:
+            if button.key in fixed:
+                self.assertEqual(button.rect, fixed[button.key])
+            else:
+                self.assertTrue(view.rect.contains(button.rect))
+        self.assertEqual(self.app.game.to_dict(), before)
+        self.click(expected[-1])
         self.assertEqual(self.app.screen, "planet")
-        self.assertEqual(self.app.game.selected_system, expected_system.id)
-        self.assertEqual(self.app.game.selected_planet, expected_planet.id)
+        self.assertEqual((self.app.game.selected_system, self.app.game.selected_planet),
+                         (colonies[0][0].id, colonies[0][1].id))
         self.key(pg.K_i)
-        self.assertEqual(self.app.empire_page, min(3,(len(colonies)-1)//capacity)-1)
+        self.assertEqual(view.offset, view.maximum)
+        self.assertEqual(self.app.focus, expected[-1])
+        self.key(pg.K_HOME)
+        self.assertEqual(view.offset, 0)
+        self.key(pg.K_RIGHT)
+        self.assertGreater(view.offset, 0)
         self.click("empire_sort_population")
-        self.assertEqual(self.app.empire_page, 0)
-        expected_system, expected_planet = colonies[0]
-        self.assertEqual(self.row_keys()[0], f"empire_colony_{expected_system.id}_{expected_planet.id}")
+        self.assertEqual(view.offset, 0)
+        self.assertEqual(self.row_keys()[0], expected[-1])
+        self.key(pg.K_END)
+        self.click("empire_filter_building")
+        self.assertEqual((view.offset, view.maximum), (0, 0))
+        self.assertEqual(self.row_keys(), [])
+
+    def test_modal_blocks_colony_scroll_and_cancel_keeps_position(self):
+        for system in self.app.game.systems[:8]:
+            for planet in system.worlds:
+                planet.owner, planet.colonized, planet.population = "player", True, 1
+        self.click("open_empire")
+        self.key(pg.K_END)
+        previous = self.app.empire_scroll.offset
+        self.assertGreater(previous, 0)
+        self.app.quit_request()
+        self.app.render()
+        self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, x=0, y=1))
+        self.key(pg.K_HOME)
+        self.assertEqual(self.app.empire_scroll.offset, previous)
+        self.app.cancel_dialog()
+        self.app.render()
+        self.assertEqual(self.app.empire_scroll.offset, previous)
 
     def test_turn_completion_refreshes_filters_and_autosaves(self):
         earth = self.app.game.systems[0].worlds[2]
@@ -206,17 +237,17 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.key(pg.K_e)
         self.click("research_back")
         expected = self.app.game.to_dict()
-        self.click("empire_pause")
+        self.key(pg.K_p)
         self.click("settings")
         self.click("settings_done")
         self.click("resume")
         self.assertEqual(self.app.screen, "empire")
         self.assertEqual(self.app.empire_filter, "building")
-        self.click("empire_pause")
+        self.key(pg.K_p)
         self.click("main_menu")
         self.click("resume")
         self.assertEqual(self.app.screen, "empire")
-        self.click("empire_save")
+        self.key(pg.K_F5)
         path = next(p for p in self.app.storage.saves_dir.glob("*.json") if p.name != "autosave.json")
         self.app.load_game(path)
         self.key(pg.K_i)
@@ -224,7 +255,7 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.empire_filter, "all")
         self.assertEqual(self.row_keys(), ["empire_colony_0_2"])
 
-    def test_empty_empire_and_filtered_page_clamping(self):
+    def test_empty_empire_and_colony_list_clamping(self):
         earth = self.app.game.systems[0].worlds[2]
         earth.colonized = False
         earth.owner = None
@@ -234,13 +265,13 @@ class EmpireInterfaceTests(unittest.TestCase):
         self.assertEqual(self.row_keys(), [])
         self.key(pg.K_PAGEDOWN)
         self.key(pg.K_LEFT)
-        self.assertEqual(self.app.empire_page, 0)
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "empire_next").enabled)
+        self.assertEqual(self.app.empire_scroll.offset, 0)
+        self.assertEqual(self.app.empire_scroll.maximum, 0)
         earth.colonized, earth.population = True, 8
         earth.owner = "player"
-        self.app.empire_page = 50
+        self.app.empire_scroll.offset = 50000
         self.app.render()
-        self.assertEqual(self.app.empire_page, 0)
+        self.assertEqual(self.app.empire_scroll.offset, 0)
         self.assertEqual(self.row_keys(), ["empire_colony_0_2"])
 
 

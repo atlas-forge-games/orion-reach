@@ -118,20 +118,29 @@ class ReadabilityInterfaceTests(unittest.TestCase):
             planet.owner, planet.colonized = 'player', True
             planet.population = i+1
         self.app.sort_empire('population')
+        expected = [f'empire_colony_{s.id}_{p.id}' for s, p in reversed(colonies)]
         for scale in UI_SCALES:
-            self.app.settings['ui_scale'] = scale
-            self.app.empire_page = 0
-            self.frame()
-            self.app.empire_page = 0
-            collected = []
-            while True:
+            with self.subTest(scale=scale):
+                self.app.settings['ui_scale'] = scale
+                self.app.empire_scroll.reset()
+                self.app.focus = expected[0]
+                self.app.keyboard_mode = True
                 self.frame()
-                collected.extend(b.key for b in self.app.buttons if b.key.startswith('empire_colony_'))
-                if not next(b for b in self.app.buttons if b.key == 'empire_next').enabled:
-                    break
-                self.app.change_empire_page(1)
-            expected = [f'empire_colony_{s.id}_{p.id}' for s, p in reversed(colonies)]
-            self.assertEqual(collected, expected)
+                collected = []
+                for key in expected:
+                    self.assertEqual(self.app.focus, key)
+                    row = next(b for b in self.app.buttons if b.key == key)
+                    self.assertTrue(self.app.empire_scroll.rect.contains(row.rect))
+                    self.assertEqual(row.rect.h, self.app.empire_scroll.row_height-8)
+                    collected.append(key)
+                    self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_DOWN, mod=0))
+                    self.frame()
+                self.assertEqual(collected, expected)
+                self.assertEqual(self.app.focus, 'galaxy_map')
+                self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_TAB, mod=pg.KMOD_SHIFT))
+                self.frame()
+                self.assertEqual(self.app.focus, expected[-1])
+                self.assertEqual(self.app.display_view.maximum, [0, 0])
 
     def test_scrolled_scaled_click_opens_the_correct_colony(self):
         self.app.settings['ui_scale'] = 175
@@ -142,12 +151,12 @@ class ReadabilityInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, 'planet')
         self.assertEqual((self.app.game.selected_system, self.app.game.selected_planet), (int(system), int(planet)))
 
-    def test_keyboard_focus_reveals_footer_and_zoom_reset_works(self):
+    def test_footer_stays_visible_and_zoom_reset_works(self):
         self.app.settings['ui_scale'] = 175
         self.app.focus = 'end_turn'
         self.app.keyboard_mode = True
         self.frame()
-        self.assertGreater(self.app.display_view.offset[1], 0)
+        self.assertEqual(self.app.display_view.offset, [0, 0])
         button = next(b for b in self.app.buttons if b.key == self.app.focus)
         screen_rect = self.app.canvas.rect(button.rect).move(self.app.viewport.topleft)
         self.assertTrue(self.app.window.get_rect().contains(screen_rect))
@@ -166,19 +175,31 @@ class ReadabilityInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.settings['ui_scale'], 100)
 
     def test_scrollbar_drag_and_wheel_reach_bottom_without_clicking_colonies(self):
+        for system in self.app.game.systems[:8]:
+            for planet in system.worlds:
+                planet.owner, planet.colonized, planet.population = 'player', True, 1
         self.app.settings['ui_scale'] = 175
         self.frame()
-        track, thumb = self.app.display_view.bars[1]
-        self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, button=1, pos=thumb.center))
-        self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=(thumb.centerx, track.bottom-2)))
-        self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONUP, button=1, pos=(thumb.centerx, track.bottom-2)))
+        view = self.app.empire_scroll
+        track, thumb = view.scrollbar()
+        start = self.app.window_pos(thumb.center)
+        end = self.app.window_pos((thumb.centerx, track.bottom-2))
+        self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONDOWN, button=1, pos=start))
+        self.app.handle_event(pg.event.Event(pg.MOUSEMOTION, pos=end))
+        # Releasing over a colony must not open it.
         self.frame()
-        self.assertEqual(self.app.display_view.offset[1], self.app.display_view.maximum[1])
+        row = next(b for b in self.app.buttons if b.key.startswith('empire_colony_'))
+        self.app.handle_event(pg.event.Event(pg.MOUSEBUTTONUP, button=1,
+                                            pos=self.app.window_pos(row.rect.center)))
+        self.frame()
+        self.assertEqual(view.offset, view.maximum)
         self.assertEqual(self.app.screen, 'empire')
-        previous = self.app.display_view.offset[1]
+        self.assertIsNone(view.drag)
+        previous = view.offset
         self.app.handle_event(pg.event.Event(pg.MOUSEWHEEL, x=0, y=1))
         self.frame()
-        self.assertLess(self.app.display_view.offset[1], previous)
+        self.assertLess(view.offset, previous)
+        self.assertEqual(self.app.display_view.offset, [0, 0])
 
     def test_legacy_screens_zoom_and_keep_controls_accessible(self):
         self.app.settings['ui_scale'] = 175

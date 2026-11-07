@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
+from math import ceil
 from pathlib import Path
 import pygame as pg
 
@@ -26,7 +27,8 @@ from . import hyperlanes
 from .frame_cache import frame_queries
 from .planet_view import draw_planet_overview, draw_production, worker_row_rect, worker_selection_count
 from .colony_view import draw_colony, turn_label
-from .empire import COLONIES_PER_PAGE, FILTERS, SORT_KEYS, colony_rows
+from .empire import FILTERS, SORT_KEYS, colony_rows
+from .empire_scroll import ColonyScroll, row_key, handle_input as handle_empire_input
 from .empire_view import draw_empire
 from .rival_view import draw_rival
 from .diplomacy_view import draw_diplomacy
@@ -111,7 +113,7 @@ class App:
         self.dialog_canvas=None
         self.displayed_dialog=None
         self.empire_layout=None
-        self.empire_page_capacity=3
+        self.empire_scroll=ColonyScroll()
         self.viewport=pg.Rect(0,0,*self.windowed_size)
         self.backdrop=Backdrop()
         self.brand=StudioBrand()
@@ -899,7 +901,7 @@ class App:
         self.empire_filter="all"
         self.empire_sort="name"
         self.empire_descending=False
-        self.empire_page=0
+        self.empire_scroll.reset()
         self.rival_page=0
         self.rival_return="empire"
         self.diplomacy_return="galaxy"
@@ -1137,13 +1139,14 @@ class App:
     def change_designer_info_page(self,delta):
         self.dialog["info_page"]=max(0,self.dialog["info_page"]+delta)
 
-    def focus_empire_row(self):
+    def focus_empire_row(self,restore=True):
         rows=colony_rows(self.game,self.empire_filter,self.empire_sort,self.empire_descending)
-        capacity=self.empire_page_capacity
-        self.empire_page=min(max(0,self.empire_page),max(0,(len(rows)-1)//capacity))
+        view=self.empire_scroll
+        keys=[row_key(system,planet) for system,planet in rows]
         if rows:
-            system,planet=rows[self.empire_page*capacity]
-            self.focus=f"empire_colony_{system.id}_{planet.id}"
+            first=min(len(keys)-1,ceil(view.offset/view.row_height))
+            self.focus=view.selected if restore and view.selected in keys else keys[first]
+            view.selected=self.focus
         else:
             self.focus="empire_filter_all"
 
@@ -1161,6 +1164,7 @@ class App:
 
     def open_empire_colony(self,system_id,planet_id):
         self.game.planet_at(system_id,planet_id)
+        self.empire_scroll.selected=f"empire_colony_{system_id}_{planet_id}"
         self.planet_return="system"
         self.game.selected_system=system_id
         self.game.selected_planet=planet_id
@@ -1171,7 +1175,7 @@ class App:
         if filter_by not in FILTERS:
             return
         self.empire_filter=filter_by
-        self.empire_page=0
+        self.empire_scroll.reset()
         self.focus_empire_row()
 
     def sort_empire(self,key):
@@ -1179,11 +1183,7 @@ class App:
             return
         self.empire_descending=not self.empire_descending if key==self.empire_sort else key!="name"
         self.empire_sort=key
-        self.empire_page=0
-        self.focus_empire_row()
-
-    def change_empire_page(self,delta):
-        self.empire_page+=delta
+        self.empire_scroll.reset()
         self.focus_empire_row()
 
     def change_rival_page(self,delta):
@@ -2387,6 +2387,8 @@ class App:
             self.present()
         if self.display_view.handle_event(event,self):
             return
+        if handle_empire_input(self,event):
+            return
         if event.type==pg.QUIT:
             self.quit_request()
             return
@@ -2465,8 +2467,6 @@ class App:
                     self.activate(hovered)
         if event.type==pg.MOUSEWHEEL and self.screen=="load" and not self.dialog:
             self.change_load_page(-1 if event.y>0 else 1)
-        if event.type==pg.MOUSEWHEEL and self.screen=="empire" and not self.dialog and event.y:
-            self.change_empire_page(-1 if event.y>0 else 1)
         if event.type==pg.MOUSEWHEEL and self.screen in ("fleets","shipyard") and not self.dialog and event.y:
             change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
             change(-1 if event.y>0 else 1)
@@ -2661,8 +2661,6 @@ class App:
             elif (self.on_galaxy_chart() and not self.inspector_collapsed and not self.fleet_popup and not self.map_order_ids
                   and self.sensor_contact_id is None and self.route_ship_id is None and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN)):
                 self.change_galaxy_planet_page(1 if event.key==pg.K_PAGEDOWN else -1)
-            elif self.screen=="empire" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
-                self.change_empire_page(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
                 change(1 if event.key==pg.K_PAGEDOWN else -1)
@@ -2682,8 +2680,6 @@ class App:
                 delta=1 if event.key==pg.K_RIGHT else -1
                 if self.screen=="galaxy":
                     self.cycle_system(delta)
-                elif self.screen=="empire":
-                    self.change_empire_page(delta)
                 elif self.screen=="fleets":
                     self.change_fleet_page(delta)
                 elif self.screen=="fleet":
@@ -3246,10 +3242,6 @@ class App:
             from .empire_view import layout_for
             self.empire_layout=layout_for(self,available)
             logical=(self.empire_layout.width,self.empire_layout.height)
-            if self.empire_page_capacity!=self.empire_layout.page_size:
-                first=self.empire_page*self.empire_page_capacity
-                self.empire_page_capacity=self.empire_layout.page_size
-                self.empire_page=first//self.empire_page_capacity
         else:
             layout=reference_layout(SIZE,available,view_profile(self))
         pixels=Canvas.fitted_pixels(layout.size if layout else logical,available,scale,(width,height))

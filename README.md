@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.94.3
+# Age of the Stars — Python prototype 0.95.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,23 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.95.0 — scrollable Empire overview
+
+Empire totals share one compact row, leaving most of the screen for colonies.
+The colony list scrolls with the mouse wheel, scrollbar or keyboard while its
+filters, headings and the Galaxy map / End turn buttons stay visible. Sorting
+and filters still apply to every colony. Opening a colony and returning keeps
+your place in the list.
+
+The top navigation buttons, queued/idle header, debt instruction and bottom
+budget, upkeep, Menu and Save controls have been removed. Existing keyboard
+shortcuts, including P for the menu and F5 to save, remain available.
+
+Extract this incremental update over **v0.94.3**, then restart the game.
+Save format remains **62**. See [installation, controls and validation](docs/empire-overview.md).
+
+![Empire overview](screenshots/empire_overview.png)
 
 ## New in v0.94.3 — Dominion of One and Aetheri portraits
 
@@ -3826,7 +3843,7 @@ updates the autosave. Unissued route previews are not saved as orders.
 | `tests/test_colony.py` | Construction rules, economy timing and save migrations |
 | `tests/test_population.py` | Food, growth timing, farms, AI, captures, fog, save migration and UI controls |
 | `tests/test_planet_overview.py` | Worker allocation, purchases, paused queues, migration and redesigned UI flows |
-| `tests/test_empire.py` | Empire reports, filtering, pagination and colony navigation |
+| `tests/test_empire.py` | Empire reports, filtering, scrolling and colony navigation |
 | `tests/test_colonization.py` | Ship construction, travel, settlement, migration and the full UI loop |
 | `tests/test_galaxy_fleets.py` | Group orders, splitting, arrival, saves, map hit regions and ship selection |
 | `tests/test_starting_fleets.py` | Starting ships, AI exploration, revocable departures, fog, battle timing and save compatibility |
