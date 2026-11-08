@@ -14,7 +14,7 @@ from .model import PLAYER, RIVAL
 from .planet_art import draw_planet
 from .population import BASE_FOOD, WORKER_ROLES, farmer_output
 from .population_info import POPULATION_RECT, summary as population_summary
-from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS
+from .production import ASCENSION_GATE, MAX_QUEUE, PROJECTS, SHIP_TYPES, TRADE_GOODS
 from .research import building_maintenance
 from .designs import HULLS
 from . import raiding, defenses, economy
@@ -470,8 +470,14 @@ def production_catalog(app, identifiers, *, x, width, page_field, key, title):
     text(surface, title, (x, 119), 12, GOLD, "mono", 1)
     if not identifiers:
         panel(surface, (x, 146, width, 631))
-        paragraph(surface, "No available "+title.lower()+". Research more options, or free a place in the queue.",
-                  (x+20, 180), width-40, 17, MUTED, 27)
+        if key == "catalog" and planet.free_slots <= 0:
+            slots = "module bays" if planet.habitat else "building slots"
+            message = f"All {planet.building_capacity} {slots} are occupied or reserved."
+        elif len(planet.construction_queue) >= MAX_QUEUE:
+            message = "Construction queue is full."
+        else:
+            message = "No available "+title.lower()+"."
+        paragraph(surface, message, (x+20, 180), width-40, 17, MUTED, 27)
     for i, item_id in enumerate(identifiers[page*5:page*5+5]):
         spec = game.project_spec(item_id)
         design = game.design_for(item_id)
