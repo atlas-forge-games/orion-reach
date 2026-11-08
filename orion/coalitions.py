@@ -11,13 +11,14 @@ class Dispatch:
     id: int
     turn: int
     message: str
+    quiet: bool = False
 
 
-def notify(game, participants, message):
+def notify(game, participants, message, *, quiet=False):
     """Publish only a decision involving the player or entirely known empires."""
     if game.is_observer or all(p == 'player' or first_contact.known(game, 'player', p) for p in participants):
         identifier = game.diplomatic_news[-1].id+1 if game.diplomatic_news else 1
-        game.diplomatic_news.append(Dispatch(identifier, game.turn, message))
+        game.diplomatic_news.append(Dispatch(identifier, game.turn, message, quiet))
         game.diplomatic_news[:] = game.diplomatic_news[-200:]
 
 
@@ -223,11 +224,15 @@ def load_news(game, data, version):
         raise ValueError('Invalid diplomatic dispatches')
     last = 0
     for row in rows:
-        if (not isinstance(row, dict) or set(row) != {'id', 'turn', 'message'}
+        if version < 64 and isinstance(row, dict):
+            row = {k: v for k, v in row.items() if k != 'quiet'}
+        fields = {'id', 'turn', 'message', 'quiet'} if version >= 64 else {'id', 'turn', 'message'}
+        if (not isinstance(row, dict) or set(row) != fields
                 or type(row['id']) is not int or row['id'] <= last
                 or type(row['turn']) is not int or not 1 <= row['turn'] <= game.turn
                 or not isinstance(row['message'], str) or not 0 < len(row['message']) <= 240
-                or not row['message'].isprintable()):
+                or not row['message'].isprintable()
+                or type(row.get('quiet', False)) is not bool):
             raise ValueError('Invalid diplomatic dispatch')
         last = row['id']
         game.diplomatic_news.append(Dispatch(**row))

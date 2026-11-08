@@ -141,6 +141,7 @@ class App:
         self.notice=""
         self.notice_until=0.0
         self.notice_error=False
+        self.saved_until=0.0
         self.empire="Terran Union"
         self.seed=""
         self.size="Standard"
@@ -193,9 +194,20 @@ class App:
         self.render()
 
     def toast(self,message,error=False):
+        # Routine confirmations are already visible in the affected controls.
+        # Keep this shared policy for campaign screens and the combat simulator.
+        if not error:
+            return
         self.notice=str(message)
-        self.notice_until=self.time+(7 if error else 4)
-        self.notice_error=error
+        self.notice_until=self.time+7
+        self.notice_error=True
+        self.saved_until=0.0
+
+    def show_saved(self):
+        self.notice=""
+        self.notice_until=0.0
+        self.notice_error=False
+        self.saved_until=self.time+3
 
     def go(self,screen, *, idle_prompt=False):
         clear_gesture(self)
@@ -527,7 +539,7 @@ class App:
             return
         self.show_sensors=not self.show_sensors
         if self.show_sensors and not sensors.centers(self.game):
-            self.toast("Research Deep-space Radar to scan around your colonies.")
+            self.toast("Research Deep-space Radar to scan around your colonies.",True)
 
     def open_sensor_map(self,system_id):
         self.close_fleet_popup()
@@ -680,7 +692,6 @@ class App:
             origin=first.system_id
             if destination==origin:
                 if not first.departure_pending:
-                    self.toast("These ships are already here. Click another star to set a course.")
                     return
                 self.game.cancel_departures(identifiers)
                 message=f"Departure cancelled · {count} {'ship remains' if count==1 else 'ships remain'} at {self.game.system_name(origin)}."
@@ -769,7 +780,7 @@ class App:
         elif self.fleet_popup:
             ships=self.viewed_fleet()
             if ships and ships[0].owner==PLAYER and not ships[0].in_transit:
-                self.toast("Select at least one ship, or close the popup to inspect a system.")
+                self.toast("Select at least one ship, or close the popup to inspect a system.",True)
             else:
                 self.close_fleet_popup()
                 self.select_star(system_id)
@@ -1371,10 +1382,8 @@ class App:
         target=self.selected_rival_id()
         def perform():
             try:
-                response=self.game.diplomacy_action(action,target)
-                if self.save_game(autosave=True):
-                    self.toast(response)
-                    self.notice_until=self.time+7
+                self.game.diplomacy_action(action,target)
+                self.save_game(autosave=True)
             except RuleError as exc:
                 self.toast(exc,True)
         if action == "declare_war":
@@ -1651,7 +1660,7 @@ class App:
         try:
             self.storage.save(self.game,autosave=autosave)
             if not autosave:
-                self.toast("Game saved. Find this save under Load Game.")
+                self.show_saved()
             return True
         except SaveError as exc:
             self.toast(exc,True)
@@ -1664,6 +1673,10 @@ class App:
             self.toast(exc,True)
             return
         self.game=state
+        self.notice=""
+        self.notice_until=0.0
+        self.notice_error=False
+        self.saved_until=0.0
         self.design_campaign=None
         self.colony_slot=None
         self.reset_empire_view()
@@ -1671,8 +1684,7 @@ class App:
         self.reset_combat_view()
         self.reset_ground_view()
         self.go("galaxy")
-        self.toast(f"Welcome back, {state.empire_name}.")
-        if self.show_first_contact() and self.game.combat is None and news_rules.unread_count(self.game):
+        if self.show_first_contact() and self.game.combat is None and news_rules.unread_count(self.game,interrupting_only=True):
             self.contact_return="news"
 
     def advance_turn(self):
@@ -1741,7 +1753,7 @@ class App:
         self.idle_colony_review=None
         if report.discoveries:
             self.research_tier=self.game.technology.next_tier(self.research_branch)
-        new_news=news_rules.unread_count(self.game)>0
+        new_news=news_rules.unread_count(self.game,interrupting_only=True)>0
         if report.ground_battles:
             self.ground_reports.extend(report.ground_battles)
             self.ground_return="news" if new_news else "galaxy"
@@ -1974,7 +1986,7 @@ class App:
         try:
             system_id=self.game.finish_combat()
             self.reset_combat_view()
-            if news_rules.unread_count(self.game):
+            if news_rules.unread_count(self.game,interrupting_only=True):
                 self.news_page=0
                 if not self.show_first_contact("news"):
                     self.go("news")
@@ -3305,12 +3317,15 @@ class App:
             self.draw_dialog_layer((width,height),available,scale)
         else:
             self.displayed_dialog=None
-        if self.notice and self.time<self.notice_until:
+        if self.notice_error and self.notice and self.time<self.notice_until:
             message=shorten(self.notice,min(1160,self.canvas.get_width()-80),16)
             width=min(self.canvas.get_width()-24,font(16).size(message)[0]+54)
             r=pg.Rect((self.canvas.get_width()-width)//2,16,width,47)
             panel(self.canvas,r,(24,33,39),RED if self.notice_error else CYAN)
             text(self.canvas,message,(r.x+27,r.y+13),16,RED if self.notice_error else INK)
+        elif self.time<self.saved_until:
+            from .notifications import draw_saved
+            draw_saved(self)
         from .ui import draw_text_tooltip
         draw_text_tooltip(self)
 

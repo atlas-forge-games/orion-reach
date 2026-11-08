@@ -2040,7 +2040,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=63):
+    def from_dict(cls, data, *, version=64):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

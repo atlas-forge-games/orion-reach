@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.96.1
+# Age of the Stars — Python prototype 0.96.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,21 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.96.2 — quieter notifications
+
+Routine confirmations such as **Course set**, queue changes and assignments no
+longer cover the interface. Failed actions still show their error, important
+confirmation dialogs remain, and manual saves briefly show a small **Saved ✓**
+indicator. Autosaves stay silent.
+
+Scout discoveries and treaty responses are retained in **Turn news**, with a
+saved unread badge. These informational reports do not automatically open the
+news screen. Existing urgent reports keep their normal behavior.
+
+Extract this incremental update over **v0.96.1**, then restart. Existing saves
+load normally; new saves use format **64**. See [the update notes and commit
+commands](docs/quiet-notifications.md).
 
 ## New in v0.96.1 — accurate production availability
 

@@ -350,6 +350,8 @@ def take_action(game, action, target="rival"):
     reply = diplomatic_reply(game, target, outcome)
     if reply:
         state.record(game.turn, f'“{reply}”')
+    from .coalitions import notify
+    notify(game, ("player", target), f"{rival.name}: {message}", quiet=True)
     if action in ("friendship", "end_friendship"):
         from . import sensors
         sensors.refresh(game)

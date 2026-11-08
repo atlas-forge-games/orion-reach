@@ -1,4 +1,4 @@
-"""Saved, fog-aware reports of awakenings, raids and hostile sensor contacts."""
+"""Saved discoveries, diplomatic results and fog-aware frontier reports."""
 
 from . import news
 from .ui import CYAN, GOLD, INK, MUTED, panel, paragraph, shorten, text
@@ -17,7 +17,7 @@ def draw_news(app):
                    enabled=game.strategy_error('player') is None)
     text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "A chronicle of the galaxy" if game.is_observer else "Dispatches from the frontier", (64, 189), 40, INK, "title")
-    text(surface, "Empire activity, council elections, battles and awakenings" if game.is_observer else "Council elections, frontier reports and hostile sensor contacts · newest first", (66, 250), 15, MUTED)
+    text(surface, "Discoveries, diplomacy and frontier reports · newest first", (66, 250), 15, MUTED)
     rows = news.entries(game)
     last = max(0, (len(rows)-1)//NEWS_PER_PAGE)
     app.news_page = min(max(0, app.news_page), last)
@@ -34,6 +34,10 @@ def draw_news(app):
         text(surface, shorten(tomb.headline, 1240, 15), (87, y+80), 15, INK)
         paragraph(surface, tomb.detail, (87, y+106), 1240, 13, MUTED, 19)
         key = f"news_system_{tomb.system_id}_{tomb.planet_id}"+(f"_raid_{tomb.order}" if tomb.order else "")
+        if tomb.category == "DISCOVERY":
+            app.button(key+"_discovery", "View system", (1188, y+41, 164, 37),
+                       lambda sid=system.id: app.open_system(sid), enabled=game.result is None)
+            continue
         if tomb.category == "FORGOTTEN HYPERLANE" and not game.is_observer:
             app.button(key, "View hyperlane", (1188, y+41, 164, 37),
                        lambda sid=system.id: app.open_hyperlane(sid), enabled=game.result is None)
@@ -44,7 +48,7 @@ def draw_news(app):
     if not rows:
         panel(surface, (64, 294, 1312, 393))
         text(surface, "No news reports", (101, 354), 32, INK, "title")
-        paragraph(surface, "Council elections, known tomb-world awakenings, visible raids and newly detected hostile fleets appear here. These reports remain with your campaign.",
+        paragraph(surface, "Discoveries, diplomatic results, council elections and frontier reports remain here with your campaign.",
                   (103, 423), 1010, 19, MUTED, 31)
         text(surface, "Dormant vaults are hidden. Keep exploring the galaxy.", (103, 554), 16, GOLD)
     text(surface, f"PAGE {app.news_page+1} / {last+1} · {len(rows)} REPORTS", (65, 798), 11, MUTED, "mono")

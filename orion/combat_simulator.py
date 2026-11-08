@@ -248,7 +248,7 @@ class CombatSimulator(App):
         except (ScenarioError, OSError, ValueError) as exc:
             self.toast(f"Scenario could not be saved: {exc}", True)
             return False
-        self.toast(f"Saved {path.name}")
+        self.show_saved()
         return True
 
     def open_scenarios(self):

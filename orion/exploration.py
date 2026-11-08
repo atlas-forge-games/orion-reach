@@ -50,6 +50,7 @@ class ExplorationState:
     scanned_rival: list[int] = field(default_factory=list)
     discoveries: list[Discovery] = field(default_factory=list)
     scanned_others: dict[str, list[int]] = field(default_factory=dict)
+    news_read: int = 0
 
     def survey(self, system_id, owner="player"):
         return next((s for s in self.surveys if s.system_id == system_id and s.owner == owner), None)
@@ -62,13 +63,17 @@ class ExplorationState:
         return self.scanned_others.setdefault(owner, [])
 
     @classmethod
-    def from_dict(cls, data, game, *, version=42):
+    def from_dict(cls, data, game, *, version=64):
         from .model import Planet, _integer
+        if version < 64 and isinstance(data, dict):
+            data = {k: v for k, v in data.items() if k != "news_read"}
         if version < 20 and isinstance(data, dict):
             data = {k: v for k, v in data.items() if k != "scanned_others"}
         fields = {"surveys", "scanned_player", "scanned_rival", "discoveries"}
         if version >= 20:
             fields.add("scanned_others")
+        if version >= 64:
+            fields.add("news_read")
         if not isinstance(data, dict) or set(data) != fields:
             raise ValueError("Invalid exploration data")
         count = len(game.systems)
@@ -143,8 +148,11 @@ class ExplorationState:
                 raise ValueError("Invalid discovery claim")
             discoveries.append(Discovery(**row))
             claimed.add(sid)
+        news_read = data.get("news_read", 0)
+        if not _integer(news_read, 0, len(discoveries)):
+            raise ValueError("Invalid discovery news cursor")
         return cls(surveys, scanned["player"].copy(), scanned["rival"].copy(), discoveries,
-                   {owner: ids.copy() for owner, ids in extras.items()})
+                   {owner: ids.copy() for owner, ids in extras.items()}, news_read)
 
 
 def observed_systems(game, owner="player"):

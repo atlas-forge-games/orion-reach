@@ -1,7 +1,7 @@
-"""A common view of private tomb-world and raid dispatches."""
+"""Saved discoveries and fog-aware diplomatic and frontier dispatches."""
 
 from dataclasses import dataclass
-from . import raiding, tomb_worlds, black_holes, hyperlanes, encounters
+from . import raiding, tomb_worlds, black_holes, hyperlanes, encounters, exploration
 
 
 @dataclass(frozen=True)
@@ -44,11 +44,23 @@ def entries(game):
              for p in hyperlanes.visible_routes(game)]
     rows += [NewsEntry(e.turn, e.system_id, None, "NEUTRAL ENCOUNTER", game.system_name(e.system_id),
                       e.message, e.id) for e in encounters.news(game)]
+    for index, discovery in enumerate(game.exploration.discoveries):
+        # Observer discoveries already have an empire-activity dispatch.
+        if discovery.owner != "player":
+            continue
+        spec = exploration.DISCOVERIES[discovery.kind]
+        detail = f"{spec.reward} · {spec.description}"
+        rows.append(NewsEntry(discovery.turn, discovery.system_id, None, "DISCOVERY",
+                              spec.name, detail, index+1))
     return sorted(rows, key=lambda n: (n.turn, n.order, n.system_id if n.system_id is not None else -1,
                                       n.planet_id if n.planet_id is not None else -1), reverse=True)
 
 
-def unread_count(game):
+def unread_count(game, *, interrupting_only=False):
+    """Quiet reports light the news badge without redirecting the next turn."""
+    discoveries = (0 if interrupting_only else
+                   sum(d.owner == "player"
+                       for d in game.exploration.discoveries[game.exploration.news_read:]))
     return (tomb_worlds.unread_count(game)+sum(r.id > game.raid_news_read for r in raiding.news(game))+
             sum(r.observer == "player" and r.id > game.sensor_news_read for r in game.sensor_reports)+
             sum(e.id > game.observer_news_read for e in game.observer_events)+
@@ -56,12 +68,14 @@ def unread_count(game):
             sum(e.id > game.black_holes.news_read for e in black_holes.events(game))+
             sum(i >= game.specialists.news_read and (e.owner == "player" or game.is_observer)
                 for i, e in enumerate(game.specialists.events))+
-            sum(e.id > game.diplomatic_news_read for e in game.diplomatic_news)+
+            sum(e.id > game.diplomatic_news_read and (not interrupting_only or not e.quiet)
+                for e in game.diplomatic_news)+
             sum(not p.news_read for p in hyperlanes.visible_routes(game))+
-            sum(e.id > game.encounters.news_read for e in encounters.news(game)))
+            sum(e.id > game.encounters.news_read for e in encounters.news(game))+discoveries)
 
 
 def mark_read(game):
+    game.exploration.news_read = len(game.exploration.discoveries)
     game.encounters.news_read = game.encounters.next_event_id-1
     game.news_read_turn = game.turn
     game.raid_news_read = game.next_raid_id-1

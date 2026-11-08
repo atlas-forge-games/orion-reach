@@ -14,16 +14,15 @@ def select_tab(app, tab):
 def perform(app, action, owner, target=None, kind='money'):
     try:
         if action == 'form':
-            result = coalitions.form(app.game, 'player', owner, target, join_war=True)
+            coalitions.form(app.game, 'player', owner, target, join_war=True)
         elif action == 'leave':
-            result = coalitions.leave(app.game, 'player', owner)
+            coalitions.leave(app.game, 'player', owner)
         elif action in ('accept', 'refuse'):
-            result = tribute.respond(app.game, owner, action == 'accept')
+            tribute.respond(app.game, owner, action == 'accept')
         else:
-            result = tribute.demand(app.game, 'player', owner, kind)
-        if app.save_game(autosave=True):
-            app.toast(result)
-            app.notice_until = app.time+8
+            tribute.demand(app.game, 'player', owner, kind)
+        # The rule records the result in Turn news, including declined demands.
+        app.save_game(autosave=True)
     except RuleError as exc:
         app.toast(exc, True)
     app.show_diplomatic_affairs('coalitions' if action in ('form', 'leave') else 'tribute', owner)
