@@ -1,6 +1,7 @@
 """Stable, saved surface sites; pure geometry independent of the renderer."""
 
 from functools import lru_cache
+from collections import Counter
 import math
 
 from .buildings import BUILDINGS, ADVANCED_FACILITIES, facility_family
@@ -40,6 +41,7 @@ PLACEMENTS.update({identifier: PLACEMENTS[family] for identifier, family in ART_
 
 
 def preferred(identifier):
+    identifier = asset_id(identifier)
     x, bottom, width, height = PLACEMENTS[identifier]
     scale = HEIGHT / 473
     if identifier not in ('headquarters', 'shipyard'):
@@ -120,13 +122,57 @@ def layout(identifiers, saved):
             tuple(sorted((key, tuple(site)) for key, site in saved.items())))}
 
 
+def asset_id(key):
+    """The first copy keeps the old key; later copies use type:2, type:3, ..."""
+    return key.partition(':')[0]
+
+
+def numbered_keys(identifiers):
+    counts = Counter()
+    result = []
+    for identifier in identifiers:
+        counts[identifier] += 1
+        result.append(identifier if counts[identifier] == 1 else f'{identifier}:{counts[identifier]}')
+    return result
+
+
+def structure_keys(planet):
+    return numbered_keys(planet.buildings+[p.item_id for _, p in planet.building_projects])
+
+
+def remap_sites(planet, order):
+    """Keep physical sites attached to copies when their slot numbers change."""
+    if planet.habitat or not planet.surface_layout:
+        return
+    old = structure_keys(planet)
+    new = numbered_keys([asset_id(old[i]) for i in order])
+    sites = {key: site for key, site in planet.surface_layout.items() if key in ('headquarters', 'shipyard')}
+    for i, key in zip(order, new):
+        if old[i] in planet.surface_layout:
+            sites[key] = planet.surface_layout[old[i]]
+    planet.surface_layout = sites
+
+
+def remove_site(planet, slot):
+    remap_sites(planet, [i for i in range(planet.used_slots) if i != slot])
+
+
+def prioritize_sites(planet, queue_index):
+    projects = planet.building_projects
+    selected = next((i for i, (q, _) in enumerate(projects) if q == queue_index), None)
+    if selected is not None:
+        built = len(planet.buildings)
+        order = list(range(built))+[built+selected]
+        order += [built+i for i in range(len(projects)) if i != selected]
+        remap_sites(planet, order)
+
+
 def identifiers(game, system_id, planet):
     if not planet.colonized or planet.habitat:
         return []
     home = game.headquarters(planet.owner)
     headquarters = bool(home and (system_id, planet.id) == (home[0].id, home[1].id))
-    present = set(planet.buildings) | {p.item_id for _, p in planet.building_projects}
-    return (["headquarters"] if headquarters else []) + ["shipyard"] + [key for key in BUILDINGS if key in present]
+    return (["headquarters"] if headquarters else []) + ["shipyard"] + structure_keys(planet)
 
 
 def freeze(game, system_id, planet):
@@ -147,13 +193,23 @@ def reserve(game, system_id, planet, identifier, point=None):
         site = at_point(identifier, point)
         if not available(site, tuple(existing.values())):
             raise ValueError("That site overlaps another building or its inspection area. Choose open ground.")
-    return {**existing, identifier: list(site)}
+    count = planet.buildings.count(identifier)+sum(p.item_id == identifier for _, p in planet.building_projects)
+    key = identifier if not count else f'{identifier}:{count+1}'
+    return {**existing, key: list(site)}
 
 
 def validate(record, version):
     saved = record.get('surface_layout', {}) if version >= 58 else {}
+    def valid_key(key):
+        if not isinstance(key, str):
+            return False
+        if key in PLACEMENTS:
+            return True
+        base, sep, suffix = key.partition(':')
+        return (version >= 63 and base in BUILDINGS and sep and suffix.isdecimal()
+                and 2 <= int(suffix) <= 12 and suffix == str(int(suffix)))
     if (not isinstance(saved, dict) or len(saved) > len(PLACEMENTS)
-            or any(key not in PLACEMENTS or not isinstance(site, (list, tuple)) or len(site) != 4
+            or any(not valid_key(key) or not isinstance(site, (list, tuple)) or len(site) != 4
                    or any(type(n) is not int for n in site)
                    or not 1 <= site[2] <= WIDTH or not 1 <= site[3] <= HEIGHT or not inside(site)
                    for key, site in saved.items())):

@@ -15,6 +15,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame as pg
 
 from orion.empire import colony_rows, summarize_empire
+from orion.buildings import BUILDINGS
 from orion.model import GameState, PLAYER, RIVAL, RuleError, SaveError, Ship
 from scenarios import empty_fleet_game as new_game, place_near
 from functools import partial
@@ -138,7 +139,7 @@ class AIRulesTests(unittest.TestCase):
                 self.assertTrue(all(p.used_slots <= p.building_capacity for s in game.systems for p in s.worlds))
                 for _, planet in rows:
                     buildings = planet.buildings+[q.item_id for q in planet.construction_queue if q.reserves_slot]
-                    self.assertEqual(len(buildings), len(set(buildings)))
+                    self.assertTrue(all(BUILDINGS[b].repeatable or buildings.count(b) == 1 for b in buildings))
 
     def test_save_resume_preserves_decisions_routes_production_and_ids(self):
         game = new_game(seed=2408)

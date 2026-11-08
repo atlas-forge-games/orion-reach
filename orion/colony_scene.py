@@ -1,6 +1,7 @@
 """Planet landscapes and a clickable city derived from existing colony data."""
 
 from dataclasses import dataclass
+from collections import Counter
 from functools import lru_cache
 import math
 import random
@@ -24,6 +25,11 @@ class SceneBuilding:
     completed: int = 0
     queued: int = 0
     slot: int | None = None
+    site_id: str = ''
+
+    @property
+    def key(self):
+        return self.site_id or self.asset_id
 
 
 def is_headquarters(game, system_id, planet):
@@ -34,7 +40,7 @@ def is_headquarters(game, system_id, planet):
 
 
 def scene_buildings(game, system_id, planet):
-    """One display per type; counts and selection indices reflect real buildings."""
+    """Each completed or queued building has its own site and selection index."""
     if not planet.colonized:
         return []
     items = []
@@ -43,12 +49,15 @@ def scene_buildings(game, system_id, planet):
     ships = sum(project.is_ship for project in planet.construction_queue)
     items.append(SceneBuilding("shipyard", "Shipyard", 1, ships))
     projects = planet.building_projects
-    for building_id, spec in BUILDINGS.items():
-        built = [i for i, value in enumerate(planet.buildings) if value == building_id]
-        queued = [i for i, (_, project) in enumerate(projects) if project.item_id == building_id]
-        if built or queued:
-            slot = built[0] if built else len(planet.buildings)+queued[0]
-            items.append(SceneBuilding(building_id, spec.name, len(built), len(queued), slot))
+    entries = planet.buildings+[p.item_id for _, p in projects]
+    counts, numbered = Counter(entries), Counter()
+    for slot, (building_id, key) in enumerate(zip(entries, colony_layout.structure_keys(planet))):
+        numbered[building_id] += 1
+        label = BUILDINGS[building_id].name
+        if counts[building_id] > 1:
+            label += f' {numbered[building_id]}'
+        built = int(slot < len(planet.buildings))
+        items.append(SceneBuilding(building_id, label, built, 1-built, slot, key))
     return items
 
 
@@ -161,13 +170,13 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
     if framed:
         text(surface, summary, (rect.right-18, rect.y+11), 11, INK, "mono", right=True)
     items = scene_buildings(game, system.id, planet)
-    sites = colony_layout.layout([item.asset_id for item in items], planet.surface_layout)
-    for item in sorted(items, key=lambda item: sites[item.asset_id][1]):
-        cx, bottom, width, height = sites[item.asset_id]
+    sites = colony_layout.layout([item.key for item in items], planet.surface_layout)
+    for item in sorted(items, key=lambda item: sites[item.key][1]):
+        cx, bottom, width, height = sites[item.key]
         sx, sy = rect.w/colony_layout.WIDTH, rect.h/colony_layout.HEIGHT
         target = pg.Rect(rect.x+round((cx-width//2)*sx), rect.y+round((bottom-height)*sy),
                          round(width*sx), round(height*sy))
-        hx, hy, hw, hh = colony_layout.footprint(sites[item.asset_id])
+        hx, hy, hw, hh = colony_layout.footprint(sites[item.key])
         hit = pg.Rect(rect.x+round(hx*sx), rect.y+round(hy*sy), round(hw*sx), round(hh*sy))
         if item.asset_id == "headquarters":
             action = app.open_empire if planet.owner == PLAYER else app.open_rival
@@ -185,11 +194,11 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
                 caption = status
         if not live:
             caption = "Last observed"
-        button = app.button("surface_"+item.asset_id, "", hit, action, "hotspot", enabled=live)
+        button = app.button("surface_"+item.key, "", hit, action, "hotspot", enabled=live)
         active = app.is_active(button)
         color = GOLD if active or not item.completed else app.empire_color(planet.owner)
         draw_building_art(surface, item.asset_id, target, alpha=255 if item.completed else 115)
-        label = item.label+(f" ×{item.completed}" if item.completed > 1 else "")
+        label = item.label
         name_image = text_image(label, 12, INK)
         caption_image = text_image(caption, 10, color)
         label_width = max(name_image.get_width(), caption_image.get_width())+18
@@ -200,8 +209,6 @@ def draw_colony_scene(app, rect, game, system, planet, *, framed=True):
             panel(surface, label_box, (11, 24, 31), color if active else (48, 64, 69))
             text(surface, label, name_image.get_rect(midtop=(label_box.centerx, label_box.y+2)).topleft, 14, INK)
             text(surface, caption, caption_image.get_rect(midtop=(label_box.centerx, label_box.y+22)).topleft, 14, color)
-        elif item.completed > 1:
-            text(surface, f"×{item.completed}", (target.centerx-10, target.bottom+5), 16, INK)
     if planet.is_gas_giant:
         if framed:
             text(surface, "Atmospheric survey · No colonies or surface outposts", (rect.x+18, rect.bottom-24), 12, INK)

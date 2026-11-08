@@ -152,6 +152,15 @@ def active_buildings(planet, bonuses=None):
     return [spec.id for spec, rate in operating_facilities(planet, bonuses)]
 
 
+def facility_bonus_sources(planet, bonuses=None):
+    """One operating copy of each type supplies its colony-wide bonuses."""
+    sources = {}
+    for spec, rate in operating_facilities(planet, bonuses):
+        if spec.id not in sources or rate > sources[spec.id][1]:
+            sources[spec.id] = (spec, rate)
+    return list(sources.values())
+
+
 def building_efficiency(planet, identifier, bonuses=None):
     if identifier not in planet.buildings:
         return 0
@@ -171,7 +180,7 @@ def whole_output(value):
 
 
 def miner_output(planet, bonuses=None):
-    extra = sum(b.resources_per_miner*rate for b, rate in operating_facilities(planet, bonuses))
+    extra = sum(b.resources_per_miner*rate for b, rate in facility_bonus_sources(planet, bonuses))
     return (MINER_RESOURCES+extra)*MINERAL_FACTORS[planet.richness]
 
 
@@ -194,7 +203,8 @@ def local_bonuses(planet, bonuses):
     values = source.at(planet) if isinstance(source, PowerBonuses) else (source or {})
     result = PowerBonuses(values, values.power) if isinstance(values, PowerBonuses) else FacilityBonuses(values)
     result.facility_source, result.facility_planet = source, id(planet)
-    facilities = result.facilities = operating_facilities(planet, values)
+    result.facilities = operating_facilities(planet, values)
+    facilities = facility_bonus_sources(planet, result)
     result['facility_growth'] = sum(b.growth_bonus*rate for b, rate in facilities)
     result['facility_capacity'] = sum(b.capacity_bonus*rate for b, rate in facilities)
     result['facility_adaptation'] = min(80, sum(b.adaptation*rate for b, rate in facilities))
@@ -223,6 +233,8 @@ def building_status(planet, index, bonuses=None):
 
 
 def remove_building(planet, index):
+    from .colony_layout import remove_site
+    remove_site(planet, index)
     identifier = planet.buildings.pop(index)
     if BUILDINGS[identifier].training and not any(BUILDINGS[b].training for b in planet.buildings):
         planet.training_progress = 0

@@ -50,13 +50,13 @@ class BuildingEconomyTests(unittest.TestCase):
         planet.population, planet.farmers = 1, 0
         planet.buildings = ["mine", "mine"]
         planet.miners = 1
-        for richness, resources in (("Poor", 6), ("Average", 10), ("Rich", 14), ("Ultra-rich", 26)):
+        for richness, resources in (("Poor", 5), ("Average", 9), ("Rich", 12), ("Ultra-rich", 23)):
             planet.richness = richness
             self.assertEqual(game.planet_resources(planet), resources)
             self.assertEqual(game.planet_yields(planet), (1, -1, 0))
         planet.richness, planet.buildings = "Average", ["trade_center", "trade_center"]
-        # Two half-credit population bonuses sum to one before rounding.
-        self.assertEqual(game.planet_yields(planet)[1], 8)
+        # The half-credit population bonus applies once, then total income rounds down.
+        self.assertEqual(game.planet_yields(planet)[1], 7)
 
     def test_trade_and_workforce_bonuses_include_slaves_on_the_same_terms(self):
         game = scenario(race_id="varkesh")
@@ -66,14 +66,14 @@ class BuildingEconomyTests(unittest.TestCase):
         self.assertEqual(game.planet_yields(planet), (30, 24, 10))
         self.assertEqual((planet.maintenance_per_turn, farmer_output(planet)), (7, 3))
 
-    def test_farming_assignments_include_all_completed_farm_bonuses(self):
+    def test_farming_assignments_include_one_worker_bonus_and_all_fixed_farm_output(self):
         game = scenario()
         planet = game.planet_at(0, 2)
         planet.population, planet.biome = 16, "Desert"
         planet.buildings = ["hydroponic_farm", "hydroponic_farm"]
-        self.assertEqual((farmer_output(planet), farmers_needed(planet, game.bonuses_for())), (4, 2))
-        game.set_workforce(0, 2, 2, 0)
-        self.assertEqual(game.population_report(planet).balance, 0)
+        self.assertEqual((farmer_output(planet), farmers_needed(planet, game.bonuses_for())), (3, 3))
+        game.set_workforce(0, 2, 3, 0)
+        self.assertEqual(game.population_report(planet).balance, 1)
         game.demolish_building(0, 2, 0)
         self.assertEqual(farmers_needed(planet, game.bonuses_for()), 4)
 

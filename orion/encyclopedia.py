@@ -129,7 +129,7 @@ def guides():
             ("EXCEPTIONS", "The Varkesh cannot colonize. They raid for slaves and credits. The Observer controls no colonies and watches the computer empires instead."),
         )),
         Article("population", "colonies", "Population and assignments", "Farmers, workers, scientists and miners", (
-            ("JOBS", "Farmers produce food, industrial workers build projects, scientists generate research, and miners produce Resources. Buildings can add both base output and bonuses to assigned population."),
+            ("JOBS", "Farmers produce food, industrial workers build projects, scientists generate research, and miners produce Resources. Each copy of a production building adds base output. Its workforce bonus applies once per operating building type, so extra copies do not multiply worker productivity."),
             ("MOVE A GROUP", "In a population row, click an icon to select it and the icons to its right. Then click the destination job to move the selected group. The displayed selection shows how many people will move."),
             ("GROWTH", "Food balance, planet capacity and racial abilities affect population growth. Machine and energy civilizations have different food and growth rules; see Civilizations for their traits."),
         )),
@@ -240,9 +240,10 @@ def articles():
                     ("PER TURN", f"Maintenance: {spec.maintenance} CR · Energy demand: {spec.energy_use}"),
                     ("BASE EFFECT", spec.effect_text("Average"))]
         if spec.workforce_text("Average"):
-            sections.append(("WORKFORCE BONUS", spec.workforce_text("Average")))
+            sections.append(("WORKFORCE BONUS", spec.workforce_text("Average")+" · Once per operating building type; extra copies do not add this bonus."))
         sections += [("RESEARCH REQUIRED", f"Eight technologies · {RACES[PROJECT_RACES[spec.id]].name} only" if spec.id in PROJECT_RACES else building_research(spec.technology)),
-                     ("NOTES", "One per colony, including queued orders. Values use Average mineral richness, before empire bonuses. Benefits require the building to operate.")]
+                     ("NOTES", ("Repeatable: each copy adds base output and uses a slot. Other colony bonuses apply once per type. " if spec.repeatable else "One per colony, including queued orders. ")+
+                      "Values use Average mineral richness, before empire bonuses. Benefits require the building to operate.")]
         result.append(Article("building_"+spec.id, "buildings", spec.name, "Building · base values", tuple(sections)))
     for spec in sorted(TECHNOLOGIES.values(), key=lambda s: (s.branch, s.tier, s.name)):
         if spec.id == "ascension_theory":

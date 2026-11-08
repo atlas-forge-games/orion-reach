@@ -214,11 +214,14 @@ def world_quality(planet, race_id="kharuun"):
 
 def development_choice(planet, race_id="kharuun", available=None):
     existing = set(planet.buildings) | {q.item_id for q in planet.construction_queue}
-    for item in (*RACES[race_id].development, "factory", "trade_center", "research_lab", "mine"):
-        candidates = reversed(FACILITY_FAMILIES.get(item, (item,))) if available is not None else (item,)
-        for candidate in candidates:
-            if candidate not in existing and (available is None or candidate in available):
-                return candidate
+    # Obtain each distinct workforce bonus before buying extra base output.
+    for repeats in (False, True):
+        for item in (*RACES[race_id].development, "factory", "trade_center", "research_lab", "mine"):
+            candidates = reversed(FACILITY_FAMILIES.get(item, (item,))) if available is not None else (item,)
+            for candidate in candidates:
+                if ((candidate not in existing if not repeats else BUILDINGS[candidate].repeatable)
+                        and (available is None or candidate in available)):
+                    return candidate
     return None
 
 
@@ -251,7 +254,7 @@ def steady_power_plant(game, planet, owner):
     """Choose the largest unlocked steady source the colony can maintain."""
     existing = set(planet.buildings) | {q.item_id for q in planet.construction_queue}
     candidates = [b for b in BUILDINGS.values() if b.energy_output and not b.energy_per_resource
-                  and b.id not in existing
+                  and (b.id not in existing or b.repeatable)
                   and (not b.technology or game.research_state(owner).has_unlock(b.technology))]
     income = game.planet_yields(projected_colony(planet))[1]
     affordable = [b for b in candidates if b.maintenance < income]
@@ -606,15 +609,20 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
                 game.prioritize_construction(system.id, planet.id, 0, owner=owner)
             continue
         food = game.population_report(planet)
-        farm_food = PROJECTS["hydroponic_farm"].food+planet.farmers*PROJECTS["hydroponic_farm"].food_per_farmer
+        farm_food = PROJECTS["hydroponic_farm"].food
+        if "hydroponic_farm" not in planet.buildings:
+            farm_food += planet.farmers*PROJECTS["hydroponic_farm"].food_per_farmer
         full_consumption = food_required(food.capacity+planet.slaves, game.bonuses_for(owner))
         farm_tech = BUILDINGS["hydroponic_farm"].technology
-        farm_available = ("hydroponic_farm" not in planet.buildings and farm_food > 0
+        farm_available = (farm_food > 0
                           and (not farm_tech or game.research_state(owner).has_unlock(farm_tech)))
-        farms_needed = int(farm_available and full_consumption > food.produced)
-        needs_food = farm_available and food.consumed > 0 and (food.produced < min(full_consumption, food.consumed+2)
-                      or planet.farmers > 2
-                      or 0 < planet.free_slots <= farms_needed)
+        first_farm = "hydroponic_farm" not in planet.buildings
+        farms_needed = int(farm_available and (food.produced < food.consumed
+                           or first_farm and full_consumption > food.produced))
+        needs_food = farm_available and food.consumed > 0 and (food.produced < food.consumed
+                      or first_farm and (food.produced < min(full_consumption, food.consumed+2)
+                                         or planet.farmers > 2
+                                         or 0 < planet.free_slots <= farms_needed))
         if needs_food and planet.free_slots == 0:
             disposable = [i for i, b in enumerate(planet.buildings) if facility_family(b) in ("research_lab", "factory", "trade_center")]
             if disposable:

@@ -30,10 +30,10 @@ class TradeGoodsTests(unittest.TestCase):
         self.game = empty_fleet_game(seed=2408, with_ai=False)
         self.planet = self.game.planet_at(0, 2)
 
-    def test_every_building_blocks_completed_queued_and_paused_duplicates(self):
+    def test_special_buildings_block_completed_queued_and_paused_duplicates(self):
         self.game.technology.completed = list(TECHNOLOGIES)
         for item in BUILDINGS:
-            if not BUILDINGS[item].enabled:
+            if not BUILDINGS[item].enabled or BUILDINGS[item].repeatable:
                 continue
             with self.subTest(building=item):
                 from orion.race_victory import PROJECT_RACES
@@ -63,9 +63,9 @@ class TradeGoodsTests(unittest.TestCase):
         mars.colonized, mars.owner, mars.population = True, PLAYER, 1
         home_system, home = game.headquarters(RIVAL)
         for sid, pid, owner in ((0, 2, PLAYER), (0, 3, PLAYER), (home_system.id, home.id, RIVAL)):
-            game.queue_building(sid, pid, "factory", owner=owner)
+            game.queue_building(sid, pid, "barracks", owner=owner)
             with self.assertRaisesRegex(RuleError, "Only one"):
-                game.queue_building(sid, pid, "factory", owner=owner)
+                game.queue_building(sid, pid, "barracks", owner=owner)
             game.queue_ship(sid, pid, "scout", owner=owner)
             game.queue_ship(sid, pid, "scout", owner=owner)
         self.assertEqual(GameState.from_dict(game.to_dict()), game)
@@ -79,8 +79,8 @@ class TradeGoodsTests(unittest.TestCase):
             restored, _ = storage.load(storage.save(self.game))
         self.assertEqual(restored, self.game)
         for item in ("factory", "mine"):
-            with self.assertRaisesRegex(RuleError, "Only one"):
-                restored.queue_project(0, 2, item)
+            restored.queue_project(0, 2, item)
+        self.assertEqual(restored.planet_at(0, 2).used_slots, 6)
 
     def test_credits_floor_each_colonys_available_industry_without_bonus_scaling(self):
         self.planet.farmers = self.planet.scientists = self.planet.miners = 0
@@ -269,7 +269,7 @@ class ProductionInterfaceTests(unittest.TestCase):
             self.click("catalog_next")
         return keys
 
-    def test_picker_filters_research_slots_and_duplicates_and_restores_cancelled_choices(self):
+    def test_picker_filters_research_and_slots_but_keeps_repeatable_choices(self):
         from test_research_expansion import discover
         self.app.open_planet(2)
         self.click("planet_change")
@@ -282,8 +282,8 @@ class ProductionInterfaceTests(unittest.TestCase):
         self.planet.buildings = ["mine"]
         self.app.catalog_page = 0
         self.click("production_build_factory")
-        self.assertNotIn("factory", self.catalogue())
-        self.assertNotIn("mine", self.catalogue())
+        self.assertIn("factory", self.catalogue())
+        self.assertIn("mine", self.catalogue())
         self.click("production_cancel_0")
         self.assertIn("factory", self.catalogue())
         self.planet.buildings = list(BUILDINGS)[:self.planet.building_capacity]

@@ -29,7 +29,9 @@ def describe_project(game, planet, identifier):
     sections = [('PURPOSE', spec.description),
                 ('OUTPUT AT FULL POWER', compact_yields(game, spec, planet))]
     if bonus := spec.workforce_text(planet.richness):
-        sections.append(('WORKFORCE BONUS', bonus))
+        sections.append(('WORKFORCE BONUS', bonus+' · Once per operating building type; extra copies do not add this bonus.'))
+    sections.append(('BUILD LIMIT', 'Repeatable · Each copy adds base output and uses one slot. Other colony bonuses apply once per type.'
+                     if spec.repeatable else 'One per colony, including queued orders.'))
     upkeep = building_maintenance(identifier, game.bonuses_for(planet.owner))
     sections.extend((
         ('UPKEEP & POWER', f'{upkeep} Credits / turn · {spec.energy_use} energy demand'),
@@ -42,12 +44,13 @@ def describe_project(game, planet, identifier):
 def describe(game, system_id, planet, key, *, live):
     """Resolve only a displayed structure, using the visible survey's contents."""
     if key.startswith('surface_'):
-        identifier = key.removeprefix('surface_')
+        site_id = key.removeprefix('surface_')
         item = next((item for item in scene_buildings(game, system_id, planet)
-                     if item.asset_id == identifier), None)
+                     if item.key == site_id), None)
         if item is None:
             return None
-        slots = [i for i, value in enumerate(planet.buildings) if value == identifier]
+        identifier = item.asset_id
+        slots = [item.slot] if item.completed and item.slot is not None else []
         built, queued = item.completed, item.queued
     elif key.startswith('mothership_module_') and planet.habitat:
         index = int(key.removeprefix('mothership_module_'))
@@ -87,10 +90,12 @@ def describe(game, system_id, planet, key, *, live):
             status += (' · ' if status else '')+f'{queued} queued (no effects until completed)'
         sections = [
             ('PURPOSE', spec.description),
-            ('BASE EFFECTS PER BUILDING', spec.effect_text(planet.richness)),
+            ('BASE EFFECTS', spec.effect_text(planet.richness)),
         ]
         if bonus := spec.workforce_text(planet.richness):
-            sections.append(('WORKFORCE BONUS', bonus))
+            sections.append(('WORKFORCE BONUS', bonus+' · Once per operating building type; extra copies do not add this bonus.'))
+        sections.append(('BUILD LIMIT', 'Repeatable · Each copy adds base output and uses one slot. Other colony bonuses apply once per type.'
+                         if spec.repeatable else 'One per colony, including queued orders.'))
         sections += [
             ('BASE UPKEEP & POWER', f'{spec.maintenance} Credits / turn · {spec.energy_use} energy demand'),
             ('STATUS', status or f'{built} built'),

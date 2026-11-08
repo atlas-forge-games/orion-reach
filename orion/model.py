@@ -515,7 +515,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=58):
+    def from_dict(cls, data, expected_id, *, version=63):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -1462,7 +1462,7 @@ class GameState:
         if technology and not self.research_state(owner).has_unlock(technology):
             from .research import TECHNOLOGIES
             return "Requires "+TECHNOLOGIES[technology].name+"."
-        if (building_id in planet.buildings or
+        if not BUILDINGS[building_id].repeatable and (building_id in planet.buildings or
                 any(p.item_id == building_id for p in planet.construction_queue)):
             return "Only one of this module is allowed per mothership." if planet.habitat else "Only one of this building is allowed per colony."
         if len(planet.construction_queue) >= MAX_QUEUE:
@@ -1533,7 +1533,7 @@ class GameState:
         if item_id == TRADE_GOODS.id:
             return
         queue = self.planet_at(system_id, planet_id).construction_queue
-        queue.insert(0, queue.pop())
+        self.prioritize_construction(system_id, planet_id, len(queue)-1, owner=owner)
 
     def prioritize_construction(self, system_id, planet_id, index, *, owner=PLAYER):
         self._require_strategy(owner)
@@ -1541,6 +1541,9 @@ class GameState:
         self._require_colony(planet, owner)
         if not _integer(index, 0, len(planet.construction_queue)-1):
             raise RuleError("Choose an existing queued project.")
+        from .colony_layout import freeze, prioritize_sites
+        freeze(self, system_id, planet)
+        prioritize_sites(planet, index)
         planet.construction_queue.insert(0, planet.construction_queue.pop(index))
         planet.trade_goods = False
 
@@ -1782,8 +1785,11 @@ class GameState:
         self._require_colony(planet, owner)
         if not _integer(queue_index, 0, len(planet.construction_queue)-1):
             raise RuleError("That construction project is no longer in the queue.")
-        from .colony_layout import freeze as freeze_surface_layout
+        from .colony_layout import freeze as freeze_surface_layout, remove_site
         freeze_surface_layout(self, system_id, planet)
+        if planet.construction_queue[queue_index].reserves_slot:
+            slot = len(planet.buildings)+next(i for i, (q, _) in enumerate(planet.building_projects) if q == queue_index)
+            remove_site(planet, slot)
         project = planet.construction_queue.pop(queue_index)
         self._empire(owner).credits += project.refund
         self._empire(owner).resources += project.resource_refund
@@ -2034,7 +2040,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=62):
+    def from_dict(cls, data, *, version=63):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

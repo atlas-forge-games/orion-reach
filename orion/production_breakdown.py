@@ -25,6 +25,8 @@ def describe(game, planet, kind):
     active = economy.operating_facilities(planet, b)
     power = game.planet_energy(planet)
     lines = []
+    if len({spec.id for spec, _ in active}) < len(active):
+        lines.append('Each operating copy adds base output; workforce and other colony bonuses count once per building type.')
     if power.efficiency < 1:
         lines.append(f'Local power {power.generated}/{power.demand}. Facilities requiring energy run at {power.efficiency_label}.')
     def add(label, value):
@@ -102,7 +104,7 @@ def describe(game, planet, kind):
         factor = MINERAL_FACTORS[planet.richness]
         add('Mineral multiplier ('+planet.richness+')', factor)
         base = buildings('resources',factor)
-        extra = sum(spec.resources_per_miner*rate for spec, rate in active)
+        extra = sum(spec.resources_per_miner*rate for spec, rate in economy.facility_bonus_sources(planet, b))
         workers = add(f'{planet.miners} miners × ({economy.MINER_RESOURCES:g} base + {extra:g} facilities) × {factor:g}', planet.miners*economy.miner_output(planet,b))
         raw = add('Base extraction', economy.BASE_EXTRACTION)
         raw += add('Colony bonuses (race, research, leader)', b.get('colony_resources',0))

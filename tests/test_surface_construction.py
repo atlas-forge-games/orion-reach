@@ -32,7 +32,7 @@ class SurfaceFixture(unittest.TestCase):
 
     def sites(self, world=None, sid=0):
         world = world or self.world
-        return colony_layout.layout([b.asset_id for b in scene_buildings(self.game, sid, world)], world.surface_layout)
+        return colony_layout.layout([b.key for b in scene_buildings(self.game, sid, world)], world.surface_layout)
 
 
 class SurfaceLayoutTests(SurfaceFixture):

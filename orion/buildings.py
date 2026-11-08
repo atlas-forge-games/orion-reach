@@ -21,7 +21,7 @@ class BuildingSpec:
     training: int = 0
     garrison_limit: int = 0
     defence_bonus: int = 0
-    # Retained for old save/profile validation. All new orders are one per colony.
+    # Special structures remain unique even when a balance profile adds output.
     unique: bool = False
     industry_per_worker: float = 0
     research_per_scientist: int = 0
@@ -43,6 +43,12 @@ class BuildingSpec:
     shield_capacity: int = 0
     interdiction_slow: int = 0
     interdiction_range: int = 0
+
+    @property
+    def repeatable(self):
+        """Production and power facilities can fill multiple colony slots."""
+        return not self.unique and any((self.industry, self.income, self.research,
+                                        self.food, self.resources, self.energy_output))
 
     def worker_bonus(self, richness):
         return self.industry_per_worker*(MINERAL_FACTORS[richness] if self.mineral_scaled else 1)
@@ -182,7 +188,7 @@ for _key in NEW_BUILDINGS:
 BUILDING_GROUPS = tuple(tuple(group) for group in _groups)
 
 # Facility families share research bonuses and AI preferences.
-# Each distinct facility still occupies a slot and can be built once per colony.
+# Each copy occupies a slot; workforce bonuses apply once per distinct type.
 FACILITY_FAMILIES = {
     "factory": ("factory", "advanced_factory", "construction_bureau", "robotic_factory", "superconducting_foundry", "nanofactory"),
     "mine": ("mine", "deep_core_mine", "mineral_processor", "automated_refinery"),
@@ -206,9 +212,9 @@ class WorkforceBonuses:
 
 
 def workforce_bonuses(planet, bonuses=None):
-    """Add bonuses from completed buildings; fractions are rounded after summing."""
-    from .economy import operating_facilities
-    buildings = operating_facilities(planet, bonuses)
+    """Add one powered bonus per building type, rounding only after summing."""
+    from .economy import facility_bonus_sources
+    buildings = facility_bonus_sources(planet, bonuses)
     return WorkforceBonuses(sum(b.worker_bonus(planet.richness)*rate for b, rate in buildings),
                            sum(b.food_per_farmer*rate for b, rate in buildings),
                            sum(b.research_per_scientist*rate for b, rate in buildings),

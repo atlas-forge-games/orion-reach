@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.95.2
+# Age of the Stars — Python prototype 0.96.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,26 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.96.0 — repeatable production buildings
+
+Factories, mines, research labs, farms and their researched variants can be built
+multiple times on a colony. Each copy adds base output; workforce bonuses apply
+**once per operating building type**. For example, two basic factories supply
+**+8 base industry and +1 industry per worker** at full power.
+
+Trade facilities and power plants are also repeatable. Each copy uses its own
+slot, construction payment, upkeep and power. Special and defensive structures
+retain their build limits. Every surface copy has its own position and controls;
+queue changes, demolition and saving preserve the remaining buildings' sites.
+Right-click details explain which bonuses apply only once. Mothership modules
+and AI empires follow the same production rules.
+
+Extract this incremental update over **v0.95.2**, then restart. Existing saves
+load normally; new saves use format **63**. See [the rules, validation and commit
+commands](docs/repeatable-buildings.md).
+
+![Repeated buildings on a colony](screenshots/repeatable_buildings.png)
 
 ## New in v0.95.2 — clearer colony panels
 
@@ -2804,11 +2824,12 @@ industry plus 1 per industrial worker, costs 2 CR/turn and uses 3 energy.
 | Large | 10 |
 | Huge | 12 |
 
-Each completed or queued building uses one slot. Repeated copies of a building
-are allowed, and their outputs add together. Planet size determines capacity;
+Each completed or queued building uses one slot. Production buildings and power
+plants can be repeated; their base outputs add together, while workforce and
+other colony bonuses apply once per operating building type. Planet size determines capacity;
 habitability does not change it in this version.
 
-| Building | Resources | Work | Base effect per turn | Workforce bonus per copy | Upkeep CR | Energy used |
+| Building | Resources | Work | Base effect per turn | Workforce bonus (once per type) | Upkeep CR | Energy used |
 | --- | ---: | ---: | --- | --- | ---: | ---: |
 | Factory | 45 | 24 | +4 industry | +1 industry per industrial worker | 2 | 3 |
 | Mining complex | 30 | 18 | +2 Resources × richness | +1 Resource × richness per miner | 1 | 2 |
@@ -2831,7 +2852,7 @@ habitability does not change it in this version.
 Mining uses **Poor ×0.5, Average ×1, Rich ×1.5, Ultra-rich ×3**. Fractions
 are summed before rounding down; technology bonuses per mine are added after
 that. Mines improve Resources, while factories improve industry. Repeated
-copies of non-unique buildings stack. These are base values: technologies can
+copies add base output without repeating their workforce bonus. These are base values: technologies can
 change construction prices, output and upkeep. Work and slot costs stay fixed.
 
 Energy stays on its colony. Basic supply is 12; steady power plants add generation.
