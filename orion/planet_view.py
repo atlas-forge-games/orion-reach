@@ -18,8 +18,8 @@ from .production import ASCENSION_GATE, PROJECTS, SHIP_TYPES, TRADE_GOODS
 from .research import building_maintenance
 from .designs import HULLS
 from . import raiding, defenses, economy
-from . import production as production_balance, research as research_balance
-from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, panel, paragraph, shorten, text
+from . import research as research_balance
+from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
 GREEN = (154, 200, 133)
 SCIENCE = (165, 172, 232)
@@ -30,7 +30,7 @@ SURFACE_RECT = (24, 314, 1392, 492)
 
 
 def worker_row_rect(role):
-    return pg.Rect(302, 148+WORKER_ROLES.index(role)*31, 742, 29)
+    return pg.Rect(302, 160+WORKER_ROLES.index(role)*31, 742, 29)
 
 
 def worker_icon_layout(count):
@@ -195,10 +195,15 @@ def workforce_panel(app, game, planet, live):
     for index, (kind, label, value, caption, color) in enumerate(outputs):
         x = 302+index*124
         panel(surface, (x, 86, 120, 61), (15, 28, 37))
-        resource_icon(surface, kind, (x+14, 114), color, .6)
-        text(surface, label, (x+7, 91), 8, MUTED, "mono")
-        text(surface, value, (x+32, 105), 19, color)
-        text(surface, shorten(caption, 108, 8), (x+7, 130), 8, MUTED)
+        # Labels use the shared 14px minimum; leave a separate line for each
+        # value and caption instead of placing an icon inside the label line.
+        label_y = 88
+        value_y = label_y+font(14, "mono").get_height()+1
+        caption_y = value_y+font(18).get_height()+1
+        resource_icon(surface, kind, (x+14, value_y+font(18).get_height()//2), color, .6)
+        text(surface, label, (x+7, label_y), 14, MUTED, "mono")
+        text(surface, shorten(value, 80, 18), (x+32, value_y), 18, color)
+        text(surface, shorten(caption, 108, 14), (x+7, caption_y), 14, MUTED)
     benefits = game.bonuses_for(planet.owner) if live else {}
     staff = workforce_bonuses(planet, benefits)
     details = {"farmers": f"{farmer_output(planet, benefits):g} base food each" if needs_food else "food not required",
@@ -218,8 +223,11 @@ def workforce_panel(app, game, planet, live):
             selected = worker_selection_count(count, None if app.keyboard_mode else app.mouse[0])
         if active or app.worker_source == role:
             panel(surface, button.rect, (23, 38, 45), color)
-        text(surface, ROLE_LABELS[role], (314, y+9), 10, color, "mono")
-        text(surface, str(count), (440, y+4), 17, INK, right=True)
+        label_y = rect.centery-font(14, "mono").get_height()//2
+        value_y = rect.centery-font(17).get_height()//2
+        detail_y = rect.centery-font(14).get_height()//2
+        text(surface, ROLE_LABELS[role], (314, label_y), 14, color, "mono")
+        text(surface, str(count), (440, value_y), 17, INK, right=True)
         first, step = worker_icon_layout(count)
         visible = min(count, MAX_WORKER_ICONS)
         selected_visible = min(selected, visible)
@@ -228,15 +236,15 @@ def workforce_panel(app, game, planet, live):
             right = first+(visible-1)*step+8
             panel(surface, (left, y+1, right-left, 27), tuple(c//4 for c in color), color)
         for i in range(visible):
-            worker_icon(surface, first+i*step, y+2, INK if i >= visible-selected_visible else color)
+            worker_icon(surface, first+i*step, rect.centery-12, INK if i >= visible-selected_visible else color)
         if count > visible:
             hidden = count-visible
             selected_hidden = max(0, selected-visible)
             if selected_hidden:
                 panel(surface, (454, y+1, 44, 27), tuple(c//4 for c in color), color)
             label = f"{selected_hidden}/{hidden}" if 0 < selected_hidden < hidden else f"+{hidden}"
-            text(surface, label, (459, y+9), 9, INK if selected_hidden else color)
-        text(surface, details[role] if live else "last observed", (1032, y+9), 10, MUTED, right=True)
+            text(surface, label, (459, detail_y), 14, INK if selected_hidden else color)
+        text(surface, details[role] if live else "last observed", (1032, detail_y), 14, MUTED, right=True)
     if not live:
         caption = f"Stored survey · {planet.workforce} B inhabitants last observed. Current production is unknown."
     elif not planet.colonized:
@@ -248,7 +256,7 @@ def workforce_panel(app, game, planet, live):
     else:
         caption = f"+{planet.slaves} billion slaves" if planet.slaves else ""
     if caption:
-        text(surface, shorten(caption, 742, 11), (302, 279), 11, MUTED)
+        text(surface, shorten(caption, 742, 14), (302, 280), 14, MUTED)
 
 
 def construction_panel(app, game, system, planet, live):
@@ -296,8 +304,8 @@ def construction_panel(app, game, system, planet, live):
         rate = game.trade_goods_income(planet) if live else None
         text(surface, f"+{rate} CR / turn" if live else "Last observed", (1200, 134), 19, GOLD)
         text(surface, "Ongoing production", (1200, 171), 12, CYAN)
-        text(surface, f"{production_balance.TRADE_GOODS_PERCENT}% of industry, then credit strain", (1090, 213), 12, MUTED)
-        text(surface, f"{len(queue)} projects paused · Progress kept" if queue else "No resource cost or building slot", (1090, 236), 11, MUTED)
+        if queue:
+            text(surface, f"{len(queue)} projects paused · Progress kept", (1090, 236), 11, MUTED)
     elif queue and visible:
         project = queue[0]
         spec = project.spec

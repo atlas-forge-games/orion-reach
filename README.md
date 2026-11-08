@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.95.1
+# Age of the Stars — Python prototype 0.95.2
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,21 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.95.2 — clearer colony panels
+
+Colony totals give labels, icons, values and captions separate space. Farming,
+Industry, Research and Mining are centered beneath the totals, with each row's
+label, count, worker figures and output aligned vertically.
+
+Active Trade Goods no longer shows the conversion formula or the resource-cost
+explanation in Current project. The income and any paused-queue status remain
+visible. These changes also apply to Wanderer motherships.
+
+Extract this incremental update over **v0.95.1**, then restart. Save format
+remains **62**. See [the update notes and commit commands](docs/colony-panel-cleanup.md).
+
+![Colony panels](screenshots/colony_panel_cleanup.png)
 
 ## New in v0.95.1 — cleaner production screen
 
