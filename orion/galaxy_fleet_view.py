@@ -23,8 +23,8 @@ from .designs import HULLS
 from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, RED, RIVAL_COLOR, font, panel, paragraph, shorten, text
 
 FLEET_SHIPS_PER_PAGE = 6
-DOCK_OFFSET = (30, 30)
-DOCK_SPACING = 32
+DOCK_OFFSET = (22, 22)
+DOCK_SPACING = 30
 DOCK_COLUMNS = 3
 
 
@@ -109,6 +109,19 @@ def compact_fleet_markers(app, map_rect):
     groups = group_fleets(app.game.visible_ships())
     slots = docking_slots(app, groups)
     scale = star_zoom_scale(app.map_camera.zoom)
+    docks = {}
+    dock_obstacles = {}
+    for ships in groups:
+        ship = ships[0]
+        if ship.id not in slots:
+            continue
+        slot = slots[ship.id]
+        x, y = app.star_pos(app.game.systems[ship.system_id])
+        rect = pg.Rect(0, 0, ICON_BOX, ICON_BOX)
+        rect.center = (round(x+DOCK_OFFSET[0]*scale+(slot % DOCK_COLUMNS)*DOCK_SPACING),
+                       round(y+DOCK_OFFSET[1]*scale+(slot // DOCK_COLUMNS)*DOCK_SPACING))
+        docks[ship.id] = rect
+        dock_obstacles.setdefault(ship.system_id, []).append(rect)
     result = []
     for ships in groups:
         ship = ships[0]
@@ -124,12 +137,18 @@ def compact_fleet_markers(app, map_rect):
                 # Presentation only: keep the icon clear of the star where possible,
                 # without advancing the voyage or changing its saved duration.
                 distance = min(32*scale, length/2)
+                # Closer docks must not hide a just-departing fleet's click target.
+                # Slide forward along the actual route, never sideways off it.
+                candidate = pg.Rect(0, 0, ICON_BOX, ICON_BOX)
+                while distance < length/2:
+                    candidate.center = round(x+dx/length*distance), round(y+dy/length*distance)
+                    if candidate.collidelist(dock_obstacles.get(ship.system_id, [])) == -1:
+                        break
+                    distance = min(distance+2, length/2)
                 x += dx/length*distance
                 y += dy/length*distance
         elif not ship.in_transit:
-            slot = slots[ship.id]
-            x += DOCK_OFFSET[0]*scale + (slot % DOCK_COLUMNS)*DOCK_SPACING
-            y += DOCK_OFFSET[1]*scale + (slot // DOCK_COLUMNS)*DOCK_SPACING
+            x, y = docks[ship.id].center
         rect = pg.Rect(0, 0, ICON_BOX, ICON_BOX)
         rect.center = round(x), round(y)
         if rect.colliderect(map_rect):

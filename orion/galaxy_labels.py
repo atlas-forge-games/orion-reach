@@ -11,7 +11,7 @@ from . import black_holes, motherships
 
 LABEL_SIZE = 13
 LABEL_FAMILY = "mono_bold"
-ATLAS_LABEL_SIZE = 16
+ATLAS_LABEL_SIZE = 16 * .7
 
 
 def label_font(style="classic"):
@@ -65,7 +65,7 @@ def label_bands(game, system, selected=False, palette=DEFAULT_PALETTE, style="cl
     if not label:
         return "", ()
     if style == "clean":
-        return label, ((0, font(*label_font(style)).size(label)[0], INK),)
+        return label, ((0, label_size(label, style)[0], INK),)
     owners = known_owners(game, system)
     face = font(*label_font(style))
     width = face.size(label)[0]

@@ -57,7 +57,7 @@ class FleetIconTests(unittest.TestCase):
 
     def test_dock_offset_survives_labels_zoom_and_pan(self):
         home = self.game.systems[0]
-        for zoom, offset in ((1, 30), (2.25, 45), (4, 60)):
+        for zoom, offset in ((1, 22), (2.25, 33), (4, 44)):
             self.app.map_camera.zoom = zoom
             self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
             self.app.map_camera.pan(13, -7, self.app.map_rect)
@@ -124,17 +124,17 @@ class FleetIconTests(unittest.TestCase):
         ship.system_id, ship.destination, ship.turns_remaining = 1, None, 0
         docked, anchor = self.markers()[10]
         self.assertNotEqual(docked, moving)
-        self.assertEqual(docked.center, (round(anchor[0]+30), round(anchor[1]+30)))
+        self.assertEqual(docked.center, (round(anchor[0]+22), round(anchor[1]+22)))
         self.assertEqual(flight_heading(self.app, ship), 0)
 
     def test_viewport_clips_the_hit_target_without_sliding_the_dock(self):
         self.app.map_camera.zoom = 4
         home = self.game.systems[0]
         self.app.map_camera.center_on(home.x, home.y, self.app.map_rect)
-        self.app.map_camera.pan(self.app.map_rect.right-65-self.app.star_pos(home)[0], 0, self.app.map_rect)
+        self.app.map_camera.pan(self.app.map_rect.right-49-self.app.star_pos(home)[0], 0, self.app.map_rect)
         self.app.render()
         rect, anchor = self.markers()[10]
-        self.assertEqual(rect.center, (round(anchor[0]+60), round(anchor[1]+60)))
+        self.assertEqual(rect.center, (round(anchor[0]+44), round(anchor[1]+44)))
         self.assertGreater(rect.right, self.app.map_rect.right)
         button = next(b for b in self.app.buttons if b.key == "map_fleet_10")
         self.assertEqual(button.rect, rect.clip(self.app.map_rect))

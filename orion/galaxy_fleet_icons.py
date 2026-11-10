@@ -1,4 +1,4 @@
-"""Compact illustrated fleets with faction accents, drawn at their final pixel size."""
+"""Compact faction-colored fleets, drawn at their final pixel size."""
 
 from functools import lru_cache
 import math
@@ -9,7 +9,8 @@ from .model import PLAYER
 from .display import Canvas
 
 ICON_BOX = 28
-ART_SIZE = 24
+# Keep the generous click target while reducing the visible artwork by 30%.
+ART_SIZE = 24 * .7
 
 
 def visible_course(app, ship):
@@ -58,18 +59,17 @@ def accented_master(color, habitat=False):
     if master is None:
         return fallback_art(color, habitat)
     master = master.copy()
-    # Recolour the blue engine/navigation lights, preserving the light hull.
-    # A faction rim at this size would obscure the ship's silhouette.
+    # Tint the entire hull: engine lights alone vanish at galaxy-map scale.
+    # Retain the source shading and a little neutral specular light so both
+    # ordinary ships and motherships keep their illustrated details.
     for x in range(master.get_width()):
         for y in range(master.get_height()):
             r, g, b, alpha = master.get_at((x, y))
-            cool = min(g, b)-r
-            if alpha and cool > 12 and b > 85:
-                amount = min(1, cool/45)
+            if alpha:
                 light = max(r, g, b)/255
-                accent = tuple(round((channel*.8+51)*light) for channel in color)
-                mixed = tuple(round(old*(1-amount)+new*amount) for old, new in zip((r, g, b), accent))
-                master.set_at((x, y), (*mixed, alpha))
+                highlight = max(0, (light-.82)/.18)*.18
+                tint = tuple(round((channel*(1-highlight)+255*highlight)*light) for channel in color)
+                master.set_at((x, y), (*tint, alpha))
     if not habitat:
         # Keep the two aft lights legible after reduction to a compact icon.
         width, height = master.get_size()

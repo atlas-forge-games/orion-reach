@@ -1,5 +1,9 @@
 # Illustrated fleets and fixed docks — v0.83.2
 
+For the current sizes, hull colors and closer docking positions, see
+[Compact faction fleets — v0.96.3](compact-faction-fleets.md). The dimensions
+below describe the original v0.83.2 release.
+
 Later updates add [subtle dashed fleet routes](galaxy-fleet-routes.md).
 Since v0.83.4, hovering previews the route and queued departures immediately
 line up at its start, facing the destination. This supersedes the v0.83.2
