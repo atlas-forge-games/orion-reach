@@ -53,13 +53,18 @@ def draw(app):
     surface, game = app.canvas, app.game
     owner = app.dialog['affairs_owner']
     panel(surface, (160, 90, 1120, 720), PANEL, GOLD)
-    text(surface, 'Diplomatic agreements & demands', (194, 116), 28, INK, 'title')
+    text(surface, 'Diplomatic affairs', (194, 116), 28, INK, 'title')
     text(surface, shorten(game.empire_name_for(owner), 490, 14), (1247, 125), 14, MUTED, right=True)
     tab = app.dialog.get('affairs_tab', 'coalitions')
-    for index, (key, label) in enumerate((('coalitions', 'Coalitions'), ('tribute', 'Tribute & fear'), ('priorities', 'Racial priorities'))):
-        app.button('dialog_tab_'+key, label, (194+index*356, 169, 340, 38), lambda k=key: select_tab(app, k),
+    tabs = (('negotiations', 'Negotiations'), ('coalitions', 'Coalitions'), ('tribute', 'Tribute & fear'),
+            ('reasons', 'Decision reasons'), ('priorities', 'Racial priorities'))
+    for index, (key, label) in enumerate(tabs):
+        app.button('dialog_tab_'+key, label, (194+index*212, 169, 204, 38), lambda k=key: select_tab(app, k),
                    'primary' if tab == key else 'ghost')
-    if tab == 'coalitions':
+    if tab in ('negotiations', 'reasons'):
+        from .negotiation_view import draw, draw_reasons
+        (draw if tab == 'negotiations' else draw_reasons)(app, owner)
+    elif tab == 'coalitions':
         draw_coalitions(app, owner)
     elif tab == 'tribute':
         draw_tribute(app, owner)

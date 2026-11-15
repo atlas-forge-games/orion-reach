@@ -83,7 +83,9 @@ class FleetIconTests(unittest.TestCase):
         second.travel_total = second.turns_remaining = 4
         split = self.markers()
         self.assertEqual(split[10][0], original)
-        self.assertFalse(split[11][0].colliderect(original))
+        # Departure markers stay near the star even if generous hit boxes touch;
+        # the input handler selects the nearest icon instead of advancing a ship.
+        self.assertNotEqual(split[11][0].center, original.center)
         self.game.cancel_departures([second.id])
         self.assertEqual(self.markers()[10][0], original)
         self.game.ships.pop(0)

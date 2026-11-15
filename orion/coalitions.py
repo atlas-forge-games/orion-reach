@@ -61,7 +61,7 @@ def proposal_error(game, proposer, partner, target):
         return f'Available on turn {state.offer_ready_turn}.'
     for member in (proposer, partner):
         pact = game.diplomacy_between(member, target)
-        if pact.non_aggression_active or pact.friendship_active or pact.coalition_target:
+        if pact.non_aggression_active or pact.friendship_active or pact.coalition_target or pact.ceasefire_until > game.turn:
             return 'A member has a protection agreement with the target. End it first.'
     if treaty_conflict(game, proposer, partner):
         return 'An existing coalition commitment opposes this prospective partner.'
@@ -158,6 +158,8 @@ def defend(game, aggressor, victim):
                         members.add(member)
                         changed = True
     for member in sorted(members-{victim}):
+        if game.diplomacy_between(member, aggressor).ceasefire_until > game.turn:
+            continue
         if not game.diplomacy_between(member, aggressor).at_war:
             start_war(game, member, aggressor, defensive=True)
             message = f'{game.empire_name_for(member)} entered the war against {game.empire_name_for(aggressor)} to defend its coalition partner.'
@@ -211,7 +213,8 @@ def validate(game):
                         or not all(first_contact.known(game, x, y) for x, y in ((a, b), (a, target), (b, target)))):
                     raise ValueError('Invalid coalition membership')
                 if any(game.diplomacy_between(o, target).non_aggression_active or
-                       game.diplomacy_between(o, target).coalition_target for o in (a, b)):
+                       game.diplomacy_between(o, target).coalition_target or
+                       game.diplomacy_between(o, target).ceasefire_until > game.turn for o in (a, b)):
                     raise ValueError('Conflicting coalition commitments')
 
 

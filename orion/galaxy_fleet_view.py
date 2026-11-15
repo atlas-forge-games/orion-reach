@@ -1,5 +1,6 @@
 """Clickable galaxy fleets, their ship manifest, and destination previews."""
 
+from dataclasses import replace
 from functools import lru_cache
 from math import floor, hypot
 import pygame as pg
@@ -129,22 +130,28 @@ def compact_fleet_markers(app, map_rect):
         if not map_rect.collidepoint(anchor):
             continue
         x, y = anchor
-        if ship.departure_pending and visible_course(app, ship):
+        if visible_course(app, ship) and ship.turns_remaining == ship.travel_total:
             end = app.star_pos(app.game.systems[ship.destination])
             dx, dy = end[0]-x, end[1]-y
             length = hypot(dx, dy)
             if length:
-                # Presentation only: keep the icon clear of the star where possible,
-                # without advancing the voyage or changing its saved duration.
-                distance = min(32*scale, length/2)
+                # Keep an unadvanced icon near the origin and behind its first real
+                # travel step. A fixed clearance can otherwise place it halfway
+                # along a short route, then make it jump back on End Turn.
+                first_step = replace(ship, departure_pending=False,
+                                     turns_remaining=max(0, ship.travel_total-1))
+                next_x, next_y = app.map_pos(*navigation.position(app.game, first_step))
+                limit = min(length*.1, hypot(next_x-x, next_y-y)/2)
+                distance = min(32*scale, limit)
                 # Closer docks must not hide a just-departing fleet's click target.
-                # Slide forward along the actual route, never sideways off it.
+                # Avoid them only within the departure area; never fake progress
+                # just to make room for a click target on a crowded route.
                 candidate = pg.Rect(0, 0, ICON_BOX, ICON_BOX)
-                while distance < length/2:
+                while distance < limit:
                     candidate.center = round(x+dx/length*distance), round(y+dy/length*distance)
                     if candidate.collidelist(dock_obstacles.get(ship.system_id, [])) == -1:
                         break
-                    distance = min(distance+2, length/2)
+                    distance = min(distance+2, limit)
                 x += dx/length*distance
                 y += dy/length*distance
         elif not ship.in_transit:

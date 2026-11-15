@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.96.3
+# Age of the Stars — Python prototype 0.97.0
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,39 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.97.0 — proposals, promises and negotiated peace
+
+Diplomacy now includes AI-initiated treaty offers, coalition invitations,
+territorial requests and peace proposals. Each proposal waits for your decision
+and expires after five turns. Open **Diplomatic affairs → Negotiations**, or
+use **Review proposal** in Diplomacy / Turn news.
+
+- **Why?** buttons and **Decision reasons** explain treaty and peace decisions.
+- Territorial promises last **20 turns**. Honouring one improves relations;
+  colonizing in breach triggers a warning and damages trust. Promised systems
+  carry a **◇** on the galaxy map, and AI colonists respect their commitments.
+- Negotiate peace with current holdings, optionally offering credit reparations.
+  A **20-turn ceasefire** blocks attacks and declarations, then ordinary peace
+  continues until a new war is declared.
+- Active promises, remembered breaches and remaining ceasefire turns are visible.
+  The Lithar retain their permanent betrayal memory; the Skirr reject agreements.
+
+Extract this incremental update over **v0.96.3 or v0.96.4** and restart.
+It includes the v0.96.4 route-start fix. Existing v0.96.4 saves migrate to
+format **65**. See [rules, installation and verification](docs/diplomacy-negotiations.md).
+
+![Diplomatic negotiations](screenshots/diplomacy_negotiations.png)
+
+## New in v0.96.4 — ships start at the beginning of their route
+
+Issuing a course now places the ship beside its departure system, at the start
+of the dashed route. The icon stays behind its first travel step, so End Turn
+moves it forward instead of making it jump back. Nearby ships and the departure
+star remain selectable even when their click areas overlap.
+
+Extract this incremental update over **v0.96.3**, then restart. Existing saves
+load normally; save format remains **64**. See [the update notes](docs/route-departure-position.md).
 
 ## New in v0.96.3 — smaller, faction-colored galaxy fleets
 

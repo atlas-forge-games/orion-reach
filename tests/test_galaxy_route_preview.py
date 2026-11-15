@@ -186,6 +186,88 @@ class RoutePreviewTests(unittest.TestCase):
         self.assertEqual(len(self.routes()), 1)
         self.assert_on_route(enemy.id)
 
+    def test_queued_marker_stays_near_origin_and_behind_first_travel_step(self):
+        game = self.app.game
+        ship = game.ships[0]
+        game.ships = [ship]
+        origin, target = game.systems[:2]
+        origin.x = origin.y = .5
+        scale = self.app.map_camera.fit_scale(self.app.map_rect)
+        for dx, dy in ((80, 0), (-80, 0), (80, 80), (0, -80)):
+            target.x, target.y = .5+dx/(882*scale), .5+dy/(509*scale)
+            for zoom in (1, 2, 4):
+                self.app.map_camera.zoom = zoom
+                self.app.map_camera.center_on(.5, .5, self.app.map_rect)
+                self.app.map_camera.pan(13, -7, self.app.map_rect)
+                start = pg.Vector2(self.app.star_pos(origin))
+                vector = pg.Vector2(self.app.star_pos(target))-start
+                for duration in (2, 4, 20):
+                    with self.subTest(direction=(dx, dy), zoom=zoom, duration=duration):
+                        ship.destination, ship.departure_pending = target.id, True
+                        ship.travel_total = ship.turns_remaining = duration
+                        before = game.to_dict()
+                        queued = pg.Vector2(self.marker(ship.id).center)
+                        self.assertEqual(game.to_dict(), before)
+                        queued_distance = (queued-start).dot(vector.normalize())
+                        # A queued order must not look like a half-completed trip.
+                        self.assertLessEqual(queued_distance, vector.length()*.1+1)
+                        ship.departure_pending = False
+                        # Committing an order before simulation must not move it
+                        # back either (e.g. a turn paused for a battle).
+                        self.assertEqual(self.marker(ship.id).center, tuple(queued))
+                        ship.turns_remaining -= 1
+                        moving = pg.Vector2(self.marker(ship.id).center)
+                        self.assertGreater((moving-queued).dot(vector), 0)
+                        self.assertEqual(tuple(moving), tuple(round(v) for v in
+                                         self.app.map_pos(*navigation.position(game, ship))))
+
+    def test_clicked_order_moves_forward_through_real_turns(self):
+        game = self.app.game
+        game.ships = game.ships[:1]
+        origin, target = game.systems[:2]
+        origin.x = origin.y = .5
+        target.x, target.y = .548, .505
+        self.app.map_camera.zoom = 1
+        self.app.map_camera.center_on(.5, .5, self.app.map_rect)
+        self.click("map_fleet_1")
+        self.click("star_1")
+        ship = game.ship_at(1)
+        self.assertTrue(ship.departure_pending)
+        self.assertGreater(ship.travel_total, 1)
+        direction = pg.Vector2(self.app.star_pos(target))-self.app.star_pos(origin)
+        previous = pg.Vector2(self.marker(1).center)
+        duration = ship.travel_total
+        for _ in range(duration-1):
+            game.advance_turn()
+            current = pg.Vector2(self.marker(1).center)
+            self.assertGreater((current-previous).dot(direction), 0)
+            previous = current
+        game.advance_turn()
+        self.assertEqual(ship.system_id, target.id)
+        self.assertFalse(ship.has_course)
+
+    def test_close_departure_parked_fleet_and_origin_remain_clickable(self):
+        game = self.app.game
+        game.ships = game.ships[:2]
+        origin, target = game.systems[:2]
+        origin.x = origin.y = .5
+        target.x = target.y = .54
+        self.app.map_camera.zoom = 1
+        self.app.map_camera.center_on(.5, .5, self.app.map_rect)
+        game.send_ship(1, target.id)
+        dock = self.marker(2).copy()
+        self.assertTrue(self.marker(1).colliderect(dock))
+        self.click("map_fleet_1")
+        self.assertEqual(self.app.map_order_ids, (1,))
+        self.click("fleet_popup_close")
+        self.click("map_fleet_2")
+        self.assertEqual(self.app.map_order_ids, (2,))
+        self.click("fleet_popup_close")
+        self.click("map_fleet_1")
+        self.click("star_0")
+        self.assertFalse(game.ship_at(1).has_course)
+        self.assertEqual(self.marker(2), dock)
+
 
 if __name__ == "__main__":
     unittest.main()

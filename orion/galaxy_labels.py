@@ -45,6 +45,9 @@ def system_label(game, system, style="classic"):
             or system.kind == black_holes.KIND and black_holes.charted(game, system)):
         return ""
     name = game.system_name(system.id)
+    from .negotiations import system_promises
+    if system_promises(game, system.id):
+        name += ' ◇'
     return name if style == "clean" else name.upper()
 
 

@@ -26,6 +26,9 @@ def event(game, owner, message, **kwargs):
 
 
 def available_worlds(game, system, owner=RIVAL):
+    from .negotiations import promises_at
+    if promises_at(game, owner, system.id):
+        return []
     if monsters.known_status(game, system.id, owner) == "alive":
         return []
     known = game.known_system(system.id, owner)
@@ -41,13 +44,16 @@ def known_enemy_colonies(game, owner=RIVAL):
 
 
 def enemies(game, owner):
+    from .diplomacy import aggression_error
     if raiding.is_varkesh(game, owner):
         return {other for other in game.owners if other != owner and game.colony_systems(other)
+                and not aggression_error(game, owner, other)
                 and not game.diplomacy_between(owner, other).trade_active
                 and not game.diplomacy_between(owner, other).research_active
                 and not game.diplomacy_between(owner, other).coalition_target
                 and not game.diplomacy_between(owner, other).non_aggression_active}
     return {other for other in game.owners if other != owner
+            and not aggression_error(game, owner, other)
             and game.diplomacy_between(owner, other).relations < HOSTILE_BELOW
             and not game.diplomacy_between(owner, other).coalition_target
             and not game.diplomacy_between(owner, other).non_aggression_active}
@@ -69,6 +75,7 @@ def diplomatic_orders(game, owner):
         target = world.owner
         state = game.diplomacy_between(owner, target)
         if (not first_contact.known(game, owner, target) or state.trade_active or state.research_active
+                or state.ceasefire_until > game.turn
                 or state.non_aggression_active or state.coalition_target
                 or not game.within_fuel_range(system.id, owner)
                 or state.relations >= (101 if game._empire(owner).race_id == "skirr" else 25 if game._empire(owner).race_id == "concord" else 0)):
@@ -471,6 +478,8 @@ def invasion_orders(game, owner=RIVAL, *, ground_reports=None):
 def run_ai(game, owner=RIVAL, *, ground_reports=None):
     """Place orders before this turn's shared travel, production and income phase."""
     nature = personality(game, owner)
+    from . import negotiations
+    negotiations.ai_orders(game, owner)
     from . import accession
     accession.ai_orders(game, owner)
     from . import motherships, encounters

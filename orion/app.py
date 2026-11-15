@@ -837,6 +837,7 @@ class App:
 
     def colonize_request(self):
         from .administration import settlement_preview
+        from .negotiations import settlement_warning
         system_id,planet_id=self.game.selected_system,self.game.selected_planet
         error=self.game.colonize_error(system_id,planet_id)
         if error:
@@ -855,7 +856,7 @@ class App:
                 self.toast(exc,True)
         self.confirm(f"Settle {shorten(planet.name,370,29,'title')}?",
                      f"Use {ship.name} to found a colony with {self.game.starting_colonists()} B inhabitants. The ship is consumed. "
-                     +settlement_preview(self.game, system_id),
+                     +settlement_warning(self.game, PLAYER, system_id)+settlement_preview(self.game, system_id),
                      "Establish colony",settle)
 
     def outpost_request(self):
@@ -2495,6 +2496,15 @@ class App:
             self.mouse=self.logical_pos(event.pos)
             self.keyboard_mode=False
             hovered=next((b for b in reversed(self.buttons) if b.enabled and b.rect.collidepoint(self.mouse)),None)
+            if (hovered and not self.dialog and self.on_galaxy_chart() and clean_map(self)
+                    and hovered.key.startswith(("star_", "map_fleet_"))):
+                # A departure stays close to its star. Overlapping generous hit
+                # boxes must not prevent selecting the star or the parked fleet.
+                objects=(b for b in self.buttons if b.enabled
+                         and b.key.startswith(("star_", "map_fleet_"))
+                         and b.rect.collidepoint(self.mouse))
+                hovered=min(objects, key=lambda b: (b.rect.centerx-self.mouse[0])**2
+                            +(b.rect.centery-self.mouse[1])**2)
             if event.type==pg.MOUSEBUTTONDOWN:
                 self.pressed=hovered.key if hovered else None
                 if hovered is None:

@@ -1777,6 +1777,8 @@ class GameState:
         planet.farmers = population_rules.farmers_needed(planet, self.bonuses_for(owner), surplus=1)
         planet.scientists = 0
         self.ships.remove(ship)
+        from .negotiations import record_settlement
+        record_settlement(self, owner, system_id)
         return planet
 
     def cancel_construction(self, system_id, planet_id, queue_index, *, owner=PLAYER):
@@ -1859,6 +1861,8 @@ class GameState:
         if self.result is None and self.combat is None and any(treasury.bankrupt(self, o) for o in self.owners):
             self.check_victory(convene=False)
         self._require_strategy()
+        from . import negotiations
+        negotiations.advance(self)
         tribute.normalize(self)
         if self.tribute_demands:
             raise RuleError('Accept or refuse pending tribute demands in Diplomacy before ending the turn.')
@@ -1953,6 +1957,7 @@ class GameState:
         completed.extend(megastructures.finish_work(self))
         self.turn += 1
         self.year += 1
+        negotiations.advance(self)
         from . import boarding
         boarding.advance(self)
         completed.extend(hyperlanes.finish_work(self))
@@ -2040,7 +2045,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=64):
+    def from_dict(cls, data, *, version=65):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2243,6 +2248,8 @@ class GameState:
             if version < 26:
                 first_contact.migrate(game)
             coalitions.validate(game)
+            from .negotiations import validate as validate_negotiations
+            validate_negotiations(game)
             coalitions.load_news(game, data, version)
             tribute.load(game, data, version)
             observer_rules.load(game, data, version)

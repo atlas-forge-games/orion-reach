@@ -82,7 +82,10 @@ def draw_treaty(app, owner, state, action, x, y):
     caption = ("Part of your friendship declaration" if included else
                f"Active · End: -{personality(game, owner).breach} relations" if active else
                f"Accepted at {threshold:+} · Current {state.relations:+}")
-    text(surface, caption, (x+18, y+88), 11, MUTED)
+    text(surface, shorten(caption, 220, 11), (x+18, y+88), 11, MUTED)
+    from .negotiation_view import open_panel
+    app.button('diplomacy_why_'+action, 'Why?', (x+241, y+86, 65, 31),
+               lambda: open_panel(app, owner, reasons=True, action=action), 'ghost')
     hint = reason or ("" if active else "Will accept" if state.relations >= threshold else "Will decline")
     text(surface, shorten(hint, 278, 10), (x+18, y+111), 10, FAINT)
     app.button(f"diplomacy_{command}", "Included" if included else "End pact" if active else "Propose",
@@ -98,7 +101,7 @@ def draw_diplomacy(app):
     app.button("diplomacy_intelligence", "Rival report", (472, 124, 184, 46), app.open_rival)
     app.button("diplomacy_statistics", "Statistics", (672, 124, 130, 46), app.open_statistics)
     app.button("diplomacy_alignment_matrix", "Race alignment matrix", (818, 124, 270, 46), app.show_alignment)
-    app.button('diplomacy_affairs', 'Coalitions & tribute', (1104, 124, 272, 46), app.show_diplomatic_affairs,
+    app.button('diplomacy_affairs', 'Diplomatic affairs', (1104, 124, 272, 46), app.show_diplomatic_affairs,
                enabled=selected is not None)
     draw_relations_strip(app)
     if selected is None:
@@ -117,7 +120,9 @@ def draw_diplomacy(app):
         reason = game.diplomacy_error("declare_war", owner)
         app.button("diplomacy_declare_war", "At war" if state.at_war else "Declare war", (87, 699, 292, 39),
                    lambda: app.diplomatic_action("declare_war"), enabled=reason is None)
-        text(surface, shorten("War ends all pacts and sets relations to -100.", 294, 14), (87, 751), 14, RED)
+        from .negotiation_view import open_panel as open_negotiations
+        app.button('diplomacy_negotiate', 'Negotiate peace' if state.at_war else 'Proposals & promises',
+                   (87, 745, 292, 29), lambda: open_negotiations(app, owner), 'ghost')
         panel(surface, (427, 330, 949, 78))
         color = relation_color(state.relations)
         app.button("diplomacy_alignment", "Values & history", (1144, 337, 208, 24), lambda: app.show_alignment(owner), "ghost")
@@ -139,10 +144,16 @@ def draw_diplomacy(app):
             y = 740+index*19
             text(surface, f"T{event.turn:03}", (445, y), 10, FAINT, "mono")
             text(surface, shorten(event.message, 849, 11), (506, y), 11, INK)
+    from .negotiations import incoming
+    offers = incoming(game)
     pending = len(game.tribute_demands)
-    caption = (f'{pending} tribute demand(s) await your response. Open Coalitions & tribute → Tribute & fear.' if pending else
-               f"Offers: {rules.OFFER_COOLDOWN}-turn cooldown. Kept pacts build trust. Coalitions and tribute have their own controls above.")
-    text(surface, caption, (65, 798), 13, GOLD if pending else MUTED)
+    caption = (f'{len(offers)} diplomatic proposal(s) awaiting a response.' if offers else
+               f'{pending} tribute demand(s) await a response in Diplomatic affairs.' if pending else
+               f"Offers: {rules.OFFER_COOLDOWN}-turn cooldown. Kept pacts build trust. Open Diplomatic affairs for negotiations.")
+    text(surface, caption, (65, 798), 13, GOLD if pending or offers else MUTED)
+    if offers:
+        app.button('diplomacy_review_proposal', 'Review proposal', (1104, 791, 272, 30),
+                   lambda: app.show_diplomatic_affairs('negotiations', offers[0].sender), 'primary')
     app.button("diplomacy_pause", "Menu", (64, 834, 126, 45), app.pause)
     app.button("diplomacy_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     from .accession_view import open_panel

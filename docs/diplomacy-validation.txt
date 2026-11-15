@@ -1,0 +1,81 @@
+Age of the Stars v0.97.0 — diplomacy validation
+Date: 2026-11-15
+Base repository: atlas-forge-games/orion-reach
+Base commit: e16a8d51d6072d3c8215b59d1559e2586917946c (v0.96.3)
+Additional base: supplied v0.96.4 route-start update
+Environment: Python 3.12, pygame-ce 2.5.8, SDL dummy video/audio
+
+Focused checks: 74 tests PASS in the final packaged installation.
+  23 dedicated negotiation tests, plus the existing coalition/tribute,
+  route-preview, fleet-icon and quiet-notification suites.
+  Covers real mouse interactions, confirmation, autosaves, promise violations,
+  human agency, deadline expiry, ceasefires, reparations and save migration.
+
+Broader regression run (before the final extra migration test was added):
+  1,597 tests executed, 40 failures and 14 errors across 47 test methods.
+  Every one of those 47 methods was rerun on an unchanged checkout of the base
+  commit. All 47 also failed there (36 failures and 18 errors including subtests).
+  No newly failing method was identified by this comparison. Failure forms can
+  vary with suite order; the broad suite is not clean and is not claimed to pass.
+  Two older diplomacy-suite failures were separately reproduced on the baseline.
+
+Other checks:
+  Python compilation and git diff whitespace checks passed.
+  The unmodified v0.96.4 route view and route tests match the supplied archive.
+  Actual negotiation, commitment, peace and decision-reason screens were rendered
+  at 1440 x 900 and inspected. Mouse flows also run at the default 1280 x 800.
+  Package extraction is checked over a fresh v0.96.3 source copy.
+
+Reproduce focused checks:
+  PYTHONPATH=tests python -m unittest test_negotiations test_coalitions_tribute test_galaxy_route_preview test_galaxy_fleet_icons test_quiet_notifications
+  On Windows, use unittest discover once for each named test file if PYTHONPATH
+  has not been configured.
+
+Pre-existing failing methods found in the broader run:
+  test_ai.AIInterfaceTests.test_add_rival_to_old_campaign_and_advance_through_real_controls
+  test_ai.AIInterfaceTests.test_rival_survey_disables_build_cancel_demolish_and_ship_controls
+  test_ai.AIRulesTests.test_rival_expands_across_systems_and_develops_over_many_turns
+  test_ai.AIRulesTests.test_start_is_distant_deterministic_and_preserves_generated_worlds
+  test_balance_editor.BalanceTests.test_saved_balance_survives_later_edits_and_browsing_other_saves
+  test_building_economy.BuildingEconomyTests.test_ai_accounts_for_paid_queues_and_recovers_an_insolvent_colony
+  test_building_economy.BuildingEconomyTests.test_debt_save_roundtrip_and_old_versions_still_reject_negative_banks
+  test_building_economy.BuildingEconomyTests.test_debt_still_allows_free_trade_negotiation_to_restore_income
+  test_building_economy.BuildingEconomyTests.test_deficits_create_debt_and_surpluses_repay_it_without_stopping_paid_projects
+  test_combat_geometry.SaveAndSimulationTests.test_multicell_campaign_round_trip_and_overlaps_are_validated
+  test_diplomacy.DiplomacyInterfaceTests.test_diplomacy_navigation_restores_origins_and_does_not_change_selection
+  test_empire.EmpireReportTests.test_totals_cover_all_colonies_and_reserved_slots
+  test_encounters.EncounterSaveTests.test_real_save_file_roundtrip_keeps_search_and_private_warning
+  test_encounters.EncounterSaveTests.test_version_48_migration_keeps_new_encounters_disabled
+  test_fuel_range.FuelInterfaceTests.test_individual_course_button_disables_unreachable_destination
+  test_fuel_range.TravelSaveTests.test_v14_fast_and_pending_voyages_keep_eta_and_can_be_cancelled_or_resumed
+  test_galaxy_colors.ColorPreferenceUITests.test_options_recolor_real_markers_and_survive_restart
+  test_galaxy_layout.RectangularGalaxyTests.test_isolated_empires_can_research_tanks_without_moving_the_map
+  test_gas_stations.OrbitalStationTests.test_forecast_includes_station_assembly_without_mutating_campaign
+  test_global_readability.TypographyTests.test_small_controls_keep_visible_labels_inside_their_hit_regions
+  test_hidden_system_names.HiddenNameInterfaceTests.test_hyperlane_research_reveals_destination_coordinates_without_name
+  test_hidden_system_names.HiddenNameInterfaceTests.test_selection_previews_and_queued_courses_never_show_secret_names
+  test_hidden_system_names.HiddenNameInterfaceTests.test_sensor_contacts_and_news_do_not_disclose_unvisited_names
+  test_hyperlanes.HyperlaneSaveTests.test_version_45_migrates_without_rewriting_source_and_current_round_trips
+  test_hyperlanes.HyperlaneScreenTests.test_actual_research_controls_portal_and_map_course
+  test_monsters.GuardianSaveTests.test_v15_load_does_not_add_guardians_or_change_worlds_and_orders
+  test_monsters.GuardianSaveTests.test_v16_guardians_remain_unchanged_when_loaded
+  test_mothership_boarding.MothershipBoardingTests.test_live_resolved_captured_saves_and_old_unarmed_battle_migrate
+  test_motherships.HabitatRulesTests.test_legacy_active_battle_is_preserved_until_home_conversion_is_safe
+  test_observer.ObserverRulesTests.test_v039_saves_remain_normal_player_campaigns
+  test_planet_overview.WorkforceSaveTests.test_v11_migrates_both_current_worlds_and_stale_surveys_and_preserves_source
+  test_population.PopulationSaveTests.test_v10_migrates_planets_and_surveys_without_rewriting_or_losing_fields
+  test_research.ResearchScreenTests.test_immediate_selection_switching_completion_and_autosave_with_real_clicks
+  test_research.ResearchScreenTests.test_navigation_branches_pause_and_other_overviews_preserve_game_selection
+  test_research_expansion.AccuracyTests.test_targeting_range_evasion_and_specialized_guidance
+  test_research_progression.ProgressionTests.test_every_facility_requires_research_reserves_a_slot_and_rejects_duplicates
+  test_research_progression.ProgressionTests.test_facilities_render_in_colony_catalogue_and_surface_and_hide_when_queued
+  test_research_progression.ProgressionTests.test_real_v055_profile_keeps_choices_prices_and_active_research_when_loaded
+  test_six_field_research.SixFieldTests.test_encyclopedia_lists_both_alternatives_and_hides_disabled_legacy_templates
+  test_specialists.SpecialistUITests.test_hiring_assigning_and_hub_navigation_use_live_buttons
+  test_starships.CarrierCombatTests.test_drones_move_and_fire_and_point_defense_reduces_their_damage
+  test_starting_fleets.PendingDepartureTests.test_v13_saves_keep_existing_fleets_and_committed_journeys_without_gifts
+  test_tactical_combat.TacticalRulesTests.test_v12_battle_migration_preserves_damage_actions_and_source_bytes
+  test_tomb_worlds.SaveTests.test_v21_load_keeps_existing_campaign_without_reseeding_tombs
+  test_treasury.TreasuryInterfaceTests.test_header_and_empire_expose_interest_and_limit_without_mutating_state
+  test_varkesh.SlaveSaveTests.test_real_storage_roundtrip_includes_slaves_and_news
+  test_victory.VictorySaveTests.test_v8_upgrade_preserves_in_flight_ships_damaged_combat_and_research

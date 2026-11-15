@@ -25,6 +25,27 @@ class DiplomaticEvent:
     message: str
 
 
+@dataclass(frozen=True)
+class Proposal:
+    sender: str
+    recipient: str
+    kind: str
+    created_turn: int
+    expires_turn: int
+    system_id: int | None = None
+    target: str | None = None
+    payment: int = 0
+
+
+@dataclass(frozen=True)
+class TerritorialPromise:
+    promisor: str
+    beneficiary: str
+    system_id: int
+    started_turn: int
+    until_turn: int
+
+
 @dataclass
 class DiplomacyState:
     relations: int = 0
@@ -45,6 +66,12 @@ class DiplomacyState:
     last_breach: dict[str, int] = field(default_factory=dict)
     last_defeat: dict[str, int] = field(default_factory=dict)
     coercion: dict[str, int] = field(default_factory=dict)
+    proposal: Proposal | None = None
+    territorial_promises: list[TerritorialPromise] = field(default_factory=list)
+    honoured_promises: dict[str, int] = field(default_factory=dict)
+    initiative_ready_turn: int = 1
+    ceasefire_until: int = 0
+    war_started_turn: int = 0
 
     @property
     def at_war(self):
@@ -73,7 +100,9 @@ class DiplomacyState:
         self.relations = min(100, max(-100, self.relations+amount))
 
     @classmethod
-    def from_dict(cls, data, turn, *, version=44):
+    def from_dict(cls, data, turn, *, version=65):
+        from .negotiations import load_state
+        data = load_state(data, turn, version)
         def integer(value, lower, upper):
             return type(value) is int and lower <= value <= upper
         if not isinstance(data, dict) or not integer(data["relations"], -100, 100):
@@ -242,6 +271,8 @@ def agreement_yields(game, owner):
 
 def aggression_error(game, first, second):
     state = game.diplomacy_between(first, second)
+    if state.ceasefire_until > game.turn:
+        return f"A ceasefire protects this empire until turn {state.ceasefire_until}."
     if state.coalition_target:
         return "A coalition agreement protects this empire. Declare war in Diplomacy before attacking."
     if state.non_aggression_active:
@@ -262,12 +293,19 @@ def record_defeat(game, loser, winner):
 
 def start_war(game, first, second, *, defensive=False):
     """All declarations and acts of war use the same treaty teardown."""
+    state = game.diplomacy_between(first, second)
+    if state.ceasefire_until > game.turn:
+        from .model import RuleError
+        raise RuleError(f"A ceasefire protects this empire until turn {state.ceasefire_until}.")
     first_contact.establish(game, first, second)
     state = game.diplomacy_between(first, second)
     new_war = not state.at_war
     if any((state.trade_active, state.research_active, state.non_aggression_active, state.coalition_target)):
         remember_breach(game, first, second)
     state.end_agreements()
+    state.proposal = None
+    if new_war or not state.war_started_turn:
+        state.war_started_turn = game.turn
     state.relations = -100
     state.offer_ready_turn = max(state.offer_ready_turn, game.turn+OFFER_COOLDOWN)
     if new_war and not defensive:
@@ -291,7 +329,11 @@ def action_error(game, action, target="rival"):
     if not game.colony_systems(target):
         return "This empire has been eliminated."
     if action == "declare_war":
+        if state.ceasefire_until > game.turn:
+            return f"A ceasefire protects this empire until turn {state.ceasefire_until}."
         return "You are already at war with this empire." if state.at_war else None
+    if action in TREATIES and state.at_war:
+        return "Negotiate peace before proposing a treaty."
     if action in TREATIES and any(game._empire(o).race_id == "skirr" for o in ("player", target)):
         return "The Skirr Swarm rejects treaties and coexistence."
     if action in TREATIES and getattr(state, f"{action}_active"):

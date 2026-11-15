@@ -1,5 +1,9 @@
 # Compact faction fleets — v0.96.3
 
+The queued-departure positioning described below is superseded by the
+[v0.96.4 route-start fix](route-departure-position.md). Sizes, colors and
+parked-fleet slots remain as described here.
+
 Clean-map ship artwork and system names are rendered at **70% of their previous
 linear size**, with final raster sizes rounded to whole pixels. The illustrated
 ship's maximum dimension changes from 24 to 16.8 logical pixels, and the name
