@@ -2760,7 +2760,14 @@ class App:
             style={"command_dock":"console_dock", "command_primary":"console_primary",
                    "command":"console", "tab":"console_tool", "tab_active":"console_active",
                    "normal":"console_tool", "primary":"console_active"}.get(style,style)
-        replace(b,style=style).draw(self.canvas,active,active and self.pressed==key)
+        if style in ("title_primary", "title_menu"):
+            # The title screen uses artwork-backed controls. Keep app.button()
+            # responsible for hit regions and actions, and change only drawing.
+            from .title_screen import draw_title_button
+            draw_title_button(replace(b, style=style), self.canvas,
+                              active, active and self.pressed==key)
+        else:
+            replace(b,style=style).draw(self.canvas,active,active and self.pressed==key)
         return b
 
     def chrome(self,section="COMMAND",back=None):

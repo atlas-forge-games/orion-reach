@@ -1,4 +1,4 @@
-# Age of the Stars — Python prototype 0.97.0
+# Age of the Stars — Python prototype 0.97.1
 
 A playable colony-building and interstellar expansion prototype with a modular ship designer, guarded treasure worlds, population growth, local food, conquest, scientific and council victories, fleet combat, research, races, diplomacy and all 13 civilizations in one campaign for a
 MOO2-inspired space strategy game.
@@ -6,6 +6,18 @@ The repository and Python package retain the name **Orion Reach**. The artwork, 
 in this project are original; no Master of Orion artwork or game data is included.
 
 ![Main menu](screenshots/menu.png)
+
+## New in v0.97.1 — engraved main-menu buttons
+
+The opening menu now uses carved gold/navy plaques with **engraved text** for
+New Game, Load Game, Settings, Quit and Continue. Mouse hover and keyboard
+navigation move the selected gold finish; all controls keep their original
+behaviour. The rest of the animated opening artwork is unchanged.
+
+Extract this incremental patch **over v0.97.0** and restart. Existing saves
+load normally. See [details and commit commands](docs/title-screen-plaques.md).
+
+![Engraved title menu](screenshots/title_engraved_buttons.png)
 
 ## New in v0.97.0 — proposals, promises and negotiated peace
 

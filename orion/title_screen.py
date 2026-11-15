@@ -1,6 +1,7 @@
 """Layered title artwork and real menu controls for Age of the Stars."""
 
 from functools import lru_cache
+from dataclasses import replace
 import math
 import pygame as pg
 
@@ -69,8 +70,7 @@ class TitleArt:
             emblem(surface, LOGO_RECT.centerx, 160, 2.5)
             for label, y, size, spacing in (("AGE OF THE", 269, 25, 6), ("STARS", 312, 64, 7)):
                 title = text_image(label, size, INK, "title", spacing)
-                text(surface, label, title.get_rect(midtop=(LOGO_RECT.centerx, y)).topleft,
-                     size, INK, "title", spacing)
+                surface.blit(title, title.get_rect(midtop=(LOGO_RECT.centerx, y)))
 
 
 @lru_cache(maxsize=12)
@@ -87,23 +87,58 @@ def button_fill(size, primary, active, pressed):
     return fill
 
 
+@lru_cache(maxsize=48)
+def plaque_artwork(label, variant, size):
+    """Menu plaques are actual transparent UI sprites, not a flattened screenshot.
+
+    Labels are baked into each sprite to give them a convincing engraved bevel.
+    The blank skin is also packaged as a fallback for any future menu label.
+    """
+    slug = "-".join(label.lower().split())
+    filename = ART_DIR / f"plaque-{slug}-{variant}-v1.png"
+    try:
+        source = pg.image.load(str(filename)).convert_alpha()
+        return pg.transform.smoothscale(source, size)
+    except (OSError, pg.error):
+        return None
+
+
 def draw_title_button(button, surface, active=False, pressed=False):
+    """Render the actual clickable menu button using the engraved plaque art.
+
+    The underlying Button remains a real game control, so mouse, keyboard focus,
+    navigation, activation, disabled state and hit testing are unchanged.
+    """
+    if getattr(surface, "layout", None):
+        target = surface.slot(button.rect)
+        with surface.native_space():
+            draw_title_button(replace(button, rect=target), surface, active, pressed)
+        return
+
     r = button.rect
-    active = active and button.enabled
-    primary = button.style == "title_primary"
-    surface.blit(button_fill(r.size, primary, active, pressed), r)
-    if primary:
-        pg.draw.rect(surface, (255, 226, 172) if active else GOLD, r, 1, border_radius=2)
-        pg.draw.line(surface, (113, 90, 56), (r.x+2, r.y+2), (r.right-3, r.y+2))
-    else:
-        pg.draw.line(surface, (82, 82, 77), (r.left, r.bottom-1), (r.right, r.bottom-1))
-    color = GOLD if active else INK if button.enabled else MUTED
-    label = text_image(button.label, 27, color, "title")
+    selected = button.style == "title_primary" and button.enabled
+    variant = "gold" if selected else "blue"
+    sprite = plaque_artwork(button.label, variant, r.size)
     offset = 1 if pressed else 0
-    text(surface, button.label, (r.x+30, r.centery-label.get_height()//2+offset), 27, color, "title")
-    arrow(surface, (r.right-29, r.centery+offset), color if primary or active else MUTED)
-    if active:
-        pg.draw.rect(surface, GOLD, r.inflate(6, 6), 1, border_radius=3)
+    if sprite is not None:
+        surface.blit(sprite, (r.x, r.y+offset))
+    else:
+        # Older installations without the new assets still retain usable menus.
+        surface.blit(button_fill(r.size, selected, active, pressed), r)
+        pg.draw.rect(surface, GOLD if selected else (94, 117, 128), r, 2, border_radius=5)
+        caption = text_image(button.label.upper(), max(16, round(r.h*.42)),
+                             (80, 45, 20) if selected else GOLD, "title")
+        surface.blit(caption, caption.get_rect(center=(r.centerx-12, r.centery+offset)))
+        arrow(surface, (r.right-28, r.centery+offset), GOLD)
+
+    if active and button.enabled:
+        # A restrained focus edge shows pointer/keyboard selection without
+        # covering any of the artwork's original engraved highlights.
+        pg.draw.rect(surface, (255, 228, 172), r.inflate(1, 1), 1, border_radius=6)
+    if not button.enabled:
+        shade = pg.Surface(r.size, pg.SRCALPHA)
+        shade.fill((4, 10, 16, 110))
+        surface.blit(shade, r.topleft)
 
 
 def draw_menu(app):
@@ -117,9 +152,21 @@ def draw_menu(app):
     if app.game:
         actions.insert(0, ("resume", "Continue", lambda: app.go(app.campaign_view)))
     top, height, step = (446, 58, 67) if app.game else (462, 66, 80)
-    for index, (key, label, action) in enumerate(actions):
-        app.button(key, label, (94, top+index*step, 442, height), action,
-                   "title_primary" if index == 0 else "title_menu")
+    geometry = [(key, pg.Rect(94, top+index*step, 442, height))
+                for index, (key, _label, _action) in enumerate(actions)]
+
+    # The default first entry is golden; hovering or navigating moves the
+    # selected golden plaque. Keep a single visual selection at a time.
+    selected_key = actions[0][0]
+    if app.keyboard_mode:
+        selected_key = next((key for key, _rect in geometry if key == app.focus),
+                            selected_key)
+    else:
+        selected_key = next((key for key, rect in geometry
+                             if rect.collidepoint(app.mouse)), selected_key)
+    for (key, label, action), (_, rect) in zip(actions, geometry):
+        app.button(key, label, rect, action,
+                   "title_primary" if key == selected_key else "title_menu")
     text(app.canvas, f"PROTOTYPE  /  {__version__}", (1398, 24), 10, MUTED, "mono", 1, right=True)
     pg.draw.line(app.canvas, (101, 109, 115), (32, 837), (1408, 837))
     app.brand.draw_menu_credit(app.canvas)
