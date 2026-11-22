@@ -7,6 +7,7 @@ from unittest.mock import patch
 from orion import tomb_worlds
 from orion.exploration import record_survey
 from orion.model import GameState, new_game
+from orion.home_systems import ORBIT_NUMERALS
 from orion.races import RACES
 
 
@@ -18,8 +19,12 @@ class HomeSystemTests(unittest.TestCase):
                     game = new_game(seed=2408, race_id=race.id, rival_count=5,
                                     random_starts=random_starts)
                     self.assertEqual(game.systems[0].name, race.home_system)
-                    self.assertEqual([p.name for p in game.systems[0].worlds],
-                                     [*race.home_neighbors[:2], race.homeworld, race.home_neighbors[2]])
+                    system = game.systems[0]
+                    self.assertEqual(sum(p.name == race.homeworld for p in system.worlds), 1)
+                    neighbors = iter(race.home_neighbors)
+                    for planet in system.worlds:
+                        if planet.name != race.homeworld:
+                            self.assertEqual(planet.name, next(neighbors, f'{system.name} {ORBIT_NUMERALS[planet.id]}'))
                     for owner, empire in game.opponents.items():
                         system = game.systems[empire.home_system]
                         home = game.planet_at(system.id, empire.home_planet)
@@ -74,11 +79,13 @@ class HomeSystemTests(unittest.TestCase):
     def test_remnant_emerging_from_a_tomb_keeps_the_charted_world_name(self):
         game = new_game(seed=2408, race_id="varkesh", rival_count=0, with_tombs=False)
         before = [(s.name, [p.name for p in s.worlds]) for s in game.systems]
-        tomb = tomb_worlds.TombWorld(0, 3)
+        target = next(p for p in game.systems[0].worlds if not p.colonized and not p.is_gas_giant)
+        name = target.name
+        tomb = tomb_worlds.TombWorld(0, target.id)
         game.tomb_worlds.append(tomb)
         tomb_worlds.awaken(game, tomb)
         self.assertEqual(before, [(s.name, [p.name for p in s.worlds]) for s in game.systems])
-        self.assertEqual(game.planet_at(0, 3).name, "Kreth")
+        self.assertEqual(game.planet_at(0, target.id).name, name)
         self.assertEqual(game, GameState.from_dict(game.to_dict()))
 
 

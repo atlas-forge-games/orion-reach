@@ -90,7 +90,7 @@ def draw_system(app):
     text(surface, f"YEAR {game.year}   ·   {game.credits:,} CR   ·   {game.research:,} RP", (1376, 140), 13, GOLD, "mono", right=True)
 
     text(surface, shorten(system.name, 860, 52, "title"), (64, 191), 52, INK, "title")
-    text(surface, f"{system.kind}   /   {len(system.worlds)} planets"+
+    text(surface, f"{system.kind}   /   {len(system.worlds)} {'planet' if len(system.worlds) == 1 else 'planets'}"+
          (f"   /   {len(homes)} mothership{'s' if len(homes) != 1 else ''}" if homes else ""), (67, 260), 16, MUTED)
     app.button("system_megastructures", "Megastructures", (570, 124, 224, 48), lambda: app.go("megastructure"))
     if motherships.is_wanderer(game):

@@ -1,8 +1,40 @@
-"""Civilization names for newly founded home systems; no changes on save loading."""
+"""Starting-system generation and names; existing worlds are kept on save loading."""
 
+import random
 from .races import RACES
 
 ORBIT_NUMERALS = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
+
+
+def player_home_planet_id(system):
+    """Keep the home in the third orbit, or the last orbit in smaller systems."""
+    return min(2, len(system.worlds)-1)
+
+
+def randomize_player_home(system, galaxy_seed, race_id):
+    """Replace Sol's neighbors while preserving the player's starting homeworld."""
+    from .model import GENERATED_BIOMES, RICHNESSES, generate_planets
+    if race_id == "terran":
+        return
+    home = system.worlds[player_home_planet_id(system)]
+    rng = random.Random(f"orion-home-worlds-v1:{galaxy_seed}:{race_id}")
+    system.planets = rng.randint(1, 7)
+    system.biome = rng.choice(GENERATED_BIOMES)
+    system.richness = rng.choice(RICHNESSES[:-1])
+    system.worlds = generate_planets(system, galaxy_seed, player_home=False)
+    home.id = player_home_planet_id(system)
+    scale = home.orbit_au/system.worlds[home.id].orbit_au
+    for planet in system.worlds:
+        planet.orbit_au = round(planet.orbit_au*scale, 2)
+        if planet.id != home.id and rng.random() < .12:
+            planet.biome = "Toxic"
+    system.worlds[home.id] = home
+    # The general gas-giant seeder protects occupied systems. An alien home
+    # can still have a giant in an existing outer orbit, without adding planets.
+    outer = system.worlds[-1]
+    if outer.id > home.id and rng.random() < .35:
+        outer.biome, outer.size, outer.richness, outer.gravity = "Gas Giant", "Huge", "Average", "High"
+    system.biome, system.richness = system.worlds[0].biome, system.worlds[0].richness
 
 
 def name_home(game, system, homeworld, race_id):

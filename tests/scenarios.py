@@ -31,7 +31,10 @@ def fixed_start_game(*args, **kwargs):
     # These fixtures isolate earlier features. Black-hole tests use new_game directly.
     kwargs.setdefault("with_black_holes", False)
     kwargs.setdefault("with_encounters", False)
-    with legacy_race_roster(kwargs.get("race_id"), kwargs.get("rival_race_id")):
+    # Established economic/combat fixtures refer to specific neighboring worlds.
+    # Keep their original layout; real randomized homes have dedicated tests.
+    with (legacy_race_roster(kwargs.get("race_id"), kwargs.get("rival_race_id")),
+          patch("orion.model.randomize_player_home")):
         game = make_game(*args, **kwargs)
     # These established-colony fixtures retain their historical job allocation.
     # Resource/power tests exercise the real new-game allocation directly.

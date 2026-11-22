@@ -41,7 +41,7 @@ from . import specialists as specialist_rules
 from . import outposts as outpost_rules
 from . import observer as observer_rules
 from .races import RACES, SETUP_RACES, default_rival_race
-from .home_systems import name_home
+from .home_systems import name_home, player_home_planet_id, randomize_player_home
 from .empires import EMPIRE_IDS, RIVAL_IDS, CAMPAIGN_RIVAL_IDS, max_rivals, relation_key
 from .research import TECHNOLOGIES, ResearchState, building_yields, colony_yields, colony_maintenance
 from .diplomacy import (DiplomacyState, action_error, advance_diplomacy,
@@ -925,7 +925,8 @@ class GameState:
 
     def headquarters(self, owner=PLAYER):
         empire = self._empire(owner)
-        preferred = (0, 2) if owner == PLAYER else (empire.home_system, empire.home_planet)
+        preferred = ((0, player_home_planet_id(self.systems[0])) if owner == PLAYER
+                     else (empire.home_system, empire.home_planet))
         rows = victory_rules.colonies(self, owner)
         return next((row for row in rows if (row[0].id, row[1].id) == preferred), rows[0] if rows else None)
 
@@ -2364,6 +2365,8 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
                                   rng.randint(0, 7), rng.choice(GENERATED_BIOMES), rng.choice(RICHNESSES[:-1])))
     for system in systems:
         system.worlds = generate_planets(system, seed, player_home=not observer)
+    if not observer:
+        randomize_player_home(systems[0], seed, race_id)
     game = GameState(uuid4().hex, empire_name.strip(), galaxy_size, seed, 1, 2300, economy.STARTING_CREDITS, systems,
                      race_id=race_id, fog_of_war=fog_of_war, victory_conditions=victory_conditions)
     from .environments import seed_toxic_worlds
@@ -2371,20 +2374,21 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
     if observer:
         game.credits = game.resources = 0
     else:
-        name_home(game, systems[0], systems[0].worlds[2], race_id)
+        home = systems[0].worlds[player_home_planet_id(systems[0])]
+        name_home(game, systems[0], home, race_id)
         from .environments import prepare_home
-        prepare_home(systems[0], systems[0].worlds[2], race_id)
-        game.planet_at(0, 2).species = {race_id: game.planet_at(0, 2).population}
+        prepare_home(systems[0], home, race_id)
+        home.species = {race_id: home.population}
         game.research = RACES[race_id].starting_research
         if race_id in ("skirr", "aelari"):
-            game.planet_at(0, 2).farmers = population_rules.farmers_needed(game.planet_at(0, 2), game.bonuses_for(), surplus=4 if race_id == "skirr" else 2)
-        if not population_rules.food_required(game.planet_at(0, 2).population, game.bonuses_for()):
-            game.planet_at(0, 2).farmers = 0
-        game.planet_at(0, 2).miners = 2
-        population_rules.clamp_workforce(game.planet_at(0, 2))
+            home.farmers = population_rules.farmers_needed(home, game.bonuses_for(), surplus=4 if race_id == "skirr" else 2)
+        if not population_rules.food_required(home.population, game.bonuses_for()):
+            home.farmers = 0
+        home.miners = 2
+        population_rules.clamp_workforce(home)
         game._starting_fleet(PLAYER, 0)
         if motherships.is_wanderer(game):
-            motherships.create(game, 0, PLAYER, game.planet_at(0, 2))
+            motherships.create(game, 0, PLAYER, home)
     if not observer and not random_starts and count_rivals <= 1:
         if count_rivals and game.opponent_start_error() is None:
             game.add_opponent(rival_race_id)

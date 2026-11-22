@@ -1,64 +1,66 @@
-# Age of the Stars — v0.97.4 food-shortage update
+# Age of the Stars — v0.97.5 randomized home systems
 
-Food deficits now reduce the population of every food-dependent colony.
-Previously this happened only to the Skirr; other colonies merely stopped
-growing when they ran out of food.
+Every non-Terran player now starts in a seeded system of **1–7 planets**.
+The homeworld keeps its existing properties and starting population; neighboring
+planets have random types, sizes, minerals and orbits. Terrans retain Sol's
+Mercury, Venus, Earth and Mars layout.
 
 ## Rules
 
-- A negative local food balance costs **1 billion inhabitants per turn** and
-  resets accumulated growth progress. The existing **1-billion minimum** remains.
-- Starvation applies at the population limit, to AI colonies and to mothership
-  habitats. Species counts and worker assignments shrink with the population.
-- Exactly meeting food demand prevents losses. Ordinary growth resumes once
-  food production exceeds demand, subject to the usual environment and capacity
-  rules. Surplus food on another colony cannot cover the deficit.
-- Civilizations that need no food retain their normal assembly or passive growth.
-  Mixed populations that still consume food cannot grow during a shortage.
-- Food supply is taken from the start of the turn. Farms completed during that
-  turn start protecting the colony on the following turn.
+- Planet count includes the homeworld. A one-planet system contains just that
+  world; larger systems have independently generated neighbors.
+- Native homes remain intact: Skirr keep a Toxic home, Nexus keep an Ice home,
+  Aelari keep an Ocean home, and other races retain their existing home biome.
+- Neighboring worlds can include Toxic planets and an outer Gas Giant.
+- Using the same race and galaxy seed reproduces the same starting system.
+  The random-start-position option still controls the star's location only.
+- Starting populations, workforce allocation and fleets retain their existing
+  rules. Wanderers keep their populated mothership and its 50-billion limit.
+- Varkesh raids return captives to the correct original homeworld even in a
+  one- or two-planet system.
 
-The population display shows **-1,000 million / turn** while inhabitants are
-being lost. Its explanation and the in-game encyclopedia describe starvation,
-and the turn report identifies affected colonies. Construction estimates use
-the same population losses as actual turns.
+AI home systems already use generated planets and keep that behavior. The new
+player-system generator uses separate random state, preserving the galaxy's
+star positions and rival placement for the same settings.
 
 ## Installation
 
 Extract this ZIP into the existing game repository, beside `orion/`, `tests/`
 and `docs/`, and allow the included files to be replaced. Restart the game.
-This is an incremental update based on v0.97.2 (commit `86068a9`); it preserves
-the restored title screen and galaxy-map appearance.
+This is an incremental update based on v0.97.4 (commit `b5a11ab`).
 
-Existing saves work without conversion. The new rule applies on the next turn.
+**Start a new game to get a randomized home system.** Existing saves retain
+their current planets and work without conversion.
 Save format remains 65; no new dependencies or artwork are required.
 
 ## Validation
 
-New regression tests cover actual starvation turns, the minimum population,
-recovery, races that need no food, mixed populations, mothership habitats,
-worker assignments, species counts, save/load continuation, farm completion,
-construction forecasts and AI-owned colonies. Population display tests also
-cover negative rates, balanced food and the minimum-population explanation.
+The generation tests check 96 seeds for each of the 12 non-Terran races,
+alongside actual campaign starts, preserved homeworld properties, Terran Sol,
+fleets, Varkesh raids, motherships, repeatability and save continuation.
 
-The 19 starvation and population-inspector tests pass. The broader focused run
-passed 141 tests; its 14 failures also reproduce on the unchanged v0.97.2 base.
-Those existing failures concern older research, save, UI, pricing and economy
-expectations and were not changed in this update. The rendered colony screen
-and population explanation were also checked.
+The focused generation, naming, environment, faction, starvation and population
+checks passed **61 tests and 118 subtests**. Broader starting-fleet, Varkesh,
+mothership, full-roster and observer checks passed another **92 tests and 87
+subtests**. Five older tests fail identically on v0.97.4: two expect save version
+52, one expects pre-starvation raid loot, and two exercise older save migrations.
+No additional test failures were observed.
+
+Real start-game, system, colony, ship-designer and save/load flows were checked
+for Nexus, Kharuun, Varkesh, Wanderers and Terrans, including one-planet starts.
 
 Run the focused checks from the repository root:
 
 ```bash
-python -m unittest discover -s tests -p test_starvation.py
-python -m unittest discover -s tests -p test_population_info.py
+python -m unittest discover -s tests -p test_random_home_systems.py
+python -m unittest discover -s tests -p test_home_systems.py
 ```
 
 ## Commit commands
 
 ```bash
 git status
-git add README.md docs/population-display.md orion/__init__.py orion/encyclopedia.py orion/model.py orion/population.py orion/population_info.py tests/test_population.py tests/test_population_info.py tests/test_starvation.py
-git commit -m "Apply food-shortage population losses to all food-dependent colonies"
+git add README.md orion/__init__.py orion/home_systems.py orion/model.py orion/raiding.py orion/system_views.py tests/scenarios.py tests/test_environments.py tests/test_home_systems.py tests/test_random_home_systems.py
+git commit -m "Randomize non-Terran starting systems while preserving homeworlds"
 git push
 ```

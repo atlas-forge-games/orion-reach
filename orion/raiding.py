@@ -31,8 +31,10 @@ def is_varkesh(game, owner="player"):
 
 
 def home_location(game, owner="player"):
+    from .home_systems import player_home_planet_id
     empire = game._empire(owner)
-    return (0, 2) if owner == "player" else (empire.home_system, empire.home_planet)
+    return ((0, player_home_planet_id(game.systems[0])) if owner == "player"
+            else (empire.home_system, empire.home_planet))
 
 
 def homeworld(game, owner="player"):

@@ -140,8 +140,8 @@ class EnvironmentTests(unittest.TestCase):
         self.assertFalse(game.can_settle(world))
 
     def test_toxic_settlement_uses_the_real_colonization_action(self):
-        game = self.game('skirr')
-        world = game.planet_at(0, 3)
+        game = self.game('skirr', seed=1)  # Includes an unoccupied neighboring world.
+        world = next(p for p in game.systems[0].worlds if not p.colonized and not p.is_gas_giant)
         world.biome = 'Toxic'
         ship = next(ship for ship in game.ships if ship.kind == 'colony_ship')
         game.colonize(ship.id, 0, world.id)
