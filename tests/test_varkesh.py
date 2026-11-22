@@ -556,7 +556,7 @@ class VarkeshInterfaceTests(unittest.TestCase):
             self.app.handle_event(pg.event.Event(kind, button=1, pos=pos))
             self.app.render()
 
-    def test_preview_cancel_launch_report_news_and_saved_outcome(self):
+    def test_preview_cancel_launch_report_and_manual_news_with_saved_outcome(self):
         game = self.app.game
         spare_colony(game)
         sid, pid, _ = target(game)
@@ -573,6 +573,9 @@ class VarkeshInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.ground_reports[0].cause, "raid")
         self.assertEqual(self.app.storage.load(self.app.storage.saves_dir/"autosave.json")[0], game)
         self.click("ground_continue")
+        self.assertEqual(self.app.screen, "planet")
+        self.assertGreater(news.unread_count(game), 0)
+        self.app.open_news()
         self.assertEqual(self.app.screen, "news")
         self.app.open_empire()
         self.app.render()

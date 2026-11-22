@@ -360,7 +360,7 @@ class ContactInterfaceTests(unittest.TestCase):
         self.assertTrue(self.app.show_first_contact())
         self.assertEqual(game._empire(self.app.contact_owner).race_id, "remnant")
 
-    def test_pending_transmission_does_not_consume_news_and_reload_returns_to_it(self):
+    def test_pending_transmission_and_reload_leave_news_for_manual_open(self):
         from orion import news
         self.app.game = game = campaign(fog_of_war=True, with_ai=False)
         from scenarios import set_idle_trade_goods
@@ -375,6 +375,9 @@ class ContactInterfaceTests(unittest.TestCase):
         self.app.load_game(self.app.storage.saves_dir/"autosave.json")
         self.assertEqual(self.app.screen, "contact")
         self.click("contact_continue")
+        self.assertEqual(self.app.screen, "galaxy")
+        self.assertEqual(news.unread_count(self.app.game), 1)
+        self.click("open_news")
         self.assertEqual(self.app.screen, "news")
         self.assertEqual(news.unread_count(self.app.game), 0)
 

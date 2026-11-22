@@ -158,6 +158,62 @@ class QuietNotificationTests(unittest.TestCase):
         self.assertEqual(app.screen, "system")
         self.assertEqual(app.game.selected_system, discovery.system_id)
 
+    def test_urgent_dispatches_do_not_redirect_turns_or_mark_reports_read(self):
+        from orion.research import TECHNOLOGIES
+        app = self.app
+        for screen in ("galaxy", "system", "planet", "empire"):
+            with self.subTest(screen=screen):
+                app.game = game = campaign(race_id="terran", with_encounters=False)
+                for _, planet in game.settlements("player"):
+                    planet.trade_goods = True
+                    planet.scientists = 0
+                game.choose_research(next(t for t in TECHNOLOGIES if game.research_error(t) is None))
+                news.mark_read(game)
+                read_turn = game.news_read_turn
+                coalitions.notify(game, ("player",), "An urgent dispatch awaits review.")
+                game.selected_system, game.selected_planet = 0, 2
+                app.go(screen)
+                for _ in range(3):
+                    app.finish_turn()
+                    self.assertEqual(app.screen, screen)
+                    self.assertEqual(game.news_read_turn, read_turn)
+                    self.assertGreater(news.unread_count(game), 0)
+
+    def test_unread_badge_survives_reload_and_clears_only_when_opened(self):
+        app = self.app
+        for size in ((980, 900), (1280, 800), (1920, 1080)):
+            with self.subTest(size=size):
+                app.window = pg.display.set_mode(size, pg.RESIZABLE)
+                app.present()
+                news.mark_read(app.game)
+                app.go("galaxy")
+                app.render()
+                self.assertEqual(next(b for b in app.buttons if b.key == "open_news").badge, "")
+                coalitions.notify(app.game, ("player",), "An urgent dispatch awaits review.")
+                coalitions.notify(app.game, ("player",), "A routine dispatch awaits review.", quiet=True)
+                path = app.storage.save(app.game)
+                app.load_game(path)
+                self.assertEqual(app.screen, "galaxy")
+                app.render()
+                self.assertEqual(news.unread_count(app.game), 2)
+                button = next(b for b in app.buttons if b.key == "open_news")
+                self.assertEqual(button.badge, "2")
+                pos = app.window_pos(button.rect.center)
+                for kind in (pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP):
+                    app.handle_event(pg.event.Event(kind, button=1, pos=pos))
+                    app.render()
+                self.assertEqual(app.screen, "news")
+                self.assertEqual(news.unread_count(app.game), 0)
+                app.go("galaxy")
+                app.render()
+                self.assertEqual(next(b for b in app.buttons if b.key == "open_news").badge, "")
+                coalitions.notify(app.game, ("player",), "Another dispatch in the same turn.")
+                app.render()
+                self.assertEqual(next(b for b in app.buttons if b.key == "open_news").badge, "1")
+                app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_n, mod=0))
+                self.assertEqual(app.screen, "news")
+                self.assertEqual(news.unread_count(app.game), 0)
+
 
 class StrategicNewsTests(unittest.TestCase):
     def test_discoveries_survive_reload_and_same_turn_read_tracking(self):

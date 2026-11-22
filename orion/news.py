@@ -57,7 +57,7 @@ def entries(game):
 
 
 def unread_count(game, *, interrupting_only=False):
-    """Quiet reports light the news badge without redirecting the next turn."""
+    """Count unread visible reports for the Turn news badge."""
     discoveries = (0 if interrupting_only else
                    sum(d.owner == "player"
                        for d in game.exploration.discoveries[game.exploration.news_read:]))

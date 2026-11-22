@@ -1023,8 +1023,6 @@ class App:
             self.toast(exc,True)
             return
         self.ground_reports.append(report)
-        if report.cause=="raid":
-            self.ground_return="news"
         self.ground_target=None
         self.colony_slot=None
         self.go("ground")
@@ -1055,7 +1053,7 @@ class App:
                         and t!="ascension_theory" for t in TECHNOLOGIES))
 
     def prompt_idle_research(self, *, allow_news=False):
-        """Show the turn's reminder once, after battles, greetings and news."""
+        """Show the turn's reminder once, after battles and greetings."""
         if not self.research_prompt_pending:
             return
         if not self.needs_research_choice():
@@ -1367,7 +1365,7 @@ class App:
     def decide_council(self,accept):
         try:
             self.game.council_ruling(accept)
-            self.go("result" if self.game.result else "news")
+            self.go("result" if self.game.result else "galaxy")
             self.save_game(autosave=True)
         except RuleError as exc:
             self.toast(exc,True)
@@ -1685,8 +1683,7 @@ class App:
         self.reset_combat_view()
         self.reset_ground_view()
         self.go("galaxy")
-        if self.show_first_contact() and self.game.combat is None and news_rules.unread_count(self.game,interrupting_only=True):
-            self.contact_return="news"
+        self.show_first_contact()
 
     def advance_turn(self):
         if self.turn_busy:
@@ -1754,10 +1751,9 @@ class App:
         self.idle_colony_review=None
         if report.discoveries:
             self.research_tier=self.game.technology.next_tier(self.research_branch)
-        new_news=news_rules.unread_count(self.game,interrupting_only=True)>0
         if report.ground_battles:
             self.ground_reports.extend(report.ground_battles)
-            self.ground_return="news" if new_news else "galaxy"
+            self.ground_return="galaxy"
             self.ground_page=0
             self.go("ground")
         elif self.game.result is not None:
@@ -1767,14 +1763,10 @@ class App:
             self.go("combat")
         elif self.game.council.pending:
             self.go("council")
-        elif new_news:
-            self.news_page=0
-            if not self.show_first_contact("news"):
-                self.go("news")
         if self.screen=="empire":
             self.focus_empire_row()
         self.show_first_contact()
-        self.prompt_idle_research(allow_news=not new_news)
+        self.prompt_idle_research(allow_news=True)
         self.prompt_idle_colony(force=True)
         self.save_game(autosave=True)
 
@@ -1987,12 +1979,7 @@ class App:
         try:
             system_id=self.game.finish_combat()
             self.reset_combat_view()
-            if news_rules.unread_count(self.game,interrupting_only=True):
-                self.news_page=0
-                if not self.show_first_contact("news"):
-                    self.go("news")
-            else:
-                self.open_system(system_id)
+            self.open_system(system_id)
             self.save_game(autosave=True)
             self.show_first_contact()
         except RuleError as exc:

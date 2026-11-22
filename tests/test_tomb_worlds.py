@@ -15,7 +15,7 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 import pygame as pg
 
-from orion import tomb_worlds as tombs
+from orion import news, tomb_worlds as tombs
 from orion.exploration import record_survey, refresh
 from orion.ground_combat import forces, resolve
 from orion.model import ConstructionProject, GameState, RuleError, SaveError, Ship, new_game
@@ -411,19 +411,20 @@ class NewsInterfaceTests(unittest.TestCase):
         with patch("orion.tomb_worlds.awakening_due", return_value=True), patch("orion.ai.run_ai", return_value=[]):
             self.key(pg.K_e)
 
-    def test_new_news_opens_automatically_can_reopen_and_reload_from_save(self):
+    def test_new_news_stays_unread_until_opened_and_can_reload_from_save(self):
         game = self.app.game
         vault(game)
         self.advance()
         self.assertEqual(self.app.screen, "contact")
         self.click("contact_continue")
-        self.assertEqual(self.app.screen, "news")
-        self.assertEqual(game.news_read_turn, 2)
-        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "research")
+        self.assertEqual(game.news_read_turn, 0)
+        self.assertEqual(news.unread_count(game), 1)
         self.click("research_back")
         self.click("open_news")
         self.assertEqual(self.app.screen, "news")
+        self.assertEqual(game.news_read_turn, 2)
+        self.assertEqual(news.unread_count(game), 0)
         self.click("news_save")
         self.app.load_game(self.app.storage.saves_dir/"autosave.json")
         self.key(pg.K_n)
@@ -432,7 +433,7 @@ class NewsInterfaceTests(unittest.TestCase):
         self.click("news_system_0_3")
         self.assertEqual(self.app.screen, "system")
 
-    def test_defence_report_precedes_news_and_final_result_remains_accessible(self):
+    def test_defence_report_leads_to_result_with_manual_news_access(self):
         game = self.app.game
         vault(game, 0, 2)
         self.advance()
@@ -442,6 +443,9 @@ class NewsInterfaceTests(unittest.TestCase):
         self.key(pg.K_e)
         self.assertEqual(game.turn, 2)
         self.click("ground_continue")
+        self.assertEqual(self.app.screen, "result")
+        self.assertGreater(news.unread_count(game), 0)
+        self.click("result_news")
         self.assertEqual(self.app.screen, "news")
         self.assertFalse(next(b for b in self.app.buttons if b.key == "end_turn").enabled)
         self.assertFalse(next(b for b in self.app.buttons if b.key == "galaxy_map").enabled)
@@ -463,7 +467,8 @@ class NewsInterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "ground")
         self.assertIsNone(self.app.ground_reports[0].attacker)
         self.click("ground_continue")
-        self.assertEqual(self.app.screen, "news")
+        self.assertEqual(self.app.screen, "research")
+        self.assertGreater(news.unread_count(game), 0)
         self.assertIsNone(game.result)
 
     def test_news_pagination_and_keyboard_keep_all_reports_reachable(self):
@@ -482,7 +487,7 @@ class NewsInterfaceTests(unittest.TestCase):
         self.key(pg.K_ESCAPE)
         self.assertEqual(self.app.screen, "galaxy")
 
-    def test_space_battle_defers_news_until_combat_is_acknowledged(self):
+    def test_space_battle_returns_to_system_with_news_waiting_for_manual_open(self):
         from orion.combat import autoresolve
         game = self.app.game
         tombs.awaken(game, vault(game))
@@ -497,5 +502,9 @@ class NewsInterfaceTests(unittest.TestCase):
         self.app.render()
         self.assertEqual(self.app.screen, "contact")
         self.click("contact_continue")
+        self.assertEqual(self.app.screen, "system")
+        self.assertEqual(game.news_read_turn, 0)
+        self.assertGreater(news.unread_count(game), 0)
+        self.key(pg.K_n)
         self.assertEqual(self.app.screen, "news")
         self.assertEqual(game.news_read_turn, game.turn)

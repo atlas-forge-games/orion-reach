@@ -12,7 +12,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame as pg
 
-from orion import combat, tomb_worlds
+from orion import combat, news, tomb_worlds
 from orion.app import App
 from orion.model import GameState, Ship, new_game
 from orion.research import BRANCHES, TECHNOLOGIES, branch_tiers, choices
@@ -131,19 +131,18 @@ class ResearchOverviewTests(unittest.TestCase):
         self.click("research_back")
         self.assertEqual(self.app.screen, "news")
 
-    def test_greeting_and_tomb_news_precede_research_reminder(self):
+    def test_greeting_precedes_research_reminder_and_news_stays_unread(self):
         self.app.game.tomb_worlds.append(tomb_worlds.TombWorld(0, 3))
         with patch("orion.tomb_worlds.awakening_due", return_value=True):
             self.app.advance_turn()
         self.assertEqual(self.app.screen, "contact")
         self.app.skip_contacts()
-        self.assertEqual(self.app.screen, "news")
-        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "research")
+        self.assertGreater(news.unread_count(self.app.game), 0)
         self.click("research_back")
         self.assertEqual(self.app.screen, "galaxy")
 
-    def test_ground_report_then_news_then_research(self):
+    def test_ground_report_then_research_leaves_news_unread(self):
         game = self.app.game
         home = game.headquarters()[1]
         home.buildings, home.garrison = ["barracks", "fortifications"], 8
@@ -152,9 +151,8 @@ class ResearchOverviewTests(unittest.TestCase):
             self.app.advance_turn()
         self.assertEqual(self.app.screen, "ground")
         self.click("ground_continue")
-        self.assertEqual(self.app.screen, "news")
-        self.click("galaxy_map")
         self.assertEqual(self.app.screen, "research")
+        self.assertGreater(news.unread_count(game), 0)
 
     def test_space_battle_precedes_research_reminder(self):
         game = self.app.game = self.campaign(with_ai=True)

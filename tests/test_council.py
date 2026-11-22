@@ -388,9 +388,12 @@ class CouncilScreenTests(unittest.TestCase):
         self.click('council_vote_player')
         self.assertEqual(self.app.game.council.election.status, 'decision')
         self.click('council_defy')
-        self.assertEqual(self.app.screen, 'news')
+        self.assertEqual(self.app.screen, 'galaxy')
+        self.assertGreater(news.unread_count(self.app.game), 0)
         self.assertIsNone(self.app.game.result)
         self.assertEqual(self.app.game.diplomacy.relations, -100)
+        self.click('open_news')
+        self.assertEqual(self.app.screen, 'news')
 
     def test_acceptance_and_human_win_show_council_result(self):
         for counts, candidate in (((2, 8, 2), 'rival'), ((6, 4, 2), 'player')):
