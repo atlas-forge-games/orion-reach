@@ -1985,8 +1985,12 @@ class GameState:
                     population.append(message)
                 else:
                     self.rival_event(message+".", turn=self.turn, owner=planet.owner)
-            elif planet.population < previous_population and planet.owner == PLAYER:
-                alerts.append(f"Food shortage on {planet.name}: 1 B swarm inhabitants lost")
+            elif planet.population < previous_population:
+                message = f"Food shortage on {planet.name}: {previous_population-planet.population} B inhabitants lost"
+                if planet.owner == PLAYER:
+                    alerts.append(message)
+                else:
+                    self.rival_event(message+".", turn=self.turn, owner=planet.owner)
         population.extend(raid_rules.advance_mortality(self, slave_start))
         specialist_rules.advance_employed(self)
         exploration = exploration_rules.refresh(self, recover=True)

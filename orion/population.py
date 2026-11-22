@@ -109,8 +109,15 @@ class PopulationReport:
         return self.produced-self.consumed
 
     @property
+    def starvation_loss(self):
+        """Whole billions lost this turn, preserving the last inhabited unit."""
+        if not self.colonized or self.balance >= 0:
+            return 0
+        return min(1, max(0, self.population-1))
+
+    @property
     def base_growth_rate(self):
-        if not self.colonized or not 0 < self.population < self.capacity:
+        if not self.colonized or self.balance < 0 or not 0 < self.population < self.capacity:
             return 0
         if self.assembly:
             return min(ASSEMBLY_GROWTH_LIMIT, GROWTH_PER_INDUSTRY*self.assembly_industry)
@@ -151,6 +158,8 @@ class PopulationReport:
 
     @property
     def growth_caption(self):
+        if self.starvation_loss:
+            return f"Food shortage: -{self.starvation_loss} B / turn"
         turns = self.turns_to_growth
         if turns is not None:
             prefix = f"Assembly: {self.assembly_industry} industry · " if self.assembly else ""
@@ -200,11 +209,11 @@ def advance(planet, start):
     """Use starting food; new farms and technologies take effect next turn."""
     if not planet.colonized:
         return False
-    if start.swarm and start.balance < 0:
+    if start.balance < 0:
         from .species import composition
-        planet.population = max(1, planet.population-1)
+        planet.population -= min(start.starvation_loss, max(0, planet.population-1))
         planet.growth_progress = 0
-        planet.species = composition(planet, "skirr")
+        planet.species = composition(planet, "skirr" if start.swarm else "terran")
         clamp_workforce(planet)
         return False
     if planet.population >= start.capacity:

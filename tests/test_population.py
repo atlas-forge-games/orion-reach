@@ -75,23 +75,22 @@ class PopulationRulesTests(unittest.TestCase):
         self.assertEqual((self.earth.population, self.earth.growth_progress), (8, 0))
         self.assertEqual(self.game.population_report(self.earth).status, "At population limit")
         self.earth.population, self.earth.growth_progress = 20, 75
+        self.earth.farmers = 10  # Over-capacity worlds still need enough food.
         self.game = GameState.from_dict(self.game.to_dict())
         self.earth = self.game.planet_at(0, 2)
         self.game.advance_turn()
         self.assertEqual((self.earth.population, self.earth.growth_progress), (20, 0))
 
-    def test_zero_and_negative_food_pause_growth_without_losing_people_or_progress(self):
-        for population, status in ((10, "Needs food surplus"), (11, "Food shortage")):
-            with self.subTest(population=population):
-                self.earth.population, self.earth.growth_progress = population, 90
-                self.assertEqual(self.game.population_report(self.earth).status, status)
-                self.assertIsNone(self.game.population_report(self.earth).turns_to_growth)
-                for _ in range(3):
-                    self.game.advance_turn()
-                self.assertEqual((self.earth.population, self.earth.growth_progress), (population, 90))
+    def test_balanced_food_pauses_growth_without_losing_people_or_progress(self):
+        self.earth.population, self.earth.growth_progress = 10, 90
+        self.assertEqual(self.game.population_report(self.earth).status, "Needs food surplus")
+        self.assertIsNone(self.game.population_report(self.earth).turns_to_growth)
+        for _ in range(3):
+            self.game.advance_turn()
+        self.assertEqual((self.earth.population, self.earth.growth_progress), (10, 90))
         self.earth.buildings = ["hydroponic_farm"]
         self.game.advance_turn()
-        self.assertEqual((self.earth.population, self.earth.growth_progress), (12, 15))
+        self.assertEqual((self.earth.population, self.earth.growth_progress), (11, 15))
 
     def test_food_is_local_even_when_empire_has_a_net_surplus(self):
         mars = self.game.planet_at(0, 3)
@@ -102,7 +101,7 @@ class PopulationRulesTests(unittest.TestCase):
         self.assertEqual((totals.food_produced, totals.food_consumed, totals.food_shortages), (14, 13, 1))
         for _ in range(4):
             self.game.advance_turn()
-        self.assertEqual((mars.population, mars.growth_progress), (5, 45))
+        self.assertEqual((mars.population, mars.growth_progress), (4, 0))
         self.assertEqual(self.earth.growth_progress, 40)
         self.assertEqual([p.name for _, p in colony_rows(self.game, sort_by="food")], ["Mars", "Earth"])
 

@@ -138,7 +138,7 @@ def guides():
             ("RESEARCH", "Research points fund discoveries. Unused RP is banked until you select a project."),
             ("RESOURCES", "Resources are a shared empire stockpile produced by miners and mines. Construction spends Resources; thermal backup plants can also consume them as fuel."),
             ("INDUSTRY", "Industry supplies construction work locally. Buildings and ships require both Resources and enough completed work."),
-            ("FOOD", "Food is used locally. The empire-wide surplus summarizes your colonies; a surplus elsewhere does not feed a starving colony."),
+            ("FOOD", "Food is used locally. The empire-wide surplus summarizes your colonies; a surplus elsewhere does not feed a starving colony. A food deficit costs 1 billion inhabitants each turn and resets growth progress, down to a minimum of 1 billion. Matching demand prevents starvation; a surplus allows food-based growth."),
             ("ENERGY", "Energy is produced and consumed locally. Power on one world cannot run buildings on another. Click the Energy card to inspect colony power balances."),
         )),
         Article("power", "economy", "Keeping buildings powered", "Steady generation and backup fuel", (

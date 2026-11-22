@@ -36,10 +36,12 @@ method, traits, environmental suitability and capacity checks:
 - Passive growth uses its configured rate, followed by suitability.
 - Mixed populations use the same local physiology bonuses and weighted
   environmental suitability as the simulation.
-- Full worlds show zero growth. Ordinary food shortages pause food-based
-  growth without removing existing inhabitants or accumulated progress.
-- Starving Skirr colonies show a loss of 1,000 million per turn, stopping at
-  the simulation's one-billion minimum; starvation resets growth progress.
+- Full worlds show zero growth when food demand is met. Matching food demand
+  pauses food-based growth without losing inhabitants or accumulated progress.
+- All food-dependent colonies with a deficit lose 1,000 million per turn,
+  including full worlds and mothership habitats, stopping at the simulation's
+  one-billion minimum. Starvation resets growth progress and blocks all growth
+  methods until demand is met. Civilizations that require no food are unaffected.
 
 The food details account for farmers, active facilities, natural/native food,
 local bonuses, consumption and administrative strain. Disabled or unpowered
@@ -53,11 +55,21 @@ capacity unknown. Their explanation does not query current hidden population,
 food or bonuses. Gas giants have no population control and remain uncolonizable.
 Habitat inspection uses the selected mothership's inhabitants.
 
-No simulation rules, save schema, balance profile, dependencies or artwork
-change. Install the incremental package over v0.81.1; save format remains 57
-and balance profile version remains 20.
+The food-shortage update extends the existing Skirr starvation rule to every
+food-dependent population. It needs no save migration: existing games use the
+new rule on their next turn. Save schema, balance profile, dependencies and
+artwork are unchanged.
 
 ## Validation
+
+For v0.97.4, the 10 new starvation tests and 9 population-inspector tests pass.
+Together with the related population, environment, faction, habitat, race, AI,
+building-economy, queue and output-inspector checks, 141 tests passed. Fourteen
+other tests failed; every failing test also fails on the unchanged v0.97.2
+checkout. No additional test failures were observed. Rendered shortage and
+population-detail screens were checked for readable, correct negative rates.
+
+### Original inspector validation
 
 `tests/test_population_info.py` compares displayed growth with actual population
 advancement for ordinary growth, harsh environments, Lithar, Xenonflora, Nexus

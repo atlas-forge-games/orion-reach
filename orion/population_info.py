@@ -16,9 +16,8 @@ def millions(points):
 
 
 def growth_millions(report):
-    # Swarm starvation precedes both growth and the capacity check in advance().
-    if report.colonized and report.swarm and report.balance < 0:
-        return -1000 if report.population > 1 else 0
+    if report.starvation_loss:
+        return -1000 * report.starvation_loss
     return millions(report.growth_rate)
 
 
@@ -59,8 +58,10 @@ def describe(game, planet, *, live):
     if not planet.colonized:
         lines.append("Establish a colony to begin population growth; this world has no inhabitants yet.")
         return PopulationInfo(title, tuple(lines), True, rate)
-    elif report.swarm and report.balance < 0:
-        lines.append("Swarm starvation: lose 1 billion per turn, down to a minimum of 1 billion; growth progress resets.")
+    elif report.balance < 0:
+        lines.append("Starvation: lose 1 billion per turn, down to a minimum of 1 billion; growth progress resets.")
+        if not report.starvation_loss:
+            lines.append("Minimum population reached: no further inhabitants are lost, but growth remains stopped.")
     elif planet.population >= report.capacity:
         lines.append("Population limit reached: growth stops and accumulated growth progress resets.")
     else:
@@ -86,8 +87,8 @@ def describe(game, planet, *, live):
                   f"Each surplus food adds {millions(population.GROWTH_PER_FOOD):g} million; base cap {millions(report.growth_limit):g} million / turn.",
                   f"Potential base growth: {millions(base):g} million / turn before traits, environment and capacity.",
                   f"Growth-speed traits: {b.get('growth_percent', 0):+g}% general; {lush:+g}% lush-world bonus → {report.growth_percent:g}% of base."]
-        if report.balance <= 0 and not report.swarm:
-            lines.append("Without a food surplus, food-based growth pauses; existing inhabitants and progress are retained.")
+        if report.balance == 0:
+            lines.append("Food supply exactly meets demand: food-based growth pauses; existing inhabitants and progress are retained.")
 
     lines.append(f"Before environment (after capacity check): {millions(report.base_growth_rate):g} million / turn.")
     if report.facility_growth:

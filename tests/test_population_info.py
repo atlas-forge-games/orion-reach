@@ -57,33 +57,38 @@ class PopulationInfoTests(PopulationInfoFixture):
                 gained += (future.growth_progress-world.growth_progress)*1000/population.GROWTH_THRESHOLD
                 self.assertEqual(gained, rate)
 
-    def test_capacity_and_food_shortage_show_zero_without_losing_existing_people(self):
+    def test_capacity_and_balanced_food_show_zero_without_losing_existing_people(self):
         game = self.game()
         world = game.headquarters()[1]
         world.population = game.population_report(world).capacity
+        world.farmers = 5
         self.assertEqual(describe(game, world, live=True).rate_millions, 0)
         self.assertIn('Population limit reached', '\n'.join(describe(game, world, live=True).lines))
-        world.population, world.farmers, world.growth_progress = 8, 0, 75
+        world.population, world.farmers, world.growth_progress = 8, 1, 75
         info = describe(game, world, live=True)
         self.assertEqual(info.rate_millions, 0)
         self.assertIn('progress are retained', '\n'.join(info.lines))
         population.advance(world, game.population_report(world))
         self.assertEqual((world.population, world.growth_progress), (8, 75))
 
-    def test_swarm_starvation_overrides_growth_and_respects_one_billion_floor(self):
-        game = self.game('skirr')
-        world = game.headquarters()[1]
-        world.biome, world.farmers, world.growth_progress = 'Barren', 0, 75
-        info = describe(game, world, live=True)
-        self.assertEqual(info.rate_millions, -1000)
-        self.assertIn('(-1,000 mil / turn)', summary(world, game.population_report(world)))
-        self.assertIn('growth progress resets', '\n'.join(info.lines))
-        population.advance(world, game.population_report(world))
-        self.assertEqual((world.population, world.growth_progress), (7, 0))
-        world.population = 1
-        self.assertEqual(growth_millions(game.population_report(world)), 0)
-        population.advance(world, game.population_report(world))
-        self.assertEqual(world.population, 1)
+    def test_starvation_overrides_growth_and_respects_one_billion_floor(self):
+        for race in ('terran', 'skirr', 'lithar', 'wanderers'):
+            with self.subTest(race=race):
+                game = self.game(race)
+                world = game.headquarters()[1]
+                world.biome, world.farmers, world.growth_progress = 'Barren', 0, 75
+                info = describe(game, world, live=True)
+                self.assertEqual(info.rate_millions, -1000)
+                self.assertIn('(-1,000 mil / turn)', summary(world, game.population_report(world)))
+                self.assertIn('growth progress resets', '\n'.join(info.lines))
+                self.assertNotIn('progress are retained', '\n'.join(info.lines))
+                population.advance(world, game.population_report(world))
+                self.assertEqual((world.population, world.growth_progress), (7, 0))
+                world.population = 1
+                self.assertEqual(growth_millions(game.population_report(world)), 0)
+                self.assertIn('Minimum population reached', '\n'.join(describe(game, world, live=True).lines))
+                population.advance(world, game.population_report(world))
+                self.assertEqual(world.population, 1)
 
     def test_disabled_farms_and_mixed_species_use_real_local_effects(self):
         game = self.game()
@@ -96,6 +101,7 @@ class PopulationInfoTests(PopulationInfoFixture):
         self.assertIn('Disabled or unpowered food facilities: Hydroponic farm.', '\n'.join(info.lines))
         game.race_id = 'serevan'
         world.biome, world.species = 'Ice', {'terran': 4, 'nexus': 4}
+        world.farmers = 3  # Keep this assembly/environment example fed.
         info = describe(game, world, live=True)
         body = '\n'.join(info.lines)
         self.assertIn('Ice environment: 100%', body)
