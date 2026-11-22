@@ -2,7 +2,8 @@
 
 from functools import lru_cache
 
-from .designs import HULLS, ShipDesign, loadout_error
+from .designs import HULLS, loadout_error
+from .ship_fitting import build_design
 from .production import HULL_TECHNOLOGIES
 
 
@@ -18,7 +19,7 @@ def auto_design(kind, completed, legacy_hulls=False, *, planning=False):
 
     def add(identifier):
         if loadout_error(kind, [*modules, identifier], completed, require_weapon=False,
-                         legacy_hulls=legacy_hulls) is None:
+                         legacy_hulls=legacy_hulls, fit_version=3) is None:
             modules.append(identifier)
             return True
         return False
@@ -35,8 +36,10 @@ def auto_design(kind, completed, legacy_hulls=False, *, planning=False):
         first(("flag_bridge", "command_relay"))
     elif kind == "cruiser":
         first(("ecm_projector", "command_relay"))
-    first(("hardened_shield", "regenerative_shield", "shield", "reinforced_armor", "armor"))
-    first(("damage_control", "scanner", "engine"))
+    first(("reinforced_armor", "armor"))
+    first(("hardened_shield", "regenerative_shield", "shield"))
+    first(("damage_control", "scanner"))
+    add("engine")
     if kind in ("frigate", "carrier"):
         preferred = ("phased", "plasma", "pulse", "graviton", "ion", "quantum", "laser")
     elif kind == "destroyer":
@@ -45,13 +48,13 @@ def auto_design(kind, completed, legacy_hulls=False, *, planning=False):
         preferred = ("heavy_beam", "particle", "disruptor", "phased", "graviton", "plasma",
                      "fusion_torpedo", "mirv", "antimatter", "quantum", "pulse", "torpedo", "laser")
     first(preferred)
-    first(("flak", "reinforced_armor", "point_defense"))
+    first(("flak", "point_defense"))
     if kind not in ("frigate", "carrier", "destroyer"):
         first(("ion", "graviton"))
     while first(preferred) is not None:
         pass
-    while first(("hardened_shield", "regenerative_shield", "shield", "flak", "reinforced_armor", "armor")) is not None:
+    while first(("damage_control", "scanner", "hardened_shield", "regenerative_shield", "shield")) is not None:
         pass
-    if loadout_error(kind, modules, completed, legacy_hulls=legacy_hulls):
+    if loadout_error(kind, modules, completed, legacy_hulls=legacy_hulls, fit_version=3):
         return None
-    return ShipDesign("design_24", f"{HULLS[kind].name} Mk II", kind, tuple(modules))
+    return build_design("design_24", f"{HULLS[kind].name} Mk II", kind, modules)

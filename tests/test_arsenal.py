@@ -479,14 +479,21 @@ class ArsenalUITests(unittest.TestCase):
         app = self.app
         app.open_designer()
         seen = set()
-        for page in range(4):
-            app.design_module_page = page; app.render()
-            seen.update(b.key.removeprefix("design_add_") for b in app.buttons if b.key.startswith("design_add_"))
-            self.assertTrue(all(app.canvas.get_rect().contains(b.rect) for b in app.buttons))
+        from orion import designer_controls as controls
+        from orion.ship_fitting import mounts_for
+        for kind in HULLS:
+            app.choose_design_hull(kind)
+            for slot in mounts_for(kind):
+                controls.select(app, slot.id)
+                for page in range((len(controls.choices(app))+controls.OPTIONS_PER_PAGE-1)//controls.OPTIONS_PER_PAGE):
+                    app.design_module_page = page; app.render()
+                    seen.update(m for m, _ in app.module_regions)
+                    self.assertTrue(all(app.canvas.get_rect().contains(b.rect) for b in app.buttons))
         self.assertEqual(seen, set(MODULES))
-        app.filter_design_modules("support"); app.render()
-        self.assertIn("design_add_bomber_bay", [b.key for b in app.buttons])
-        self.assertNotIn("design_add_laser", [b.key for b in app.buttons])
+        app.choose_design_hull("carrier")
+        controls.select(app, "hangar_1"); app.render()
+        self.assertIn("design_option_bomber_bay", [b.key for b in app.buttons])
+        self.assertNotIn("design_option_laser", [b.key for b in app.buttons])
         app.open_research(); app.select_research_branch("physics"); app.select_research_tier(8); app.render()
         self.assertIn("research_choose_disruptor_beams", [b.key for b in app.buttons])
         for tier in range(1, 9):

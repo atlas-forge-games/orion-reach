@@ -1,47 +1,72 @@
-# Age of the Stars — v0.97.6 manual Turn News
+# Age of the Stars — v0.98.0 visual ship designer
 
-**Dispatches from the frontier no longer opens automatically.** Open the journal
-with the **Turn news** button or the **N** shortcut whenever you want to read it.
+Build your ship directly on a large top-down hull. Choose a hull on the left,
+click a mounting point on the ship, then select equipment on the right.
 
-- New reports remain unread and show a gold count on the Turn news button.
-- The count includes routine and urgent dispatches. It clears when you open the
-  journal, and new reports received later mark the button again.
-- Unread reports survive further turns and saving/loading.
-- Finishing a battle, raid, first-contact greeting or council decision no longer
-  sends you to Turn news. Battle reports, required decisions, research reminders
-  and campaign results retain their normal screens.
+- Outer mounts carry weapons or point defense; fitted equipment appears on the hull.
+- Shared internal bays make shields, damage control, scanners and command systems
+  compete for space. A frigate can now carry a command relay.
+- Click the stern to replace its engine, or **Hull plating** to choose armor.
+  Standard propulsion and plating are included in the bare hull.
+- Carriers have two dedicated drone hangars.
+- Hover over or select a module to preview changes to hull, shields, firepower,
+  movement and cost. **Install module** applies the selection; **Remove** or
+  **Reset** clears it. Right-click equipment for details.
+- Unresearched equipment can be planned; building waits for the required research.
+- Changing hull preserves compatible equipment. Excess equipment is listed for
+  review and must be fitted or removed before saving the new design.
+- Auto fit, saved blueprints, colony construction and the combat simulator all
+  use the new designer. AI designs follow the same physical fitting limits.
 
 ## Installation
 
-Extract this ZIP into the existing game repository, beside `orion/` and `tests/`,
-and allow the included files to be replaced. Restart the game.
-This is an incremental update based on **v0.97.5** (commit `6275aea`).
+Extract this incremental ZIP into the existing repository beside `orion/`,
+`assets/`, `tests/` and `docs/`, replacing the included files. Restart the game.
+The base version is **v0.97.6**, commit `13d4947`.
 
-Existing saves work without conversion. Save format remains **65**;
-no new game, dependencies or artwork are required.
+Existing campaigns and blueprints load normally. Existing ships and queued
+orders retain their equipment; updating a blueprint changes future orders.
+New saves use format **66** to retain exact mounting positions. Older source
+save files are not rewritten when loaded. No new dependencies are needed.
 
 ## Validation
 
-The focused interface and notification checks passed **92 tests and 19 subtests**.
-They cover repeated turns with unread urgent news, the badge and mouse/keyboard
-access at three window sizes, save/load, ground and space battles, first contact,
-council decisions, research reminders and manual news after a campaign ends.
+The focused fitting, UI, planning, simulator, scaling, fleet-support and arsenal
+checks passed **103 tests and 134 subtests**. These include physical limits,
+module replacement, mouse clicks across all six hulls at three window sizes,
+exact mount persistence, production snapshots, AI fittings and combat scenarios.
 
-One older format-25 migration test also fails on unchanged v0.97.5 because its
-legacy ship data is rejected; this update does not change save validation.
+A save created with actual v0.97.6 code, including old blueprints, a queued ship
+and an active battle, loaded successfully. Combat resumed, and a new save
+round-tripped without changing the old equipment or source file. Actual screens
+were reviewed at 980×900, 1280×800 and 1920×1080; fitting also worked with 175%
+UI size using the existing scrolling interface.
 
-Run the focused checks from the repository root:
+The wider historical suite has eight pre-existing failures, reproduced on
+unchanged v0.97.6: five expect earlier ship statistics/costs, two expect older
+research names or equipment scaling, and one concerns colony-layout save
+migration. No additional failures remain in the affected checks.
+
+Run the focused checks:
 
 ```bash
-python -m pytest tests/test_quiet_notifications.py tests/test_tomb_worlds.py::NewsInterfaceTests tests/test_research_overview.py tests/test_first_contact.py tests/test_council.py tests/test_varkesh.py::VarkeshInterfaceTests tests/test_galaxy_hud.py -q
+python -m pytest tests/test_visual_designer.py tests/test_designer.py::DesignerUITests tests/test_designer_planning.py::BlueprintPlanningUITests tests/test_combat_simulator.py tests/test_ship_scaling.py tests/test_fleet_support.py tests/test_arsenal.py -q
 ```
+
+## Preview
+
+![Visual ship designer](screenshots/visual_ship_designer.png)
+
+See [the fitting rules](docs/ship-designer.md) for slot counts and save details.
 
 ## Commit commands
 
 ```bash
 git status
-git add README.md orion/__init__.py orion/app.py orion/news.py tests/test_council.py tests/test_first_contact.py tests/test_quiet_notifications.py tests/test_research_overview.py tests/test_tomb_worlds.py tests/test_varkesh.py
+git add README.md docs/ship-designer.md assets/designer screenshots/visual_ship_designer.png
+git add orion/__init__.py orion/app.py orion/auto_designs.py orion/balance.py orion/combat.py orion/combat_sandbox.py orion/combat_simulator.py orion/designer_art.py orion/designer_controls.py orion/designer_info.py orion/designer_view.py orion/designs.py orion/model.py orion/ship_fitting.py orion/ship_scaling.py orion/storage.py orion/window_layout.py
+git add tests/test_arsenal.py tests/test_combat_simulator.py tests/test_designer.py tests/test_designer_planning.py tests/test_fleet_support.py tests/test_visual_designer.py
 git diff --cached --stat
-git commit -m "Make Turn News manual and retain unread report badges"
+git commit -m "Add visual hull-first ship designer with physical mounting points (v0.98.0)"
 git push
 ```

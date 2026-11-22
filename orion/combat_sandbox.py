@@ -15,7 +15,7 @@ from .research import ResearchState
 from .storage import atomic_json
 
 FORMAT = "orion-reach-combat-scenario"
-VERSION = 1
+VERSION = 2
 MAX_SHIPS = 60
 MAX_BASES = 3
 ROUND_LIMIT = 300
@@ -160,7 +160,7 @@ def load_scenario(path):
             raise ScenarioError("This combat scenario is too large.")
         data = json.loads(path.read_text(encoding="utf-8"))
         if (not isinstance(data, dict) or data.get("format") != FORMAT
-                or type(data.get("version")) is not int or data["version"] != VERSION):
+                or type(data.get("version")) is not int or data["version"] not in (1, VERSION)):
             raise ScenarioError("Choose a supported combat scenario JSON file.")
         return Scenario.from_dict(data.get("scenario"))
     except (OSError, ValueError, RecursionError) as exc:

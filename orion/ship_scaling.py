@@ -83,6 +83,11 @@ def loadout_errors(data):
             used = sum(data['modules'][m]['category'] == category for m in loadout)
             if used > data['hulls'][kind][slots]:
                 errors.append(f'hulls.{kind}.{slots}: the standard loadout requires at least {used} slots; disable ship scaling for manual presets.')
+        from .ship_fitting import category as fitting_category
+        for group, field in (('weapon', 'external_mounts'), ('core', 'internal_bays'), ('hangar', 'hangar_bays')):
+            used = sum(fitting_category(m) == group for m in loadout)
+            if used > data['hulls'][kind][field]:
+                errors.append(f'hulls.{kind}.{field}: the standard loadout requires at least {used} positions.')
     return errors
 
 

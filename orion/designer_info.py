@@ -26,12 +26,19 @@ def research_sections(kind, modules, state):
 def module_sections(kind, identifier, state):
     """Derive help from active balance values, not the catalogue's brief labels."""
     hull, module = HULLS[kind], fitted_module(kind, identifier)
-    slot = {"weapon": "offensive", "defense": "defensive", "support": "support"}[module.category]
-    sections = [("FITTING", f"Uses 1 {slot} slot. Values shown for a {hull.name}. Adds {module.resource_cost} resources and "
+    from .ship_fitting import category
+    slot = {"weapon": "external weapon mount", "core": "shared internal bay", "armor": "hull plating selection",
+            "engine": "engine slot", "hangar": "carrier hangar"}[category(identifier)]
+    sections = [("FITTING", f"Uses 1 {slot}. Values shown for a {hull.name}. Adds {module.resource_cost} resources and "
                  f"{module.work_cost} production work before empire discounts. Each copy has the effects below.")]
+    if category(identifier) == "core":
+        sections.append(("SHARED SPACE", "Shields, damage control, scanners and command equipment compete for internal bays. "
+                         "Each bay holds one module. External weapons, engines and armor have their own mounting positions."))
     effects = []
     if identifier in SUPPORT_HULLS:
-        effects.append("Fits "+" / ".join(HULLS[k].name for k in SUPPORT_HULLS[identifier])+" hulls only. One copy per ship. "
+        restriction = ("Fits any combat hull. " if identifier == "command_relay" else
+                       "Fits "+" / ".join(HULLS[k].name for k in SUPPORT_HULLS[identifier])+" hulls only. ")
+        effects.append(restriction+"One copy per ship. "
                        "Works automatically while alive, even after moving or firing. It benefits other friendly units, never its own ship. "
                        "Distance is measured between cell centres; moving out of range or destroying the provider immediately ends its support.")
     if module.escort_interception:
@@ -75,7 +82,7 @@ def module_sections(kind, identifier, state):
         if module.weapon == "siege":
             effects.append("Deals triple damage to planetary bases and their shields.")
     if module.hull_bonus:
-        effects.append(f"Adds {module.hull_bonus} maximum hull points. Multiple armor plates add together.")
+        effects.append(f"Adds {module.hull_bonus} maximum hull points. Choose one armor package for the whole ship; replacing it removes the previous package.")
     if module.shields:
         effects.append(f"Adds {module.shields} shield points, restored at the start of each battle. Shields absorb beam damage before hull; missiles and torpedoes bypass them; multiple generators add together.")
     if module.shield_regeneration:
@@ -91,7 +98,7 @@ def module_sections(kind, identifier, state):
     if module.range_bonus:
         effects.append(f"Adds {module.range_bonus} cells to every fitted weapon's range. Only one combat scanner per ship. Does not change strategic fuel range.")
     if module.movement_bonus:
-        effects.append(f"Changes tactical movement by {module.movement_bonus:+} cells per turn. Bonuses and penalties add together, with a minimum movement of 1. Does not change travel speed between stars.")
+        effects.append(f"Changes tactical movement by {module.movement_bonus:+} cells per turn. The chosen engine and armor combine, with a minimum movement of 1. Does not change travel speed between stars.")
     if identifier in DRONE_BAYS:
         from .combat import drone_strength, DRONE_SPEC
         from .ship_scaling import ENABLED

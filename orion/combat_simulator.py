@@ -214,18 +214,25 @@ class CombatSimulator(App):
     def auto_fit_design(self):
         design = auto_design(self.design_kind, tuple(sorted(TECHNOLOGIES)), planning=True)
         if design:
-            self.design_modules = list(design.modules)
+            from .designer_controls import set_modules, select
+            set_modules(self, design.modules, design.mounts)
+            select(self, "core_1")
 
     def save_ship_design(self, copy=False):
         try:
-            design = self.game.save_design(self.design_name, self.design_kind, self.design_modules,
-                                           None if copy else self.design_id)
+            from .designer_controls import draft, error, DESIGNS_PER_PAGE
+            if issue := error(self):
+                raise RuleError(issue)
+            current = draft(self)
+            design = self.game.save_design(self.design_name, self.design_kind, current.modules,
+                                           None if copy else self.design_id,
+                                           mounts=current.mounts if current.fit_version == 3 else None)
         except RuleError as exc:
             self.toast(exc, True)
             return
         self.scenario.designs = list(self.game.designs)
         self.load_design(design)
-        self.design_page = self.game.designs.index(design)//7
+        self.design_page = self.game.designs.index(design)//DESIGNS_PER_PAGE
         self.catalogue_selected, self.catalogue_tab = design.id, "custom"
         self.toast(f"{design.name} saved in this scenario. Add it to either fleet.")
 

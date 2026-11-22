@@ -294,8 +294,9 @@ class SimulatorUITests(unittest.TestCase):
     def test_designer_saves_late_game_loadout_and_adds_it_to_both_fleets(self):
         self.click("sim_design_new")
         self.click("design_hull_carrier")
-        self.click("design_filter_support")
-        self.click("design_add_bomber_bay")
+        self.click("design_mount_hangar_1")
+        self.click("design_option_bomber_bay")
+        self.click("design_install")
         self.click("design_name")
         self.app.handle_event(pg.event.Event(pg.TEXTINPUT, text="Test carrier"))
         self.key(pg.K_RETURN)

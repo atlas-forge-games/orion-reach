@@ -94,7 +94,7 @@ class BlueprintPlanningTests(unittest.TestCase):
                 completed = ()
                 plan = auto_design(kind, completed, planning=True)
                 self.assertIsNotNone(plan)
-                self.assertIsNone(loadout_error(kind, plan.modules))
+                self.assertIsNone(loadout_error(kind, plan.modules, fit_version=plan.fit_version))
                 self.assertEqual(completed, ())
                 if kind != "frigate":
                     self.assertIsNone(auto_design(kind, completed))
@@ -156,11 +156,18 @@ class BlueprintPlanningUITests(unittest.TestCase):
 
     def test_locked_carrier_can_remove_add_autofit_save_and_build_after_research(self):
         self.click("design_hull_carrier")
-        self.click("design_remove_laser")
-        self.click("design_add_laser")
-        self.click("design_add_laser")
+        self.click("design_mount_weapon_1")
+        self.click("design_option_laser")
+        self.click("design_install")
+        self.click("design_remove")
+        self.click("design_install")
+        self.click("design_mount_weapon_2")
+        self.click("design_option_laser")
+        self.click("design_install")
         self.assertEqual(self.app.design_modules.count("laser"), 2)
-        self.click("design_add_shield")
+        self.click("design_mount_core_1")
+        self.click("design_option_shield")
+        self.click("design_install")
         self.click("design_auto_fit")
         self.assertIn("drone_bay", self.app.design_modules)
         self.app.design_name = "Future Hive"
@@ -181,6 +188,8 @@ class BlueprintPlanningUITests(unittest.TestCase):
         self.app.field = "design_name"
         self.app.focus = "design_name"
         for identifier in ("laser", "shield"):
+            from orion.designer_controls import select
+            select(self.app, "weapon_1" if identifier == "laser" else "core_1")
             self.app.render()
             before = (self.app.game.to_dict(), self.app.design_name, list(self.app.design_modules))
             rect = next(r for m, r in self.app.module_regions if m == identifier)
@@ -193,6 +202,7 @@ class BlueprintPlanningUITests(unittest.TestCase):
             self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_ESCAPE, mod=0))
             self.assertIsNone(self.app.dialog)
             self.assertEqual(self.app.focus, "design_name")
+        select(self.app, "weapon_1")
         self.app.render()
         rect = next(r for m, r in self.app.module_regions if m == "laser")
         self.mouse(rect.center, 3)

@@ -33,19 +33,22 @@ class Hull:
     module_size: str = "small"
     module_scale: int = 100
     tracking_penalty: int = 0
+    external_mounts: int = 4
+    internal_bays: int = 1
+    hangar_bays: int = 0
 
 
 HULLS = {
     "frigate": Hull("Frigate", 20, 4, 3, 2, 1, 4, 30, 18, support_slots=1),
     "destroyer": Hull("Destroyer", 30, 6, 4, 3, 2, 4, 45, 27),
     "cruiser": Hull("Cruiser", 42, 8, 5, 4, 2, 3, 70, 42, defensive_slots=3,
-                    module_size="medium", module_scale=200, tracking_penalty=30),
+                    module_size="medium", module_scale=200, tracking_penalty=30, internal_bays=2),
     "battleship": Hull("Battleship", 75, 12, 8, 6, 2, 2, 130, 78, defensive_slots=3,
-                       module_size="heavy", module_scale=300, tracking_penalty=30),
+                       module_size="heavy", module_scale=300, tracking_penalty=30, external_mounts=6, internal_bays=2),
     "carrier": Hull("Carrier", 55, 10, 3, 4, 6, 2, 100, 60, support_slots=3,
-                    module_size="medium", module_scale=200, tracking_penalty=30),
+                    module_size="medium", module_scale=200, tracking_penalty=30, hangar_bays=2),
     "titan": Hull("Titan", 125, 18, 12, 9, 3, 1, 220, 132, defensive_slots=3,
-                  module_size="heavy", module_scale=400, tracking_penalty=35),
+                  module_size="heavy", module_scale=400, tracking_penalty=35, external_mounts=6, internal_bays=3),
 }
 
 LEGACY_HULLS = dict(HULLS)
@@ -173,23 +176,28 @@ def missing_research(kind, modules, completed, *, legacy_hulls=False):
 def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_hulls=False, fit_version=2):
     if not isinstance(kind, str) or kind not in HULLS:
         return "Choose a combat hull."
-    if type(fit_version) is not int or fit_version not in (1, 2):
+    if type(fit_version) is not int or fit_version not in (1, 2, 3):
         return "Unknown blueprint rules."
-    limit = max(max(h.capacity, h.offensive_slots+h.defensive_slots+h.support_slots) for h in HULLS.values())
+    limit = max(max(h.capacity, h.offensive_slots+h.defensive_slots+h.support_slots,
+                    h.external_mounts+h.internal_bays+h.hangar_bays+2) for h in HULLS.values())
     if not isinstance(modules, (tuple, list)) or len(modules) > limit or any(
             not isinstance(m, str) or m not in MODULES for m in modules):
         return "Unknown or excessive modules."
     specs, hull = [MODULES[m] for m in modules], HULLS[kind]
     if fit_version == 1 and sum(m.space for m in specs) > hull.capacity:
         return "The loadout exceeds this hull's total capacity."
-    for category in ("weapon", "defense", "support"):
+    if fit_version == 3:
+        from .ship_fitting import capacity_error
+        if error := capacity_error(kind, modules):
+            return error
+    for category in (() if fit_version == 3 else ("weapon", "defense", "support")):
         used = sum(m.space if fit_version == 1 else 1 for m in specs if m.category == category)
         if used > getattr(hull, category if fit_version == 1 else SLOT_FIELDS[category]):
             return f"This hull has insufficient {category} {'capacity' if fit_version == 1 else 'slots'}."
     if modules.count("scanner") > 1:
         return "Only one combat scanner can be fitted."
     for identifier, hulls in SUPPORT_HULLS.items():
-        if identifier in modules and kind not in hulls:
+        if identifier in modules and kind not in hulls and not (fit_version == 3 and identifier == "command_relay"):
             return f"{MODULES[identifier].name} requires a {' or '.join(HULLS[k].name for k in hulls)} hull."
         if modules.count(identifier) > 1:
             return f"Only one {MODULES[identifier].name.lower()} can be fitted."
@@ -197,7 +205,7 @@ def loadout_error(kind, modules, completed=None, *, require_weapon=True, legacy_
         return "Fit one command module per ship."
     if any(m in DRONE_BAYS for m in modules) and kind != "carrier":
         return "Drone bays require a carrier hull."
-    if fit_version == 2 and sum(m in DRONE_BAYS for m in modules) > 2:
+    if fit_version >= 2 and sum(m in DRONE_BAYS for m in modules) > 2:
         return "A carrier can fit at most two drone bays."
     if completed is not None:
         missing = missing_research(kind, modules, completed, legacy_hulls=legacy_hulls)
@@ -216,6 +224,7 @@ class ShipDesign:
     kind: str
     modules: tuple[str, ...]
     fit_version: int = 2
+    mounts: tuple[tuple[str, str], ...] = ()
 
     @property
     def specs(self):
@@ -299,9 +308,9 @@ class ShipDesign:
         return tuple(m for m in self.specs if m.damage and distance <= m.range+sum(s.range_bonus for s in self.specs))
 
     @classmethod
-    def from_dict(cls, data, *, version=37):
+    def from_dict(cls, data, *, version=66):
         current = {"id", "name", "kind", "modules", "fit_version"}
-        if not isinstance(data, dict) or set(data) not in (current, current-{"fit_version"} if version < 37 else current):
+        if not isinstance(data, dict) or set(data) not in (current | {"mounts"}, current, current-{"fit_version"} if version < 37 else current):
             raise ValueError("Invalid ship design")
         identifier, name = data["id"], data["name"]
         fit_version = data.get("fit_version", 1)
@@ -310,7 +319,14 @@ class ShipDesign:
                 or not all(c.isprintable() for c in name)
                 or loadout_error(data["kind"], data["modules"], fit_version=fit_version)):
             raise ValueError("Invalid ship blueprint")
-        return cls(identifier, name, data["kind"], tuple(data["modules"]), fit_version)
+        mounts = data.get("mounts", ())
+        if fit_version == 3:
+            from .ship_fitting import placement_error
+            if placement_error(data["kind"], data["modules"], mounts):
+                raise ValueError("Invalid mounting positions")
+        elif not isinstance(mounts, (list, tuple)) or mounts:
+            raise ValueError("Legacy blueprints cannot contain mounting positions")
+        return cls(identifier, name, data["kind"], tuple(data["modules"]), fit_version, tuple(tuple(p) for p in mounts))
 
 
 def standard_design(kind):
@@ -318,10 +334,18 @@ def standard_design(kind):
     if ship_scaling.ENABLED and kind in ship_scaling.STANDARD_LOADOUTS:
         # Snapshot IDs need not refer to the player's editable design library;
         # AI blueprints already use the same convention.
-        return ShipDesign("design_24", HULLS[kind].name,
-                          kind, ship_scaling.STANDARD_LOADOUTS[kind])
+        from .ship_fitting import build_design
+        return build_design("design_24", HULLS[kind].name, kind, ship_scaling.STANDARD_LOADOUTS[kind])
     return None
 
 
 def is_standard_design(design):
-    return design is not None and design == standard_design(design.kind)
+    if design is None:
+        return False
+    standard = standard_design(design.kind)
+    if design == standard:
+        return True
+    # Format-65 stock ships had the same equipment without physical positions.
+    return (standard is not None and design.fit_version == 2 and not design.mounts
+            and (design.id, design.name, design.kind, design.modules)
+            == (standard.id, standard.name, standard.kind, standard.modules))

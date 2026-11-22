@@ -930,7 +930,7 @@ def accuracy_breakdown(game, attacker, target, weapon):
     jamming = fleet_support.strongest(game.combat, target, "jamming")
     formation = flagships.evasion(game.combat, target)
     tracking = 0
-    if attacker.kind in HULLS and (attacker.design is None or attacker.design.fit_version == 2):
+    if attacker.kind in HULLS and (attacker.design is None or attacker.design.fit_version >= 2):
         hull = HULLS[attacker.kind]
         target_size = (MODULE_SIZES[HULLS[target.kind].module_size] if target.kind in HULLS
                        else 3 if target.kind == "missile_base" or target.kind in MONSTERS

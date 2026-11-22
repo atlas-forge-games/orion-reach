@@ -217,7 +217,7 @@ class DesignerCombatTests(unittest.TestCase):
         from scenarios import research_to
         research_to(game, "battleship_hulls")
         guard = game.guardians[0]
-        design = game.save_design("Hunter", "battleship", ["torpedo"]*4+["armor"]*3)
+        design = game.save_design("Hunter", "battleship", ["torpedo"]*4+["armor"])
         game.ships = [Ship(1, "battleship", guard.system_id, design=design)]
         game.next_ship_id = 2
         game.start_combat(guard.system_id)
@@ -274,7 +274,9 @@ class DesignerUITests(unittest.TestCase):
     def test_create_revise_build_and_choose_design_from_colony_production(self):
         self.click("fleets_designer")
         self.click("design_hull_cruiser")
-        self.click("design_add_torpedo")
+        self.click("design_mount_weapon_1")
+        self.click("design_option_torpedo")
+        self.click("design_install")
         self.click("design_name")
         self.app.handle_event(pg.event.Event(pg.TEXTINPUT, text="Pathfinder"))
         self.app.handle_event(pg.event.Event(pg.KEYDOWN, key=pg.K_RETURN, mod=0))
@@ -283,7 +285,9 @@ class DesignerUITests(unittest.TestCase):
         game = self.app.game
         original = game.designs[0]
         self.assertEqual(game.planet_at(0, 2).construction_queue[0].design, original)
-        self.click("design_add_laser")
+        self.click("design_mount_weapon_2")
+        self.click("design_option_laser")
+        self.click("design_install")
         self.assertFalse(next(b for b in self.app.buttons if b.key == "design_build").enabled)
         self.click("design_save")
         self.assertNotEqual(game.designs[0], original)
@@ -302,17 +306,20 @@ class DesignerUITests(unittest.TestCase):
 
     def test_locked_modules_capacity_and_library_pagination(self):
         self.click("fleets_designer")
-        self.assertTrue(next(b for b in self.app.buttons if b.key == "design_add_shield").enabled)
+        self.assertTrue(next(b for b in self.app.buttons if b.key == "design_option_shield").enabled)
         for index in range(24):
             self.app.game.save_design(f"Plan {index}", "frigate", ["laser"])
-        for _ in range(3):
+        for _ in range(7):
             self.click("design_next")
         self.click("design_load_design_24")
         self.assertEqual(self.app.design_id, "design_24")
         self.click("design_hull_battleship")
-        for _ in range(3):
-            self.click("design_add_laser")
-        self.assertFalse(next(b for b in self.app.buttons if b.key == "design_add_laser").enabled)
+        from orion.designs import HULLS
+        for index in range(2, HULLS["battleship"].external_mounts+1):
+            self.click(f"design_mount_weapon_{index}")
+            self.click("design_option_laser")
+            self.click("design_install")
+        self.assertFalse(next(b for b in self.app.buttons if b.key == "design_install").enabled)
         self.app.game.selected_planet = None
         self.app.open_designer()
         self.app.render()

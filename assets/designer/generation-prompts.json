@@ -1,0 +1,16 @@
+{
+  "generator": "Built-in image generation",
+  "transparent_background": true,
+  "assets": [
+    {
+      "file": "hulls-v1.png",
+      "generation_brief": "Six bare unarmed orthographic top-down spacecraft hulls in a transparent 3-column by 2-row sprite atlas. Top: frigate, destroyer, cruiser. Bottom: battleship, carrier, Titan. Noses up, engines down. Grey steel and pale grey segmented armor, muted brass and cyan lights. Flat outer mounting pads, broad central service covers, carrier hangar doors. No weapons, fitted equipment, UI markers, labels or background. Distinct silhouettes; full sprites inside their cells.",
+      "sha256": "dfc70d25fc9f9c44f82f549bab55f6c6d3cc2df9f06fb0472ce9998e4c8dade7"
+    },
+    {
+      "file": "modules-v1.png",
+      "generation_brief": "Nine separate orthographic top-view physical spaceship modules in a transparent 3-by-3 sprite atlas: laser turret, torpedo launcher, point defense; shield generator, repair system, command module; ion engine, sensor/ECM array, drone hangar. Matching realistic painted grey steel, dark navy, brass details and cyan lighting. Weapons point up, engine exhaust down. No full ships, labels, UI frames or background.",
+      "sha256": "8d137b95d45258aec7fcfb9476cf069cf75b305aae1133f54527e8c5a21c2fe6"
+    }
+  ]
+}

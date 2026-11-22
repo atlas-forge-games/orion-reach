@@ -184,7 +184,7 @@ class FleetSupportTests(unittest.TestCase):
         for kind, expected in (("destroyer", "escort_array"), ("cruiser", "ecm_projector"), ("titan", "flag_bridge")):
             design = auto_design(kind, tuple(TECHNOLOGIES))
             self.assertIn(expected, design.modules)
-            self.assertIsNone(loadout_error(kind, design.modules, list(TECHNOLOGIES)))
+            self.assertIsNone(loadout_error(kind, design.modules, list(TECHNOLOGIES), fit_version=design.fit_version))
             plain = ShipDesign("design_1", "Without support", kind, tuple(m for m in design.modules if m != expected))
             self.assertGreater(design.resource_cost, plain.resource_cost)
 

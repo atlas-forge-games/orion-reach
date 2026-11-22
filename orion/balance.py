@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 21
+VERSION = 22
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -263,6 +263,9 @@ def numeric_bounds(section, field):
     if field in ('GROWTH_THRESHOLD', 'ELECTION_INTERVAL', 'MORTALITY_CHANCE', 'TOMB_CHANCE', 'AWAKENING_CHANCE', 'GATE_CHARGE_TURNS'): return 1, 10000
     if field in ('STARTING_COLONISTS', 'AWAKENED_POPULATION', 'SLAVE_CAPACITY'): return 1, 100
     if field in ('capacity', 'weapon', 'defense', 'support') and section == 'hulls': return 1 if field in ('capacity','weapon') else 0, 24
+    if field == 'external_mounts': return 2, 6
+    if field == 'internal_bays': return 1, 3
+    if field == 'hangar_bays': return 0, 2
     if field == 'movement': return 0, 20
     if field in ('range', 'support_range'): return 0, 50
     if field in ('movement_bonus', 'envoy', 'gift', 'envoy_bonus', 'trade_bonus', 'research_bonus'): return -100, 100
@@ -646,6 +649,16 @@ def upgrade_profile(profile):
                             for field in fields[section]:
                                 table[key].setdefault(field, deepcopy(template[field]))
         profile['version'] = 21
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 21:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        hulls = data.get('hulls', {}) if isinstance(data, dict) else {}
+        if isinstance(hulls, dict):
+            for kind, original in _defaults()['data']['hulls'].items():
+                if isinstance(hulls.get(kind), dict):
+                    for field in ('external_mounts', 'internal_bays', 'hangar_bays'):
+                        hulls[kind].setdefault(field, original[field])
+        profile['version'] = 22
     return profile
 
 

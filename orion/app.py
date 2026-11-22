@@ -2109,45 +2109,47 @@ class App:
         self.go("designer")
 
     def new_design(self):
-        self.design_id=None
-        self.design_name=""
-        self.design_kind="frigate"
-        self.design_modules=["laser","armor"]
-        self.design_module_filter="all"
-        self.design_module_page=0
+        from .designer_controls import new
+        new(self)
 
     def load_design(self,design):
-        self.design_id,self.design_name,self.design_kind=design.id,design.name,design.kind
-        self.design_modules=list(design.modules)
+        from .designer_controls import load
+        load(self,design)
         self.field=None
         pg.key.stop_text_input()
 
     def choose_design_hull(self,kind):
-        self.design_kind=kind
+        from .designer_controls import choose_hull
+        choose_hull(self,kind)
 
     def change_design_module(self,identifier,amount):
-        if amount<0:
-            if identifier in self.design_modules:
-                self.design_modules.remove(identifier)
-        elif not loadout_error(self.design_kind,[*self.design_modules,identifier],require_weapon=False):
-            self.design_modules.append(identifier)
+        from .designer_controls import change_module
+        change_module(self,identifier,amount)
 
     def design_page_change(self,delta):
-        self.design_page=max(0,min(max(0,(len(self.game.designs)-1)//7),self.design_page+delta))
+        from .designer_controls import DESIGNS_PER_PAGE
+        self.design_page=max(0,min(max(0,(len(self.game.designs)-1)//DESIGNS_PER_PAGE),self.design_page+delta))
 
     def filter_design_modules(self,category):
-        self.design_module_filter=category
-        self.design_module_page=0
+        from .designer_controls import select
+        from .ship_fitting import mounts_for
+        group={"defense":"core","support":"core","all":"weapon"}.get(category,category)
+        slot=next((s for s in mounts_for(self.design_kind) if s.category==group),None)
+        if slot:
+            select(self,slot.id)
 
     def design_module_page_change(self,delta):
-        self.design_module_page=max(0,self.design_module_page+delta)
+        from .designer_controls import change_page
+        change_page(self,delta)
 
     def auto_fit_design(self):
         from .auto_designs import auto_design
         state=self.game.technology
         design=auto_design(self.design_kind,tuple(sorted(state.completed)),state.legacy_starships,planning=True)
         if design:
-            self.design_modules=list(design.modules)
+            from .designer_controls import set_modules, select
+            set_modules(self,design.modules,design.mounts)
+            select(self,"core_1")
         else:
             self.toast("No valid loadout fits this hull's slots.",True)
 
@@ -2164,9 +2166,14 @@ class App:
 
     def save_ship_design(self,copy=False):
         try:
-            design=self.game.save_design(self.design_name,self.design_kind,self.design_modules,None if copy else self.design_id)
+            from .designer_controls import error, DESIGNS_PER_PAGE
+            if issue := error(self):
+                raise RuleError(issue)
+            current=draft(self)
+            design=self.game.save_design(self.design_name,self.design_kind,current.modules,None if copy else self.design_id,
+                                         mounts=current.mounts if current.fit_version==3 else None)
             self.load_design(design)
-            self.design_page=self.game.designs.index(design)//7
+            self.design_page=self.game.designs.index(design)//DESIGNS_PER_PAGE
             if self.save_game(autosave=True):
                 self.toast(f"{design.name} saved · Existing ships and orders retain their equipment")
         except RuleError as exc:
@@ -2700,6 +2707,8 @@ class App:
             elif (self.on_galaxy_chart() and not self.inspector_collapsed and not self.fleet_popup and not self.map_order_ids
                   and self.sensor_contact_id is None and self.route_ship_id is None and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN)):
                 self.change_galaxy_planet_page(1 if event.key==pg.K_PAGEDOWN else -1)
+            elif self.screen=="designer" and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
+                self.design_module_page_change(1 if event.key==pg.K_PAGEDOWN else -1)
             elif self.screen in ("fleets","shipyard") and event.key in (pg.K_PAGEUP,pg.K_PAGEDOWN):
                 change=self.change_fleet_page if self.screen=="fleets" else self.change_shipyard_page
                 change(1 if event.key==pg.K_PAGEDOWN else -1)

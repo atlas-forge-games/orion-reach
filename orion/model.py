@@ -830,13 +830,13 @@ class GameState:
     def design_for(self, identifier):
         return next((d for d in self.designs if d.id == identifier), None)
 
-    def save_design(self, name, kind, modules, identifier=None):
+    def save_design(self, name, kind, modules, identifier=None, *, mounts=None):
         self._require_strategy(PLAYER)
         name = name.strip() if isinstance(name, str) else name
         if not _name(name):
             raise RuleError("Choose a name of 1–28 printable characters.")
         # Blueprints may plan future equipment. Research is enforced when ordering ships.
-        error = loadout_error(kind, modules)
+        error = loadout_error(kind, modules, fit_version=3)
         if error:
             raise RuleError(error)
         if identifier is not None and self.design_for(identifier) is None:
@@ -847,7 +847,11 @@ class GameState:
             if len(self.designs) >= MAX_DESIGNS:
                 raise RuleError("All 24 design slots are occupied. Update an existing design.")
             identifier = f"design_{len(self.designs)+1}"
-        design = ShipDesign(identifier, name, kind, tuple(modules))
+        from .ship_fitting import build_design
+        try:
+            design = build_design(identifier, name, kind, modules, mounts)
+        except ValueError as exc:
+            raise RuleError(str(exc)) from exc
         self.designs = [design if d.id == identifier else d for d in self.designs] if self.design_for(identifier) else self.designs+[design]
         return design
 
@@ -2050,7 +2054,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=65):
+    def from_dict(cls, data, *, version=66):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
