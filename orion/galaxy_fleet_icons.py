@@ -27,8 +27,14 @@ def flight_heading(app, ship):
     return math.degrees(math.atan2(end[0]-start[0], start[1]-end[1])) % 360
 
 
-@lru_cache(maxsize=2)
-def icon_master(habitat=False):
+@lru_cache(maxsize=48)
+def icon_master(habitat=False, kind=None, design=None):
+    if kind is not None and not habitat:
+        from .fleet_art import load_ship_art
+        image = load_ship_art(kind, design)
+        if image is not None:
+            fit = image.get_rect().fit((0, 0, 256, 256))
+            return pg.transform.smoothscale(image, fit.size)
     path = ASSETS / ("ships/mothership-v1.png" if habitat else "map/fleet-icon-v1.png")
     try:
         image = pg.image.load(str(path))
@@ -53,9 +59,9 @@ def fallback_art(color, habitat):
     return image
 
 
-@lru_cache(maxsize=32)
-def accented_master(color, habitat=False):
-    master = icon_master(habitat)
+@lru_cache(maxsize=64)
+def accented_master(color, habitat=False, kind=None, design=None):
+    master = icon_master(habitat, kind, design)
     if master is None:
         return fallback_art(color, habitat)
     master = master.copy()
@@ -70,7 +76,7 @@ def accented_master(color, habitat=False):
                 highlight = max(0, (light-.82)/.18)*.18
                 tint = tuple(round((channel*(1-highlight)+255*highlight)*light) for channel in color)
                 master.set_at((x, y), (*tint, alpha))
-    if not habitat:
+    if not habitat and kind is None:
         # Keep the two aft lights legible after reduction to a compact icon.
         width, height = master.get_size()
         for fraction in (.42, .62):
@@ -82,8 +88,8 @@ def accented_master(color, habitat=False):
 
 
 @lru_cache(maxsize=384)
-def icon_sprite(color, habitat=False, heading=0, pixels=ICON_BOX):
-    master = accented_master(color, habitat)
+def icon_sprite(color, habitat=False, heading=0, pixels=ICON_BOX, kind=None, design=None):
+    master = accented_master(color, habitat, kind, design)
     rotated = pg.transform.rotozoom(master, -heading, 1)
     bounds = rotated.get_bounding_rect(min_alpha=32)
     if bounds.w and bounds.h:
@@ -97,10 +103,10 @@ def icon_sprite(color, habitat=False, heading=0, pixels=ICON_BOX):
     return sprite
 
 
-def draw_map_ship(surface, center, color, habitat=False, heading=0):
+def draw_map_ship(surface, center, color, habitat=False, heading=0, *, kind=None, design=None):
     # One-degree bins avoid new cache entries from floating-point zoom roundoff.
     scale = surface.scale if isinstance(surface, Canvas) else 1
     sprite = icon_sprite(tuple(color), habitat, round(heading) % 360,
-                         max(1, round(ICON_BOX*scale)))
+                         max(1, round(ICON_BOX*scale)), kind, design)
     position = surface.point(center) if isinstance(surface, Canvas) else center
     pg.Surface.blit(surface, sprite, sprite.get_rect(center=position))

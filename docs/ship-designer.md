@@ -1,4 +1,4 @@
-# Visual ship fitting — v0.98.0
+# Visual ship fitting — v0.98.1
 
 The designer uses a large ship view with clickable positions. Selecting a mount
 filters the equipment panel to compatible modules. Cyan marks an available
@@ -75,6 +75,24 @@ accepts earlier format-1 scenarios. Balance-profile format 22 adds
 memory while retaining their existing values. The older capacity fields remain
 available to validate older blueprint snapshots.
 
-The designer's original hull and equipment atlases are included in
-`assets/designer/`. Rendering and click regions use the same fitted image bounds,
-including native display scaling and compact layouts.
+## Shared ship appearance
+
+All six combat classes use modular versions of the original ship artwork.
+Weapons fit into their own hull's recessed mounts. Internal equipment is visible
+in the designer cutaway; flush armor covers those bays in flight and combat.
+Engine upgrades replace the nozzle assemblies, armor adds visible plating, and
+installed drone bays show drones inside the carrier's original hangars.
+
+The designer, shipyard and production previews, fleet lists, galaxy map, combat
+simulator, battlefield and ship inspectors use the same loadout-based rendering.
+The galaxy map shows the leading ship of each fleet group at the existing small
+icon size, with the owner's color and its direction of travel. Standard ships
+use their normal stock fittings. Existing custom ships use their own saved
+equipment snapshot, including exact mounting positions when available.
+
+Artwork is in `assets/ships/modular/`; `orion/modular_art.py` owns composition and
+hull-specific attachment coordinates. Rendering and click regions use the same
+fitted image bounds, including native display scaling and compact layouts.
+Older snapshots are mapped to compatible visual positions without changing
+their equipment or statistics; the designer still lists any excess equipment
+when an old design is opened. This update does not change the save format.

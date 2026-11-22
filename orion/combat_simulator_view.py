@@ -72,7 +72,7 @@ def draw_catalogue(app):
                    lambda k=identifier: setattr(app, "catalogue_selected", k), "hotspot")
         if selected:
             pg.draw.line(surface, GOLD, (453, y), (453, y+36), 3)
-        ship_icon(surface, (477, y+18), .48, color=GOLD if selected else CYAN, kind=unit.kind, facing=1)
+        ship_icon(surface, (477, y+18), .48, color=GOLD if selected else CYAN, kind=unit.kind, facing=1, design=unit.design)
         text(surface, shorten(ship_name(scenario, identifier), 270, 15), (502, y), 15, INK)
         text(surface, f"Hull {unit.max_hull} · Shield {unit.max_shields} · Volley {unit.damage}", (502, y+25), 10, MUTED)
         app.button(f"sim_add_player_{identifier}", "+ Yours", (797, y+2, 85, 35),

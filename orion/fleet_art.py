@@ -6,13 +6,14 @@ import pygame as pg
 from .ui import ASSETS, CYAN, INK
 from .monster_art import draw_monster
 from .monsters import MONSTERS
+from . import modular_art
 
 SHIP_ART_IDS = ("frigate", "destroyer", "cruiser", "battleship", "carrier", "titan", "combat_drone",
                 "troop_transport", "colony_ship", "outpost_ship", "scout", "mothership")
 
 
 @lru_cache(maxsize=16)
-def load_ship_art(kind):
+def _legacy_ship_art(kind):
     if kind not in SHIP_ART_IDS:
         return None
     try:
@@ -23,9 +24,21 @@ def load_ship_art(kind):
         return None
 
 
+def load_ship_art(kind, design=None):
+    image = modular_art.ship_image(kind, design)
+    return image if image is not None else _legacy_ship_art(kind)
+
+
+def ship_sprite(kind, height, facing=0, design=None):
+    placements, limits = modular_art.fitting(kind, design)
+    return _ship_sprite(kind, height, facing, placements, limits)
+
+
 @lru_cache(maxsize=192)
-def ship_sprite(kind, height, facing=0):
-    image = load_ship_art(kind)
+def _ship_sprite(kind, height, facing, placements, limits):
+    image = modular_art.assembled(kind, placements, limits) if limits else None
+    if image is None:
+        image = _legacy_ship_art(kind)
     if image is None:
         return None
     width = max(1, round(image.get_width()*height/image.get_height()))
@@ -33,7 +46,7 @@ def ship_sprite(kind, height, facing=0):
     return pg.transform.rotate(sprite, -90*facing) if facing else sprite
 
 
-def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing=0):
+def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing=0, design=None):
     if kind == "mothership":
         from .mothership_art import draw
         draw(surface, center, scale, color, facing)
@@ -41,7 +54,7 @@ def ship_icon(surface, center, scale=1.0, color=CYAN, kind="colony_ship", facing
     if kind in MONSTERS:
         draw_monster(surface, center, kind, scale, facing)
         return
-    sprite = ship_sprite(kind, max(1, round((43 if kind == "combat_drone" else 68)*scale)), facing)
+    sprite = ship_sprite(kind, max(1, round((43 if kind == "combat_drone" else 68)*scale)), facing, design)
     if sprite is not None:
         surface.blit(sprite, sprite.get_rect(center=center))
         # Owner-colored running lights remain legible at tactical and map scales.

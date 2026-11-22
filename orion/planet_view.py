@@ -120,7 +120,7 @@ def project_art(surface, item_id, rect, design=None, *, habitat=False):
     if item_id in BUILDINGS:
         draw_building_art(surface, item_id, rect, habitat=habitat)
     elif item_id in SHIP_TYPES or design:
-        ship_icon(surface, rect.center, min(rect.w/64, rect.h/74), kind=design.kind if design else item_id)
+        ship_icon(surface, rect.center, min(rect.w/64, rect.h/74), kind=design.kind if design else item_id, design=design)
     else:
         pg.draw.ellipse(surface, CYAN, rect.inflate(-rect.w//3, -8), 4)
         pg.draw.ellipse(surface, GOLD, rect.inflate(-rect.w//2, -18), 2)

@@ -130,7 +130,7 @@ def draw_fleets(app):
     for i, ship in enumerate(ships[start:start+FLEETS_PER_PAGE]):
         y = 429+i*87
         panel(surface, (64, y, 1312, 76))
-        ship_icon(surface, (100, y+38), .67, app.empire_color(ship.owner), kind=ship.kind)
+        ship_icon(surface, (100, y+38), .67, app.empire_color(ship.owner), kind=ship.kind, design=ship.design)
         text(surface, ship.name, (142, y+12), 18, INK)
         role = (f"{ship.habitat.population}/50 B · Mobile home" if ship.habitat else "Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.starting_colonists()} B colonists · Unarmed" if ship.kind == "colony_ship" else

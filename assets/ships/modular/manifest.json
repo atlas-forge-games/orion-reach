@@ -1,0 +1,56 @@
+{
+  "generator": "built-in image generation",
+  "note": "Original generated PNG bytes, copied without raster edits. Briefs summarize the generation requests; they are not verbatim prompts.",
+  "files": [
+    {
+      "file": "frigate-v1.png",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "sha256": "25c7048fe63342779843f5c7c6c50456b85d5c19e03b66ae674f2133c5c8b9c5",
+      "generation_brief": "Faithfully edit the original frigate: remove its fixed wing guns, add four recessed empty wing sockets and one empty core tray behind the cockpit. Keep its long needle bow, swept wings, ivory armor, bronze details, cyan lights and twin original engines."
+    },
+    {
+      "file": "destroyer-v1.png",
+      "dimensions": [
+        724,
+        2172
+      ],
+      "mode": "RGBA",
+      "sha256": "906201802cf2059b664f37d87032fd8cfab12301f6c051b3fa6c50d19af1df68",
+      "generation_brief": "Extract the approved modular destroyer as one transparent top-down sprite. Preserve the twin-pronged slender bow, two empty forward weapon recesses, one empty midship weapon pair, one core tray and original twin aft engines. No weapons or labels."
+    },
+    {
+      "file": "cruiser-v1.png",
+      "dimensions": [
+        1024,
+        1536
+      ],
+      "mode": "RGBA",
+      "sha256": "a84f4cc786afe4a5d7b49d92a6f696d333fe1e977bca83b5bc197dff9162f6de",
+      "generation_brief": "Extract the approved modular cruiser as one transparent top-down sprite. Preserve the broad diamond shoulders, original bridge, four empty side weapon sockets, central access trays and three aft engines. No guns or labels."
+    },
+    {
+      "file": "capital-hulls-v1.png",
+      "dimensions": [
+        1774,
+        887
+      ],
+      "mode": "RGBA",
+      "sha256": "dbc0aca31072b02b2de9aa106f59938311b651b08a414dc3c1f7090e31cca260",
+      "generation_brief": "Reproduce the original battleship, carrier and titan in three transparent catalogue columns. Remove fixed weapons. Six / four / six external sockets, two / one / three core trays; carrier retains two empty hangars. Correct remaining central guns with a second battleship tray and closed carrier spine armor. Preserve original silhouettes, materials and engine groups."
+    },
+    {
+      "file": "components-v1.png",
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "mode": "RGBA",
+      "sha256": "fefdb1c4865c3187f7363c907aee840c641f7f7727b65bbb1b7a687a402b55bf",
+      "generation_brief": "Four-column, three-row transparent top-down component atlas matching the approved ivory, charcoal, bronze and cyan frigate study. Row 1: laser, torpedo, point defense, sensor. Row 2: shield, repair, command, drone. Row 3: single engine pod, armor, reinforced armor, bay cover. Isolated sprites with gutters, no labels or backdrop."
+    }
+  ]
+}

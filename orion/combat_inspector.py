@@ -70,7 +70,7 @@ def draw(app):
     surface = app.canvas
     color = app.empire_color(ship.owner)
     panel(surface, (96, 104, 1248, 694), border=color)
-    ship_icon(surface, (154, 158), .8, color, kind=ship.kind, facing=1)
+    ship_icon(surface, (154, 158), .8, color, kind=ship.kind, facing=1, design=ship.design)
     text(surface, shorten(ship.name, 966, 28), (208, 123), 28, INK, "title")
     side = "YOUR FLEET" if ship.owner == "player" else "ENEMY FLEET"
     text(surface, f"{side} · {COMBAT_TYPES[ship.kind].name} · {geometry.size(ship)[0]}×{geometry.size(ship)[1]} cells · Cell {ship.x+1}, {ship.y+1}", (208, 168), 13, color)

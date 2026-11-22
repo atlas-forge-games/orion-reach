@@ -23,18 +23,18 @@ SUPPORT_COLORS = {"escort_interception": (95, 236, 205), "command_accuracy": (10
 
 
 @lru_cache(maxsize=256)
-def tactical_sprite(kind, color, facing, cell_size=CELL, footprint=(1, 1)):
-    """Scale original artwork directly to the zoomed hull, never enlarge an icon."""
+def tactical_sprite(kind, color, facing, cell_size=CELL, footprint=(1, 1), design=None):
+    """Scale the saved ship's assembled artwork directly to its zoomed footprint."""
     length = SHIP_LENGTHS.get(kind, 50)*cell_size/56
     width, height = footprint
     max_width = length if width == 1 else (width-.2)*cell_size
     max_height = min(38*cell_size/CELL, length) if height == 1 else (height-.5)*cell_size
-    source = load_ship_art(kind)
+    source = load_ship_art(kind, design)
     if source is not None:
         sw, sh = source.get_size()
         oriented_w, oriented_h = (sh, sw) if facing else (sw, sh)
         ratio = min(max_width/oriented_w, max_height/oriented_h)
-        sprite = ship_sprite(kind, max(1, round(sh*ratio)), facing).copy()
+        sprite = ship_sprite(kind, max(1, round(sh*ratio)), facing, design).copy()
         # Paint ownership lights at screen resolution after the single rescale.
         if kind != "mothership":
             cx, cy = sprite.get_rect().center
@@ -45,7 +45,7 @@ def tactical_sprite(kind, color, facing, cell_size=CELL, footprint=(1, 1)):
     paint_scale = max(1.0, 2*max(max_width, max_height)/60)
     edge = math.ceil(100*paint_scale)
     art = pg.Surface((edge, edge), pg.SRCALPHA)
-    ship_icon(art, (edge//2, edge//2), paint_scale, color, kind=kind, facing=facing)
+    ship_icon(art, (edge//2, edge//2), paint_scale, color, kind=kind, facing=facing, design=design)
     bounds = art.get_bounding_rect(min_alpha=16)
     if not bounds.w or not bounds.h:
         return pg.Surface((1, 1), pg.SRCALPHA)
@@ -255,7 +255,7 @@ def draw_battlefield(app):
         if not planetary:
             icon_color = BEAMS[ship.weapon].color if ship.kind == "combat_drone" else color
             sprite = tactical_sprite(ship.kind, tuple(icon_color), 1 if ship.owner == PLAYER else -1,
-                                     camera.cell_size, geometry.size(ship))
+                                     camera.cell_size, geometry.size(ship), ship.design)
             surface.blit(sprite, sprite.get_rect(center=(cx, cy-offset(1))))
         hull = min(ship.max_hull, ship.hull+(pending_damage if before_impact else 0))
         hull_y = cy+offset(17) if planetary else cell.bottom-size(11)
@@ -361,7 +361,7 @@ def draw_combat(app):
             if planet:
                 combat_planets.draw_base(surface, game, ship, (1357, 256), app.empire_color(ship.owner), 1, diameter=60)
             else:
-                ship_icon(surface, (1357, 254), .85, app.empire_color(ship.owner), kind=ship.kind, facing=1)
+                ship_icon(surface, (1357, 254), .85, app.empire_color(ship.owner), kind=ship.kind, facing=1, design=ship.design)
             text(surface, shorten(planet.name if planet else ship.name, 235, 21), (x, 235), 21, INK)
             text(surface, f"{'BASE' if planet else 'HULL'}  {ship.hull} / {ship.max_hull}", (x, 267), 12, CYAN, "mono")
             if planet:
@@ -405,7 +405,7 @@ def draw_combat(app):
         text(surface, "PLANETARY TARGET" if target_planet else "ENEMY FLAGSHIP" if flagships.is_flagship(battle, target) else "ENEMY TARGET", (x, 458), 14, RIVAL_COLOR, "mono")
         text(surface, shorten(combat_planets.unit_name(game, target), 308, 17) if target else "Click an enemy ship or base", (x, 478), 17, INK)
         if target and target.owner == MONSTER:
-            ship_icon(surface, (1356, 481), .45, kind=target.kind)
+            ship_icon(surface, (1356, 481), .45, kind=target.kind, design=target.design)
         caption = (f"{target.hull}/{target.max_hull} base hull" if target_planet else f"{target.hull}/{target.max_hull} hull · {target.shields} shields") if target else "Targets must be within weapon range."
         if target and ship:
             caption += f"  ·  Distance {geometry.distance(ship, target):.1f}"

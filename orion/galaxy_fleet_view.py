@@ -409,7 +409,8 @@ def draw_map_fleets(app, map_rect):
             if selected:
                 pg.draw.rect(surface, color, rect, 1, border_radius=3)
             habitat = any(s.habitat is not None for s in ships)
-            draw_map_ship(surface, rect.center, app.empire_color(ships[0].owner), habitat, flight_heading(app, ships[0]))
+            draw_map_ship(surface, rect.center, app.empire_color(ships[0].owner), habitat, flight_heading(app, ships[0]),
+                          kind=ships[0].kind, design=ships[0].design)
             app.map_button(f"map_fleet_{ships[0].id}", rect,
                            lambda sid=ships[0].id: app.open_map_fleet(sid))
             continue
@@ -423,7 +424,7 @@ def draw_map_fleets(app, map_rect):
             caption = f"{ships[0].turns_remaining}T" if ships[0].in_transit else "SHIPS" if len(ships)>1 else "HOME"
             text(surface, caption, (rect.x+42, rect.y+25), 8, MUTED)
         else:
-            ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind)
+            ship_icon(surface, (rect.x+14, rect.centery), .24, color, kind=ships[0].kind, design=ships[0].design)
             text(surface, str(len(ships)), (rect.x+28, rect.y+5), 11, color, "mono_bold")
         app.map_button(f"map_fleet_{ships[0].id}", rect,
                        lambda sid=ships[0].id: app.open_map_fleet(sid))
@@ -477,7 +478,7 @@ def draw_fleet_popup(app):
             pg.draw.rect(surface, CYAN if selected else FAINT, box, 1)
             if selected:
                 pg.draw.lines(surface, CYAN, False, [(x+29, top+20), (x+32, top+24), (x+38, top+16)], 2)
-        ship_icon(surface, (x+63, top+20), .37, app.empire_color(first.owner), kind=ship.kind)
+        ship_icon(surface, (x+63, top+20), .37, app.empire_color(first.owner), kind=ship.kind, design=ship.design)
         text(surface, shorten(ship.name, width-106, 14, "sans_bold"), (x+88, top+4), 14, INK, "sans_bold")
         detail = f"{ship.habitat.population}/50 B · {ship.hull} hull" if ship.habitat else f"{ship.hull}/{ship.max_hull} hull"
         text(surface, detail, (x+89, top+24), 10, MUTED)
@@ -573,7 +574,7 @@ def draw_fleet(app):
             pg.draw.rect(surface, CYAN if selected else FAINT, box, 1, border_radius=2)
             if selected:
                 pg.draw.lines(surface, CYAN, False, [(86, y+30), (91, y+35), (98, y+25)], 2)
-        ship_icon(surface, (139, y+31), .55, app.empire_color(first.owner), kind=ship.kind)
+        ship_icon(surface, (139, y+31), .55, app.empire_color(first.owner), kind=ship.kind, design=ship.design)
         text(surface, ship.name, (190, y+8), 19, INK)
         role = ("Survey & discovery · Unarmed" if ship.kind == "scout" else
                 f"{game.ship_attack(ship)} damage / volley" if ship.damage else f"{production_balance.TROOP_STRENGTH} invasion attack · Unarmed"
