@@ -47,7 +47,8 @@ def load(game, data, version):
     game.observer_events, game.next_observer_event_id, game.observer_news_read = events, next_id, read
     if game.is_observer:
         if (not game.opponents or game.diplomacy is not None or game.credits or game.resources
-                or game.research or game.designs or game.technology.completed or game.technology.active):
+                or game.research or game.designs or game.technology.completed or game.technology.project
+                or game.technology.improvements):
             raise ValueError("The observer cannot own an economy or research")
         if game.combat is not None:
             raise ValueError("Observer battles must resolve within the turn")

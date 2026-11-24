@@ -56,7 +56,8 @@ def option_description(app, identifier):
     if identifier is None:
         return (f"{HULLS[app.design_kind].movement} base movement · included in hull" if app.design_mount == "engine"
                 else "Base hull protection · no movement penalty")
-    return module_detail(identifier, fitted_module(app.design_kind, identifier))
+    from .improvements import fitted_module as improved_module
+    return module_detail(identifier, improved_module(app.design_kind, identifier, app.game.technology))
 
 
 def draw_hulls_and_library(app, design):
@@ -155,7 +156,8 @@ def draw_options(app, design):
         detail = option_description(app, identifier)
         paragraph(surface, detail, (1093, r.y+42), 279, 12, CYAN if selected else MUTED, 18)
         if identifier:
-            fitted = fitted_module(design.kind, identifier)
+            from .improvements import fitted_module as improved_module
+            fitted = improved_module(design.kind, identifier, app.game.technology)
             locked = (not getattr(app, "combat_simulator", False) and fitted.technology
                       and fitted.technology not in app.game.technology.completed)
             caption = f"{fitted.resource_cost} RES" + (" · Research needed" if locked else "")

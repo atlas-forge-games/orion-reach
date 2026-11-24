@@ -207,7 +207,7 @@ class Ship:
         return f"{self.design.name if self.design else SHIP_TYPES[self.kind].name} {self.id:03}"
 
     @classmethod
-    def from_dict(cls, data, systems, *, version=58):
+    def from_dict(cls, data, systems, *, version=68):
         if not isinstance(data, dict) or not _integer(data["id"], 1, 1_000_000):
             raise ValueError
         design = ShipDesign.from_dict(data["design"], version=version) if version >= 18 and data["design"] is not None else None
@@ -318,7 +318,7 @@ class Opponent:
     resources: int = field(default_factory=lambda: economy.STARTING_RESOURCES)
 
     @classmethod
-    def from_dict(cls, data, systems, turn, *, version=37):
+    def from_dict(cls, data, systems, turn, *, version=68):
         if not isinstance(data, dict) or not _name(data["name"]):
             raise ValueError
         for key in ("credits", "research"):
@@ -515,7 +515,7 @@ class Planet:
         return estimates
 
     @classmethod
-    def from_dict(cls, data, expected_id, *, version=63):
+    def from_dict(cls, data, expected_id, *, version=68):
         if not isinstance(data, dict) or not _integer(data["id"], expected_id, expected_id):
             raise ValueError
         if version < 54 and data.get("biome") == "Tundra":
@@ -862,17 +862,20 @@ class GameState:
             design = build_design(identifier, name, kind, modules, mounts)
         except ValueError as exc:
             raise RuleError(str(exc)) from exc
+        from .improvements import improve_design
+        design = improve_design(design, self.technology.improvements)
         self.designs = [design if d.id == identifier else d for d in self.designs] if self.design_for(identifier) else self.designs+[design]
         return design
 
     def production_design(self, identifier, owner=PLAYER):
+        from .improvements import improve_design
+        state = self.research_state(owner)
         if owner == PLAYER:
             from .designs import standard_design
-            return self.design_for(identifier) or standard_design(identifier)
-        state = self.research_state(owner)
+            return improve_design(self.design_for(identifier) or standard_design(identifier), state.improvements)
         if identifier in HULLS:
             from .auto_designs import auto_design
-            return auto_design(identifier, tuple(sorted(state.completed)), state.legacy_starships)
+            return improve_design(auto_design(identifier, tuple(sorted(state.completed)), state.legacy_starships), state.improvements)
         return None
 
     def project_spec(self, identifier, owner=PLAYER):
@@ -1068,14 +1071,33 @@ class GameState:
         # Grandfathered costs belong only to the original legacy project.
         empire.research += state.progress
         state.active, state.progress, state.legacy_active = identifier, 0, False
+        state.active_improvement = None
+        return self.advance_research(owner)
+
+    def improvement_error(self, identifier, *, owner=PLAYER):
+        from .improvements import choice_error
+        return self.strategy_error(owner) or choice_error(self.research_state(owner), identifier)
+
+    def choose_improvement(self, identifier, *, owner=PLAYER):
+        error = self.improvement_error(identifier, owner=owner)
+        if error:
+            raise RuleError(error)
+        empire = self._empire(owner)
+        state = empire.technology
+        empire.research += state.progress
+        state.active, state.progress, state.legacy_active = None, 0, False
+        state.active_improvement = identifier
         return self.advance_research(owner)
 
     def advance_research(self, owner=PLAYER):
         self._require_strategy(owner)
         empire = self._empire(owner)
         empire.research, discovered = empire.technology.spend(empire.research)
+        from .improvements import Improvement, refresh_equipment
+        if isinstance(discovered, Improvement):
+            refresh_equipment(self, owner)
         if discovered and owner != PLAYER:
-            self.rival_event(f"Discovered {discovered.name}.", turn=self.turn, owner=owner)
+            self.rival_event(f"Completed {discovered.name}.", turn=self.turn, owner=owner)
         if discovered:
             black_holes.report_mapping(self, owner)
             exploration_rules.refresh(self)
@@ -2072,7 +2094,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=67):
+    def from_dict(cls, data, *, version=68):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):

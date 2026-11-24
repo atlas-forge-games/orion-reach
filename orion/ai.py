@@ -124,7 +124,7 @@ def scouting_orders(game, owner=RIVAL):
 def research_choice(game, owner=RIVAL):
     """A stable preference order, using ordinary points and exclusive choices."""
     state = game.research_state(owner)
-    if state.active or game._empire(owner).research == 0:
+    if state.project or game._empire(owner).research == 0:
         return
     # Extend an exhausted frontier using the same exclusive tank upgrades as the player.
     unknown = [s for s in game.systems if s.kind != black_holes.KIND and not game.system_explored(s.id, owner)]
@@ -135,6 +135,10 @@ def research_choice(game, owner=RIVAL):
             if game.research_error(identifier, owner=owner) is None:
                 game.choose_research(identifier, owner=owner)
                 return
+    from .improvements import ai_choice
+    if improvement := ai_choice(game, owner):
+        game.choose_improvement(improvement.id, owner=owner)
+        return
     race = game._empire(owner).race_id
     priority = RACES[race].research_priority
     branches = priority + tuple(b for b in BRANCHES if b not in priority)
@@ -182,6 +186,8 @@ def research_choice(game, owner=RIVAL):
                     return
     if game.research_error("ascension_theory", owner=owner) is None:
         game.choose_research("ascension_theory", owner=owner)
+    elif improvement := ai_choice(game, owner, exhausted=True):
+        game.choose_improvement(improvement.id, owner=owner)
 
 
 def warship_choice(game, owner):

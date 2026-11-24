@@ -25,12 +25,18 @@ def research_sections(kind, modules, state):
 
 def module_sections(kind, identifier, state):
     """Derive help from active balance values, not the catalogue's brief labels."""
-    hull, module = HULLS[kind], fitted_module(kind, identifier)
+    from .improvements import fitted_module as improved_module
+    hull, module = HULLS[kind], improved_module(kind, identifier, state)
     from .ship_fitting import category
     slot = {"weapon": "external weapon mount", "core": "shared internal bay", "armor": "hull plating selection",
             "engine": "engine slot", "hangar": "carrier hangar"}[category(identifier)]
     sections = [("FITTING", f"Uses 1 {slot}. Values shown for a {hull.name}. Adds {module.resource_cost} resources and "
                  f"{module.work_cost} production work before empire discounts. Each copy has the effects below.")]
+    power = state.improvements.get(identifier+':power', 0)
+    manufacturing = state.improvements.get(identifier+':manufacturing', 0)
+    if power or manufacturing:
+        sections.append(('IMPROVEMENTS', f'Power level {power}; manufacturing level {manufacturing}. '
+                         'The displayed equipment values include these improvements. Construction totals combine fractional savings before rounding.'))
     if category(identifier) == "core":
         sections.append(("SHARED SPACE", "Shields, damage control, scanners and command equipment compete for internal bays. "
                          "Each bay holds one module. External weapons, engines and armor have their own mounting positions."))
@@ -57,7 +63,7 @@ def module_sections(kind, identifier, state):
     if module.damage:
         beam = BEAMS[module.weapon]
         effects.append(f"Fires {beam.shots} shot{'s' if beam.shots != 1 else ''} for {module.damage} total damage per volley "
-                       f"before defenses and research bonuses. Each shot rolls to hit separately. Range: {module.range} cells before scanners.")
+                       f"before target defenses and combat modifiers. Each shot rolls to hit separately. Range: {module.range} cells before scanners.")
         effects.append(f"Base accuracy: {beam.accuracy}%. Actual hit chance also depends on range, target evasion and research bonuses.")
         if hull.tracking_penalty:
             size = MODULE_SIZES[hull.module_size]

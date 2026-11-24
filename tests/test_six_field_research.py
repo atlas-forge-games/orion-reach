@@ -300,10 +300,15 @@ class SixFieldTests(unittest.TestCase):
             with self.subTest(race=race):
                 game = self.game(with_ai=True, rival_race_id=race)
                 game.opponent.research = 1000000
-                for count in range(33):
+                state = game.opponent.technology
+                for _ in range(66):
+                    completed = len(state.completed)+sum(state.improvements.values())
                     ai.research_choice(game)
-                    self.assertEqual(len(game.opponent.technology.completed), count+1)
-                self.assertEqual(game.opponent.technology.finished_branches, 6)
+                    self.assertEqual(len(state.completed)+sum(state.improvements.values()), completed+1)
+                    if len(state.completed) == 33:
+                        break
+                self.assertEqual(len(state.completed), 33)
+                self.assertEqual(state.finished_branches, 6)
                 self.assertEqual(GameState.from_dict(game.to_dict()), game)
 
     def test_real_v082_save_preserves_tree_effects_active_project_and_original_file(self):

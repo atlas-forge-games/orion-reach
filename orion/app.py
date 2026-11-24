@@ -928,6 +928,9 @@ class App:
         self.research_branch="construction"
         self.research_tier=1
         self.research_overview=True
+        self.research_mode='new'
+        self.improvement_module='laser'
+        self.improvement_page=0
         self.research_prompt_pending=False
         self.objectives_return="galaxy"
         self.gate_colony_index=0
@@ -1043,14 +1046,18 @@ class App:
             self.research_return=self.screen
             self.research_return_selection=(self.game.selected_system,self.game.selected_planet)
             self.research_overview=True
+            if self.game.technology.active_improvement:
+                self.show_research_project()
             self.research_prompt_pending=False
             self.go("research")
 
     def needs_research_choice(self):
+        from .improvements import available_targets
         return (self.game is not None and not self.game.is_observer and self.game.result is None
-                and self.game.technology.active is None
-                and any(self.game.technology.status(t)=="available"
-                        and t!="ascension_theory" for t in TECHNOLOGIES))
+                and self.game.technology.project is None
+                and (any(self.game.technology.status(t)=="available"
+                        and t!="ascension_theory" for t in TECHNOLOGIES)
+                     or bool(available_targets(self.game.technology))))
 
     def prompt_idle_research(self, *, allow_news=False):
         """Show the turn's reminder once, after battles and greetings."""
@@ -1071,6 +1078,7 @@ class App:
             self.open_research()
 
     def show_research_overview(self):
+        self.research_mode='new'
         self.research_overview=True
         self.focus=f"research_branch_{self.research_branch}"
 
@@ -1079,6 +1087,7 @@ class App:
         self.go(self.research_return)
 
     def select_research_branch(self,identifier):
+        self.research_mode='new'
         self.research_overview=False
         self.research_branch=identifier
         self.research_tier=self.game.technology.next_tier(identifier)
@@ -1089,8 +1098,56 @@ class App:
         self.focus=f"research_tier_{self.research_tier}"
 
     def change_research_tier(self,delta):
-        if not self.research_overview:
+        if self.research_mode == 'improvements':
+            self.change_improvement_page(delta)
+        elif not self.research_overview:
             self.select_research_tier(self.research_tier+delta)
+
+    def select_research_mode(self,mode):
+        if mode not in ('new', 'improvements'):
+            return
+        self.research_mode=mode
+        if mode == 'new':
+            self.research_overview=True
+        self.focus='research_mode_'+mode
+
+    def select_improvement(self,identifier):
+        from .improvements import available_targets
+        from .improvements_view import PER_PAGE
+        targets=available_targets(self.game.technology)
+        if identifier in targets:
+            self.research_mode='improvements'
+            self.improvement_module=identifier
+            self.improvement_page=targets.index(identifier)//PER_PAGE
+            self.focus='improvement_target_'+identifier
+
+    def change_improvement_page(self,delta):
+        from .improvements import available_targets
+        from .improvements_view import PER_PAGE
+        last=max(0,(len(available_targets(self.game.technology))-1)//PER_PAGE)
+        self.improvement_page=max(0,min(last,self.improvement_page+delta))
+
+    def show_research_project(self):
+        state=self.game.technology
+        if state.active_improvement:
+            from .improvements import split_key
+            self.select_improvement(split_key(state.active_improvement)[0])
+        elif state.active:
+            self.show_research_technology(state.active)
+
+    def improvement_request(self,identifier):
+        from .improvements import project
+        error=self.game.improvement_error(identifier)
+        if error:
+            self.toast(error,True)
+            return
+        item=project(self.game.technology,identifier)
+        try:
+            completed=self.game.choose_improvement(identifier)
+            if self.save_game(autosave=True):
+                self.toast(('Completed ' if completed else 'Research started: ')+item.name+'.')
+        except RuleError as exc:
+            self.toast(exc,True)
 
     def show_research_technology(self,identifier):
         technology=TECHNOLOGIES[identifier]
@@ -2737,8 +2794,14 @@ class App:
                 elif self.screen=="rival":
                     self.change_rival_page(delta)
                 elif self.screen=="research":
-                    branches=tuple(BRANCHES)
-                    self.select_research_branch(branches[(branches.index(self.research_branch)+delta)%len(branches)])
+                    if self.research_mode == 'improvements':
+                        from .improvements import available_targets
+                        targets=available_targets(self.game.technology)
+                        if targets:
+                            self.select_improvement(targets[(targets.index(self.improvement_module)+delta)%len(targets)])
+                    else:
+                        branches=tuple(BRANCHES)
+                        self.select_research_branch(branches[(branches.index(self.research_branch)+delta)%len(branches)])
                 elif self.screen in ("system","planet","colony","shipyard"):
                     self.cycle_planet(delta)
 

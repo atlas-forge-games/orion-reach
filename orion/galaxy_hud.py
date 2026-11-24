@@ -110,12 +110,12 @@ def draw_galaxy_header(app):
                 "Open the credit budget and upkeep breakdown.")
 
     active = game.research_state().active
-    idle = active is None and any(game.technology.status(t)=="available" for t in TECHNOLOGIES)
+    idle = game.technology.project is None
     rate = f"{report.research:+,} RP / turn"
     resource_card(surface, research, "research", "RESEARCH · R", f"{game.research:,} RP",
                   ("Idle · " if idle else "")+rate, CYAN, detail_color=GOLD if idle else MUTED)
     diverted = sum(hyperlanes.allocations(game, "player").values())
-    project = TECHNOLOGIES[active].name if active else "No active project"
+    project = game.technology.project.name if game.technology.project else "No active project"
     card_action(app, "open_research", research, app.open_research, project+(f" · {diverted} RP to hyperlanes" if diverted else ""))
     if active:
         app.technology_info_region(active, research)

@@ -12,6 +12,13 @@ and overflow are preserved. Completed choices are permanent for normal research;
 the existing Research Array can exceptionally recover omitted discoveries.
 Civilization legacies remain in Objectives; Ascension Theory remains retired.
 
+Since v0.98.4, the **Improve existing** tab offers repeatable research for unlocked
+weapons, ship shields and armor alongside this discovery tree. Both tabs share
+the same RP and active project; improvements do not advance discovery tiers or
+change their exclusions. See [equipment improvements](equipment-improvements.md)
+for the current formulas, construction rules and save format. The catalogue and
+release-specific notes below document the original v0.83 tree.
+
 ## Complete default catalogue
 
 Choose **one entry from each row**. Prices shown are the actual default RP costs;

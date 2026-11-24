@@ -92,7 +92,7 @@ def report_rows(app):
                 detail = (f"{RACES[empire.race_id].name} · {PERSONALITIES[empire.race_id].traits} · "
                           f"{summary.income:+} CR/turn · {summary.resources:+} RES/turn · Click to inspect") if summary.colonies else "Eliminated"
             elif tab == "research":
-                project = TECHNOLOGIES[state.active] if state.active else None
+                project = state.project
                 values = (empire.name, str(len(state.completed)), f"{empire.research:,}", str(summary.research),
                           project.name if project else "Banking research", f"{state.progress}/{project.cost} RP" if project else "—")
                 recent = ", ".join(TECHNOLOGIES[t].name for t in state.completed[-3:])

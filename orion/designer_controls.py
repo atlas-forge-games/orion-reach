@@ -2,6 +2,7 @@
 
 from .designs import HULLS, ShipDesign, loadout_error
 from .ship_fitting import arrange, mounts_for, options, ordered
+from .improvements import improve_design
 
 DESIGNS_PER_PAGE = 3
 OPTIONS_PER_PAGE = 3
@@ -57,10 +58,10 @@ def draft(app):
     original = getattr(app, "design_original", None)
     if (original is not None and not app.design_edited and app.design_name.strip() == original.name
             and app.design_kind == original.kind and tuple(app.design_modules) == original.modules):
-        return original
+        return improve_design(original, app.game.technology.improvements)
     fitted = ordered(app.design_kind, app.design_mounts)
-    return ShipDesign(app.design_id or "design_1", app.design_name.strip(), app.design_kind,
-                      tuple(m for _, m in fitted) + tuple(app.design_unplaced), 3, fitted)
+    return improve_design(ShipDesign(app.design_id or "design_1", app.design_name.strip(), app.design_kind,
+                      tuple(m for _, m in fitted) + tuple(app.design_unplaced), 3, fitted), app.game.technology.improvements)
 
 
 def choose_hull(app, kind):
@@ -110,7 +111,8 @@ def candidate(app, *, module=_SELECTED):
     fitted = ordered(app.design_kind, mounts)
     modules = tuple(m for _, m in fitted)
     error = loadout_error(app.design_kind, modules, require_weapon=False, fit_version=3)
-    return ShipDesign(current.id, current.name, current.kind, modules, 3, fitted), error
+    return improve_design(ShipDesign(current.id, current.name, current.kind, modules, 3, fitted),
+                          app.game.technology.improvements), error
 
 
 def install(app):

@@ -95,7 +95,7 @@ def draw_rival(app):
     app.button("rival_save", "Save · F5", (204, 834, 172, 45), app.save_game)
     if rival:
         state = rival.technology
-        project = TECHNOLOGIES[state.active] if state.active else None
+        project = state.project
         caption = f"Research: {project.name} · {state.progress}/{project.cost} RP" if project else "Research points are being banked."
         text(surface, shorten(caption, 413, 12), (400, 835), 12, MUTED)
         text(surface, shorten(f"{len(state.completed)} technologies discovered · "+("Controlled by the computer" if game.is_observer else "Same research rules as your empire"), 413, 11, "sans"), (400, 857), 11, FAINT)

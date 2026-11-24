@@ -15,15 +15,19 @@ from .ui import CYAN, FAINT, GOLD, INK, LINE, MUTED, PANEL, font, panel, paragra
 
 
 def draw_research(app):
-    if app.research_overview:
+    from .improvements_view import draw_improvements, draw_research_tabs
+    if app.research_mode == 'improvements':
+        draw_improvements(app)
+    elif app.research_overview:
         draw_field_overview(app)
     else:
         draw_branch_detail(app)
+    draw_research_tabs(app)
 
 
 def project_eta(game, technology, rate):
     state = game.technology
-    cost = state.project_cost if state.active == technology.id else technology.cost
+    cost = state.project_cost if state.project and state.project.id == technology.id else technology.cost
     remaining = max(0, cost - state.progress - game.research)
     if not remaining:
         return "Ready now"
@@ -50,20 +54,21 @@ def draw_project_summary(app, rate):
     state = game.technology
     panel(surface, (64, 190, 1312, 96))
     text(surface, "CURRENT PROJECT", (84, 201), 9, MUTED, "mono", 1)
-    if state.active:
-        active = TECHNOLOGIES[state.active]
+    if state.project:
+        active = state.project
         text(surface, shorten(active.name, 628, 23), (83, 222), 23, INK)
         text(surface, f"{state.progress} / {state.project_cost} RP · {project_eta(game, active, rate)}",
              (84, 255), 12, CYAN)
         app.button("research_show_active", "View", (732, 219, 102, 40),
-                   lambda: app.show_research_technology(state.active))
-        app.technology_info_region(active.id, (83, 219, 751, 56))
+                   app.show_research_project)
+        if state.active:
+            app.technology_info_region(active.id, (83, 219, 751, 56))
         pg.draw.rect(surface, LINE, (84, 278, 610, 3))
         pg.draw.rect(surface, CYAN, (84, 278, round(610*state.progress/state.project_cost), 3))
     else:
         available = any(state.status(t) == "available" and t != "ascension_theory"
                         for t in TECHNOLOGIES)
-        text(surface, "Choose your next discovery" if available else "Research complete", (83, 222), 23, GOLD)
+        text(surface, "Choose your next discovery" if available else "Improve your existing equipment", (83, 222), 23, GOLD)
         caption = (f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}" if state.completed else
                    "Select a technology below. Unused research points are banked.")
         text(surface, shorten(caption, 716, 12), (84, 255), 12, MUTED)
@@ -85,7 +90,7 @@ def draw_choice_row(app, technology, rect):
     disabled = technology.id == "ascension_theory" and "science" not in game.victory_conditions
     label = {"active": "Researching", "discovered": "Discovered", "excluded": "Not chosen",
              "locked": "Complete all branches" if technology.id == "ascension_theory" else "Locked",
-             "available": "Switch →" if game.technology.active else "Choose →"}[status]
+             "available": "Switch →" if game.technology.project else "Choose →"}[status]
     if disabled:
         label = "Disabled in setup"
     color = GOLD if status == "active" else CYAN if status in ("available", "discovered") else FAINT
@@ -110,7 +115,6 @@ def draw_field_overview(app):
     app.chrome("RESEARCH DIRECTORATE")
     app.button("research_back", "← Back · R", (64, 124, 195, 46), app.close_research, "ghost")
     text(surface, "Research fields", (290, 128), 32, INK, "title")
-    text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     rate = research_rate(game)
     draw_project_summary(app, rate)
     for index, branch in enumerate((*BRANCHES.values(), None)):
@@ -190,7 +194,6 @@ def draw_six_fields(app):
     app.button('research_pause', 'Menu', (250, 835, 132, 44), app.pause)
     text(surface, shorten('Choose one of three · Completion unlocks the next tier', 404, 12, "sans"), (409, 831), 12, MUTED)
     text(surface, shorten('Field heading: details · Right-click: information · Invested RP transfers', 404, 10, "sans"), (409, 855), 10, FAINT)
-    text(surface, '3 OPTIONS · CHOOSE 1', (1376, 146), 11, GOLD, 'mono', right=True)
 
 
 def draw_branch_detail(app):
@@ -204,15 +207,14 @@ def draw_branch_detail(app):
     app.chrome("RESEARCH DIRECTORATE")
     app.button("research_back", "← Back · R", (64, 124, 195, 46), app.close_research, "ghost")
     app.button("research_fields", "All fields", (274, 124, 182, 46), app.show_research_overview, "ghost")
-    text(surface, f"YEAR {game.year} · TURN {game.turn}", (1376, 141), 12, GOLD, "mono", right=True)
     text(surface, "Research & discovery", (64, 190), 43, INK, "title")
     text(surface, "Choose one technology per tier. Completing it unlocks all choices in the next tier.",
          (66, 251), 14, MUTED)
 
     panel(surface, (64, 284, 1312, 113))
     text(surface, "CURRENT PROJECT", (85, 298), 9, MUTED, "mono", 1)
-    if state.active:
-        active, cost = TECHNOLOGIES[state.active], state.project_cost
+    if state.project:
+        active, cost = state.project, state.project_cost
         text(surface, shorten(active.name, 628, 23), (85, 317), 23, INK)
         remaining = cost-state.progress
         turns = math.ceil(remaining/rate) if rate else None
@@ -221,8 +223,9 @@ def draw_branch_detail(app):
         pg.draw.rect(surface, LINE, (86, 379, 624, 4))
         pg.draw.rect(surface, CYAN, (86, 379, round(624*state.progress/cost), 4))
         app.button("research_show_active", "View", (740, 326, 100, 40),
-                   lambda identifier=active.id: app.show_research_technology(identifier))
-        app.technology_info_region(active.id, (85, 317, 755, 64))
+                   app.show_research_project)
+        if state.active:
+            app.technology_info_region(active.id, (85, 317, 755, 64))
     else:
         text(surface, "Choose a technology below", (85, 321), 23, INK)
         caption = f"Latest discovery: {TECHNOLOGIES[state.completed[-1]].name}." if state.completed else "Build a research lab to generate research points."
@@ -295,7 +298,7 @@ def draw_branch_detail(app):
                 content = shorten(content+' …', detail_width, 12)
             text(surface, content, (x+15, y+82+line*17), 12, MUTED)
         label = {"discovered": "Discovered", "active": "Researching", "excluded": "Not chosen",
-                 "locked": "Earlier tiers required", "available": "Switch technology" if state.active else "Choose technology"}[status]
+                 "locked": "Earlier tiers required", "available": "Switch technology" if state.project else "Choose technology"}[status]
         reason = game.research_error(technology.id)
         app.button(f"research_choose_{technology.id}", label, (x+15, y+183, width-30, 35),
                    lambda identifier=technology.id: app.research_request(identifier), enabled=reason is None)

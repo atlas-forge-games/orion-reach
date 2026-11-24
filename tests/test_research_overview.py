@@ -167,7 +167,7 @@ class ResearchOverviewTests(unittest.TestCase):
         self.click("research_back")
         self.assertEqual(self.app.screen, "system")
 
-    def test_legacy_replaces_tenth_field_and_exhausted_tree_does_not_prompt(self):
+    def test_legacy_replaces_tenth_field_and_exhausted_tree_still_offers_improvements(self):
         game = self.app.game
         game.research = sum(choices(b, t)[0].cost for b in BRANCHES for t in branch_tiers(b))
         for branch in BRANCHES:
@@ -179,7 +179,9 @@ class ResearchOverviewTests(unittest.TestCase):
         self.assertEqual(self.app.screen, "objectives")
         self.click("galaxy_map")
         self.click("end_turn")
-        self.assertEqual(self.app.screen, "galaxy")
+        self.assertEqual(self.app.screen, "research")
+        self.click('research_mode_improvements')
+        self.assertTrue(any(b.key.startswith('improvement_target_') for b in self.app.buttons))
 
     def test_observer_and_finished_campaign_never_prompt_for_player_research(self):
         self.app.game = new_game(seed=2408, race_id="observer", rival_count=2,

@@ -225,10 +225,13 @@ class ShipDesign:
     modules: tuple[str, ...]
     fit_version: int = 2
     mounts: tuple[tuple[str, str], ...] = ()
+    improvements: tuple[tuple[str, int], ...] = ()
 
     @property
     def specs(self):
-        return tuple(fitted_module(self.kind, m, self.fit_version) for m in self.modules)
+        from .improvements import module_spec
+        levels = dict(self.improvements)
+        return tuple(module_spec(fitted_module(self.kind, m, self.fit_version), m, levels) for m in self.modules)
 
     @property
     def maintenance(self):
@@ -298,17 +301,31 @@ class ShipDesign:
 
     @property
     def resource_cost(self):
-        return HULLS[self.kind].resource_cost+sum(m.resource_cost for m in self.specs)
+        from .improvements import design_cost
+        return design_cost(self, 'resource_cost')
 
     @property
     def work_cost(self):
-        return HULLS[self.kind].work_cost+sum(m.work_cost for m in self.specs)
+        from .improvements import design_cost
+        return design_cost(self, 'work_cost')
 
     def volley(self, distance):
         return tuple(m for m in self.specs if m.damage and distance <= m.range+sum(s.range_bonus for s in self.specs))
 
     @classmethod
-    def from_dict(cls, data, *, version=66):
+    def from_dict(cls, data, *, version=68):
+        from .improvements import validate_levels
+        if not isinstance(data, dict):
+            raise ValueError('Invalid ship design')
+        data = dict(data)
+        entries = data.pop('improvements', ())
+        if (not isinstance(entries, (list, tuple)) or len(entries) > 2*len(MODULES)
+                or any(not isinstance(row, (list, tuple)) or len(row) != 2 or not isinstance(row[0], str) for row in entries)):
+            raise ValueError('Invalid fitted improvements')
+        levels = dict(entries)
+        if len(levels) != len(entries) or (version < 68 and levels):
+            raise ValueError('Invalid fitted improvements')
+        validate_levels(levels, modules=data.get('modules', ()))
         current = {"id", "name", "kind", "modules", "fit_version"}
         if not isinstance(data, dict) or set(data) not in (current | {"mounts"}, current, current-{"fit_version"} if version < 37 else current):
             raise ValueError("Invalid ship design")
@@ -326,7 +343,7 @@ class ShipDesign:
                 raise ValueError("Invalid mounting positions")
         elif not isinstance(mounts, (list, tuple)) or mounts:
             raise ValueError("Legacy blueprints cannot contain mounting positions")
-        return cls(identifier, name, data["kind"], tuple(data["modules"]), fit_version, tuple(tuple(p) for p in mounts))
+        return cls(identifier, name, data["kind"], tuple(data["modules"]), fit_version, tuple(tuple(p) for p in mounts), tuple(sorted(levels.items())))
 
 
 def standard_design(kind):
@@ -342,6 +359,7 @@ def standard_design(kind):
 def is_standard_design(design):
     if design is None:
         return False
+    design = replace(design, improvements=())
     standard = standard_design(design.kind)
     if design == standard:
         return True

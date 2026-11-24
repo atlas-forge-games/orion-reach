@@ -214,6 +214,15 @@ class ResearchState:
     # Existing campaigns keep the five-tier Computers requirement for Ascension.
     legacy_black_holes: bool = False
     recovered: list[str] = field(default_factory=list)
+    improvements: dict[str, int] = field(default_factory=dict)
+    active_improvement: str | None = None
+
+    @property
+    def project(self):
+        if self.active_improvement:
+            from .improvements import project
+            return project(self, self.active_improvement)
+        return TECHNOLOGIES[self.active] if self.active else None
 
     @property
     def bonuses(self):
@@ -221,6 +230,8 @@ class ResearchState:
 
     @property
     def project_cost(self):
+        if self.active_improvement:
+            return self.project.cost
         if self.active is None:
             return 0
         if self.active == "ascension_theory":
@@ -306,14 +317,18 @@ class ResearchState:
 
     def spend(self, bank):
         """Apply banked points to the current project; retain all overflow."""
-        if self.active is None:
+        if self.project is None:
             return bank, None
-        technology = TECHNOLOGIES[self.active]
+        technology = self.project
         cost = self.project_cost
         used = min(bank, cost-self.progress)
         self.progress += used
         if self.progress < cost:
             return bank-used, None
+        if self.active_improvement:
+            self.improvements[self.active_improvement] = technology.level
+            self.active_improvement, self.progress = None, 0
+            return bank-used, technology
         self.completed.append(self.active)
         if self.legacy_active:
             self.legacy_count += 1
@@ -322,7 +337,10 @@ class ResearchState:
         return bank-used, technology
 
     @classmethod
-    def from_dict(cls, data, *, version=42):
+    def from_dict(cls, data, *, version=68):
+        if version < 68 and isinstance(data, dict):
+            data = {k: v for k, v in data.items()
+                    if not (k == 'improvements' and v == {} or k == 'active_improvement' and v is None)}
         if version < 42 and isinstance(data, dict) and data.get("recovered") == []:
             data = {k: v for k, v in data.items() if k != "recovered"}
         keys = {"completed", "active", "progress"}
@@ -338,6 +356,8 @@ class ResearchState:
             keys.add("legacy_black_holes")
         if version >= 42:
             keys.add("recovered")
+        if version >= 68:
+            keys |= {'improvements', 'active_improvement'}
         if not isinstance(data, dict) or set(data) != keys:
             raise ValueError("Invalid research state")
         completed, active, progress = data["completed"], data["active"], data["progress"]
@@ -382,6 +402,17 @@ class ResearchState:
             state.completed.append(identifier)
         if type(progress) is not int or progress < 0:
             raise ValueError("Invalid research progress")
+        from . import improvements as improvement_rules
+        levels = data.get('improvements', {})
+        improvement_rules.validate_levels(levels, state=state)
+        state.improvements = levels.copy()
+        improvement = data.get('active_improvement')
+        if improvement is not None:
+            if active is not None or legacy_active or improvement_rules.choice_error(state, improvement):
+                raise ValueError('Invalid active improvement')
+            state.active_improvement = improvement
+            if progress >= state.project_cost:
+                raise ValueError('Invalid improvement progress')
         if version < 32 and active == "ascension_theory" and progress >= 500:
             raise ValueError("Invalid pre-council Ascension progress")
         if legacy_active:
@@ -394,7 +425,7 @@ class ResearchState:
             else:
                 validate_legacy(completed, active, progress)
         elif active is None:
-            if progress != 0:
+            if progress != 0 and improvement is None:
                 raise ValueError("Progress without a project")
         elif state.choice_error(active) or progress >= TECHNOLOGIES[active].cost:
             raise ValueError("Invalid active technology")
