@@ -48,12 +48,12 @@ class ResourceRulesTests(unittest.TestCase):
         g, p = self.game, self.planet
         p.buildings = ["mine", "factory"]
         industrial = g.planet_yields(p)[0]
-        for richness, resources in (("Poor", 6), ("Average", 10), ("Rich", 14), ("Ultra-rich", 26)):
+        for richness, resources in (("Void", 0), ("Poor", 4), ("Average", 10), ("Rich", 34), ("Ultra-rich", 82)):
             p.richness = richness
             self.assertEqual(g.planet_resources(p), resources)
             self.assertEqual(g.planet_yields(p)[0], industrial)
-        g.technology.completed = ["deep_core_drills"]
-        self.assertEqual(g.planet_resources(p), 28)
+        # Use an explicit mining bonus; the modern unlock has no flat bonus.
+        self.assertEqual(economy.mining_output(p, {"mine_resources": 2}), 84)
 
     def test_queue_without_resources_waits_then_reserves_once_and_refunds_unused_material(self):
         g, p = self.game, self.planet

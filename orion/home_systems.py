@@ -13,14 +13,14 @@ def player_home_planet_id(system):
 
 def randomize_player_home(system, galaxy_seed, race_id):
     """Replace Sol's neighbors while preserving the player's starting homeworld."""
-    from .model import GENERATED_BIOMES, RICHNESSES, generate_planets
+    from .model import GENERATED_BIOMES, generate_planets, random_richness
     if race_id == "terran":
         return
     home = system.worlds[player_home_planet_id(system)]
     rng = random.Random(f"orion-home-worlds-v1:{galaxy_seed}:{race_id}")
     system.planets = rng.randint(1, 7)
     system.biome = rng.choice(GENERATED_BIOMES)
-    system.richness = rng.choice(RICHNESSES[:-1])
+    system.richness = random_richness(rng)
     system.worlds = generate_planets(system, galaxy_seed, player_home=False)
     home.id = player_home_planet_id(system)
     scale = home.orbit_au/system.worlds[home.id].orbit_au

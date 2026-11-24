@@ -19,7 +19,7 @@ import sys
 import tempfile
 
 FORMAT = 'orion-reach-balance'
-VERSION = 22
+VERSION = 23
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / 'balance.json'
 CATALOGUES = {
     'diplomatic_preferences': ('diplomatic_preferences', 'PROFILES'),
@@ -122,7 +122,8 @@ def _defaults():
     data['galaxy_sizes'] = {key: {'star_count': value} for key,value in model.GALAXY_SIZES.items()}
     for key,entry in data['ships'].items():
         entry['movement'] = module('combat').MOVEMENT[key]
-    data['minerals'] = {name: {'multiplier': float(value)} for name, value in b.MINERAL_FACTORS.items()}
+    data['minerals'] = {name: {'multiplier': float(value), 'generation_weight': b.MINERAL_WEIGHTS[name]}
+                        for name, value in b.MINERAL_FACTORS.items()}
     data['rules'] = {group: {key: getattr(module(owner), key) for key in keys} for group, (owner, keys) in RULES.items()}
     data['research_costs'] = {str(tier): {'cost': cost} for tier, cost in enumerate(r.TIER_COSTS, 1)}
     data['research_costs']['ascension'] = {'cost': r.ASCENSION_COST}
@@ -179,6 +180,8 @@ def legacy_profile():
     """Preserve research and ship values of campaigns without a saved profile."""
     from .legacy_research import PRE_REBALANCE_TIERS
     profile = classic_profile()
+    for name, factor in {'Poor': .5, 'Average': 1.0, 'Rich': 1.5, 'Ultra-rich': 3.0}.items():
+        profile['data']['minerals'][name]['multiplier'] = factor
     profile['data']['rules']['ship_scaling']['ENABLED'] = False
     for kind, spec in module('production').LEGACY_SHIP_TYPES.items():
         entry = json_value(asdict(spec))
@@ -271,7 +274,7 @@ def numeric_bounds(section, field):
     if field in ('movement_bonus', 'envoy', 'gift', 'envoy_bonus', 'trade_bonus', 'research_bonus'): return -100, 100
     if field in ('trade_threshold','research_threshold'): return -100, 100
     if field in ('DRONES_PER_BAY', 'LAUNCHES_PER_BAY', 'drone_bays'): return 0, 8
-    if field == 'multiplier': return .1, 10
+    if field == 'multiplier': return 0, 10
     return 0, 100000
 
 
@@ -366,6 +369,8 @@ def validate(profile):
                         if len(set(value)) != len(value) or any(v not in allowed for v in value): errors.append(path+': choose distinct existing items.')
     if errors:
         return errors
+    if not any(entry['generation_weight'] for entry in data['minerals'].values()):
+        errors.append('minerals: at least one generation weight must be positive.')
     errors.extend(module('ship_scaling').loadout_errors(data))
     for key, entry in data['technologies'].items():
         if (key == 'ascension_theory') != (entry['branch'] == 'ascension'):
@@ -659,6 +664,18 @@ def upgrade_profile(profile):
                     for field in ('external_mounts', 'internal_bays', 'hangar_bays'):
                         hulls[kind].setdefault(field, original[field])
         profile['version'] = 22
+    if isinstance(profile, dict) and profile.get('format') == FORMAT and profile.get('version') == 22:
+        profile = deepcopy(profile)
+        data = profile.get('data')
+        minerals = data.get('minerals') if isinstance(data, dict) else None
+        if isinstance(minerals, dict):
+            defaults = _defaults()['data']['minerals']
+            minerals.setdefault('Void', deepcopy(defaults['Void']))
+            for name, original in defaults.items():
+                if isinstance(minerals.get(name), dict):
+                    minerals[name].setdefault('generation_weight', original['generation_weight'])
+        # Existing campaigns and custom profiles retain their saved multipliers.
+        profile['version'] = 23
     return profile
 
 
@@ -759,6 +776,7 @@ def activate(profile):
     environments.update(deepcopy(data['environments']))
     module('model').GALAXY_SIZES.update({key:v['star_count'] for key,v in data['galaxy_sizes'].items()})
     b.MINERAL_FACTORS.update({key: v['multiplier'] for key,v in data['minerals'].items()})
+    b.MINERAL_WEIGHTS.update({key: v['generation_weight'] for key,v in data['minerals'].items()})
     for group, (owner, keys) in RULES.items():
         for key in keys:
             value = data['rules'][group][key]

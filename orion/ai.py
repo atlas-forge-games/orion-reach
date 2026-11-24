@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from .buildings import BUILDINGS, FACILITY_FAMILIES, ADVANCED_FACILITIES, facility_family
+from .buildings import BUILDINGS, FACILITY_FAMILIES, ADVANCED_FACILITIES, MINERAL_FACTORS, facility_family
 from .economy import energy_report
 from .model import RIVAL, RICHNESSES
 from .production import PROJECTS, SHIP_TYPES
@@ -226,6 +226,8 @@ def development_choice(planet, race_id="kharuun", available=None):
         for item in (*RACES[race_id].development, "factory", "trade_center", "research_lab", "mine"):
             candidates = reversed(FACILITY_FAMILIES.get(item, (item,))) if available is not None else (item,)
             for candidate in candidates:
+                if facility_family(candidate) == "mine" and MINERAL_FACTORS[planet.richness] == 0:
+                    continue
                 if ((candidate not in existing if not repeats else BUILDINGS[candidate].repeatable)
                         and (available is None or candidate in available)):
                     return candidate
@@ -567,6 +569,8 @@ def run_ai(game, owner=RIVAL, *, ground_reports=None):
         available = remaining-scientists
         resource_target = max(250, game.project_price("colony_ship", owner)) if not raiding.is_varkesh(game, owner) else 250
         miners = min(max(0, available-1), max(1, available//3)) if game.resources_for(owner) < resource_target else 0
+        if MINERAL_FACTORS[planet.richness] == 0:
+            miners = 0
         if has_legacy and game._empire(owner).race_id == "kharuun":
             miners = min(miners, max(0, available-2))
         game.set_workforce(system.id, planet.id, farmers, scientists, miners, owner=owner)

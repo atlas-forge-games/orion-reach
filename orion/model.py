@@ -9,7 +9,7 @@ import random
 from uuid import uuid4
 from .frame_cache import cached_in_frame
 
-from .buildings import BUILDINGS, BUILDING_SLOTS
+from .buildings import BUILDINGS, BUILDING_SLOTS, MINERAL_WEIGHTS
 from .habitat_modules import display_name
 from .designs import HULLS, MAX_DESIGNS, ARSENAL_TECHNOLOGIES, ShipDesign, loadout_error
 from .production import ASCENSION_GATE, LEGACY_SHIP_SPEED, MAX_QUEUE, PROJECTS, SHIP_TYPES, TRADE_GOODS, distance_ly, travel_turns
@@ -54,7 +54,7 @@ STAR_TYPES = ("Yellow dwarf", "Blue star", "Red dwarf", "White star", "Orange dw
 BIOMES = ("Terran", "Ocean", "Desert", "Ice", "Barren", "Volcanic", "Toxic", "Gaia", "Gas Giant")
 # Toxic worlds are seeded independently to preserve the galaxy-generation RNG.
 GENERATED_BIOMES = tuple(b for b in BIOMES if b not in ("Toxic", "Gaia", "Gas Giant"))
-RICHNESSES = ("Poor", "Average", "Rich", "Ultra-rich")
+RICHNESSES = ("Void", "Poor", "Average", "Rich", "Ultra-rich")
 PLANET_SIZES = ("Tiny", "Small", "Medium", "Large", "Huge")
 GRAVITIES = ("Low", "Normal", "High")
 HABITABILITY = {"Terran": 100, "Ocean": 80, "Desert": 40,
@@ -690,6 +690,16 @@ class StarSystem:
     megastructure: megastructures.Megastructure | None = None
 
 
+def random_richness(rng):
+    """Draw weighted minerals without changing the seed's geometry or biomes."""
+    minerals = random.Random(0)
+    minerals.setstate(rng.getstate())
+    # Keep the original three-choice draw's consumption in the layout stream.
+    # The cloned stream supplies the weighted draw, including Void/Ultra-rich.
+    rng.randrange(3)
+    return minerals.choices(RICHNESSES, weights=[MINERAL_WEIGHTS[name] for name in RICHNESSES], k=1)[0]
+
+
 def generate_planets(system, galaxy_seed, *, player_home=True):
     """Stable planet data, using a separate RNG so galaxy positions never change."""
     rng = random.Random(f"orion-worlds-v1:{galaxy_seed}:{system.id}")
@@ -713,7 +723,7 @@ def generate_planets(system, galaxy_seed, *, player_home=True):
         roman = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")[i]
         # Keep the old system-level primary-world information on the first world.
         biome = system.biome if i == 0 else rng.choice(GENERATED_BIOMES)
-        richness = system.richness if i == 0 else rng.choice(RICHNESSES[:-1])
+        richness = system.richness if i == 0 else random_richness(rng)
         size = rng.choice(PLANET_SIZES)
         gravity = "Low" if size == "Tiny" else "High" if size == "Huge" else "Normal"
         worlds.append(Planet(i, f"{system.name} {roman}", biome, size,
@@ -1397,6 +1407,14 @@ class GameState:
 
     def _place_opponent(self, owner, race_id, system, planet, name):
         from .environments import prepare_home
+        # Fixed-start and later-added rivals need the same mineral baseline as
+        # randomized homeworlds; they must not start with zero extraction.
+        planet.richness = "Average"
+        if planet.id == 0:
+            system.richness = planet.richness
+        for survey in self.exploration.surveys:
+            if survey.system_id == system.id:
+                survey.worlds[planet.id]['richness'] = planet.richness
         prepare_home(system, planet, race_id, surveys=self.exploration.surveys)
         name_home(self, system, planet, race_id)
         self._register_opponent(owner, race_id, system, planet, name)
@@ -2054,7 +2072,7 @@ class GameState:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data, *, version=66):
+    def from_dict(cls, data, *, version=67):
         """Validate all values used by rendering; never execute save contents."""
         try:
             if not isinstance(data, dict):
@@ -2366,7 +2384,7 @@ def _create_game(empire_name="Terran Union", galaxy_size="Standard", seed=None, 
         else:
             raise SaveError("Could not place this galaxy. Please try a different seed.")
         systems.append(StarSystem(i, names[i-1], x, y, rng.choice(STAR_TYPES),
-                                  rng.randint(0, 7), rng.choice(GENERATED_BIOMES), rng.choice(RICHNESSES[:-1])))
+                                  rng.randint(0, 7), rng.choice(GENERATED_BIOMES), random_richness(rng)))
     for system in systems:
         system.worlds = generate_planets(system, seed, player_home=not observer)
     if not observer:

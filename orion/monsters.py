@@ -107,7 +107,8 @@ def prize_details(guardian, *, defeated=False):
     if guardian.kind == "space_serpent":
         return "28 B capacity · abundant food · faster growth"
     if guardian.kind == "crystal_guardian":
-        return "Mines produce 6 industry each"
+        from .buildings import MINERAL_FACTORS
+        return f"Mining output ×{MINERAL_FACTORS['Ultra-rich']:g}"
     if guardian.kind == "ancient_sentinel":
         return "Large rich world · Ruins already recovered" if defeated else "Large rich world · +120 RP to the victor, once"
     return "Huge Gaia · Large ultra-rich Terran · Large rich Ocean"

@@ -111,9 +111,9 @@ class ProgressionTests(unittest.TestCase):
         planet.buildings = [b for b in FACILITY_FAMILIES['mine'] if BUILDINGS[b].enabled]
         bonuses = {'mine_resources': 3, 'colony_energy': 100}
         # (2+4+7) base extraction and (2+1+2+3)*2 miners, scaled together.
-        for richness, factor in (('Poor', .5), ('Average', 1), ('Rich', 1.5), ('Ultra-rich', 3)):
+        for richness, factor in (('Void', 0), ('Poor', .3), ('Average', 1), ('Rich', 4), ('Ultra-rich', 10)):
             planet.richness = richness
-            self.assertEqual(mining_output(planet, bonuses), 2+int(29*factor)+9)
+            self.assertEqual(mining_output(planet, bonuses), 2+int(29*factor)+9 if factor else 0)
 
     def test_advanced_facilities_share_power_and_disabling_a_mine_restores_the_lab(self):
         planet = self.game().planet_at(0, 2)
@@ -176,6 +176,8 @@ class ProgressionTests(unittest.TestCase):
                           restored.technology.project_cost), (5, 1000, 1234))
         for section, table in original['data'].items():
             for identifier, entry in table.items():
+                if section == 'minerals':
+                    entry = {**entry, 'generation_weight': balance.default_profile()['data'][section][identifier]['generation_weight']}
                 if section == 'ships':
                     entry = {**entry, 'maintenance': balance.legacy_profile()['data']['ships'][identifier]['maintenance']}
                 if section == 'modules':

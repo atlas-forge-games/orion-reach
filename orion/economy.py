@@ -186,7 +186,7 @@ def miner_output(planet, bonuses=None):
 
 def mining_output(planet, bonuses=None):
     from .administration import reduced_output
-    if not planet.colonized:
+    if not planet.colonized or MINERAL_FACTORS[planet.richness] == 0:
         return 0
     bonuses = local_bonuses(planet, bonuses)
     buildings = operating_facilities(planet, bonuses)

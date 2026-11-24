@@ -89,7 +89,7 @@ class RepeatableBuildingTests(unittest.TestCase):
     def test_mining_richness_and_breakdown_use_one_miner_bonus(self):
         g, p = self.game, self.planet
         p.buildings = ['mine']*2
-        for richness, expected in [('Poor', 5), ('Average', 9), ('Rich', 12), ('Ultra-rich', 23)]:
+        for richness, expected in [('Void', 0), ('Poor', 4), ('Average', 9), ('Rich', 30), ('Ultra-rich', 72)]:
             with self.subTest(richness=richness):
                 p.richness = richness
                 self.assertEqual(g.planet_resources(p), expected)

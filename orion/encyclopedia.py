@@ -6,7 +6,7 @@ from . import GAME_TITLE
 
 from .races import RACES
 from .race_victory import LEGACIES, PROJECT_RACES
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, MINERAL_FACTORS, MINERAL_WEIGHTS
 from . import council as council_balance
 from . import specialists as specialist_rules
 from . import administration as administration_rules
@@ -137,6 +137,8 @@ def guides():
             ("CREDITS", "Credits pay building and ship maintenance, specialist hiring fees and salaries, and diplomatic expenses. Negative balances incur 10% interest each completed turn, based on opening debt and rounded up to whole credits. Net income includes this charge. Reaching -10,000 CR or less causes bankruptcy and defeat, even with victory conditions disabled. AI empires follow the same rule and abandon their assets on bankruptcy. Buildings, habitat modules and the Ascension Gate cannot be bought; ship production can still be rushed."),
             ("RESEARCH", "Research points fund discoveries. Unused RP is banked until you select a project."),
             ("RESOURCES", "Resources are a shared empire stockpile produced by miners and mines. Construction spends Resources; thermal backup plants can also consume them as fuel."),
+            ("MINERAL RICHNESS", "Current mining multipliers: "+", ".join(f"{name} ×{factor:g}" for name, factor in MINERAL_FACTORS.items())+". The multiplier affects mines and miners. At zero, all mining stops, including baseline extraction and flat bonuses. Industry, research, food and income have no direct mineral multiplier; imported Resources still fund construction."),
+            ("MINERAL RARITY", "Ordinary planet generation: "+", ".join(f"{name} {100*weight/sum(MINERAL_WEIGHTS.values()):g}%" for name, weight in MINERAL_WEIGHTS.items())+". These are probabilities, not guaranteed counts. Starting homeworlds remain Average. Sol's named neighbors and guarded prize worlds retain their fixed mineral classes. Existing saves keep their worlds and saved balance settings."),
             ("INDUSTRY", "Industry supplies construction work locally. Buildings and ships require both Resources and enough completed work."),
             ("FOOD", "Food is used locally. The empire-wide surplus summarizes your colonies; a surplus elsewhere does not feed a starving colony. A food deficit costs 1 billion inhabitants each turn and resets growth progress, down to a minimum of 1 billion. Matching demand prevents starvation; a surplus allows food-based growth."),
             ("ENERGY", "Energy is produced and consumed locally. Power on one world cannot run buildings on another. Click the Energy card to inspect colony power balances."),

@@ -50,7 +50,7 @@ class BuildingEconomyTests(unittest.TestCase):
         planet.population, planet.farmers = 1, 0
         planet.buildings = ["mine", "mine"]
         planet.miners = 1
-        for richness, resources in (("Poor", 5), ("Average", 9), ("Rich", 12), ("Ultra-rich", 23)):
+        for richness, resources in (("Void", 0), ("Poor", 4), ("Average", 9), ("Rich", 30), ("Ultra-rich", 72)):
             planet.richness = richness
             self.assertEqual(game.planet_resources(planet), resources)
             self.assertEqual(game.planet_yields(planet), (1, -1, 0))

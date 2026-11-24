@@ -84,6 +84,16 @@ Costs, work, hull, food, research and most production values are whole numbers.
 Per-worker industry, per-population income and mineral multipliers accept
 fractions. Percentages use whole percentages: `30` means 30%, not 0.30.
 
+Mineral richness includes Void. Multipliers accept 0–10; zero means no local
+mining, including baseline extraction and flat mining bonuses. Each class also
+has a nonnegative integer `generation_weight`. Ordinary new planets use these
+relative weights; at least one must be positive. Defaults are Void 10, Poor 30,
+Average 50, Rich 9 and Ultra-rich 1, giving 10%, 30%, 50%, 9% and 1% respectively.
+Saved campaigns retain their own multipliers, and loading never rerolls worlds.
+Balance format 23 adds Void and generation weights to older profiles without
+overwriting their saved mineral multipliers. Reset Mineral richness entries (or
+Reset all) to use the new defaults in an existing editor profile for new games.
+
 `SHIP_SPEED` uses the existing map unit: **0.02 = 2 light-years per turn**.
 Fuel and sensor ranges use light-years; tactical movement uses combat cells.
 `TOMB_CHANCE`, `AWAKENING_CHANCE` and `MORTALITY_CHANCE` mean **one chance in N**,

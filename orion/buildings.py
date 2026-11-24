@@ -3,7 +3,9 @@
 from dataclasses import dataclass
 
 BUILDING_SLOTS = {"Tiny": 4, "Small": 6, "Medium": 8, "Large": 10, "Huge": 12}
-MINERAL_FACTORS = {"Poor": .5, "Average": 1.0, "Rich": 1.5, "Ultra-rich": 3.0}
+MINERAL_FACTORS = {"Void": 0.0, "Poor": .3, "Average": 1.0, "Rich": 4.0, "Ultra-rich": 10.0}
+# Relative weights for ordinary generated worlds; scripted homes/rewards are separate.
+MINERAL_WEIGHTS = {"Void": 10, "Poor": 30, "Average": 50, "Rich": 9, "Ultra-rich": 1}
 
 
 @dataclass(frozen=True)

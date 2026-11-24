@@ -1,81 +1,69 @@
-# Age of the Stars — v0.98.1 modular ship artwork
+# Age of the Stars — v0.98.2 mineral scarcity
 
-The original six combat hulls now use the same modular appearance in the ship
-designer, fleet views, galaxy map and tactical combat. Installed weapons occupy
-their hull-specific mounts; engine and armor upgrades are visible, and fitted
-carrier hangars contain drones. Internal systems are visible in the designer
-cutaway and covered by hull panels during flight and combat.
+Rare mineral-rich worlds now provide much stronger mining output. Void worlds
+contain no extractable minerals, but can still support other colony activities
+and use Resources from the shared empire stockpile.
 
-Standard ships use stock loadouts. Existing custom ships and construction orders
-use their saved equipment snapshots. Changing a blueprint only changes future
-orders. Slot counts, equipment effects and combat rules are unchanged.
+| Mineral class | Mining multiplier | Ordinary generation chance |
+| --- | ---: | ---: |
+| Void | ×0 | 10% |
+| Poor | ×0.3 | 30% |
+| Average | ×1 | 50% |
+| Rich | ×4 | 9% |
+| Ultra-rich | ×10 | 1% |
+
+These chances apply to ordinary generated worlds. Homeworlds start at Average;
+Sol's named neighbors and guardian prize worlds retain their fixed classes.
+Galaxy positions and planet terrain remain stable for a given seed. The AI
+avoids mining facilities and miner assignments on worlds with no minerals.
 
 ## Install
 
 Extract this incremental ZIP into your existing repository beside `orion/`,
-`assets/`, `tests/`, `tools/` and `docs/`, replacing the included files. Restart
-the game. The required base is **v0.98.0**, commit `14403f0`.
+`assets/`, `tests/` and `docs/`, replacing the included files. Restart the game.
+The required base is **v0.98.1**, commit `6a301da`. No new dependencies are needed.
 
-Existing saves remain compatible. Campaign save format stays **66**, and no new
-dependencies are required. Civilian ships and special vessels use their existing
-artwork. The earlier designer atlases may remain in the installation.
+Fresh standard games use the new values. Existing campaigns keep their saved
+mineral multipliers and planet classes. If you use a saved `balance.json`, reset
+its Mineral richness entries in the balance editor before starting a new game
+to adopt these defaults. The editor now also exposes generation weights.
 
-## Preview
+Campaign save format is **67**. Previous saves remain readable. Newly written
+saves require this version or later. Balance profile format is **23**.
 
-![Original hulls with fitted equipment](screenshots/modular_ship_catalogue.png)
-
-![Ship designer](screenshots/visual_ship_designer.png)
-
-![Tactical combat](screenshots/modular_combat.png)
-
-These are actual game renders. See [the designer guide](docs/ship-designer.md)
-and [artwork notes](assets/ships/modular/README.md).
+See [mineral rules and examples](docs/mineral-richness.md) and
+[the balance editor guide](docs/balance-editor.md).
 
 ## Validation
 
-**126 tests and 151 subtests passed** across modular rendering, designer fitting
-and planning, stock and AI designs, combat scenarios, fleet support, arsenal,
-map icons and flagship inspectors. Every mounting point was clicked on all six
-hulls at 980×900, 1280×800 and 1920×1080. Real designer, map and combat screens
-were also rendered and inspected.
+The 15 focused mineral tests pass. They exercise actual colony production,
+Void bonuses and fuel use, construction with imported Resources, weighted
+generation, stable seeded maps, Average homeworlds, AI behavior, profile
+validation and save round-trips. Existing mining regressions use the new values.
 
-The tests verify that mount selection changes all views, internal bays close
-outside the designer, engine/armor/hangar fittings change the artwork, and
-existing ships retain their visual and gameplay snapshots after a blueprint edit.
+A save produced by unmodified v0.98.1 loaded without changing its campaign data
+or saved multipliers and round-tripped through the new format. The balance
+editor and Void production breakdown were rendered and visually inspected.
 
-A save made with unmodified v0.98.0, containing a legacy v2 blueprint, a queued
-ship and an active battle, loaded and rendered correctly. Combat advanced and
-the new save round-tripped exactly; the original file and saved equipment were
-preserved.
-
-A separate planet-overview run passed 13 tests and 12 subtests, with four
-pre-existing failures reproduced on unchanged v0.98.0: obsolete starvation,
-construction-cost and ship-hull expectations, and a v11 colony-layout migration
-fixture. No new failures remain in the affected checks.
-
-Run the focused checks:
+The broader run passed 140 tests and 165 subtests. Its 30 failing cases also
+fail on unmodified v0.98.1; there are no new failing cases in these suites.
+Run the focused checks for this update:
 
 ```bash
-python -m pytest tests/test_modular_art.py tests/test_visual_designer.py tests/test_designer.py::DesignerUITests tests/test_designer_planning.py::BlueprintPlanningUITests tests/test_combat_simulator.py tests/test_ship_scaling.py tests/test_fleet_support.py tests/test_arsenal.py tests/test_galaxy_fleet_icons.py tests/test_flagships.py -q
-```
-
-Regenerate the screenshots:
-
-```bash
-python tools/preview_modular_ships.py --output screenshots/modular-preview
+python -m pytest tests/test_mineral_richness.py -q
 ```
 
 ## Commit commands
 
 ```bash
 git status
-git add README.md docs/ship-designer.md assets/ships/modular
-git add orion/__init__.py orion/modular_art.py orion/designer_art.py orion/fleet_art.py
-git add orion/combat_view.py orion/combat_inspector.py orion/combat_simulator_view.py
-git add orion/galaxy_fleet_icons.py orion/galaxy_fleet_view.py orion/fleet_views.py orion/planet_view.py
-git add tests/test_modular_art.py tools/preview_modular_ships.py
-git add screenshots/visual_ship_designer.png screenshots/modular_ship_catalogue.png screenshots/modular_combat.png
+git add README.md docs/mineral-richness.md docs/balance-editor.md docs/planet-environments.md
+git add orion/__init__.py orion/buildings.py orion/model.py orion/home_systems.py
+git add orion/economy.py orion/production_breakdown.py orion/ai.py
+git add orion/balance.py orion/storage.py orion/encyclopedia.py orion/monsters.py
+git add tests/test_mineral_richness.py tests/test_building_economy.py tests/test_repeatable_buildings.py
+git add tests/test_research_progression.py tests/test_resources_energy.py
 git diff --cached --stat
-git commit -m "Use original modular hulls across ship designer, fleets and combat (v0.98.1)"
+git commit -m "Add mineral scarcity and stronger rare-world mining bonuses (v0.98.2)"
 git push
 ```

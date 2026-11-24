@@ -108,7 +108,9 @@ efficiency. The encyclopedia includes each species' complete preference row.
 
 AI world quality combines growth efficiency, mineral richness and building
 capacity. Its score is `efficiency + 18 × richness index + 3 × building slots`;
-richness runs from Poor (0) through Ultra-rich (3). Existing travel, visibility,
+richness runs from Void (0) through Ultra-rich (4). The AI assigns no miners and
+does not choose mining facilities on worlds with a zero mining multiplier.
+Existing travel, visibility,
 fuel, settlement and administration rules still govern eligible destinations
 and system choice. The score is used when choosing a world within a system and
 when comparing otherwise equivalent destination systems.
