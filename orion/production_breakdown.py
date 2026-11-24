@@ -1,7 +1,7 @@
 """Read-only explanations of the colony economy, using its live local bonuses."""
 from dataclasses import dataclass
 from . import economy, population, research, administration
-from .buildings import BUILDINGS, MINERAL_FACTORS, facility_family, workforce_bonuses
+from .buildings import BUILDINGS, MINERAL_FACTORS, facility_family, mineral_label, workforce_bonuses
 from .habitat_modules import display_name
 
 KINDS = ('credits', 'food', 'industry', 'research', 'mining', 'energy')
@@ -102,7 +102,7 @@ def describe(game, planet, kind):
         add('Surplus / deficit', food.balance)
     elif kind == 'mining':
         factor = MINERAL_FACTORS[planet.richness]
-        add('Mineral multiplier ('+planet.richness+')', factor)
+        add('Mineral multiplier ('+mineral_label(planet.richness)+')', factor)
         base = buildings('resources',factor)
         extra = sum(spec.resources_per_miner*rate for spec, rate in economy.facility_bonus_sources(planet, b))
         workers = add(f'{planet.miners} miners × ({economy.MINER_RESOURCES:g} base + {extra:g} facilities) × {factor:g}', planet.miners*economy.miner_output(planet,b))

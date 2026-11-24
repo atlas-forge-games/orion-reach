@@ -104,9 +104,9 @@ class MineralRichnessTests(unittest.TestCase):
             self.assertEqual(worlds[0].richness, system.richness)
             counts.update(p.richness for p in worlds)
         total = counts.total()
-        for name, share in [('Void', .10), ('Poor', .30), ('Average', .50), ('Rich', .09), ('Ultra-rich', .01)]:
+        for name, share in [('Void', .40), ('Poor', .30), ('Average', .20), ('Rich', .08), ('Ultra-rich', .02)]:
             self.assertAlmostEqual(counts[name]/total, share, delta=.012 if name != 'Ultra-rich' else .004)
-        self.assertLess(counts['Ultra-rich'], counts['Rich']/5)
+        self.assertLess(counts['Ultra-rich'], counts['Rich']/3)
 
     def test_generation_weights_reach_all_random_planet_paths(self):
         profile = balance.default_profile()
@@ -192,7 +192,7 @@ class MineralRichnessTests(unittest.TestCase):
             self.assertFalse(balance.validate(upgraded))
             for name, values in original['data']['minerals'].items():
                 self.assertEqual(upgraded['data']['minerals'][name]['multiplier'], values['multiplier'])
-            self.assertEqual(upgraded['data']['minerals']['Void'], {'multiplier': 0.0, 'generation_weight': 10})
+            self.assertEqual(upgraded['data']['minerals']['Void'], {'multiplier': 0.0, 'generation_weight': 40})
             balance.activate(upgraded)
             self.assertEqual(MINERAL_FACTORS['Poor'], poor)
         self.assertEqual(balance.default_profile()['data']['minerals']['Rich']['multiplier'], 4.0)

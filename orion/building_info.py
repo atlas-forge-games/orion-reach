@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 import pygame as pg
 
-from .buildings import BUILDINGS
+from .buildings import BUILDINGS, mineral_label
 from .building_art import draw_building_art
 from .colony_scene import scene_buildings
 from .economy import building_status
@@ -99,7 +99,7 @@ def describe(game, system_id, planet, key, *, live):
         sections += [
             ('BASE UPKEEP & POWER', f'{spec.maintenance} Credits / turn · {spec.energy_use} energy demand'),
             ('STATUS', status or f'{built} built'),
-            ('VALUES', f'Figures above assume full power and {planet.richness.lower()} mineral richness, before empire bonuses and administration. See Status for current power.'),
+            ('VALUES', f'Figures above assume full power and {mineral_label(planet.richness).lower()} mineral richness, before empire bonuses and administration. See Status for current power.'),
         ]
     location = planet.name+(' · Last survey' if not live else ' · Onboard module' if planet.habitat else ' · Colony structure')
     return BuildingInfo(identifier, title, location, tuple(sections), planet.habitat)

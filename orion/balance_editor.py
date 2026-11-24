@@ -6,6 +6,7 @@ import pygame as pg
 from . import balance
 from . import GAME_TITLE
 from .balance_document import BalanceDocument
+from .buildings import mineral_label
 from .display import Canvas, install_draw_adapter
 from .window_layout import interface_scale, reference_layout
 from .ui import text, text_image, draw_text_tooltip, shorten, font, panel, INK, MUTED, GOLD, CYAN, LINE, RED
@@ -272,22 +273,24 @@ class BalanceEditor:
 
     def draw_data(self):
         entries=self.document.profile['data'][self.section]
-        filtered=[key for key,v in entries.items() if self.search.casefold() in (key+' '+v.get('name',v.get('traits',''))).casefold()]
+        def item_label(key):
+            return mineral_label(key) if self.section == 'minerals' else entries[key].get('name',key.replace('_',' ').title())
+        filtered=[key for key,v in entries.items() if self.search.casefold() in (key+' '+item_label(key)+' '+v.get('traits','')).casefold()]
         self.item_page=min(self.item_page,max(0,(len(filtered)-1)//14))
         panel(self.canvas,(244,116,320,704))
         text(self.canvas,balance.LABELS[self.section],(260,132),19,INK)
         self.input_box((260,170,288,32),('search',),self.search,'Find an item…')
         for index,key in enumerate(filtered[self.item_page*14:self.item_page*14+14]):
-            name=entries[key].get('name',key.replace('_',' ').title())
+            name=item_label(key)
             changed=entries[key]!=self.defaults['data'][self.section][key]
             self.button('item_'+key,('• ' if changed else '')+name,(260,214+index*38,288,33),lambda k=key:self.select_item(k),selected=key==self.identifier,size=12)
         self.button('items_previous','←',(260,769,46,32),lambda:setattr(self,'item_page',max(0,self.item_page-1)),enabled=self.item_page>0)
         text(self.canvas,f'{self.item_page+1} / {max(1,math.ceil(len(filtered)/14))} · {len(filtered)} items',(317,779),11,MUTED)
         self.button('items_next','→',(502,769,46,32),lambda:setattr(self,'item_page',self.item_page+1),enabled=(self.item_page+1)*14<len(filtered))
         panel(self.canvas,(580,116,836,704))
-        entry=self.document.entry(self.section,self.identifier)
-        text(self.canvas,shorten(entry.get('name',self.identifier.replace('_',' ').title()),770,25),(600,130),25,INK)
-        text(self.canvas,self.identifier+' · Click a value to edit · Enter applies · Esc cancels',(600,168),11,MUTED)
+        text(self.canvas,shorten(item_label(self.identifier),770,25),(600,130),25,INK)
+        identifier = mineral_label(self.identifier) if self.section == 'minerals' else self.identifier
+        text(self.canvas,identifier+' · Click a value to edit · Enter applies · Esc cancels',(600,168),11,MUTED)
         self.input_box((600,194,794,32),('field_search',),self.field_search,'Filter fields, e.g. cost, damage, effects…')
         rows=self.document.fields(self.section,self.identifier,self.field_search)
         self.field_page=min(self.field_page,max(0,(len(rows)-1)//14))

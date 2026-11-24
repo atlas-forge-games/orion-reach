@@ -87,8 +87,9 @@ fractions. Percentages use whole percentages: `30` means 30%, not 0.30.
 Mineral richness includes Void. Multipliers accept 0–10; zero means no local
 mining, including baseline extraction and flat mining bonuses. Each class also
 has a nonnegative integer `generation_weight`. Ordinary new planets use these
-relative weights; at least one must be positive. Defaults are Void 10, Poor 30,
-Average 50, Rich 9 and Ultra-rich 1, giving 10%, 30%, 50%, 9% and 1% respectively.
+relative weights; at least one must be positive. Defaults are Void 40, Poor 30,
+Solid 20, Rich 8 and Ultra-rich 2, giving 40%, 30%, 20%, 8% and 2% respectively.
+Solid is shown in the editor; its saved identifier remains `Average`.
 Saved campaigns retain their own multipliers, and loading never rerolls worlds.
 Balance format 23 adds Void and generation weights to older profiles without
 overwriting their saved mineral multipliers. Reset Mineral richness entries (or

@@ -3,6 +3,7 @@
 import pygame as pg
 
 from . import monsters, defenses, motherships, hyperlanes
+from .buildings import mineral_label
 from .galaxy_labels import known_owners
 from .galaxy_console import DIVIDER, console_frame, console_panel, console_row, header_plate
 from .planet_art import draw_planet, draw_star
@@ -122,7 +123,7 @@ def draw_system_panel(app, star):
         else:
             value = "GAS" if world.is_gas_giant else f"{world.habitability}%"
         text(surface, value, (row.right-5, row.y+5), 14, color, right=True)
-        detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
+        detail = "Mobile habitat · Quarter-speed travel" if world.habitat else "Gas Giant · Deep atmosphere" if world.is_gas_giant else f"{world.biome} · {world.size} · {mineral_label(world.richness)}"
         text(surface, shorten(detail, row.w-59, 14),
              (left, row.y+27), 14, MUTED)
         owner = ("Orbital station · "+game.empire_name_for(world.orbital_station.owner) if world.orbital_station else game.empire_name_for(world.owner) if world.colonized else

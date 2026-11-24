@@ -5,7 +5,7 @@ import pygame as pg
 
 from .building_art import draw_building_art
 from .habitat_modules import display_name
-from .buildings import BUILDINGS, workforce_bonuses
+from .buildings import BUILDINGS, mineral_label, workforce_bonuses
 from .colony_scene import draw_colony_scene
 from .colony_view import building_effect, turn_label
 from .ground_combat import forces, training_limit, training_rate
@@ -145,7 +145,7 @@ def system_panel(app, game, system, planet, live):
         label_y = y if row_height>=38 else y+max(0, (row_height-19)//2)
         text(app.canvas, shorten(label, 140, 14), (64, label_y), 14, GOLD if selected else color)
         if row_height>=38:
-            detail = "Gas Giant · No solid surface" if world.is_gas_giant else f"{world.biome} · {world.size} · {world.richness}"
+            detail = "Gas Giant · No solid surface" if world.is_gas_giant else f"{world.biome} · {world.size} · {mineral_label(world.richness)}"
             text(app.canvas, shorten(detail, 198, 14), (64, y+18), 14, MUTED)
         basic = "ORB" if world.orbital_station else f"{world.workforce} B" if world.colonized else "BASE" if world.outpost_owner else world.size[:1]
         text(app.canvas, basic, (255, label_y+1), 14, color, right=True)
@@ -406,7 +406,7 @@ def draw_planet_overview(app):
         count = len(specialists.visitors(game))
         app.button("planet_specialists", f"Specialists · {count} visitors", (1170, 766, 228, 39), app.open_specialists)
     # Planet facts sit over the landscape, leaving the city as the principal view.
-    facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {planet.richness} minerals"
+    facts = f"{planet.biome} · {planet.size} · {planet.gravity} gravity · {mineral_label(planet.richness)} minerals"
     from .environments import growth_factor
     factor = growth_factor(planet, game.race_id if not planet.colonized else None)
     if planet.is_gas_giant:

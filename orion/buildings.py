@@ -5,7 +5,12 @@ from dataclasses import dataclass
 BUILDING_SLOTS = {"Tiny": 4, "Small": 6, "Medium": 8, "Large": 10, "Huge": 12}
 MINERAL_FACTORS = {"Void": 0.0, "Poor": .3, "Average": 1.0, "Rich": 4.0, "Ultra-rich": 10.0}
 # Relative weights for ordinary generated worlds; scripted homes/rewards are separate.
-MINERAL_WEIGHTS = {"Void": 10, "Poor": 30, "Average": 50, "Rich": 9, "Ultra-rich": 1}
+MINERAL_WEIGHTS = {"Void": 40, "Poor": 30, "Average": 20, "Rich": 8, "Ultra-rich": 2}
+
+
+def mineral_label(richness):
+    """Display Solid while retaining the Average key in saves and profiles."""
+    return "Solid" if richness == "Average" else richness
 
 
 @dataclass(frozen=True)

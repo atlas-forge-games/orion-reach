@@ -3,6 +3,7 @@
 import pygame as pg
 
 from .exploration import DISCOVERIES
+from .buildings import mineral_label
 from .fleet_art import ship_icon
 from .planet_art import draw_star
 from .galaxy_console import console_panel, header_plate
@@ -50,7 +51,7 @@ def draw_system_intelligence(app, star):
         label = "LIVE INTELLIGENCE" if live else f"OBSERVED ON TURN {survey.last_seen}"
         text(surface, label, (x, r.y+282), 10, CYAN if live else GOLD, "mono", 1)
         rows = [("Planets", str(known.planets)), ("Primary world", known.biome if known.planets else "None"),
-                ("Minerals", known.richness if known.planets else "—"), ("Allegiance", allegiance)]
+                ("Minerals", mineral_label(known.richness) if known.planets else "—"), ("Allegiance", allegiance)]
         for index, (key, value) in enumerate(rows):
             y = r.y+320+index*44
             text(surface, key, (x, y), 13, MUTED)
