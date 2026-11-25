@@ -49,7 +49,6 @@ def draw_setup(app):
     observer = race.id == "observer"
     app.chrome("NEW EXPEDITION · 2 / 2", lambda: app.go("race_select"))
     text(surface, "Watch a galaxy unfold." if observer else "Chart your expedition.", (64, 191), 42, INK, "title")
-    text(surface, "Every empire is computer-controlled. You decide when the next turn begins." if observer else "Set the stage for your civilization's first journey.", (66, 254), 15, MUTED)
     panel(surface, (64, 300, 338, 492), border=race.color)
     draw_race_portrait(surface, race.id, (115, 320, 236, 236))
     text(surface, race.name, (86, 578), 29, race.color, "title")
@@ -63,7 +62,6 @@ def draw_setup(app):
     app.button("setup_back", "← Change race", (86, 733, 294, 42), lambda: app.go("race_select"))
     app.input_box("empire", "OBSERVATION NAME" if observer else "EMPIRE NAME", app.empire, (430, 325, 586, 55), "Your civilization")
     app.input_box("seed", "GALAXY SEED · OPTIONAL", app.seed, (1034, 325, 342, 55), "Random")
-    text(surface, "Reuse a seed and the same settings to repeat this galaxy and its starting positions.", (431, 400), 13, MUTED)
     text(surface, "GALAXY SIZE", (430, 443), 11, GOLD, "mono", 1)
     for i, (size, count) in enumerate(GALAXY_SIZES.items()):
         x = 430+i*320
@@ -74,10 +72,6 @@ def draw_setup(app):
                (430, 534, 306, 43), app.toggle_fog_of_war)
     app.button("neutral_encounters", "Pirate encounters: "+("ON" if app.with_encounters else "OFF"),
                (750, 534, 306, 43), app.toggle_encounters)
-    text(surface, "Pirates, searches & raids", (1071, 549), 13, MUTED)
-    text(surface, "You see everything; AI explores." if observer and app.fog_of_war else
-         "Explore to reveal planets and fleets." if app.fog_of_war else "All systems and fleets are visible.",
-         (432, 583), 10, MUTED)
     text(surface, "COMPUTER EMPIRES" if observer else "NUMBER OF RIVALS", (430, 605), 11, GOLD, "mono", 1)
     limit = max_rivals(race.id)
     for count in range(limit+1):
@@ -88,13 +82,8 @@ def draw_setup(app):
             pg.draw.line(surface, GOLD, (x, 670), (x+width, 670), 2)
     app.button("rival_count_all", "All civilizations", (1124, 627, 252, 43),
                lambda: app.choose_rival_count("all"), "primary" if app.rival_count == "all" else "ghost")
-    chosen = limit if app.rival_count == "all" else app.rival_count
-    summary = (f"{chosen} computer civilizations · Battles resolve automatically." if observer else
-               f"{chosen+1} civilizations · Your empire + {chosen} unique rivals." if chosen else "Solo campaign · No rivals.")
-    paragraph(surface, summary+" Random races and starting locations.", (431, 682), 930, 13, MUTED, 18)
     text(surface, "VICTORY CONDITIONS", (430, 721), 11, GOLD, "mono", 1)
     text(surface, "All off = open-ended play", (1376, 721), 12, MUTED, right=True)
-    captions = ("Last surviving empire", "Win the galactic election", "Each civilization has a unique goal")
     for i, condition in enumerate(CONDITIONS):
         x = 430+i*240
         enabled = condition in app.victory_conditions
@@ -102,11 +91,4 @@ def draw_setup(app):
                    (x, 745, 226, 43), lambda c=condition: app.toggle_victory_condition(c))
         if enabled:
             pg.draw.line(surface, GOLD, (x, 788), (x+226, 788), 2)
-        paragraph(surface, captions[i], (x+2, 797), 224, 11, MUTED, 15)
-    starting = ("Start: two scouts and a mothership · Convoy range: 25 ly" if race.id == "wanderers" else
-                "Start: 2 scouts, 1 frigate, 2 troop transports · Range: 10.5 ly" if race.id == "varkesh" else
-                "Start: two scouts and one colony ship · Base fuel range: 7 ly")
-    footer = ("No victory limit. Losing all your colonies still ends your campaign." if not app.victory_conditions and not observer else
-              "Watch. Advance turns. Save and return whenever you like." if observer else starting)
-    text(surface, footer, (65, 842), 13, MUTED)
     app.button("launch", "Begin observation" if observer else "Begin expedition", (966, 831, 410, 48), app.start_game, "primary")
